@@ -50,15 +50,22 @@ Tài liệu này định nghĩa các User Story (Yêu cầu người dùng) cho 
 *   **US7.2:** Là người dùng, tôi muốn xem biểu đồ cột (Bar chart) so sánh Thu - Chi theo thời gian (Tuần/Tháng/Năm).
 *   **US7.3:** Là người dùng, tôi muốn xuất dữ liệu giao dịch ra file Excel/CSV.
 
-## Epic 8: Tìm kiếm & Lọc (Search & Filter)
-*   **US8.1:** Là người dùng, tôi muốn lọc giao dịch theo các khoảng thời gian (Hôm nay, Tuần này, Tháng này, Tùy chỉnh).
-*   **US8.2:** Là người dùng, tôi muốn lọc giao dịch theo loại hoặc theo Ví.
-*   **US8.3:** Là người dùng, tôi muốn tìm kiếm giao dịch bằng từ khóa (Tên giao dịch, ghi chú).
+## Epic 8: Quản lý Quỹ nhóm & Tiết kiệm tự động (Fund Management & Auto-Saving)
+*   **US8.1:** Là người dùng, tôi muốn tạo một Quỹ (Fund) với mục tiêu cụ thể (ví dụ: Quỹ du lịch, Quỹ kết hôn).
+*   **US8.2:** Là người dùng, tôi muốn thiết lập lịch nạp tiền tự động định kỳ (Hàng ngày/Tuần/Tháng) vào Quỹ, để hệ thống tự động trích tiền đóng góp.
+*   **US8.3:** Là người dùng, tôi muốn chia sẻ Quỹ với những người dùng khác (qua Email, SĐT hoặc Mã mời), để cùng nhau góp tiền xây dựng Quỹ chung.
+*   **US8.4:** Là thành viên tham gia Quỹ, tôi muốn đóng góp tiền vào Quỹ chung và xem tiến độ đạt được mục tiêu.
+*   **US8.5:** Là Chủ Quỹ, tôi muốn quản lý thành viên và xem báo cáo minh bạch về số tiền mỗi người đã đóng góp.
 
-## Epic 9: Cài đặt hệ thống (Settings)
-*   **US9.1:** Là người dùng, tôi muốn thay đổi Ngôn ngữ và Đơn vị tiền tệ.
-*   **US9.2:** Là người dùng, tôi muốn chuyển đổi giao diện Sáng/Tối (Light/Dark mode).
+## Epic 9: Tìm kiếm & Lọc (Search & Filter)
+*   **US9.1:** Là người dùng, tôi muốn lọc giao dịch theo các khoảng thời gian (Hôm nay, Tuần này, Tháng này, Tùy chỉnh).
+*   **US9.2:** Là người dùng, tôi muốn lọc giao dịch theo loại hoặc theo Ví.
+*   **US9.3:** Là người dùng, tôi muốn tìm kiếm giao dịch bằng từ khóa (Tên giao dịch, ghi chú).
 
-## Epic 10: Quản trị hệ thống (Admin - Optional)
-*   **US10.1:** Là Quản trị viên (Admin), tôi muốn xem danh sách người dùng đã đăng ký vào hệ thống.
-*   **US10.2:** Là Quản trị viên, tôi muốn khóa tài khoản (Ban) những người dùng vi phạm quy định.
+## Epic 10: Cài đặt hệ thống (Settings)
+*   **US10.1:** Là người dùng, tôi muốn thay đổi Ngôn ngữ và Đơn vị tiền tệ.
+*   **US10.2:** Là người dùng, tôi muốn chuyển đổi giao diện Sáng/Tối (Light/Dark mode).
+
+## Epic 11: Quản trị hệ thống (Admin - Optional)
+*   **US11.1:** Là Quản trị viên (Admin), tôi muốn xem danh sách người dùng đã đăng ký vào hệ thống.
+*   **US11.2:** Là Quản trị viên, tôi muốn khóa tài khoản (Ban) những người dùng vi phạm quy định.
