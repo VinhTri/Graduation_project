@@ -4,3 +4,4 @@
 - [Tài liệu đặc tả (Google Docs)](https://docs.google.com/document/d/...)
 - [Quản lý task (Jira)](https://your-jira-link.com)
 - [Biểu mẫu 04: Phiếu giao đề tài đồ án tốt nghiệp](<specs/BM4. PHIẾU GIAO ĐỀ TÀI ĐỒ ÁN TỐT NGHIỆP-2.docx>)
+- [Danh sách User Story (Cập nhật)](user_stories.md)
