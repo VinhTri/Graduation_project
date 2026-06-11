@@ -72,6 +72,16 @@ Tài liệu này định nghĩa các User Story (Yêu cầu người dùng) cho 
 *   **US11.3:** Là người dùng, tôi muốn hệ thống yêu cầu xác thực bổ sung (OTP hoặc Mã PIN) khi tôi thực hiện rút tiền hoặc chuyển khoản vượt hạn mức.
 *   **US11.4:** Là người dùng, tôi muốn có thể yêu cầu xóa vĩnh viễn tài khoản và toàn bộ dữ liệu cá nhân của tôi khỏi hệ thống.
 
-## Epic 12: Quản trị hệ thống (Admin - Optional)
-*   **US12.1:** Là Quản trị viên (Admin), tôi muốn xem danh sách người dùng đã đăng ký vào hệ thống.
-*   **US12.2:** Là Quản trị viên, tôi muốn khóa tài khoản (Ban) những người dùng vi phạm quy định.
+## Epic 12: Thông báo & Nhắc nhở (Notifications & Reminders)
+*   **US12.1:** Là người dùng, tôi muốn nhận được thông báo nhắc nhở nhập giao dịch mỗi tối, để không bị quên ghi chép chi tiêu.
+*   **US12.2:** Là người dùng, tôi muốn hệ thống nhắc nhở khi sắp đến hạn thanh toán các hóa đơn định kỳ (điện, nước, internet).
+*   **US12.3:** Là người dùng, tôi muốn xem lại danh sách các thông báo cũ trong trung tâm thông báo (Notification Center) của ứng dụng.
+
+## Epic 13: Trợ lý Thông minh (AI Assistant)
+*   **US13.1:** Là người dùng, tôi muốn hệ thống AI tự động phân loại và gợi ý Danh mục (Category) dựa trên nội dung giao dịch (tên người nhận, nội dung chuyển khoản).
+*   **US13.2:** Là người dùng, tôi muốn sử dụng AI để quét và trích xuất thông tin tự động từ hóa đơn dạng ảnh (OCR hóa đơn), giúp nhập liệu nhanh chóng.
+*   **US13.3:** Là người dùng, tôi muốn nhận được lời khuyên và đánh giá sức khỏe tài chính định kỳ từ AI dựa trên thói quen chi tiêu của tôi.
+
+## Epic 14: Quản trị hệ thống (Admin - Optional)
+*   **US14.1:** Là Quản trị viên (Admin), tôi muốn xem danh sách người dùng đã đăng ký vào hệ thống.
+*   **US14.2:** Là Quản trị viên, tôi muốn khóa tài khoản (Ban) những người dùng vi phạm quy định.
