@@ -66,6 +66,12 @@ Tài liệu này định nghĩa các User Story (Yêu cầu người dùng) cho 
 *   **US10.1:** Là người dùng, tôi muốn thay đổi Ngôn ngữ và Đơn vị tiền tệ.
 *   **US10.2:** Là người dùng, tôi muốn chuyển đổi giao diện Sáng/Tối (Light/Dark mode).
 
-## Epic 11: Quản trị hệ thống (Admin - Optional)
-*   **US11.1:** Là Quản trị viên (Admin), tôi muốn xem danh sách người dùng đã đăng ký vào hệ thống.
-*   **US11.2:** Là Quản trị viên, tôi muốn khóa tài khoản (Ban) những người dùng vi phạm quy định.
+## Epic 11: Bảo mật & Quyền riêng tư (Security & Privacy)
+*   **US11.1:** Là người dùng, tôi muốn thiết lập mã PIN hoặc xác thực sinh trắc học (Vân tay/Face ID) để mở ứng dụng, đảm bảo người khác không tự ý xem được.
+*   **US11.2:** Là người dùng, tôi muốn có tính năng "Ẩn số dư" (nhấn vào icon con mắt) trên màn hình chính, để tránh người xung quanh nhìn trộm tài sản.
+*   **US11.3:** Là người dùng, tôi muốn hệ thống yêu cầu xác thực bổ sung (OTP hoặc Mã PIN) khi tôi thực hiện rút tiền hoặc chuyển khoản vượt hạn mức.
+*   **US11.4:** Là người dùng, tôi muốn có thể yêu cầu xóa vĩnh viễn tài khoản và toàn bộ dữ liệu cá nhân của tôi khỏi hệ thống.
+
+## Epic 12: Quản trị hệ thống (Admin - Optional)
+*   **US12.1:** Là Quản trị viên (Admin), tôi muốn xem danh sách người dùng đã đăng ký vào hệ thống.
+*   **US12.2:** Là Quản trị viên, tôi muốn khóa tài khoản (Ban) những người dùng vi phạm quy định.
