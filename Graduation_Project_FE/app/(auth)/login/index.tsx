@@ -4,20 +4,17 @@ import {
   ScrollView, SafeAreaView, Platform, KeyboardAvoidingView
 } from 'react-native';
 import { Feather, FontAwesome5 } from '@expo/vector-icons';
-import { styles } from './_register.styles';
+import { styles } from './_login.styles';
 import FeatureSlider from '../../../shared/components/FeatureSlider/FeatureSlider';
 import { useRouter } from 'expo-router';
 
-export default function RegisterScreen() {
+export default function LoginScreen() {
   const router = useRouter();
-  const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
   
   // Trạng thái ẩn/hiện mật khẩu
   const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -39,24 +36,9 @@ export default function RegisterScreen() {
             <View style={styles.dragHandle} />
             
             <Text style={styles.brandTitle}>SmartSpend</Text>
-            <Text style={styles.brandSubtitle}>Nhập thông tin để đăng ký tài khoản mới</Text>
+            <Text style={styles.brandSubtitle}>Đăng nhập để quản lý tài chính cá nhân</Text>
 
             <View style={styles.formContainer}>
-              {/* Họ và tên */}
-              <View style={styles.inputGroup}>
-                <Text style={styles.label}>Họ và tên</Text>
-                <View style={styles.inputContainer}>
-                  <Feather name="user" size={18} color="#9CA3AF" style={styles.inputIcon} />
-                  <TextInput 
-                    style={styles.input} 
-                    placeholder="Nhập họ và tên của bạn" 
-                    placeholderTextColor="#9CA3AF"
-                    value={name}
-                    onChangeText={setName}
-                  />
-                </View>
-              </View>
-
               {/* Email */}
               <View style={styles.inputGroup}>
                 <Text style={styles.label}>Địa chỉ Email</Text>
@@ -81,7 +63,7 @@ export default function RegisterScreen() {
                   <Feather name="lock" size={18} color="#9CA3AF" style={styles.inputIcon} />
                   <TextInput 
                     style={styles.input} 
-                    placeholder="Nhập mật khẩu (tối thiểu 6 ký tự)" 
+                    placeholder="Nhập mật khẩu" 
                     placeholderTextColor="#9CA3AF"
                     secureTextEntry={!showPassword}
                     value={password}
@@ -93,35 +75,47 @@ export default function RegisterScreen() {
                 </View>
               </View>
 
-              {/* Xác nhận mật khẩu */}
-              <View style={styles.inputGroup}>
-                <Text style={styles.label}>Xác nhận mật khẩu</Text>
-                <View style={styles.inputContainer}>
-                  <Feather name="check-circle" size={18} color="#9CA3AF" style={styles.inputIcon} />
-                  <TextInput 
-                    style={styles.input} 
-                    placeholder="Nhập lại mật khẩu" 
-                    placeholderTextColor="#9CA3AF"
-                    secureTextEntry={!showConfirmPassword}
-                    value={confirmPassword}
-                    onChangeText={setConfirmPassword}
-                  />
-                  <TouchableOpacity onPress={() => setShowConfirmPassword(!showConfirmPassword)} style={styles.eyeIcon}>
-                    <Feather name={showConfirmPassword ? "eye" : "eye-off"} size={18} color="#9CA3AF" />
-                  </TouchableOpacity>
-                </View>
+              {/* Quên mật khẩu */}
+              <View style={styles.forgotPasswordContainer}>
+                <TouchableOpacity>
+                  <Text style={styles.forgotPasswordText}>Quên mật khẩu?</Text>
+                </TouchableOpacity>
               </View>
 
-              {/* Nút đăng ký */}
-              <TouchableOpacity style={styles.registerButton} activeOpacity={0.8}>
-                <Text style={styles.registerButtonText}>Đăng ký tài khoản</Text>
+              {/* Nút đăng nhập */}
+              <TouchableOpacity style={styles.loginButton} activeOpacity={0.8}>
+                <Text style={styles.loginButtonText}>Đăng nhập</Text>
               </TouchableOpacity>
 
-              {/* Chuyển hướng đăng nhập */}
-              <View style={styles.loginContainer}>
-                <Text style={styles.loginText}>Bạn đã có tài khoản? </Text>
-                <TouchableOpacity onPress={() => router.replace("/(auth)/login")}>
-                  <Text style={styles.loginLink}>Đăng nhập ngay</Text>
+              {/* Hoặc tiếp tục bằng */}
+              <View style={styles.dividerContainer}>
+                <View style={styles.line} />
+                <Text style={styles.dividerText}>Hoặc tiếp tục bằng</Text>
+                <View style={styles.line} />
+              </View>
+
+              {/* Đăng nhập mạng xã hội */}
+              <View style={styles.socialContainer}>
+                <TouchableOpacity style={styles.socialButton} activeOpacity={0.8}>
+                  <View style={styles.socialContent}>
+                    <FontAwesome5 name="google" size={18} color="#EA4335" />
+                    <Text style={styles.socialText}>Google</Text>
+                  </View>
+                </TouchableOpacity>
+
+                <TouchableOpacity style={styles.socialButton} activeOpacity={0.8}>
+                  <View style={styles.socialContent}>
+                    <FontAwesome5 name="apple" size={18} color="#000000" />
+                    <Text style={styles.socialText}>Apple</Text>
+                  </View>
+                </TouchableOpacity>
+              </View>
+
+              {/* Chuyển hướng đăng ký */}
+              <View style={styles.registerContainer}>
+                <Text style={styles.registerText}>Bạn chưa có tài khoản? </Text>
+                <TouchableOpacity onPress={() => router.replace("/(auth)/register")}>
+                  <Text style={styles.registerLink}>Đăng ký ngay</Text>
                 </TouchableOpacity>
               </View>
             </View>
