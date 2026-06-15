@@ -38,6 +38,11 @@ export default function RegisterScreen() {
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
   };
 
+  // Regex check: 8 chars, 1 uppercase, 1 lowercase, 1 number, 1 special char
+  const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[\W_]).{8,}$/;
+  const isPasswordValid = passwordRegex.test(password);
+  const isConfirmPasswordValid = isPasswordValid && password === confirmPassword && confirmPassword.length > 0;
+
   const handleRegisterClick = async () => {
     // Reset lỗi
     setNameError('');
@@ -60,8 +65,8 @@ export default function RegisterScreen() {
     if (!password) {
       setPasswordError('Vui lòng nhập mật khẩu');
       hasError = true;
-    } else if (password.length < 8) {
-      setPasswordError('Mật khẩu phải chứa ít nhất 8 ký tự');
+    } else if (!passwordRegex.test(password)) {
+      setPasswordError('Mật khẩu ít nhất 8 ký tự, gồm chữ hoa, chữ thường, số và ký tự đặc biệt');
       hasError = true;
     }
     if (!confirmPassword) {
@@ -203,6 +208,9 @@ export default function RegisterScreen() {
                       if (passwordError) setPasswordError('');
                     }}
                   />
+                  {isPasswordValid && (
+                    <Feather name="check" size={20} color="#10B981" style={{ marginRight: 8 }} />
+                  )}
                   <TouchableOpacity onPress={() => setShowPassword(!showPassword)} style={styles.eyeIcon}>
                     <Feather name={showPassword ? "eye" : "eye-off"} size={18} color="#9CA3AF" />
                   </TouchableOpacity>
@@ -226,6 +234,9 @@ export default function RegisterScreen() {
                       if (confirmPasswordError) setConfirmPasswordError('');
                     }}
                   />
+                  {isConfirmPasswordValid && (
+                    <Feather name="check" size={20} color="#10B981" style={{ marginRight: 8 }} />
+                  )}
                   <TouchableOpacity onPress={() => setShowConfirmPassword(!showConfirmPassword)} style={styles.eyeIcon}>
                     <Feather name={showConfirmPassword ? "eye" : "eye-off"} size={18} color="#9CA3AF" />
                   </TouchableOpacity>
