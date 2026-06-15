@@ -1,6 +1,7 @@
 import React from "react";
 import { View, Text, TouchableOpacity } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
 import { WalletCardProps } from "./WalletCard.types";
 import { styles } from "./WalletCard.styles";
 import Colors from "../../../../shared/constants/Colors";
@@ -11,6 +12,8 @@ export const WalletCard: React.FC<WalletCardProps> = ({
   onPress,
   stackIndex,
 }) => {
+  const router = useRouter();
+
   const formatCurrency = (val: number) => {
     return val.toLocaleString("vi-VN") + " ₫";
   };
@@ -126,7 +129,11 @@ export const WalletCard: React.FC<WalletCardProps> = ({
         {/* Expanded Actions Tray (Nạp, Rút, Lịch sử, Cài đặt) */}
         {isExpanded && (
           <View style={styles.actionsTray}>
-            <TouchableOpacity style={styles.actionButton} activeOpacity={0.7}>
+            <TouchableOpacity 
+              style={styles.actionButton} 
+              activeOpacity={0.7}
+              onPress={() => router.push("/wallet/topup")}
+            >
               <View style={styles.actionIconBg}>
                 <Ionicons name="arrow-down-outline" size={18} color={wallet.color} />
               </View>
