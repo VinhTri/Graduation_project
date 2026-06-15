@@ -8,6 +8,7 @@ import { styles } from './_login.styles';
 import FeatureSlider from '../../../shared/components/FeatureSlider/FeatureSlider';
 import { useRouter } from 'expo-router';
 import { authService } from '../../../shared/api/services/auth.service';
+import SuccessModal from '../../../shared/components/SuccessModal/SuccessModal';
 
 export default function LoginScreen() {
   const router = useRouter();
@@ -20,6 +21,9 @@ export default function LoginScreen() {
   // State lưu lỗi
   const [emailError, setEmailError] = useState('');
   const [passwordError, setPasswordError] = useState('');
+
+  // State Modal Thành công
+  const [isSuccessModalVisible, setIsSuccessModalVisible] = useState(false);
 
   // Validate định dạng email
   const isValidEmail = (email: string) => {
@@ -54,9 +58,8 @@ export default function LoginScreen() {
     try {
       const response = await authService.login({ username: email, password });
       console.log('Đăng nhập thành công', response);
-      // Xử lý lưu token và chuyển hướng vào màn hình chính sau khi đăng nhập thành công
-      // router.replace('/(main)/home');
-      Alert.alert("Thành công", "Đăng nhập thành công!");
+      // Hiển thị modal thành công thay vì dùng Alert
+      setIsSuccessModalVisible(true);
     } catch (error: any) {
       // Bắt lỗi từ API
       const errorMessage = error?.message;
@@ -68,6 +71,12 @@ export default function LoginScreen() {
         Alert.alert("Lỗi", errorMessage || "Đăng nhập thất bại");
       }
     }
+  };
+
+  const handleSuccessClose = () => {
+    setIsSuccessModalVisible(false);
+    // Sau khi đóng modal, chuyển hướng vào màn hình chính
+    // router.replace('/(main)/home');
   };
 
   return (
@@ -186,6 +195,15 @@ export default function LoginScreen() {
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
+
+      {/* MODAL THÀNH CÔNG */}
+      <SuccessModal
+        visible={isSuccessModalVisible}
+        title="Đăng nhập thành công!"
+        message="Chào mừng bạn quay lại với SmartSpend."
+        isAutoClose={true}
+        onClose={handleSuccessClose}
+      />
     </SafeAreaView>
   );
 }
