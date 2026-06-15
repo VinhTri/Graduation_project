@@ -13,7 +13,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import Colors from "../../../../../shared/constants/Colors";
+import Colors from "../../../../shared/constants/Colors";
 import { styles } from "./TopUpScreen.styles";
 
 const QUICK_AMOUNTS = [100000, 200000, 500000, 1000000, 2000000, 5000000];
@@ -40,12 +40,11 @@ export default function TopUpScreen() {
   const handleConfirm = () => {
     if (!amount || parseInt(amount, 10) === 0) return;
     
-    // Xử lý nạp tiền ở đây
-    Alert.alert(
-      "Thành công", 
-      `Bạn đã yêu cầu nạp ${formatDisplayAmount(amount)} ₫ vào ví thành công!`,
-      [{ text: "Đóng", onPress: () => router.back() }]
-    );
+    // Chuyển sang màn hình hóa đơn QR và truyền số tiền
+    router.push({
+      pathname: "/wallet/checkout",
+      params: { amount }
+    });
   };
 
   const parsedAmount = amount ? parseInt(amount, 10) : 0;
