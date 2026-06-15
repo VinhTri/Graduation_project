@@ -14,6 +14,15 @@ import org.springframework.web.bind.annotation.*;
 @RequiredArgsConstructor
 public class AuthController {
     private final AuthService authService;
+    @PostMapping("/login")
+    public ResponseEntity<ApiResponse<AuthResponse>> login(@Valid @RequestBody LoginRequest request) {
+        AuthResponse response = authService.loginUser(request);
+        return ResponseEntity.ok(ApiResponse.<AuthResponse>builder()
+                .success(true)
+                .message("Đăng nhập thành công!")
+                .data(response)
+                .build());
+    }
     @PostMapping("/register/send-otp")
     public ResponseEntity<ApiResponse<Void>> sendRegisterOtp(@Valid @RequestBody SendOtpRequest request) {
         authService.sendRegisterOtp(request);

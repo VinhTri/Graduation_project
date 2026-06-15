@@ -23,7 +23,23 @@ public class GlobalExceptionHandler {
                         .build());
     }
 
+    @ExceptionHandler(org.springframework.security.authentication.BadCredentialsException.class)
+    public ResponseEntity<ApiResponse<Void>> handleBadCredentialsException(org.springframework.security.authentication.BadCredentialsException ex) {
+        return ResponseEntity.status(ErrorCode.INVALID_CREDENTIALS.getStatusCode())
+                .body(ApiResponse.<Void>builder()
+                        .success(false)
+                        .message(ErrorCode.INVALID_CREDENTIALS.getMessage())
+                        .build());
+    }
 
+    @ExceptionHandler(org.springframework.security.authentication.DisabledException.class)
+    public ResponseEntity<ApiResponse<Void>> handleDisabledException(org.springframework.security.authentication.DisabledException ex) {
+        return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                .body(ApiResponse.<Void>builder()
+                        .success(false)
+                        .message("Tài khoản của bạn đã bị vô hiệu hóa!")
+                        .build());
+    }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ApiResponse<Map<String, String>>> handleValidationExceptions(MethodArgumentNotValidException ex) {
