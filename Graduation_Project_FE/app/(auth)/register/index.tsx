@@ -1,12 +1,14 @@
 import React, { useState } from 'react';
 import { 
   View, Text, TextInput, TouchableOpacity, 
-  ScrollView, SafeAreaView, Platform, KeyboardAvoidingView
+  ScrollView, SafeAreaView, Platform, KeyboardAvoidingView, Alert
 } from 'react-native';
-import { Feather, FontAwesome5 } from '@expo/vector-icons';
+import { Feather } from '@expo/vector-icons';
 import { styles } from './_register.styles';
 import FeatureSlider from '../../../shared/components/FeatureSlider/FeatureSlider';
 import { useRouter } from 'expo-router';
+import { authService } from '../../../shared/api/services/auth.service';
+import OtpModal from '../../../shared/components/OtpModal/OtpModal';
 
 export default function RegisterScreen() {
   const router = useRouter();
@@ -18,6 +20,102 @@ export default function RegisterScreen() {
   // Trạng thái ẩn/hiện mật khẩu
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+
+  // Lỗi
+  const [nameError, setNameError] = useState('');
+  const [emailError, setEmailError] = useState('');
+  const [passwordError, setPasswordError] = useState('');
+  const [confirmPasswordError, setConfirmPasswordError] = useState('');
+
+  // Modal OTP
+  const [isOtpVisible, setIsOtpVisible] = useState(false);
+  const [otpError, setOtpError] = useState('');
+
+  // Validate định dạng email
+  const isValidEmail = (email: string) => {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+  };
+
+  const handleRegisterClick = async () => {
+    // Reset lỗi
+    setNameError('');
+    setEmailError('');
+    setPasswordError('');
+    setConfirmPasswordError('');
+    let hasError = false;
+
+    if (!name.trim()) {
+      setNameError('Vui lòng nhập họ và tên');
+      hasError = true;
+    }
+    if (!email) {
+      setEmailError('Vui lòng nhập địa chỉ email');
+      hasError = true;
+    } else if (!isValidEmail(email)) {
+      setEmailError('Định dạng email không hợp lệ (ví dụ: abc@gmail.com)');
+      hasError = true;
+    }
+    if (!password) {
+      setPasswordError('Vui lòng nhập mật khẩu');
+      hasError = true;
+    } else if (password.length < 8) {
+      setPasswordError('Mật khẩu phải chứa ít nhất 8 ký tự');
+      hasError = true;
+    }
+    if (!confirmPassword) {
+      setConfirmPasswordError('Vui lòng xác nhận mật khẩu');
+      hasError = true;
+    } else if (password !== confirmPassword) {
+      setConfirmPasswordError('Mật khẩu xác nhận không khớp');
+      hasError = true;
+    }
+
+    if (hasError) return;
+
+    try {
+      // Yêu cầu gửi OTP về email (bên trong gọi backend API)
+      await authService.sendRegisterOtp({ email });
+      setOtpError('');
+      setIsOtpVisible(true);
+    } catch (error: any) {
+      const errorMessage = error?.message;
+      if (errorMessage === 'Tài khoản email đã tồn tại!') {
+        setEmailError('Email này đã được đăng ký');
+      } else if (errorMessage === 'Tên đăng nhập này đã tồn tại!') {
+        // Ta đang dùng email làm username luôn
+        setEmailError('Tài khoản này đã được đăng ký');
+      } else {
+        Alert.alert('Lỗi', errorMessage || 'Không thể gửi mã OTP');
+      }
+    }
+  };
+
+  const handleVerifyOtp = async (otpValue: string) => {
+    try {
+      setOtpError('');
+      // Backend đang yêu cầu username, ta truyền email vào username
+      await authService.register({
+        username: email,
+        password: password,
+        email: email,
+        otp: otpValue
+      });
+      
+      setIsOtpVisible(false);
+      Alert.alert('Thành công', 'Xác nhận OTP thành công! Vui lòng đăng nhập.', [
+        { text: 'Đóng', onPress: () => router.replace('/(auth)/login') }
+      ]);
+    } catch (error: any) {
+      const errorMessage = error?.message;
+      if (errorMessage === 'Mã OTP không hợp lệ hoặc đã được sử dụng!') {
+        setOtpError('Mã OTP không hợp lệ');
+      } else if (errorMessage === 'Mã OTP đã hết hạn!') {
+        setOtpError('Mã OTP đã hết hạn');
+      } else {
+        setOtpError(errorMessage || 'Đăng ký thất bại');
+      }
+    }
+  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -45,22 +143,26 @@ export default function RegisterScreen() {
               {/* Họ và tên */}
               <View style={styles.inputGroup}>
                 <Text style={styles.label}>Họ và tên</Text>
-                <View style={styles.inputContainer}>
+                <View style={[styles.inputContainer, nameError ? { borderColor: '#EF4444' } : {}]}>
                   <Feather name="user" size={18} color="#9CA3AF" style={styles.inputIcon} />
                   <TextInput 
                     style={styles.input} 
                     placeholder="Nhập họ và tên của bạn" 
                     placeholderTextColor="#9CA3AF"
                     value={name}
-                    onChangeText={setName}
+                    onChangeText={(text) => {
+                      setName(text);
+                      if (nameError) setNameError('');
+                    }}
                   />
                 </View>
+                {nameError ? <Text style={styles.errorText}>{nameError}</Text> : null}
               </View>
 
               {/* Email */}
               <View style={styles.inputGroup}>
                 <Text style={styles.label}>Địa chỉ Email</Text>
-                <View style={styles.inputContainer}>
+                <View style={[styles.inputContainer, emailError ? { borderColor: '#EF4444' } : {}]}>
                   <Feather name="mail" size={18} color="#9CA3AF" style={styles.inputIcon} />
                   <TextInput 
                     style={styles.input} 
@@ -69,34 +171,42 @@ export default function RegisterScreen() {
                     keyboardType="email-address"
                     autoCapitalize="none"
                     value={email}
-                    onChangeText={setEmail}
+                    onChangeText={(text) => {
+                      setEmail(text);
+                      if (emailError) setEmailError('');
+                    }}
                   />
                 </View>
+                {emailError ? <Text style={styles.errorText}>{emailError}</Text> : null}
               </View>
 
               {/* Mật khẩu */}
               <View style={styles.inputGroup}>
                 <Text style={styles.label}>Mật khẩu</Text>
-                <View style={styles.inputContainer}>
+                <View style={[styles.inputContainer, passwordError ? { borderColor: '#EF4444' } : {}]}>
                   <Feather name="lock" size={18} color="#9CA3AF" style={styles.inputIcon} />
                   <TextInput 
                     style={styles.input} 
-                    placeholder="Nhập mật khẩu (tối thiểu 6 ký tự)" 
+                    placeholder="Nhập mật khẩu (tối thiểu 8 ký tự)" 
                     placeholderTextColor="#9CA3AF"
                     secureTextEntry={!showPassword}
                     value={password}
-                    onChangeText={setPassword}
+                    onChangeText={(text) => {
+                      setPassword(text);
+                      if (passwordError) setPasswordError('');
+                    }}
                   />
                   <TouchableOpacity onPress={() => setShowPassword(!showPassword)} style={styles.eyeIcon}>
                     <Feather name={showPassword ? "eye" : "eye-off"} size={18} color="#9CA3AF" />
                   </TouchableOpacity>
                 </View>
+                {passwordError ? <Text style={styles.errorText}>{passwordError}</Text> : null}
               </View>
 
               {/* Xác nhận mật khẩu */}
               <View style={styles.inputGroup}>
                 <Text style={styles.label}>Xác nhận mật khẩu</Text>
-                <View style={styles.inputContainer}>
+                <View style={[styles.inputContainer, confirmPasswordError ? { borderColor: '#EF4444' } : {}]}>
                   <Feather name="check-circle" size={18} color="#9CA3AF" style={styles.inputIcon} />
                   <TextInput 
                     style={styles.input} 
@@ -104,16 +214,20 @@ export default function RegisterScreen() {
                     placeholderTextColor="#9CA3AF"
                     secureTextEntry={!showConfirmPassword}
                     value={confirmPassword}
-                    onChangeText={setConfirmPassword}
+                    onChangeText={(text) => {
+                      setConfirmPassword(text);
+                      if (confirmPasswordError) setConfirmPasswordError('');
+                    }}
                   />
                   <TouchableOpacity onPress={() => setShowConfirmPassword(!showConfirmPassword)} style={styles.eyeIcon}>
                     <Feather name={showConfirmPassword ? "eye" : "eye-off"} size={18} color="#9CA3AF" />
                   </TouchableOpacity>
                 </View>
+                {confirmPasswordError ? <Text style={styles.errorText}>{confirmPasswordError}</Text> : null}
               </View>
 
               {/* Nút đăng ký */}
-              <TouchableOpacity style={styles.registerButton} activeOpacity={0.8}>
+              <TouchableOpacity onPress={handleRegisterClick} style={styles.registerButton} activeOpacity={0.8}>
                 <Text style={styles.registerButtonText}>Đăng ký tài khoản</Text>
               </TouchableOpacity>
 
@@ -129,6 +243,15 @@ export default function RegisterScreen() {
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
+
+      {/* MODAL OTP */}
+      <OtpModal
+        visible={isOtpVisible}
+        email={email}
+        errorMessage={otpError}
+        onClose={() => setIsOtpVisible(false)}
+        onVerify={handleVerifyOtp}
+      />
     </SafeAreaView>
   );
 }

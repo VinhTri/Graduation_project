@@ -1,0 +1,118 @@
+import { StyleSheet } from 'react-native';
+
+export const styles = StyleSheet.create({
+  overlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContainer: {
+    width: '85%',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 24,
+    padding: 24,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 10,
+    elevation: 5,
+  },
+  iconContainer: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: '#E5F7F3',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  title: {
+    fontSize: 22,
+    fontWeight: 'bold',
+    color: '#1F2937',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  subtitle: {
+    fontSize: 14,
+    color: '#6B7280',
+    textAlign: 'center',
+    marginBottom: 24,
+    lineHeight: 20,
+  },
+  emailHighlight: {
+    fontWeight: 'bold',
+    color: '#109185',
+  },
+  inputContainer: {
+    width: '100%',
+    marginBottom: 16,
+  },
+  otpInput: {
+    height: 56,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    borderRadius: 14,
+    fontSize: 24,
+    fontWeight: 'bold',
+    textAlign: 'center',
+    color: '#1F2937',
+    letterSpacing: 8,
+    backgroundColor: '#F9FAFB',
+  },
+  otpInputError: {
+    borderColor: '#EF4444',
+    backgroundColor: '#FEF2F2',
+  },
+  errorText: {
+    color: '#EF4444',
+    fontSize: 13,
+    marginTop: 8,
+    textAlign: 'center',
+  },
+  timerText: {
+    fontSize: 16,
+    color: '#6B7280',
+    fontWeight: '600',
+    marginBottom: 24,
+  },
+  timerUrgent: {
+    color: '#EF4444',
+  },
+  buttonContainer: {
+    flexDirection: 'row',
+    gap: 12,
+    width: '100%',
+  },
+  cancelButton: {
+    flex: 1,
+    height: 50,
+    borderRadius: 14,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#F3F4F6',
+  },
+  cancelButtonText: {
+    color: '#4B5563',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  verifyButton: {
+    flex: 1,
+    height: 50,
+    borderRadius: 14,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#109185',
+  },
+  verifyButtonDisabled: {
+    backgroundColor: '#9CA3AF',
+  },
+  verifyButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+});
