@@ -13,7 +13,9 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping("/api/v1/auth")
 @RequiredArgsConstructor
 public class AuthController {
+
     private final AuthService authService;
+
     @PostMapping("/login")
     public ResponseEntity<ApiResponse<AuthResponse>> login(@Valid @RequestBody LoginRequest request) {
         AuthResponse response = authService.loginUser(request);
@@ -23,6 +25,7 @@ public class AuthController {
                 .data(response)
                 .build());
     }
+
     @PostMapping("/register/send-otp")
     public ResponseEntity<ApiResponse<Void>> sendRegisterOtp(@Valid @RequestBody SendOtpRequest request) {
         authService.sendRegisterOtp(request);
@@ -39,6 +42,24 @@ public class AuthController {
                 .success(true)
                 .message("Đăng ký tài khoản thành công!")
                 .data(response)
+                .build());
+    }
+
+    @PostMapping("/forgot-password")
+    public ResponseEntity<ApiResponse<Void>> forgotPassword(@Valid @RequestBody SendOtpRequest request) {
+        authService.processForgotPassword(request);
+        return ResponseEntity.ok(ApiResponse.<Void>builder()
+                .success(true)
+                .message("Mã OTP khôi phục mật khẩu đã được gửi đến email của bạn!")
+                .build());
+    }
+
+    @PostMapping("/reset-password")
+    public ResponseEntity<ApiResponse<Void>> resetPassword(@Valid @RequestBody ResetPasswordRequest request) {
+        authService.processResetPassword(request);
+        return ResponseEntity.ok(ApiResponse.<Void>builder()
+                .success(true)
+                .message("Đặt lại mật khẩu thành công!")
                 .build());
     }
 }
