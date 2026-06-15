@@ -76,7 +76,7 @@ export default function LoginScreen() {
   const handleSuccessClose = () => {
     setIsSuccessModalVisible(false);
     // Sau khi đóng modal, chuyển hướng vào màn hình chính
-    // router.replace('/(main)/home');
+    router.replace('/(main)/home');
   };
 
   return (
