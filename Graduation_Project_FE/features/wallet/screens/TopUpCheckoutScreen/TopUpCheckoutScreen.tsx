@@ -1,38 +1,16 @@
 import React, { useEffect, useState } from "react";
-import { View, Text, TouchableOpacity, ScrollView, Dimensions, Image } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { View, Text, TouchableOpacity, Dimensions, Image } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter, useLocalSearchParams } from "expo-router";
-import Colors from "../../../../../shared/constants/Colors";
+import Colors from "../../../../shared/constants/Colors";
+import { ConfirmModal } from "../../../../shared/components";
 import { styles } from "./TopUpCheckoutScreen.styles";
-
-const { width } = Dimensions.get("window");
-const TRIANGLE_SIZE = 16;
-const NUM_TRIANGLES = Math.floor((width - 48) / TRIANGLE_SIZE);
-
-const SawtoothTop = () => {
-  return (
-    <View style={styles.sawtoothContainer}>
-      {Array.from({ length: NUM_TRIANGLES }).map((_, i) => (
-        <View key={`top-${i}`} style={styles.triangleUp} />
-      ))}
-    </View>
-  );
-};
-
-const SawtoothBottom = () => {
-  return (
-    <View style={styles.sawtoothContainer}>
-      {Array.from({ length: NUM_TRIANGLES }).map((_, i) => (
-        <View key={`bottom-${i}`} style={styles.triangleDown} />
-      ))}
-    </View>
-  );
-};
 
 export default function TopUpCheckoutScreen() {
   const router = useRouter();
-  const { amount } = useLocalSearchParams();
+  const insets = useSafeAreaInsets();
+  const { amount, note, category } = useLocalSearchParams();
   const [timeLeft, setTimeLeft] = useState(15 * 60); // 15 minutes in seconds
 
   useEffect(() => {
@@ -54,88 +32,142 @@ export default function TopUpCheckoutScreen() {
     return `${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
   };
 
-  // Generate a dummy transaction ID
+  const getCreationDateTime = () => {
+    const now = new Date();
+    const time = `${now.getHours().toString().padStart(2, "0")}:${now.getMinutes().toString().padStart(2, "0")}`;
+    const date = `${now.getDate().toString().padStart(2, "0")}/${(now.getMonth() + 1).toString().padStart(2, "0")}/${now.getFullYear()}`;
+    return `${time} - ${date}`;
+  };
+
   const txId = "TX" + Math.floor(Math.random() * 1000000000).toString();
 
+  const [showBackModal, setShowBackModal] = useState(false);
+  const [showCancelModal, setShowCancelModal] = useState(false);
+
+  const handleBack = () => {
+    setShowBackModal(true);
+  };
+
+  const handleCancel = () => {
+    setShowCancelModal(true);
+  };
+
   return (
-    <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
+    <View style={[styles.container, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity 
           style={styles.backButton}
-          onPress={() => router.back()}
+          onPress={handleBack}
         >
-          <Ionicons name="close" size={28} color={Colors.white} />
+          <Ionicons name="arrow-back" size={28} color={Colors.white} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Thanh toán Hóa đơn</Text>
       </View>
 
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+      <View style={styles.content}>
         
-        {/* Bill Paper Container */}
-        <View style={styles.billContainer}>
-          <SawtoothTop />
+        <View style={styles.cardContainer}>
           
-          <View style={styles.billBody}>
-            {/* Logo */}
-            <View style={styles.logoContainer}>
-              <Text style={styles.logoText}>S</Text>
+          {/* Top: QR Code Section */}
+          <View style={styles.qrSection}>
+            <View style={styles.brandContainer}>
+              <Ionicons name="wallet" size={24} color={Colors.primary} />
+              <Text style={styles.brandName}>SmartSpend Pay</Text>
             </View>
-            <Text style={styles.brandName}>SmartSpend Pay</Text>
-            <Text style={styles.billType}>Hóa đơn nạp tiền</Text>
+            
+            <View style={styles.qrWrapper}>
+              <Image 
+                source={{ uri: "https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=" + txId }}
+                style={styles.qrImage}
+              />
+            </View>
+            <Text style={styles.instructionText}>
+              Sử dụng ứng dụng Ngân hàng để quét mã
+            </Text>
+          </View>
 
-            {/* Amount */}
-            <Text style={styles.amountLabel}>Số tiền cần thanh toán</Text>
+          {/* Middle: Amount */}
+          <View style={styles.amountSection}>
+            <Text style={styles.amountLabel}>Số tiền thanh toán</Text>
             <Text style={styles.amountValue}>{formatCurrency(amount || "0")}</Text>
+          </View>
 
-            {/* Dashed Separator */}
-            <View style={styles.dashedLine} />
+          <View style={styles.divider} />
 
-            {/* Transaction Info */}
+          {/* Bottom: Transaction Info */}
+          <View style={styles.detailsSection}>
             <View style={styles.infoRow}>
               <Text style={styles.infoLabel}>Mã giao dịch</Text>
               <Text style={styles.infoValue}>{txId}</Text>
             </View>
             <View style={styles.infoRow}>
               <Text style={styles.infoLabel}>Thời gian tạo</Text>
-              <Text style={styles.infoValue}>{new Date().toLocaleTimeString("vi-VN")}</Text>
+              <Text style={styles.infoValue}>{getCreationDateTime()}</Text>
             </View>
             <View style={styles.infoRow}>
               <Text style={styles.infoLabel}>Hết hạn sau</Text>
               <Text style={[styles.infoValue, { color: Colors.error }]}>{formatTime(timeLeft)}</Text>
             </View>
-
-            {/* Dashed Separator */}
-            <View style={styles.dashedLine} />
-
-            {/* QR Section */}
-            <View style={styles.qrContainer}>
-              <View style={styles.qrWrapper}>
-                <Image 
-                  source={{ uri: "https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=" + txId }}
-                  style={styles.qrImage}
-                />
-              </View>
-              <Text style={styles.instructionText}>
-                Sử dụng ứng dụng Ngân hàng hoặc Ví điện tử để quét mã QR phía trên.
+            <View style={styles.infoRow}>
+              <Text style={styles.infoLabel}>Danh mục</Text>
+              <Text style={styles.infoValue}>{category || "Chưa chọn danh mục"}</Text>
+            </View>
+            <View style={styles.infoRow}>
+              <Text style={styles.infoLabel}>Ghi chú</Text>
+              <Text style={[styles.infoValue, { flex: 1, textAlign: "right", marginLeft: 16 }]} numberOfLines={3}>
+                {note || "Chưa có ghi chú"}
               </Text>
             </View>
-
           </View>
-          
-          <SawtoothBottom />
+
         </View>
 
-        {/* Cancel Button */}
-        <TouchableOpacity 
-          style={styles.cancelButton}
-          onPress={() => router.back()}
-          activeOpacity={0.7}
-        >
-          <Text style={styles.cancelButtonText}>Hủy giao dịch</Text>
-        </TouchableOpacity>
+        {/* Actions */}
+        <View style={styles.actionsContainer}>
+          <TouchableOpacity 
+            style={styles.cancelButton}
+            onPress={handleCancel}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.cancelButtonText}>Hủy giao dịch</Text>
+          </TouchableOpacity>
+        </View>
 
-      </ScrollView>
-    </SafeAreaView>
+      </View>
+
+      {/* Confirmation Modals */}
+      <ConfirmModal
+        visible={showBackModal}
+        title="Giao dịch chưa hoàn thành"
+        message="Bạn đang có giao dịch chưa hoàn thành. Bạn có muốn trở về trang ví?"
+        iconName="warning"
+        iconColor={Colors.warning || "#F59E0B"}
+        confirmText="Trở về"
+        cancelText="Ở lại"
+        isDestructive={false}
+        onConfirm={() => {
+          setShowBackModal(false);
+          router.replace('/(tabs)/wallet');
+        }}
+        onCancel={() => setShowBackModal(false)}
+      />
+
+      <ConfirmModal
+        visible={showCancelModal}
+        title="Xác nhận hủy"
+        message="Bạn có chắc chắn muốn hủy giao dịch này?"
+        iconName="alert-circle"
+        iconColor={Colors.error}
+        confirmText="Đồng ý hủy"
+        cancelText="Không"
+        isDestructive={true}
+        onConfirm={() => {
+          setShowCancelModal(false);
+          router.replace('/(tabs)/wallet');
+        }}
+        onCancel={() => setShowCancelModal(false)}
+      />
+    </View>
   );
 }

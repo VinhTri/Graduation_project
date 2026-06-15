@@ -1,19 +1,16 @@
-import { StyleSheet, Platform, Dimensions } from "react-native";
-import Colors from "../../../../../shared/constants/Colors";
-
-const { width } = Dimensions.get("window");
-const BILL_WIDTH = width - 48; // 24px padding on each side
+import { StyleSheet } from "react-native";
+import Colors from "../../../../shared/constants/Colors";
 
 export const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.primary, // Dark teal background for premium look
+    backgroundColor: Colors.primary,
   },
   header: {
     flexDirection: "row",
     alignItems: "center",
     paddingHorizontal: 16,
-    paddingTop: Platform.OS === "ios" ? 50 : 30,
+    paddingTop: 16, 
     paddingBottom: 20,
   },
   backButton: {
@@ -25,129 +22,49 @@ export const styles = StyleSheet.create({
     fontWeight: "600",
     color: Colors.white,
   },
-  scrollContent: {
-    padding: 24,
-    paddingBottom: 100,
+  content: {
+    flex: 1,
+    paddingHorizontal: 20,
+    justifyContent: "center",
     alignItems: "center",
   },
-  billContainer: {
-    width: BILL_WIDTH,
-    backgroundColor: "transparent",
-    alignItems: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.2,
-    shadowRadius: 15,
-    elevation: 10,
-  },
-  billBody: {
+  cardContainer: {
     width: "100%",
     backgroundColor: Colors.white,
+    borderRadius: 24,
     padding: 24,
-    alignItems: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.1,
+    shadowRadius: 20,
+    elevation: 8,
   },
-  sawtoothContainer: {
-    width: "100%",
-    height: 12,
+  qrSection: {
+    alignItems: "center",
+    marginBottom: 24,
+  },
+  brandContainer: {
     flexDirection: "row",
-    overflow: "hidden",
-  },
-  triangleUp: {
-    width: 0,
-    height: 0,
-    backgroundColor: "transparent",
-    borderStyle: "solid",
-    borderLeftWidth: 8,
-    borderRightWidth: 8,
-    borderBottomWidth: 12,
-    borderLeftColor: "transparent",
-    borderRightColor: "transparent",
-    borderBottomColor: Colors.white,
-  },
-  triangleDown: {
-    width: 0,
-    height: 0,
-    backgroundColor: "transparent",
-    borderStyle: "solid",
-    borderLeftWidth: 8,
-    borderRightWidth: 8,
-    borderTopWidth: 12,
-    borderLeftColor: "transparent",
-    borderRightColor: "transparent",
-    borderTopColor: Colors.white,
-  },
-  logoContainer: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: Colors.background,
     alignItems: "center",
-    justifyContent: "center",
     marginBottom: 16,
-    borderWidth: 1,
-    borderColor: "#E2E8F0",
-  },
-  logoText: {
-    fontSize: 24,
-    fontWeight: "bold",
-    color: Colors.primary,
+    backgroundColor: Colors.primary + "1A",
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 100,
   },
   brandName: {
-    fontSize: 18,
-    fontWeight: "700",
-    color: Colors.black,
-    marginBottom: 4,
-  },
-  billType: {
-    fontSize: 14,
-    color: Colors.gray,
-    marginBottom: 24,
-  },
-  amountLabel: {
-    fontSize: 14,
-    color: Colors.gray,
-    marginBottom: 8,
-  },
-  amountValue: {
-    fontSize: 36,
-    fontWeight: "bold",
-    color: Colors.primary,
-    marginBottom: 24,
-  },
-  dashedLine: {
-    width: "100%",
-    height: 1,
-    borderWidth: 1,
-    borderColor: "#E2E8F0",
-    borderStyle: "dashed",
-    marginVertical: 24,
-  },
-  infoRow: {
-    width: "100%",
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginBottom: 12,
-  },
-  infoLabel: {
-    fontSize: 14,
-    color: Colors.gray,
-  },
-  infoValue: {
     fontSize: 14,
     fontWeight: "600",
-    color: Colors.black,
-  },
-  qrContainer: {
-    alignItems: "center",
-    marginTop: 24,
+    color: Colors.primary,
+    marginLeft: 8,
   },
   qrWrapper: {
-    padding: 16,
+    padding: 12,
     backgroundColor: Colors.white,
     borderRadius: 16,
     borderWidth: 1,
     borderColor: "#E2E8F0",
-    marginBottom: 16,
+    marginBottom: 12,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.05,
@@ -155,26 +72,67 @@ export const styles = StyleSheet.create({
     elevation: 2,
   },
   qrImage: {
-    width: 200,
-    height: 200,
+    width: 180,
+    height: 180,
   },
   instructionText: {
-    fontSize: 14,
-    color: Colors.gray,
+    fontSize: 13,
+    color: Colors.textMuted,
     textAlign: "center",
-    lineHeight: 20,
-    paddingHorizontal: 20,
+  },
+  amountSection: {
+    alignItems: "center",
+    marginBottom: 24,
+  },
+  amountLabel: {
+    fontSize: 13,
+    color: Colors.textMuted,
+    marginBottom: 4,
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+  },
+  amountValue: {
+    fontSize: 32,
+    fontWeight: "800",
+    color: Colors.black,
+  },
+  divider: {
+    width: "100%",
+    height: 1,
+    backgroundColor: "#F1F5F9",
+    marginBottom: 24,
+  },
+  detailsSection: {
+    width: "100%",
+  },
+  infoRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginBottom: 12,
+  },
+  infoLabel: {
+    fontSize: 14,
+    color: Colors.textMuted,
+  },
+  infoValue: {
+    fontSize: 14,
+    fontWeight: "500",
+    color: Colors.black,
+  },
+  actionsContainer: {
+    width: "100%",
+    marginTop: 32,
+    alignItems: "center",
   },
   cancelButton: {
-    marginTop: 32,
     paddingVertical: 12,
-    paddingHorizontal: 24,
+    paddingHorizontal: 32,
     borderRadius: 100,
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.3)",
+    borderColor: "rgba(255,255,255,0.4)",
   },
   cancelButtonText: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: "600",
     color: Colors.white,
   },
