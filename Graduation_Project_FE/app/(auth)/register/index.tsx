@@ -86,11 +86,11 @@ export default function RegisterScreen() {
       setIsOtpVisible(true);
     } catch (error: any) {
       const errorMessage = error?.message;
-      if (errorMessage === 'Tài khoản email đã tồn tại!') {
-        setEmailError('Email này đã được đăng ký');
+      if (errorMessage === 'Email này đã được sử dụng!' || errorMessage === 'Tài khoản email đã tồn tại!') {
+        setEmailError('Tài khoản đã được đăng kí');
       } else if (errorMessage === 'Tên đăng nhập này đã tồn tại!') {
         // Ta đang dùng email làm username luôn
-        setEmailError('Tài khoản này đã được đăng ký');
+        setEmailError('Tài khoản đã được đăng kí');
       } else {
         Alert.alert('Lỗi', errorMessage || 'Không thể gửi mã OTP');
       }
