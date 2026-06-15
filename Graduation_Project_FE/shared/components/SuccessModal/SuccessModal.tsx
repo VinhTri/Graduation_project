@@ -22,18 +22,18 @@ export default function SuccessModal({ visible, title, message, isAutoClose = fa
     
     setTimeLeft(5); // reset time when modal opens
     const timer = setInterval(() => {
-      setTimeLeft((prev) => {
-        if (prev <= 1) {
-          clearInterval(timer);
-          onClose(); // Auto close when countdown reaches 0
-          return 0;
-        }
-        return prev - 1;
-      });
+      setTimeLeft((prev) => (prev > 0 ? prev - 1 : 0));
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [visible, isAutoClose, onClose]);
+  }, [visible, isAutoClose]);
+
+  // Handle auto-close side effect separately
+  useEffect(() => {
+    if (visible && isAutoClose && timeLeft === 0) {
+      onClose();
+    }
+  }, [timeLeft, visible, isAutoClose, onClose]);
 
   return (
     <Modal
