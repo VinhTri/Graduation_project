@@ -1,8 +1,8 @@
 import axios from 'axios';
 import { Platform } from 'react-native';
 
-// Dành cho máy ảo Android (Android Emulator), localhost là 10.0.2.2. Đối với iOS/Web, sử dụng localhost hoặc IP cụ thể.
-const BASE_URL = Platform.OS === 'android' ? 'http://10.0.2.2:8080' : 'http://localhost:8080';
+// Sử dụng IP mạng LAN của máy tính để chạy được trên cả Máy ảo lẫn Điện thoại thật (Expo Go)
+const BASE_URL = 'http://192.168.151.100:8080';
 
 export const axiosClient = axios.create({
   baseURL: BASE_URL,
