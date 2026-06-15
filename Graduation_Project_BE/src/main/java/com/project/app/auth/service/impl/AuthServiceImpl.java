@@ -155,4 +155,46 @@ public class AuthServiceImpl implements AuthService {
                 .type("Bearer")
                 .build();
     }
+    // ====================== FORGOT PASSWORD ======================
+    @Override
+    @Transactional
+    public void processForgotPassword(SendOtpRequest request) {
+        userRepository.findByEmail(request.getEmail())
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+
+        otpTokenRepository.deleteByEmailAndPurpose(request.getEmail(), OtpPurpose.RESET_PASSWORD);
+
+        String otp = generateOtp();
+        OtpToken otpToken = new OtpToken(
+                request.getEmail(),
+                otp,
+                OtpPurpose.RESET_PASSWORD,
+                new Date(System.currentTimeMillis() + OTP_EXPIRATION_TIME)
+        );
+        otpTokenRepository.save(otpToken);
+
+        String emailText = "Mã OTP khôi phục mật khẩu của bạn là: " + otp + "\nMã có hiệu lực trong vòng 5 phút.";
+        emailService.sendEmail(request.getEmail(), "Khôi phục mật khẩu", emailText);
+    }
+
+    @Override
+    @Transactional
+    public void processResetPassword(ResetPasswordRequest request) {
+        OtpToken otpToken = otpTokenRepository.findByEmailAndOtpAndPurposeAndUsedFalse(
+                        request.getEmail(), request.getOtp(), OtpPurpose.RESET_PASSWORD)
+                .orElseThrow(() -> new AppException(ErrorCode.INVALID_OTP));
+
+        if (otpToken.isExpired()) {
+            throw new AppException(ErrorCode.EXPIRED_OTP);
+        }
+
+        User user = userRepository.findByEmail(request.getEmail())
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+
+        user.setPassword(passwordEncoder.encode(request.getNewPassword()));
+        userRepository.save(user);
+
+        otpToken.setUsed(true);
+        otpTokenRepository.save(otpToken);
+    }
 }
