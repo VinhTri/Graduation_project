@@ -1,6 +1,8 @@
-import React, { useState } from "react";
+import React, { useState, useCallback } from "react";
 import { View, LayoutAnimation, Platform, UIManager } from "react-native";
-import { WalletData } from "../WalletCard/WalletCard.types";
+import { useFocusEffect } from "expo-router";
+import { WalletData as LocalWalletData } from "../WalletCard/WalletCard.types";
+import { walletService } from "../../../../shared/api/services/walletService";
 import WalletCard from "../WalletCard/WalletCard";
 import { styles } from "./WalletList.styles";
 import Colors from "../../../../shared/constants/Colors";
@@ -13,43 +15,40 @@ if (
   UIManager.setLayoutAnimationEnabledExperimental(true);
 }
 
-const MOCK_WALLETS: WalletData[] = [
-  {
-    id: "smartspend",
-    name: "Ví SmartSpend",
-    type: "smartspend",
-    balance: 12450000,
-    cardNumber: "•••• •••• •••• 8888",
-    color: "#0D9488", // Teal leather
-    flapColor: "#0F766E", // Darker Teal
-    buttonType: "gold",
-  },
-  {
-    id: "quy",
-    name: "Ví quỹ",
-    type: "quy",
-    balance: 8200000,
-    subValue: "Lãi suất tích lũy: 5.5% / năm",
-    cardNumber: "•••• •••• •••• 9999",
-    color: "#3F51B5", // Royal Blue/Indigo leather
-    flapColor: "#303F9F", // Darker Indigo
-    buttonType: "silver",
-  },
-  {
-    id: "thantai",
-    name: "Ví thần tài",
-    type: "thantai",
-    balance: 5000000,
-    subValue: "Tỷ suất sinh lời: 6.0% / năm",
-    cardNumber: "•••• •••• •••• 7777",
-    color: "#F59E0B", // Golden Orange leather
-    flapColor: "#D97706", // Darker Orange
-    buttonType: "coin",
-  },
-];
+const INITIAL_WALLET: LocalWalletData = {
+  id: "smartspend",
+  name: "Ví SmartSpend",
+  type: "smartspend",
+  balance: 0,
+  cardNumber: "•••• •••• •••• 8888",
+  color: "#0D9488", // Teal leather
+  flapColor: "#0F766E", // Darker Teal
+  buttonType: "gold",
+};
 
 export const WalletList: React.FC = () => {
   const [expandedId, setExpandedId] = useState<string | null>("smartspend");
+  const [wallets, setWallets] = useState<LocalWalletData[]>([INITIAL_WALLET]);
+
+  useFocusEffect(
+    useCallback(() => {
+      const fetchWallet = async () => {
+        try {
+          const data = await walletService.getMyWallet();
+          if (data) {
+            setWallets([{
+              ...INITIAL_WALLET,
+              balance: data.balance,
+              name: data.name
+            }]);
+          }
+        } catch (error) {
+          console.log("Error fetching wallet", error);
+        }
+      };
+      fetchWallet();
+    }, [])
+  );
 
   const handlePressWallet = (id: string) => {
     LayoutAnimation.configureNext({
@@ -70,7 +69,7 @@ export const WalletList: React.FC = () => {
   return (
     <View style={styles.container}>
       <View style={styles.listContainer}>
-        {MOCK_WALLETS.map((wallet, index) => {
+        {wallets.map((wallet, index) => {
           const isExpanded = expandedId === wallet.id;
           
           // Calculate zIndex: base zIndex increases as we go down the stack

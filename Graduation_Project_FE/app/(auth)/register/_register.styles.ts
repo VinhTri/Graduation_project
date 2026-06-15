@@ -132,3 +132,5 @@ export const styles = StyleSheet.create({
     marginLeft: 4,
   },
 });
+
+export default {};

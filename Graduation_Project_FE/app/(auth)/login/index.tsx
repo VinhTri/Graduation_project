@@ -8,6 +8,7 @@ import { styles } from './_login.styles';
 import FeatureSlider from '../../../shared/components/FeatureSlider/FeatureSlider';
 import { useRouter } from 'expo-router';
 import { authService } from '../../../shared/api/services/auth.service';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import SuccessModal from '../../../shared/components/SuccessModal/SuccessModal';
 
 export default function LoginScreen() {
@@ -58,6 +59,11 @@ export default function LoginScreen() {
     try {
       const response = await authService.login({ username: email, password });
       console.log('Đăng nhập thành công', response);
+      
+      if (response.data && response.data.token) {
+        await AsyncStorage.setItem('token', response.data.token);
+      }
+
       // Hiển thị modal thành công thay vì dùng Alert
       setIsSuccessModalVisible(true);
     } catch (error: any) {

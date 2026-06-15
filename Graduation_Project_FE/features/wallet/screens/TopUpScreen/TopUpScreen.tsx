@@ -16,6 +16,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import Colors from "../../../../shared/constants/Colors";
 import { styles } from "./TopUpScreen.styles";
+import { transactionService } from "../../../../shared/api/services/transactionService";
 
 const QUICK_AMOUNTS = [100000, 200000, 500000, 1000000, 2000000, 5000000];
 
@@ -24,6 +25,7 @@ export default function TopUpScreen() {
   const insets = useSafeAreaInsets();
   const [amount, setAmount] = useState<string>("");
   const [note, setNote] = useState<string>("");
+  const [isLoading, setIsLoading] = useState<boolean>(false);
 
   const handleAmountChange = (text: string) => {
     // Remove non-numeric characters
@@ -40,14 +42,32 @@ export default function TopUpScreen() {
     setAmount(val.toString());
   };
 
-  const handleConfirm = () => {
+  const handleConfirm = async () => {
     if (!amount || parseInt(amount, 10) === 0) return;
     
-    // Chuyển sang màn hình hóa đơn QR và truyền số tiền kèm ghi chú
-    router.push({
-      pathname: "/wallet/checkout",
-      params: { amount, note }
-    });
+    setIsLoading(true);
+    try {
+      const response = await transactionService.initiateTopUp({
+        amount: parseInt(amount, 10),
+        note: note || undefined,
+      });
+
+      router.push({
+        pathname: "/wallet/checkout",
+        params: { 
+          amount: response.amount.toString(), 
+          note: note,
+          transactionCode: response.transactionCode,
+          qrUrl: response.qrUrl,
+          expiresAt: response.expiresAt,
+          createdAt: response.createdAt
+        }
+      });
+    } catch (error: any) {
+      Alert.alert("Lỗi", error.message || "Không thể khởi tạo giao dịch");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const parsedAmount = amount ? parseInt(amount, 10) : 0;
@@ -166,13 +186,15 @@ export default function TopUpScreen() {
               <TouchableOpacity
                 style={[
                   styles.confirmButton,
-                  isButtonDisabled && styles.confirmButtonDisabled
+                  (isButtonDisabled || isLoading) && styles.confirmButtonDisabled
                 ]}
-                disabled={isButtonDisabled}
+                disabled={isButtonDisabled || isLoading}
                 onPress={handleConfirm}
                 activeOpacity={0.8}
               >
-                <Text style={styles.confirmButtonText}>Xác nhận nạp tiền</Text>
+                <Text style={styles.confirmButtonText}>
+                  {isLoading ? "Đang xử lý..." : "Xác nhận nạp tiền"}
+                </Text>
               </TouchableOpacity>
             </View>
 

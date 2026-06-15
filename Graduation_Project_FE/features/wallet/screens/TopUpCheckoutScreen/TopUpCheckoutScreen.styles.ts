@@ -72,8 +72,8 @@ export const styles = StyleSheet.create({
     elevation: 2,
   },
   qrImage: {
-    width: 180,
-    height: 180,
+    width: 200,
+    height: 240,
   },
   instructionText: {
     fontSize: 13,
