@@ -18,6 +18,8 @@ import com.project.app.user.entity.Role;
 import com.project.app.user.entity.User;
 import com.project.app.user.repository.OtpTokenRepository;
 import com.project.app.user.repository.UserRepository;
+import com.project.app.wallet.entity.Wallet;
+import com.project.app.wallet.repository.WalletRepository;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -27,6 +29,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.security.SecureRandom;
 import java.util.Collections;
 import java.util.Date;
@@ -40,6 +43,7 @@ public class AuthServiceImpl implements AuthService {
     private final JwtUtil jwtUtil;
     private final UserRepository userRepository;
     private final OtpTokenRepository otpTokenRepository;
+    private final WalletRepository walletRepository;
     private final PasswordEncoder passwordEncoder;
     private final EmailService emailService;
     private final GoogleIdTokenVerifier verifier;
@@ -51,6 +55,7 @@ public class AuthServiceImpl implements AuthService {
             JwtUtil jwtUtil,
             UserRepository userRepository,
             OtpTokenRepository otpTokenRepository,
+            WalletRepository walletRepository,
             PasswordEncoder passwordEncoder,
             EmailService emailService,
             @Value("${app.google.client-id:}") String clientId) {
@@ -59,6 +64,7 @@ public class AuthServiceImpl implements AuthService {
         this.jwtUtil = jwtUtil;
         this.userRepository = userRepository;
         this.otpTokenRepository = otpTokenRepository;
+        this.walletRepository = walletRepository;
         this.passwordEncoder = passwordEncoder;
         this.emailService = emailService;
         this.verifier = new GoogleIdTokenVerifier.Builder(new NetHttpTransport(), new GsonFactory())
@@ -121,6 +127,16 @@ public class AuthServiceImpl implements AuthService {
                 true
         );
         userRepository.save(user);
+
+        // Tạo ví SmartSpend mặc định cho user
+        Wallet defaultWallet = new Wallet(
+                user,
+                "Ví SmartSpend",
+                BigDecimal.ZERO,
+                true, // isDefault
+                false // isDeletable
+        );
+        walletRepository.save(defaultWallet);
 
         String jwt = jwtUtil.generateToken(new CustomUserDetails(user));
 
