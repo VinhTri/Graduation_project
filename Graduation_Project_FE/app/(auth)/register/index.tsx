@@ -38,8 +38,8 @@ export default function RegisterScreen() {
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
   };
 
-  // Regex check: 8 chars, 1 uppercase, 1 lowercase, 1 special char
-  const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*[\W_]).{8,}$/;
+  // Regex check: 8 chars, 1 uppercase, 1 lowercase, 1 number, 1 special char
+  const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[\W_]).{8,}$/;
   const isPasswordValid = passwordRegex.test(password);
   const isConfirmPasswordValid = isPasswordValid && password === confirmPassword && confirmPassword.length > 0;
 
@@ -66,7 +66,7 @@ export default function RegisterScreen() {
       setPasswordError('Vui lòng nhập mật khẩu');
       hasError = true;
     } else if (!passwordRegex.test(password)) {
-      setPasswordError('Mật khẩu ít nhất 8 ký tự, gồm chữ hoa, chữ thường và ký tự đặc biệt');
+      setPasswordError('Mật khẩu ít nhất 8 ký tự, gồm chữ hoa, chữ thường, số và ký tự đặc biệt');
       hasError = true;
     }
     if (!confirmPassword) {
