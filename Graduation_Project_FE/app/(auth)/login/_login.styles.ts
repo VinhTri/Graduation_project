@@ -175,4 +175,10 @@ export const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: 'bold',
   },
+  errorText: {
+    color: '#EF4444',
+    fontSize: 13,
+    marginTop: 4,
+    marginLeft: 4,
+  },
 });
