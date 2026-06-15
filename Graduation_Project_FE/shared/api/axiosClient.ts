@@ -35,7 +35,8 @@ axiosClient.interceptors.response.use(
   },
   (error) => {
     // Xử lý lỗi hệ thống chung (ví dụ: 401 Chưa xác thực, 500 Lỗi server)
-    console.error('Lỗi API:', error?.response?.data || error.message);
+    // Đổi console.error thành console.warn để không bị văng màn hình đỏ (LogBox) trên Expo khi API trả về lỗi cố ý (ví dụ sai mật khẩu)
+    console.warn('Lỗi API:', error?.response?.data || error.message);
     return Promise.reject(error?.response?.data || error);
   }
 );
