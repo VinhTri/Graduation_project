@@ -133,4 +133,26 @@ public class AuthServiceImpl implements AuthService {
                 .type("Bearer")
                 .build();
     }
+
+    // ====================== LOGIN ======================
+    @Override
+    public AuthResponse loginUser(LoginRequest request) {
+        Authentication authentication = authenticationManager.authenticate(
+                new UsernamePasswordAuthenticationToken(request.getUsername(), request.getPassword())
+        );
+
+        SecurityContextHolder.getContext().setAuthentication(authentication);
+        CustomUserDetails userDetails = (CustomUserDetails) authentication.getPrincipal();
+
+        String jwt = jwtUtil.generateToken(userDetails);
+
+        return AuthResponse.builder()
+                .token(jwt)
+                .id(userDetails.getUser().getId())
+                .username(userDetails.getUsername())
+                .email(userDetails.getUser().getEmail())
+                .role(userDetails.getUser().getRole().name())
+                .type("Bearer")
+                .build();
+    }
 }
