@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
 import { 
   View, Text, TextInput, TouchableOpacity, 
-  ScrollView, SafeAreaView, Platform, KeyboardAvoidingView
+  ScrollView, SafeAreaView, Platform, KeyboardAvoidingView, Alert
 } from 'react-native';
 import { Feather, FontAwesome5 } from '@expo/vector-icons';
 import { styles } from './_login.styles';
 import FeatureSlider from '../../../shared/components/FeatureSlider/FeatureSlider';
 import { useRouter } from 'expo-router';
+import { authService } from '../../../shared/api/services/auth.service';
 
 export default function LoginScreen() {
   const router = useRouter();
@@ -15,6 +16,59 @@ export default function LoginScreen() {
   
   // Trạng thái ẩn/hiện mật khẩu
   const [showPassword, setShowPassword] = useState(false);
+
+  // State lưu lỗi
+  const [emailError, setEmailError] = useState('');
+  const [passwordError, setPasswordError] = useState('');
+
+  // Validate định dạng email
+  const isValidEmail = (email: string) => {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+  };
+
+  const handleLogin = async () => {
+    // Reset lỗi
+    setEmailError('');
+    setPasswordError('');
+    let hasError = false;
+
+    // Validate cục bộ
+    if (!email) {
+      setEmailError('Vui lòng nhập địa chỉ email');
+      hasError = true;
+    } else if (!isValidEmail(email)) {
+      setEmailError('Định dạng email không hợp lệ (ví dụ: abc@gmail.com)');
+      hasError = true;
+    }
+
+    if (!password) {
+      setPasswordError('Vui lòng nhập mật khẩu');
+      hasError = true;
+    } else if (password.length < 8) {
+      setPasswordError('Mật khẩu phải chứa ít nhất 8 ký tự');
+      hasError = true;
+    }
+
+    if (hasError) return;
+
+    try {
+      const response = await authService.login({ username: email, password });
+      console.log('Đăng nhập thành công', response);
+      // Xử lý lưu token và chuyển hướng vào màn hình chính sau khi đăng nhập thành công
+      // router.replace('/(main)/home');
+      Alert.alert("Thành công", "Đăng nhập thành công!");
+    } catch (error: any) {
+      // Bắt lỗi từ API
+      const errorMessage = error?.message;
+      if (errorMessage === 'Tài khoản chưa có trong hệ thống!') {
+        setEmailError('Tài khoản chưa đăng ký vui lòng đăng ký để sử dụng');
+      } else if (errorMessage === 'Sai mật khẩu!') {
+        setPasswordError('Sai mật khẩu');
+      } else {
+        Alert.alert("Lỗi", errorMessage || "Đăng nhập thất bại");
+      }
+    }
+  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -42,7 +96,7 @@ export default function LoginScreen() {
               {/* Email */}
               <View style={styles.inputGroup}>
                 <Text style={styles.label}>Địa chỉ Email</Text>
-                <View style={styles.inputContainer}>
+                <View style={[styles.inputContainer, emailError ? { borderColor: '#EF4444' } : {}]}>
                   <Feather name="mail" size={18} color="#9CA3AF" style={styles.inputIcon} />
                   <TextInput 
                     style={styles.input} 
@@ -51,15 +105,19 @@ export default function LoginScreen() {
                     keyboardType="email-address"
                     autoCapitalize="none"
                     value={email}
-                    onChangeText={setEmail}
+                    onChangeText={(text) => {
+                      setEmail(text);
+                      if (emailError) setEmailError('');
+                    }}
                   />
                 </View>
+                {emailError ? <Text style={styles.errorText}>{emailError}</Text> : null}
               </View>
 
               {/* Mật khẩu */}
               <View style={styles.inputGroup}>
                 <Text style={styles.label}>Mật khẩu</Text>
-                <View style={styles.inputContainer}>
+                <View style={[styles.inputContainer, passwordError ? { borderColor: '#EF4444' } : {}]}>
                   <Feather name="lock" size={18} color="#9CA3AF" style={styles.inputIcon} />
                   <TextInput 
                     style={styles.input} 
@@ -67,12 +125,16 @@ export default function LoginScreen() {
                     placeholderTextColor="#9CA3AF"
                     secureTextEntry={!showPassword}
                     value={password}
-                    onChangeText={setPassword}
+                    onChangeText={(text) => {
+                      setPassword(text);
+                      if (passwordError) setPasswordError('');
+                    }}
                   />
                   <TouchableOpacity onPress={() => setShowPassword(!showPassword)} style={styles.eyeIcon}>
                     <Feather name={showPassword ? "eye" : "eye-off"} size={18} color="#9CA3AF" />
                   </TouchableOpacity>
                 </View>
+                {passwordError ? <Text style={styles.errorText}>{passwordError}</Text> : null}
               </View>
 
               {/* Quên mật khẩu */}
@@ -83,18 +145,18 @@ export default function LoginScreen() {
               </View>
 
               {/* Nút đăng nhập */}
-              <TouchableOpacity style={styles.loginButton} activeOpacity={0.8}>
+              <TouchableOpacity onPress={handleLogin} style={styles.loginButton} activeOpacity={0.8}>
                 <Text style={styles.loginButtonText}>Đăng nhập</Text>
               </TouchableOpacity>
 
-              {/* Hoặc tiếp tục bằng */}
+              {/* Hoặc tiếp tục bằng (Tạm ẩn) */}
+              {/*
               <View style={styles.dividerContainer}>
                 <View style={styles.line} />
                 <Text style={styles.dividerText}>Hoặc tiếp tục bằng</Text>
                 <View style={styles.line} />
               </View>
 
-              {/* Đăng nhập mạng xã hội */}
               <View style={styles.socialContainer}>
                 <TouchableOpacity style={styles.socialButton} activeOpacity={0.8}>
                   <View style={styles.socialContent}>
@@ -110,6 +172,7 @@ export default function LoginScreen() {
                   </View>
                 </TouchableOpacity>
               </View>
+              */}
 
               {/* Chuyển hướng đăng ký */}
               <View style={styles.registerContainer}>
