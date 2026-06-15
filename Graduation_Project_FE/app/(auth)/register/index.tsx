@@ -9,6 +9,7 @@ import FeatureSlider from '../../../shared/components/FeatureSlider/FeatureSlide
 import { useRouter } from 'expo-router';
 import { authService } from '../../../shared/api/services/auth.service';
 import OtpModal from '../../../shared/components/OtpModal/OtpModal';
+import SuccessModal from '../../../shared/components/SuccessModal/SuccessModal';
 
 export default function RegisterScreen() {
   const router = useRouter();
@@ -27,9 +28,10 @@ export default function RegisterScreen() {
   const [passwordError, setPasswordError] = useState('');
   const [confirmPasswordError, setConfirmPasswordError] = useState('');
 
-  // Modal OTP
+  // Modal OTP & Success
   const [isOtpVisible, setIsOtpVisible] = useState(false);
   const [otpError, setOtpError] = useState('');
+  const [isSuccessModalVisible, setIsSuccessModalVisible] = useState(false);
 
   // Validate định dạng email
   const isValidEmail = (email: string) => {
@@ -102,9 +104,8 @@ export default function RegisterScreen() {
       });
       
       setIsOtpVisible(false);
-      Alert.alert('Thành công', 'Xác nhận OTP thành công! Vui lòng đăng nhập.', [
-        { text: 'Đóng', onPress: () => router.replace('/(auth)/login') }
-      ]);
+      // Hiển thị modal thành công thay vì dùng Alert
+      setIsSuccessModalVisible(true);
     } catch (error: any) {
       const errorMessage = error?.message;
       if (errorMessage === 'Mã OTP không hợp lệ hoặc đã được sử dụng!') {
@@ -115,6 +116,12 @@ export default function RegisterScreen() {
         setOtpError(errorMessage || 'Đăng ký thất bại');
       }
     }
+  };
+
+  const handleSuccessClose = () => {
+    setIsSuccessModalVisible(false);
+    // Chuyển hướng sang màn hình đăng nhập
+    router.replace('/(auth)/login');
   };
 
   return (
@@ -251,6 +258,14 @@ export default function RegisterScreen() {
         errorMessage={otpError}
         onClose={() => setIsOtpVisible(false)}
         onVerify={handleVerifyOtp}
+      />
+
+      {/* MODAL THÀNH CÔNG */}
+      <SuccessModal
+        visible={isSuccessModalVisible}
+        title="Đăng ký thành công!"
+        message="Tài khoản của bạn đã được tạo thành công. Vui lòng đăng nhập để bắt đầu."
+        onClose={handleSuccessClose}
       />
     </SafeAreaView>
   );
