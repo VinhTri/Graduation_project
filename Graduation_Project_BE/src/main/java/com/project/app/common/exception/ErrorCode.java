@@ -14,6 +14,10 @@ public enum ErrorCode {
     EXPIRED_OTP("Mã OTP đã hết hạn!", HttpStatus.BAD_REQUEST),
     UNAUTHORIZED_ACCESS("Bạn không có quyền thực hiện hành động này!", HttpStatus.FORBIDDEN),
 
+    // ---- LỖI VÍ & GIAO DỊCH ----
+    WALLET_NOT_FOUND("Không tìm thấy ví khả dụng!", HttpStatus.NOT_FOUND),
+    INVALID_TRANSACTION("Giao dịch không hợp lệ hoặc đã xử lý!", HttpStatus.BAD_REQUEST),
+
     // ---- LỖI HỆ THỐNG CHUNG ----
     UNCATEGORIZED_EXCEPTION("Đã xảy ra lỗi hệ thống, vui lòng thử lại sau!", HttpStatus.INTERNAL_SERVER_ERROR);
 

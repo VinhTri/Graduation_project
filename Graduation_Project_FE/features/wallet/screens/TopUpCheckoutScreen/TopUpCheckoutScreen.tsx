@@ -4,14 +4,16 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import Colors from "../../../../shared/constants/Colors";
-import { ConfirmModal } from "../../../../shared/components";
+import { ConfirmModal, SuccessModal } from "../../../../shared/components";
 import { styles } from "./TopUpCheckoutScreen.styles";
+import { transactionService } from "../../../../shared/api/services/transactionService";
 
 export default function TopUpCheckoutScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { amount, note, category } = useLocalSearchParams();
+  const { amount, note, category, transactionCode, qrUrl, createdAt } = useLocalSearchParams();
   const [timeLeft, setTimeLeft] = useState(15 * 60); // 15 minutes in seconds
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -19,6 +21,25 @@ export default function TopUpCheckoutScreen() {
     }, 1000);
     return () => clearInterval(timer);
   }, []);
+
+  // Polling for transaction status
+  useEffect(() => {
+    if (!transactionCode) return;
+
+    const pollTimer = setInterval(async () => {
+      try {
+        const res = await transactionService.getTransactionStatus(transactionCode as string);
+        if (res.status === 'SUCCESS') {
+          clearInterval(pollTimer);
+          setShowSuccessModal(true);
+        }
+      } catch (error) {
+        console.log("Polling error:", error);
+      }
+    }, 3000);
+
+    return () => clearInterval(pollTimer);
+  }, [transactionCode]);
 
   const formatCurrency = (val: string | string[]) => {
     if (!val) return "0 ₫";
@@ -33,13 +54,20 @@ export default function TopUpCheckoutScreen() {
   };
 
   const getCreationDateTime = () => {
+    if (createdAt) {
+      const dateObj = new Date(createdAt as string);
+      const time = `${dateObj.getHours().toString().padStart(2, "0")}:${dateObj.getMinutes().toString().padStart(2, "0")}`;
+      const dateStr = `${dateObj.getDate().toString().padStart(2, "0")}/${(dateObj.getMonth() + 1).toString().padStart(2, "0")}/${dateObj.getFullYear()}`;
+      return `${time} - ${dateStr}`;
+    }
     const now = new Date();
     const time = `${now.getHours().toString().padStart(2, "0")}:${now.getMinutes().toString().padStart(2, "0")}`;
     const date = `${now.getDate().toString().padStart(2, "0")}/${(now.getMonth() + 1).toString().padStart(2, "0")}/${now.getFullYear()}`;
     return `${time} - ${date}`;
   };
 
-  const txId = "TX" + Math.floor(Math.random() * 1000000000).toString();
+  const txId = (transactionCode as string) || "TX" + Math.floor(Math.random() * 1000000000).toString();
+  const qrImageUri = (qrUrl as string) || "https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=" + txId;
 
   const [showBackModal, setShowBackModal] = useState(false);
   const [showCancelModal, setShowCancelModal] = useState(false);
@@ -78,8 +106,9 @@ export default function TopUpCheckoutScreen() {
             
             <View style={styles.qrWrapper}>
               <Image 
-                source={{ uri: "https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=" + txId }}
+                source={{ uri: qrImageUri }}
                 style={styles.qrImage}
+                resizeMode="contain"
               />
             </View>
             <Text style={styles.instructionText}>
@@ -167,6 +196,18 @@ export default function TopUpCheckoutScreen() {
           router.replace('/(tabs)/wallet');
         }}
         onCancel={() => setShowCancelModal(false)}
+      />
+
+      {/* Success Modal */}
+      <SuccessModal
+        visible={showSuccessModal}
+        title="Thanh toán thành công"
+        message="Tiền đã được nạp thành công vào ví của bạn."
+        isAutoClose={true}
+        onClose={() => {
+          setShowSuccessModal(false);
+          router.replace('/(tabs)/wallet');
+        }}
       />
     </View>
   );

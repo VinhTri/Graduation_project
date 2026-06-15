@@ -1,6 +1,8 @@
 import axios from 'axios';
 import { Platform } from 'react-native';
 
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
 // Sử dụng IP mạng LAN của máy tính để chạy được trên cả Máy ảo lẫn Điện thoại thật (Expo Go)
 const BASE_URL = 'http://192.168.151.100:8080';
 
@@ -15,11 +17,17 @@ export const axiosClient = axios.create({
 // Interceptor cho Request (Gửi yêu cầu đi)
 axiosClient.interceptors.request.use(
   async (config) => {
-    // Thêm token xác thực (auth token) vào header tại đây (ví dụ: lấy từ AsyncStorage hoặc SecureStore)
-    // const token = await SecureStore.getItemAsync('token');
-    // if (token) {
-    //   config.headers.Authorization = `Bearer ${token}`;
-    // }
+    try {
+      const token = await AsyncStorage.getItem('token');
+      if (token) {
+        console.log(`[API Request] ${config.url} - Has Token: YES`);
+        config.headers.set('Authorization', `Bearer ${token}`);
+      } else {
+        console.log(`[API Request] ${config.url} - Has Token: NO`);
+      }
+    } catch (error) {
+      console.log('Error reading token:', error);
+    }
     return config;
   },
   (error) => {
@@ -35,8 +43,7 @@ axiosClient.interceptors.response.use(
   },
   (error) => {
     // Xử lý lỗi hệ thống chung (ví dụ: 401 Chưa xác thực, 500 Lỗi server)
-    // Đổi console.error thành console.warn để không bị văng màn hình đỏ (LogBox) trên Expo khi API trả về lỗi cố ý (ví dụ sai mật khẩu)
-    console.warn('Lỗi API:', error?.response?.data || error.message);
+    console.warn(`Lỗi API [${error.config?.url}]:`, error?.response?.data || error.message);
     return Promise.reject(error?.response?.data || error);
   }
 );

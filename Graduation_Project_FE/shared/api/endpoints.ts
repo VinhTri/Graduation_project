@@ -11,4 +11,11 @@ export const ENDPOINTS = {
   USER: {
     PROFILE: '/api/v1/user/me',                                 // Lấy thông tin tài khoản đang đăng nhập
   },
+  TRANSACTION: {
+    TOP_UP: '/api/v1/transactions/top-up',
+    GET_STATUS: (code: string) => `/api/v1/transactions/${code}`,
+  },
+  WALLET: {
+    MY_WALLET: '/api/v1/wallets/me',
+  }
 };

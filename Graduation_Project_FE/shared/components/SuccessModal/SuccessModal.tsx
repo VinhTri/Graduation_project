@@ -15,12 +15,12 @@ interface SuccessModalProps {
 }
 
 export default function SuccessModal({ visible, title, message, isAutoClose = false, onClose }: SuccessModalProps) {
-  const [timeLeft, setTimeLeft] = useState(5);
+  const [timeLeft, setTimeLeft] = useState(3);
 
   useEffect(() => {
     if (!visible || !isAutoClose) return;
     
-    setTimeLeft(5); // reset time when modal opens
+    setTimeLeft(3); // reset time when modal opens
     const timer = setInterval(() => {
       setTimeLeft((prev) => (prev > 0 ? prev - 1 : 0));
     }, 1000);

@@ -1,14 +1,33 @@
-import React, { useState } from "react";
+import React, { useState, useCallback } from "react";
 import { View, Text, TouchableOpacity } from "react-native";
+import { useFocusEffect } from "expo-router";
+import { walletService } from "../../../../shared/api/services/walletService";
 import { Ionicons } from "@expo/vector-icons";
 import Colors from "../../../../shared/constants/Colors";
 import { WalletTotalAssetProps } from "./WalletTotalAsset.types";
 import { styles } from "./WalletTotalAsset.styles";
 
 export const WalletTotalAsset: React.FC<WalletTotalAssetProps> = ({
-  totalBalance = 25650000,
+  totalBalance = 0,
 }) => {
   const [isBalanceHidden, setIsBalanceHidden] = useState(false);
+  const [balance, setBalance] = useState(totalBalance);
+
+  useFocusEffect(
+    useCallback(() => {
+      const fetchWallet = async () => {
+        try {
+          const data = await walletService.getMyWallet();
+          if (data) {
+            setBalance(data.balance);
+          }
+        } catch (error) {
+          console.log("Error fetching wallet balance", error);
+        }
+      };
+      fetchWallet();
+    }, [])
+  );
 
   const formatCurrency = (val: number) => {
     if (isBalanceHidden) return "•••••• ₫";
@@ -36,13 +55,13 @@ export const WalletTotalAsset: React.FC<WalletTotalAssetProps> = ({
       </View>
       
       <Text style={styles.balanceValue}>
-        {formatCurrency(totalBalance)}
+        {formatCurrency(balance)}
       </Text>
 
       <View style={styles.statsRow}>
         <View style={styles.statItem}>
           <View style={styles.statDot} />
-          <Text style={styles.statText}>3 ví đang kết nối</Text>
+          <Text style={styles.statText}>1 ví đang kết nối</Text>
         </View>
         <View style={styles.verticalDivider} />
         <Text style={styles.safetyText}>Bảo mật 256-bit</Text>
