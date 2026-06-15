@@ -9,7 +9,7 @@ public enum ErrorCode {
     USERNAME_ALREADY_EXISTS("Tên đăng nhập này đã tồn tại!", HttpStatus.CONFLICT),
     INVALID_GOOGLE_TOKEN("Google ID Token không hợp lệ!", HttpStatus.UNAUTHORIZED),
     GOOGLE_AUTH_FAILED("Xác thực bằng tài khoản Google thất bại!", HttpStatus.UNAUTHORIZED),
-    INVALID_CREDENTIALS("Tên đăng nhập hoặc mật khẩu không chính xác!", HttpStatus.UNAUTHORIZED),
+    INVALID_CREDENTIALS("Sai mật khẩu!", HttpStatus.UNAUTHORIZED),
     INVALID_OTP("Mã OTP không hợp lệ hoặc đã được sử dụng!", HttpStatus.BAD_REQUEST),
     EXPIRED_OTP("Mã OTP đã hết hạn!", HttpStatus.BAD_REQUEST),
     UNAUTHORIZED_ACCESS("Bạn không có quyền thực hiện hành động này!", HttpStatus.FORBIDDEN),

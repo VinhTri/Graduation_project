@@ -137,8 +137,12 @@ public class AuthServiceImpl implements AuthService {
     // ====================== LOGIN ======================
     @Override
     public AuthResponse loginUser(LoginRequest request) {
+        // request.getUsername() thực chất đang chứa email từ Frontend gửi lên
+        User user = userRepository.findByEmail(request.getUsername())
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+
         Authentication authentication = authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(request.getUsername(), request.getPassword())
+                new UsernamePasswordAuthenticationToken(user.getUsername(), request.getPassword())
         );
 
         SecurityContextHolder.getContext().setAuthentication(authentication);
