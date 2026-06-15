@@ -201,6 +201,7 @@ export default function LoginScreen() {
         visible={isSuccessModalVisible}
         title="Đăng nhập thành công!"
         message="Chào mừng bạn quay lại với SmartSpend."
+        isAutoClose={true}
         onClose={handleSuccessClose}
       />
     </SafeAreaView>

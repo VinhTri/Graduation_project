@@ -55,4 +55,15 @@ export const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
   },
+  autoCloseContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    marginTop: 8,
+  },
+  autoCloseText: {
+    fontSize: 14,
+    color: '#6B7280',
+  },
 });
