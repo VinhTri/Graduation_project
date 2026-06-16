@@ -35,6 +35,12 @@ export default function TabsLayout() {
         }}
       />
       <Tabs.Screen
+        name="notebook/index"
+        options={{
+          title: "Sổ tay",
+        }}
+      />
+      <Tabs.Screen
         name="more/index"
         options={{
           title: "Tài khoản",

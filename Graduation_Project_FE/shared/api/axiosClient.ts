@@ -4,7 +4,7 @@ import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Sử dụng IP mạng LAN của máy tính để chạy được trên cả Máy ảo lẫn Điện thoại thật (Expo Go)
-const BASE_URL = 'http://192.168.151.100:8080';
+const BASE_URL = 'http://192.168.5.37:8080';
 
 export const axiosClient = axios.create({
   baseURL: BASE_URL,
