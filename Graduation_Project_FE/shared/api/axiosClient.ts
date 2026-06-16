@@ -1,14 +1,27 @@
 import axios from 'axios';
 import { Platform } from 'react-native';
 
+import Constants from 'expo-constants';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-// Sử dụng IP mạng LAN của máy tính để chạy được trên cả Máy ảo lẫn Điện thoại thật (Expo Go)
-const BASE_URL = 'http://192.168.151.100:8080';
+// Tự động lấy IP của máy tính đang chạy Expo (dành cho chế độ Development)
+const BACKEND_PORT = '9090'; // SỬA CỔNG PORT Ở ĐÂY NẾU ĐỒNG ĐỘI CỦA BẠN DÙNG CỔNG KHÁC
+let BASE_URL = `http://localhost:${BACKEND_PORT}`; // Mặc định cho Web/Simulator
+const debuggerHost = Constants.expoConfig?.hostUri;
+
+if (__DEV__ && debuggerHost) {
+  const ip = debuggerHost.split(':')[0]; // Lấy IP, bỏ phần port :8081
+  BASE_URL = `http://${ip}:${BACKEND_PORT}`; // Tự động gắn IP với cổng Backend
+} else if (process.env.EXPO_PUBLIC_API_URL) {
+  // Ưu tiên dùng biến môi trường khi build thật (Production)
+  BASE_URL = process.env.EXPO_PUBLIC_API_URL;
+}
+
+console.log("=== API BASE_URL IS: ===", BASE_URL);
 
 export const axiosClient = axios.create({
   baseURL: BASE_URL,
-  timeout: 10000, // Thời gian chờ tối đa 10 giây
+  timeout: 30000, // Tăng thời gian chờ lên 30 giây để tránh lỗi timeout do gửi email (SMTP) chậm
   headers: {
     'Content-Type': 'application/json',
   },
