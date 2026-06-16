@@ -62,6 +62,8 @@ export default function CustomTabBar({ state, descriptors, navigation }: BottomT
             iconName = isFocused ? "wallet" : "wallet-outline";
           } else if (route.name === "funds/index") {
             iconName = isFocused ? "briefcase" : "briefcase-outline";
+          } else if (route.name === "notebook/index") {
+            iconName = isFocused ? "book" : "book-outline";
           } else if (route.name === "more/index") {
             iconName = isFocused ? "menu" : "menu-outline";
           }
