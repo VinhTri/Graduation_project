@@ -62,7 +62,7 @@ public class Transaction {
         updatedAt = LocalDateTime.now();
     }
 
-    // Getters and Setters
+    // Getter và Setter
 
     public Long getId() {
         return id;

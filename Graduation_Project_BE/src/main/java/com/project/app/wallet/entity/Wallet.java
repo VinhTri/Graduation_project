@@ -40,7 +40,7 @@ public class Wallet {
         this.isDeletable = isDeletable;
     }
 
-    // Getters and Setters
+    // Getter và Setter
 
     public Long getId() {
         return id;

@@ -31,6 +31,7 @@ public class WalletController {
         private boolean isDefault;
     }
 
+    // ====================== LẤY THÔNG TIN VÍ ======================
     @GetMapping("/me")
     public ResponseEntity<ApiResponse<WalletDto>> getMyDefaultWallet(@AuthenticationPrincipal CustomUserDetails userDetails) {
         Wallet wallet = walletService.getDefaultWallet(userDetails.getUser().getId());

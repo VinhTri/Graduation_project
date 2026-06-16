@@ -11,7 +11,9 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import com.project.app.transaction.dto.request.SePayWebhookRequest;
+import com.project.app.transaction.dto.request.WithdrawRequest;
 import com.project.app.transaction.dto.response.TransactionStatusResponse;
+import com.project.app.transaction.dto.response.WithdrawResponse;
 import com.project.app.transaction.entity.Transaction;
 
 @RestController
@@ -24,6 +26,7 @@ public class TransactionController {
         this.transactionService = transactionService;
     }
 
+    // ====================== NẠP TIỀN ======================
     @PostMapping("/top-up")
     public ResponseEntity<ApiResponse<TopUpResponse>> initiateTopUp(
             @AuthenticationPrincipal CustomUserDetails userDetails,
@@ -37,6 +40,7 @@ public class TransactionController {
                 .build());
     }
 
+    // ====================== WEBHOOK SEPAY ======================
     @PostMapping("/sepay-webhook")
     public ResponseEntity<ApiResponse<Void>> handleSePayWebhook(@RequestBody SePayWebhookRequest request) {
         transactionService.processSePayWebhook(request);
@@ -46,6 +50,7 @@ public class TransactionController {
                 .build());
     }
 
+    // ====================== TRA CỨU GIAO DỊCH ======================
     @GetMapping("/{transactionCode}")
     public ResponseEntity<ApiResponse<TransactionStatusResponse>> getTransactionStatus(
             @AuthenticationPrincipal CustomUserDetails userDetails,
@@ -62,6 +67,20 @@ public class TransactionController {
         return ResponseEntity.ok(ApiResponse.<TransactionStatusResponse>builder()
                 .success(true)
                 .message("Lấy thông tin giao dịch thành công")
+                .data(response)
+                .build());
+    }
+
+    // ====================== RÚT TIỀN ======================
+    @PostMapping("/withdraw")
+    public ResponseEntity<ApiResponse<WithdrawResponse>> processWithdrawal(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @Valid @RequestBody WithdrawRequest request) {
+        
+        WithdrawResponse response = transactionService.processWithdrawal(userDetails.getUser(), request);
+        return ResponseEntity.ok(ApiResponse.<WithdrawResponse>builder()
+                .success(true)
+                .message("Rút tiền thành công")
                 .data(response)
                 .build());
     }
