@@ -217,4 +217,22 @@ public class AuthServiceImpl implements AuthService {
         otpToken.setUsed(true);
         otpTokenRepository.save(otpToken);
     }
+
+    @Override
+    public void verifyOtp(VerifyOtpRequest request) {
+        OtpPurpose otpPurpose;
+        try {
+            otpPurpose = OtpPurpose.valueOf(request.getPurpose());
+        } catch (IllegalArgumentException e) {
+            throw new AppException(ErrorCode.INVALID_OTP);
+        }
+
+        OtpToken otpToken = otpTokenRepository.findByEmailAndOtpAndPurposeAndUsedFalse(
+                        request.getEmail(), request.getOtp(), otpPurpose)
+                .orElseThrow(() -> new AppException(ErrorCode.INVALID_OTP));
+
+        if (otpToken.isExpired()) {
+            throw new AppException(ErrorCode.EXPIRED_OTP);
+        }
+    }
 }

@@ -6,10 +6,13 @@ import com.project.app.auth.dto.request.ResetPasswordRequest;
 import com.project.app.auth.dto.request.SendOtpRequest;
 import com.project.app.auth.dto.response.AuthResponse;
 
+import com.project.app.auth.dto.request.VerifyOtpRequest;
+
 public interface AuthService {
     AuthResponse loginUser(LoginRequest request);
     void sendRegisterOtp(SendOtpRequest request);
     AuthResponse registerUser(RegisterRequest request);
     void processForgotPassword(SendOtpRequest request);
     void processResetPassword(ResetPasswordRequest request);
+    void verifyOtp(VerifyOtpRequest request);
 }
