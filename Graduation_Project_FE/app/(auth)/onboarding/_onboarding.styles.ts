@@ -111,4 +111,26 @@ export const styles = StyleSheet.create({
     fontWeight: '700',
     marginRight: 8,
   },
+  paginationContainer: {
+    position: 'absolute',
+    top: 60,
+    left: 20,
+    right: 20,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    zIndex: 10,
+  },
+  progressBarBg: {
+    flex: 1,
+    height: 4,
+    backgroundColor: '#E5E7EB',
+    borderRadius: 2,
+    marginHorizontal: 4,
+    overflow: 'hidden',
+  },
+  progressBarFill: {
+    height: '100%',
+    backgroundColor: '#109185',
+    borderRadius: 2,
+  },
 });

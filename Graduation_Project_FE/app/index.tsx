@@ -10,23 +10,13 @@ export default function Index() {
   useEffect(() => {
     const checkState = async () => {
       try {
-        const token = await AsyncStorage.getItem('token');
         const hasSeenOnboarding = await AsyncStorage.getItem('hasSeenOnboarding');
         
-        if (token) {
-          // Nếu đã có token (đã đăng nhập), vào thẳng Home.
-          // Đảm bảo đánh dấu đã xem onboarding để sau này đăng xuất không bị lặp lại
-          if (!hasSeenOnboarding) {
-            await AsyncStorage.setItem('hasSeenOnboarding', 'true');
-          }
-          setInitialRoute('/(tabs)/home');
+        // Luôn luôn bắt người dùng đăng nhập lại mỗi khi mở app
+        if (hasSeenOnboarding) {
+          setInitialRoute('/(auth)/login');
         } else {
-          // Nếu chưa có token, kiểm tra xem đã từng đăng nhập thành công chưa
-          if (hasSeenOnboarding) {
-            setInitialRoute('/(auth)/login');
-          } else {
-            setInitialRoute('/(auth)/onboarding');
-          }
+          setInitialRoute('/(auth)/onboarding');
         }
       } catch (error) {
         setInitialRoute('/(auth)/onboarding');
