@@ -62,4 +62,13 @@ public class AuthController {
                 .message("Đặt lại mật khẩu thành công!")
                 .build());
     }
+
+    @PostMapping("/verify-otp")
+    public ResponseEntity<ApiResponse<Void>> verifyOtp(@Valid @RequestBody VerifyOtpRequest request) {
+        authService.verifyOtp(request);
+        return ResponseEntity.ok(ApiResponse.<Void>builder()
+                .success(true)
+                .message("Mã OTP hợp lệ!")
+                .build());
+    }
 }
