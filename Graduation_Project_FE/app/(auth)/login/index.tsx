@@ -62,6 +62,7 @@ export default function LoginScreen() {
       
       if (response.data && response.data.token) {
         await AsyncStorage.setItem('token', response.data.token);
+        await AsyncStorage.setItem('hasSeenOnboarding', 'true');
       }
 
       // Hiển thị modal thành công thay vì dùng Alert
