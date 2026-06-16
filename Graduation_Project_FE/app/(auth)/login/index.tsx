@@ -63,6 +63,14 @@ export default function LoginScreen() {
       if (response.data && response.data.token) {
         await AsyncStorage.setItem('token', response.data.token);
         await AsyncStorage.setItem('hasSeenOnboarding', 'true');
+        
+        // Lưu thông tin người dùng
+        if (response.data.username) {
+          await AsyncStorage.setItem('userName', response.data.username);
+        }
+        if (response.data.email) {
+          await AsyncStorage.setItem('userEmail', response.data.email);
+        }
       }
 
       // Hiển thị modal thành công thay vì dùng Alert

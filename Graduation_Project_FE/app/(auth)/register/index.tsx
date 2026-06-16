@@ -100,9 +100,9 @@ export default function RegisterScreen() {
   const handleVerifyOtp = async (otpValue: string) => {
     try {
       setOtpError('');
-      // Backend đang yêu cầu username, ta truyền email vào username
+      // Backend đang yêu cầu username, ta truyền name (Họ và tên) vào username
       await authService.register({
-        username: email,
+        username: name,
         password: password,
         email: email,
         otp: otpValue
