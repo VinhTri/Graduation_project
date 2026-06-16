@@ -7,6 +7,8 @@ export const ENDPOINTS = {
     REGISTER: '/api/v1/auth/register',                          // Đăng ký tài khoản
     SEND_OTP: '/api/v1/auth/register/send-otp',                 // Gửi mã OTP đăng ký
     FORGOT_PASSWORD: '/api/v1/auth/forgot-password',            // Quên mật khẩu
+    RESET_PASSWORD: '/api/v1/auth/reset-password',              // Đặt lại mật khẩu
+    VERIFY_OTP: '/api/v1/auth/verify-otp',                      // Kiểm tra OTP
   },
   USER: {
     PROFILE: '/api/v1/user/me',                                 // Lấy thông tin tài khoản đang đăng nhập

@@ -33,9 +33,9 @@ export default function RegisterScreen() {
   const [otpError, setOtpError] = useState('');
   const [isSuccessModalVisible, setIsSuccessModalVisible] = useState(false);
 
-  // Validate định dạng email
+  // Validate định dạng email (chỉ chấp nhận @gmail.com)
   const isValidEmail = (email: string) => {
-    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+    return /^[^\s@]+@gmail\.com$/.test(email);
   };
 
   // Regex check: 8 chars, 1 uppercase, 1 lowercase, 1 number, 1 special char
@@ -59,7 +59,7 @@ export default function RegisterScreen() {
       setEmailError('Vui lòng nhập địa chỉ email');
       hasError = true;
     } else if (!isValidEmail(email)) {
-      setEmailError('Định dạng email không hợp lệ (ví dụ: abc@gmail.com)');
+      setEmailError('Định dạng email không hợp lệ (bắt buộc đuôi @gmail.com)');
       hasError = true;
     }
     if (!password) {
@@ -100,9 +100,9 @@ export default function RegisterScreen() {
   const handleVerifyOtp = async (otpValue: string) => {
     try {
       setOtpError('');
-      // Backend đang yêu cầu username, ta truyền email vào username
+      // Backend đang yêu cầu username, ta truyền name (Họ và tên) vào username
       await authService.register({
-        username: email,
+        username: name,
         password: password,
         email: email,
         otp: otpValue

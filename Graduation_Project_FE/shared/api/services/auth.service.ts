@@ -38,6 +38,22 @@ export const authService = {
   },
 
   /**
+   * Gọi API Đặt lại mật khẩu
+   * @param data Chứa email, otp, và mật khẩu mới
+   */
+  resetPassword: async (data: { email: string; otp: string; newPassword: string }) => {
+    return axiosClient.post(ENDPOINTS.AUTH.RESET_PASSWORD, data);
+  },
+
+  /**
+   * Gọi API Kiểm tra mã OTP
+   * @param data Chứa email, otp và purpose
+   */
+  verifyOtp: async (data: { email: string; otp: string; purpose: string }) => {
+    return axiosClient.post(ENDPOINTS.AUTH.VERIFY_OTP, data);
+  },
+
+  /**
    * (Ví dụ mẫu) Hàm gọi nhiều API ĐỒNG THỜI
    * 
    * Trường hợp áp dụng: Khi bạn cần gửi mã OTP cho 2-3 email cùng một lúc để tiết kiệm thời gian chờ.
