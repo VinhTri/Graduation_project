@@ -26,9 +26,9 @@ export default function LoginScreen() {
   // State Modal Thành công
   const [isSuccessModalVisible, setIsSuccessModalVisible] = useState(false);
 
-  // Validate định dạng email
+  // Validate định dạng email (chỉ chấp nhận @gmail.com)
   const isValidEmail = (email: string) => {
-    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+    return /^[^\s@]+@gmail\.com$/.test(email);
   };
 
   const handleLogin = async () => {
@@ -42,7 +42,7 @@ export default function LoginScreen() {
       setEmailError('Vui lòng nhập địa chỉ email');
       hasError = true;
     } else if (!isValidEmail(email)) {
-      setEmailError('Định dạng email không hợp lệ (ví dụ: abc@gmail.com)');
+      setEmailError('Định dạng email không hợp lệ (bắt buộc đuôi @gmail.com)');
       hasError = true;
     }
 
@@ -154,7 +154,7 @@ export default function LoginScreen() {
 
               {/* Quên mật khẩu */}
               <View style={styles.forgotPasswordContainer}>
-                <TouchableOpacity>
+                <TouchableOpacity onPress={() => router.push('/(auth)/forgot-password')}>
                   <Text style={styles.forgotPasswordText}>Quên mật khẩu?</Text>
                 </TouchableOpacity>
               </View>
