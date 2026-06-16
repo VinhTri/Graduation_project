@@ -147,7 +147,11 @@ export const WalletCard: React.FC<WalletCardProps> = ({
               <Text style={styles.actionLabel}>Rút tiền</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity style={styles.actionButton} activeOpacity={0.7}>
+            <TouchableOpacity 
+              style={styles.actionButton} 
+              activeOpacity={0.7}
+              onPress={() => router.push("/wallet/history")}
+            >
               <View style={styles.actionIconBg}>
                 <Ionicons name="time-outline" size={18} color={wallet.color} />
               </View>
