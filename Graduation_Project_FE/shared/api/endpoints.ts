@@ -15,9 +15,13 @@ export const ENDPOINTS = {
   },
   TRANSACTION: {
     TOP_UP: '/api/v1/transactions/top-up',
+    WITHDRAW: '/api/v1/transactions/withdraw',
     GET_STATUS: (code: string) => `/api/v1/transactions/${code}`,
   },
   WALLET: {
     MY_WALLET: '/api/v1/wallets/me',
+  },
+  BANK_ACCOUNT: {
+    GET_ALL: '/api/v1/bank-accounts',
   }
 };

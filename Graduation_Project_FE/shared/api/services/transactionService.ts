@@ -15,6 +15,18 @@ export interface TopUpResponse {
   createdAt: string;
 }
 
+export interface WithdrawRequest {
+  amount: number;
+  bankAccountId: number;
+}
+
+export interface WithdrawResponse {
+  transactionCode: string;
+  status: 'PENDING' | 'SUCCESS' | 'FAILED' | 'CANCELLED';
+  amount: number;
+  createdAt: string;
+}
+
 export interface TransactionStatusResponse {
   transactionCode: string;
   status: 'PENDING' | 'SUCCESS' | 'FAILED' | 'CANCELLED';
@@ -31,6 +43,11 @@ export const transactionService = {
 
   getTransactionStatus: async (transactionCode: string): Promise<TransactionStatusResponse> => {
     const response = await axiosClient.get(ENDPOINTS.TRANSACTION.GET_STATUS(transactionCode));
+    return response.data;
+  },
+
+  processWithdrawal: async (data: WithdrawRequest): Promise<WithdrawResponse> => {
+    const response = await axiosClient.post(ENDPOINTS.TRANSACTION.WITHDRAW, data);
     return response.data;
   }
 };

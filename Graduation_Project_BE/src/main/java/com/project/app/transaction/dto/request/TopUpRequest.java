@@ -6,7 +6,7 @@ import java.math.BigDecimal;
 
 public class TopUpRequest {
 
-    private Long walletId; // Optional, if null use default wallet
+    private Long walletId; // Tuỳ chọn, nếu null sẽ dùng ví mặc định
 
     @NotNull(message = "Số tiền nạp không được để trống")
     @DecimalMin(value = "10000", message = "Số tiền nạp tối thiểu là 10.000 VNĐ")
@@ -16,7 +16,7 @@ public class TopUpRequest {
 
     private Long categoryId;
 
-    // Getters and Setters
+    // Getter và Setter
 
     public Long getWalletId() {
         return walletId;

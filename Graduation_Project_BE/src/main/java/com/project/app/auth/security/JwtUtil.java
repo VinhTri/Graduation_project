@@ -43,7 +43,7 @@ public class JwtUtil {
             Jwts.parser().verifyWith(key()).build().parse(authToken);
             return true;
         } catch (Exception e) {
-            // log error
+            // Ghi log lỗi
         }
         return false;
     }

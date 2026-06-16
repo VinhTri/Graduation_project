@@ -19,12 +19,14 @@ public class WalletServiceImpl implements WalletService {
         this.walletRepository = walletRepository;
     }
 
+    // ====================== LẤY VÍ MẶC ĐỊNH ======================
     @Override
     public Wallet getDefaultWallet(Long userId) {
         return walletRepository.findByUserIdAndIsDefaultTrue(userId)
                 .orElseThrow(() -> new AppException(ErrorCode.WALLET_NOT_FOUND));
     }
 
+    // ====================== LẤY VÍ THEO ID ======================
     @Override
     public Wallet getWalletById(Long walletId, Long userId) {
         Wallet wallet = walletRepository.findById(walletId)
@@ -36,6 +38,7 @@ public class WalletServiceImpl implements WalletService {
         return wallet;
     }
 
+    // ====================== CẬP NHẬT SỐ DƯ ======================
     @Override
     @Transactional
     public void addBalance(Long walletId, BigDecimal amount) {

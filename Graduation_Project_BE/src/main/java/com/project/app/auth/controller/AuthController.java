@@ -16,6 +16,7 @@ public class AuthController {
 
     private final AuthService authService;
 
+    // ====================== ĐĂNG NHẬP ======================
     @PostMapping("/login")
     public ResponseEntity<ApiResponse<AuthResponse>> login(@Valid @RequestBody LoginRequest request) {
         AuthResponse response = authService.loginUser(request);
@@ -26,6 +27,7 @@ public class AuthController {
                 .build());
     }
 
+    // ====================== ĐĂNG KÝ ======================
     @PostMapping("/register/send-otp")
     public ResponseEntity<ApiResponse<Void>> sendRegisterOtp(@Valid @RequestBody SendOtpRequest request) {
         authService.sendRegisterOtp(request);
@@ -45,6 +47,7 @@ public class AuthController {
                 .build());
     }
 
+    // ====================== QUÊN MẬT KHẨU ======================
     @PostMapping("/forgot-password")
     public ResponseEntity<ApiResponse<Void>> forgotPassword(@Valid @RequestBody SendOtpRequest request) {
         authService.processForgotPassword(request);
@@ -63,6 +66,7 @@ public class AuthController {
                 .build());
     }
 
+    // ====================== DÙNG CHUNG ======================
     @PostMapping("/verify-otp")
     public ResponseEntity<ApiResponse<Void>> verifyOtp(@Valid @RequestBody VerifyOtpRequest request) {
         authService.verifyOtp(request);

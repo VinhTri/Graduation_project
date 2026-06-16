@@ -9,8 +9,11 @@ import { QuickActionCard } from './components/QuickActionCard';
 import { SettingsSection } from './components/SettingsSection';
 import { SettingsItem } from './components/SettingsItem';
 import { LogoutButton } from './components/LogoutButton';
+import { useRouter } from 'expo-router';
 
 export function SettingsScreen() {
+  const router = useRouter();
+  
   return (
     <View style={styles.container}>
       <ScrollView 
@@ -39,6 +42,7 @@ export function SettingsScreen() {
           <SettingsItem 
             icon={<Ionicons name="card-outline" size={22} color={Colors.textMuted} />}
             title="Tài khoản/thẻ liên kết"
+            onPress={() => router.push('/settings/bank-binding')}
           />
           <SettingsItem 
             title="Số dư hiện có"

@@ -12,6 +12,7 @@ interface SettingsItemProps {
   showEye?: boolean;
   hideChevron?: boolean;
   isLast?: boolean;
+  onPress?: () => void;
 }
 
 export const SettingsItem = ({
@@ -21,12 +22,14 @@ export const SettingsItem = ({
   value,
   showEye,
   hideChevron,
-  isLast
+  isLast,
+  onPress
 }: SettingsItemProps) => {
   return (
     <TouchableOpacity 
       style={[styles.itemContainer, isLast && { borderBottomWidth: 0 }]} 
       activeOpacity={0.7}
+      onPress={onPress}
     >
       {icon ? (
         <View style={styles.itemIconContainer}>

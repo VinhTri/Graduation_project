@@ -15,7 +15,7 @@ public class SePayWebhookRequest {
     private BigDecimal accumulated;
     private String referenceCode;
 
-    // Getters and Setters
+    // Getter và Setter
 
     public Long getId() {
         return id;

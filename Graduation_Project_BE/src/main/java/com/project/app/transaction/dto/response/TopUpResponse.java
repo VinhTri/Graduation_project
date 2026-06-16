@@ -22,7 +22,7 @@ public class TopUpResponse {
         this.createdAt = createdAt;
     }
 
-    // Getters and Setters
+    // Getter và Setter
 
     public String getTransactionCode() {
         return transactionCode;

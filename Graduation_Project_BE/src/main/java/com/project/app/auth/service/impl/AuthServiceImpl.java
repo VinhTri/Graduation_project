@@ -48,7 +48,7 @@ public class AuthServiceImpl implements AuthService {
     private final EmailService emailService;
     private final GoogleIdTokenVerifier verifier;
 
-    private static final long OTP_EXPIRATION_TIME = 5 * 60 * 1000; // 5 minutes
+    private static final long OTP_EXPIRATION_TIME = 5 * 60 * 1000; // 5 phút
 
     public AuthServiceImpl(
             AuthenticationManager authenticationManager,
@@ -72,11 +72,14 @@ public class AuthServiceImpl implements AuthService {
                 .build();
     }
 
+    // ====================== TIỆN ÍCH ======================
     private String generateOtp() {
         SecureRandom random = new SecureRandom();
         int otp = 100000 + random.nextInt(900000);
         return String.valueOf(otp);
     }
+
+    // ====================== ĐĂNG KÝ ======================
     @Override
     @Transactional
     public void sendRegisterOtp(SendOtpRequest request) {
@@ -150,7 +153,7 @@ public class AuthServiceImpl implements AuthService {
                 .build();
     }
 
-    // ====================== LOGIN ======================
+    // ====================== ĐĂNG NHẬP ======================
     @Override
     public AuthResponse loginUser(LoginRequest request) {
         // request.getUsername() thực chất đang chứa email từ Frontend gửi lên
@@ -175,7 +178,7 @@ public class AuthServiceImpl implements AuthService {
                 .type("Bearer")
                 .build();
     }
-    // ====================== FORGOT PASSWORD ======================
+    // ====================== QUÊN MẬT KHẨU ======================
     @Override
     @Transactional
     public void processForgotPassword(SendOtpRequest request) {
@@ -218,6 +221,7 @@ public class AuthServiceImpl implements AuthService {
         otpTokenRepository.save(otpToken);
     }
 
+    // ====================== DÙNG CHUNG ======================
     @Override
     public void verifyOtp(VerifyOtpRequest request) {
         OtpPurpose otpPurpose;

@@ -140,7 +140,11 @@ export const WalletCard: React.FC<WalletCardProps> = ({
               <Text style={styles.actionLabel}>Nạp tiền</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity style={styles.actionButton} activeOpacity={0.7}>
+            <TouchableOpacity 
+              style={styles.actionButton} 
+              activeOpacity={0.7}
+              onPress={() => router.push("/wallet/withdraw")}
+            >
               <View style={styles.actionIconBg}>
                 <Ionicons name="arrow-up-outline" size={18} color={wallet.color} />
               </View>
