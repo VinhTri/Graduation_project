@@ -10,6 +10,7 @@ export const Colors = {
   border: "#E2E8F0",
   error: "#EF4444",
   success: "#10B981",
+  warning: "#F59E0B",
   white: "#FFFFFF",
   black: "#000000",
   transparent: "transparent",
