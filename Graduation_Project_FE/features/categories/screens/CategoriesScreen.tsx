@@ -58,8 +58,10 @@ export default function CategoriesScreen() {
   };
 
   const handleLongPress = (service: any, groupId: string) => {
-    // Nếu danh mục có cờ isCustom (đã restart backend) HOẶC id lớn hơn 10 (chưa restart backend nhưng chắc chắn là danh mục mới tạo)
-    if (service.isCustom === true || (service.isCustom === undefined && parseInt(service.id) > 10)) {
+    // Jackson serialize boolean isCustom thành 'custom', nên ta check cả 2.
+    const isCustomCategory = service.isCustom === true || service.custom === true;
+    
+    if (isCustomCategory) {
       setSelectedService({ ...service, groupId });
       setShowOptions(true);
     } else {
