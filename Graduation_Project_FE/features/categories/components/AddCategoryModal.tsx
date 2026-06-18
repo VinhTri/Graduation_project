@@ -24,6 +24,15 @@ const AVAILABLE_COLORS = [
   { color: '#64748B', bgColor: '#F1F5F9' },
 ];
 
+interface AlertConfig {
+  visible: boolean;
+  title: string;
+  message: string;
+  type: 'error' | 'warning';
+  onConfirm?: () => void;
+  onCancel?: () => void;
+}
+
 type AddCategoryModalProps = {
   visible: boolean;
   onClose: () => void;
@@ -36,6 +45,12 @@ export const AddCategoryModal: React.FC<AddCategoryModalProps> = ({ visible, onC
   const [selectedIcon, setSelectedIcon] = useState("apps-outline");
   const [selectedColorIndex, setSelectedColorIndex] = useState(0);
   const [selectedGroup, setSelectedGroup] = useState<string>("");
+  const [alertConfig, setAlertConfig] = useState<AlertConfig>({
+    visible: false,
+    title: "",
+    message: "",
+    type: "error"
+  });
 
   // Mapping keywords to group names and suggested icons/colors
   const KEYWORD_MAP: Record<string, { groupName: string; icon: string; colorIndex: number }> = {
@@ -125,11 +140,12 @@ export const AddCategoryModal: React.FC<AddCategoryModalProps> = ({ visible, onC
 
     if (duplicateGroupName) {
       const errorMsg = `Tên danh mục "${trimmedLabel}" đã tồn tại trong nhóm "${duplicateGroupName}". Vui lòng đặt tên khác (VD: Du lịch gia đình)!`;
-      if (Platform.OS === 'web') {
-        window.alert(errorMsg);
-      } else {
-        Alert.alert("Bị trùng tên", errorMsg);
-      }
+      setAlertConfig({
+        visible: true,
+        title: "Trùng lặp tên",
+        message: errorMsg,
+        type: "error",
+      });
       return; // Chặn không cho lưu
     }
 
@@ -147,22 +163,15 @@ export const AddCategoryModal: React.FC<AddCategoryModalProps> = ({ visible, onC
     if (suggestedGroupName) {
       const selectedGroupObj = categories.find(c => c.id === selectedGroup);
       if (selectedGroupObj && !selectedGroupObj.title.toLowerCase().includes(suggestedGroupName)) {
-        const msg = `Bạn đang lưu khoản "${label}" vào nhóm "${selectedGroupObj.title}". Bạn có chắc chắn không?`;
-        if (Platform.OS === 'web') {
-          const confirmed = window.confirm(msg);
-          if (confirmed) {
-            executeSave();
-          }
-        } else {
-          Alert.alert(
-            "Nhắc nhở logic",
-            msg,
-            [
-              { text: "Sửa lại", style: "cancel" },
-              { text: "Vẫn lưu", onPress: executeSave }
-            ]
-          );
-        }
+        const msg = `Bạn đang lưu khoản "${trimmedLabel}" vào nhóm "${selectedGroupObj.title}". Bạn có chắc chắn không?`;
+        setAlertConfig({
+          visible: true,
+          title: "Nhắc nhở logic",
+          message: msg,
+          type: "warning",
+          onConfirm: executeSave,
+          onCancel: () => {}
+        });
         return; // Dừng lại chờ user confirm
       }
     }
@@ -261,6 +270,51 @@ export const AddCategoryModal: React.FC<AddCategoryModalProps> = ({ visible, onC
             </TouchableOpacity>
           </View>
         </View>
+
+        {/* --- CUSTOM ALERT MODAL --- */}
+        <Modal transparent visible={alertConfig.visible} animationType="fade">
+          <View style={styles.alertOverlay}>
+            <View style={styles.alertBox}>
+              <View style={[styles.alertIconBg, { backgroundColor: alertConfig.type === 'error' ? '#FEE2E2' : '#FEF3C7' }]}>
+                <Ionicons 
+                  name={alertConfig.type === 'error' ? "close-circle" : "warning"} 
+                  size={36} 
+                  color={alertConfig.type === 'error' ? "#EF4444" : "#F59E0B"} 
+                />
+              </View>
+              <Text style={styles.alertTitle}>{alertConfig.title}</Text>
+              <Text style={styles.alertMessage}>{alertConfig.message}</Text>
+              
+              <View style={styles.alertActions}>
+                {alertConfig.type === 'warning' && (
+                  <TouchableOpacity 
+                    style={[styles.alertBtn, styles.alertCancelBtn]} 
+                    onPress={() => {
+                      setAlertConfig(prev => ({...prev, visible: false}));
+                      if (alertConfig.onCancel) alertConfig.onCancel();
+                    }}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={styles.alertCancelText}>Sửa lại</Text>
+                  </TouchableOpacity>
+                )}
+                <TouchableOpacity 
+                  style={[styles.alertBtn, alertConfig.type === 'error' ? styles.alertErrorBtn : styles.alertConfirmBtn]} 
+                  onPress={() => {
+                    setAlertConfig(prev => ({...prev, visible: false}));
+                    if (alertConfig.onConfirm) alertConfig.onConfirm();
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <Text style={[styles.alertConfirmText, alertConfig.type === 'error' && { color: '#EF4444' }]}>
+                    {alertConfig.type === 'error' ? 'Đã hiểu' : 'Vẫn lưu'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
+
       </KeyboardAvoidingView>
     </Modal>
   );
@@ -370,6 +424,78 @@ const styles = StyleSheet.create({
   saveBtnText: {
     fontSize: 16,
     fontWeight: 'bold',
+    color: Colors.white,
+  },
+  alertOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+  },
+  alertBox: {
+    width: '100%',
+    backgroundColor: Colors.white,
+    borderRadius: 20,
+    padding: 24,
+    alignItems: 'center',
+    elevation: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+  },
+  alertIconBg: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  alertTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: Colors.text,
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  alertMessage: {
+    fontSize: 15,
+    color: Colors.textMuted,
+    textAlign: 'center',
+    marginBottom: 24,
+    lineHeight: 22,
+  },
+  alertActions: {
+    flexDirection: 'row',
+    gap: 12,
+    width: '100%',
+  },
+  alertBtn: {
+    flex: 1,
+    paddingVertical: 14,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  alertCancelBtn: {
+    backgroundColor: Colors.surface,
+  },
+  alertCancelText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: Colors.text,
+  },
+  alertConfirmBtn: {
+    backgroundColor: Colors.primary,
+  },
+  alertErrorBtn: {
+    backgroundColor: '#FEE2E2',
+  },
+  alertConfirmText: {
+    fontSize: 16,
+    fontWeight: '600',
     color: Colors.white,
   },
 });

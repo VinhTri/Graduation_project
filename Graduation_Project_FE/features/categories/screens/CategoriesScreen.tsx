@@ -1,9 +1,13 @@
 import React, { useState } from 'react';
 import { 
-  View, Text, ScrollView, TouchableOpacity, 
-  TextInput, SafeAreaView, Platform
-} from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+  View, 
+  Text, 
+  TouchableOpacity, 
+  ScrollView, 
+  TextInput
+} from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from 'expo-router';
 import Colors from '../../../shared/constants/Colors';
 import { useCategoryContext } from '../../../shared/contexts/CategoryContext';
@@ -12,6 +16,7 @@ import { styles } from './CategoriesScreen.styles';
 
 export default function CategoriesScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const { categories, removeService } = useCategoryContext();
   const [searchQuery, setSearchQuery] = useState("");
   const [isModalVisible, setModalVisible] = useState(false);
@@ -28,11 +33,17 @@ export default function CategoriesScreen() {
   })).filter(group => group.items.length > 0 || group.title.toLowerCase().includes(searchQuery.toLowerCase()));
 
   const renderHeader = () => (
-    <View style={styles.header}>
-      <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-        <Ionicons name="arrow-back" size={24} color={Colors.white} />
-      </TouchableOpacity>
-      <Text style={styles.headerTitle}>Chọn danh mục</Text>
+    <View style={[styles.header, { paddingTop: insets.top + 12, paddingBottom: 12 }]}>
+      <View style={styles.leftSection}>
+        <TouchableOpacity onPress={() => router.back()} style={styles.backButton} activeOpacity={0.7}>
+          <Ionicons name="chevron-back-outline" size={22} color={Colors.white} />
+        </TouchableOpacity>
+        <View style={styles.titleContainer}>
+          <Text style={styles.headerTitle}>Chọn danh mục</Text>
+          <Text style={styles.headerSubtitle}>Quản lý phân loại</Text>
+        </View>
+      </View>
+
       <TouchableOpacity 
         style={styles.addButton}
         onPress={() => setModalVisible(true)}
@@ -44,7 +55,7 @@ export default function CategoriesScreen() {
   );
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <View style={styles.safeArea}>
       {renderHeader()}
       
       <View style={styles.topActionsContainer}>
@@ -110,6 +121,6 @@ export default function CategoriesScreen() {
         visible={isModalVisible} 
         onClose={() => setModalVisible(false)} 
       />
-    </SafeAreaView>
+    </View>
   );
 };
