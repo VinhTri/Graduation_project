@@ -11,6 +11,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import Colors from "../../../../shared/constants/Colors";
 import { styles } from "./HistoryScreen.styles";
+import { TransactionDetailModal } from "../../components";
 
 // Mock Data for UI demonstration
 const MOCK_TRANSACTIONS = [
@@ -19,18 +20,22 @@ const MOCK_TRANSACTIONS = [
     title: "Nạp tiền vào ví",
     type: "topup", // topup, withdraw, payment
     amount: 500000,
-    date: "Hôm nay, 14:30",
+    date: "18/06/2026, 14:30",
     status: "success", // success, pending, failed
     icon: "add-circle",
+    category: "Nạp tiền",
+    notes: "Nạp tiền từ tài khoản Vietcombank liên kết",
   },
   {
     id: "tx-2",
     title: "Thanh toán Highlands Coffee",
     type: "payment",
     amount: -55000,
-    date: "Hôm qua, 09:15",
+    date: "17/06/2026, 09:15",
     status: "success",
     icon: "cafe",
+    category: "Ăn uống",
+    notes: "Thanh toán 2 ly bạc xỉu tại Highlands Coffee Landmark 81",
   },
   {
     id: "tx-3",
@@ -40,6 +45,8 @@ const MOCK_TRANSACTIONS = [
     date: "10/06/2026, 16:45",
     status: "pending",
     icon: "cash",
+    category: "Rút tiền",
+    notes: "Rút tiền về tài khoản ngân hàng cá nhân",
   },
   {
     id: "tx-4",
@@ -49,6 +56,8 @@ const MOCK_TRANSACTIONS = [
     date: "08/06/2026, 20:00",
     status: "success",
     icon: "cart",
+    category: "Mua sắm",
+    notes: "Thanh toán đơn hàng quần áo trên sàn Shopee",
   },
   {
     id: "tx-5",
@@ -58,12 +67,15 @@ const MOCK_TRANSACTIONS = [
     date: "05/06/2026, 11:20",
     status: "failed",
     icon: "add-circle",
+    category: "Nạp tiền",
+    notes: "Giao dịch nạp tiền thất bại do lỗi kết nối ngân hàng",
   }
 ];
 
 export default function HistoryScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const [selectedTransaction, setSelectedTransaction] = useState<any | null>(null);
 
   const formatCurrency = (val: number) => {
     const isNegative = val < 0;
@@ -108,7 +120,11 @@ export default function HistoryScreen() {
     const isPositive = item.amount > 0;
 
     return (
-      <TouchableOpacity style={styles.transactionItem} activeOpacity={0.7}>
+      <TouchableOpacity
+        style={styles.transactionItem}
+        activeOpacity={0.7}
+        onPress={() => setSelectedTransaction(item)}
+      >
         <View style={[styles.iconContainer, { backgroundColor: getTransactionIconBgColor(item.type) }]}>
           <Ionicons name={item.icon as any} size={24} color={getTransactionIconColor(item.type)} />
         </View>
@@ -183,6 +199,12 @@ export default function HistoryScreen() {
           />
         </View>
       </View>
+
+      <TransactionDetailModal
+        visible={selectedTransaction !== null}
+        transaction={selectedTransaction}
+        onClose={() => setSelectedTransaction(null)}
+      />
     </View>
   );
 }
