@@ -16,4 +16,5 @@ public class CategoryItemResponse {
     private String color;
     private String bgColor;
     private String groupId;
+    private boolean isCustom;
 }

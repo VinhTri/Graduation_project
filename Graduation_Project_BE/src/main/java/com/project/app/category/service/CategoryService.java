@@ -110,6 +110,39 @@ public class CategoryService {
         return mapToItemResponse(item);
     }
 
+    public void softDeleteCategoryItem(Long itemId, User user) {
+        CategoryItem item = itemRepository.findById(itemId)
+                .orElseThrow(() -> new RuntimeException("Category item not found"));
+
+        if (item.getUser() == null || !item.getUser().getId().equals(user.getId())) {
+            throw new RuntimeException("Bạn không có quyền xóa danh mục này");
+        }
+
+        item.setDeleted(true);
+        itemRepository.save(item);
+    }
+
+    public CategoryItemResponse updateCategoryItem(Long itemId, User user, CategoryItemRequest request) {
+        CategoryItem item = itemRepository.findById(itemId)
+                .orElseThrow(() -> new RuntimeException("Category item not found"));
+
+        if (item.getUser() == null || !item.getUser().getId().equals(user.getId())) {
+            throw new RuntimeException("Bạn không có quyền chỉnh sửa danh mục này");
+        }
+
+        CategoryGroup group = groupRepository.findById(request.getGroupId())
+                .orElseThrow(() -> new RuntimeException("Group not found"));
+
+        item.setLabel(request.getLabel());
+        item.setIcon(request.getIcon());
+        item.setColor(request.getColor());
+        item.setBgColor(request.getBgColor());
+        item.setGroup(group);
+
+        item = itemRepository.save(item);
+        return mapToItemResponse(item);
+    }
+
     private CategoryGroupResponse mapToGroupResponse(CategoryGroup group) {
         return CategoryGroupResponse.builder()
                 .id(group.getId().toString())
@@ -118,6 +151,7 @@ public class CategoryService {
                 .color(group.getColor())
                 .bgColor(group.getBgColor())
                 .items(group.getItems() != null ? group.getItems().stream()
+                        .filter(item -> !item.isDeleted())
                         .map(this::mapToItemResponse)
                         .collect(Collectors.toList()) : List.of())
                 .build();
@@ -131,6 +165,7 @@ public class CategoryService {
                 .color(item.getColor())
                 .bgColor(item.getBgColor())
                 .groupId(item.getGroup().getId().toString())
+                .isCustom(item.getUser() != null)
                 .build();
     }
 }

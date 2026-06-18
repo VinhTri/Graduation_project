@@ -62,4 +62,32 @@ public class CategoryController {
                 .data(response)
                 .build());
     }
+
+    @PutMapping("/items/{itemId}")
+    public ResponseEntity<ApiResponse<CategoryItemResponse>> updateItem(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @PathVariable Long itemId,
+            @Valid @RequestBody CategoryItemRequest request) {
+        
+        CategoryItemResponse response = categoryService.updateCategoryItem(itemId, userDetails.getUser(), request);
+        
+        return ResponseEntity.ok(ApiResponse.<CategoryItemResponse>builder()
+                .success(true)
+                .message("Cập nhật danh mục thành công")
+                .data(response)
+                .build());
+    }
+
+    @DeleteMapping("/items/{itemId}")
+    public ResponseEntity<ApiResponse<Void>> deleteItem(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @PathVariable Long itemId) {
+        
+        categoryService.softDeleteCategoryItem(itemId, userDetails.getUser());
+        
+        return ResponseEntity.ok(ApiResponse.<Void>builder()
+                .success(true)
+                .message("Xóa danh mục thành công")
+                .build());
+    }
 }
