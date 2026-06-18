@@ -221,6 +221,70 @@ public class AuthServiceImpl implements AuthService {
         otpTokenRepository.save(otpToken);
     }
 
+    // ====================== MÃ PIN ======================
+    @Override
+    public boolean hasPinCode(Long userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+        return user.getPinCode() != null && !user.getPinCode().isEmpty();
+    }
+
+    @Override
+    @Transactional
+    public void setupPinCode(Long userId, String pinCode) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+        
+        if (user.getPinCode() != null && !user.getPinCode().isEmpty()) {
+            throw new AppException(ErrorCode.UNCATEGORIZED_EXCEPTION); // HOẶC PIN_ALREADY_SET
+        }
+        
+        user.setPinCode(passwordEncoder.encode(pinCode));
+        userRepository.save(user);
+    }
+
+    @Override
+    @Transactional
+    public void sendForgotPinOtp(Long userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+
+        otpTokenRepository.deleteByEmailAndPurpose(user.getEmail(), OtpPurpose.RESET_PIN);
+
+        String otp = generateOtp();
+        OtpToken otpToken = new OtpToken(
+                user.getEmail(),
+                otp,
+                OtpPurpose.RESET_PIN,
+                new Date(System.currentTimeMillis() + OTP_EXPIRATION_TIME)
+        );
+        otpTokenRepository.save(otpToken);
+
+        String emailText = "Mã OTP khôi phục mã PIN của bạn là: " + otp + "\nMã có hiệu lực trong vòng 5 phút.";
+        emailService.sendEmail(user.getEmail(), "Khôi phục mã PIN bảo mật", emailText);
+    }
+
+    @Override
+    @Transactional
+    public void resetPinCode(Long userId, String otp, String newPinCode) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+
+        OtpToken otpToken = otpTokenRepository.findByEmailAndOtpAndPurposeAndUsedFalse(
+                        user.getEmail(), otp, OtpPurpose.RESET_PIN)
+                .orElseThrow(() -> new AppException(ErrorCode.INVALID_OTP));
+
+        if (otpToken.isExpired()) {
+            throw new AppException(ErrorCode.EXPIRED_OTP);
+        }
+
+        user.setPinCode(passwordEncoder.encode(newPinCode));
+        userRepository.save(user);
+
+        otpToken.setUsed(true);
+        otpTokenRepository.save(otpToken);
+    }
+
     // ====================== DÙNG CHUNG ======================
     @Override
     public void verifyOtp(VerifyOtpRequest request) {

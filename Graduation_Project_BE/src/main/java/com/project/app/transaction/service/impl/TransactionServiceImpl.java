@@ -21,6 +21,7 @@ import com.project.app.wallet.entity.Wallet;
 import com.project.app.wallet.service.WalletService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.time.LocalDateTime;
 import java.util.UUID;
@@ -33,15 +34,17 @@ public class TransactionServiceImpl implements TransactionService {
     private final BankAccountRepository bankAccountRepository;
     private final PayOsPayoutService payOsPayoutService;
     private final SePayService sePayService;
+    private final PasswordEncoder passwordEncoder;
 
     public TransactionServiceImpl(TransactionRepository transactionRepository, WalletService walletService,
                                   BankAccountRepository bankAccountRepository, PayOsPayoutService payOsPayoutService,
-                                  SePayService sePayService) {
+                                  SePayService sePayService, PasswordEncoder passwordEncoder) {
         this.transactionRepository = transactionRepository;
         this.walletService = walletService;
         this.bankAccountRepository = bankAccountRepository;
         this.payOsPayoutService = payOsPayoutService;
         this.sePayService = sePayService;
+        this.passwordEncoder = passwordEncoder;
     }
 
     // ====================== NẠP TIỀN ======================
@@ -143,6 +146,14 @@ public class TransactionServiceImpl implements TransactionService {
     @Override
     @Transactional
     public WithdrawResponse processWithdrawal(User user, WithdrawRequest request) {
+        // Kiểm tra mã PIN
+        if (user.getPinCode() == null || user.getPinCode().isEmpty()) {
+            throw new AppException(ErrorCode.INVALID_PIN); // Cần thiết lập PIN trước
+        }
+        if (!passwordEncoder.matches(request.getPinCode(), user.getPinCode())) {
+            throw new AppException(ErrorCode.INVALID_PIN);
+        }
+
         // Tìm thông tin tài khoản ngân hàng
         BankAccount bankAccount = bankAccountRepository.findByIdAndUserId(request.getBankAccountId(), user.getId())
                 .orElseThrow(() -> new AppException(ErrorCode.BANK_ACCOUNT_NOT_FOUND));

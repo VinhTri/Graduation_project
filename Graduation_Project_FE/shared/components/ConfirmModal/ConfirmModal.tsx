@@ -7,7 +7,7 @@ import Colors from '../../constants/Colors';
 interface ConfirmModalProps {
   visible: boolean;
   title: string;
-  message: string;
+  message?: string;
   iconName?: keyof typeof Ionicons.glyphMap;
   iconColor?: string;
   confirmText?: string;
@@ -15,6 +15,7 @@ interface ConfirmModalProps {
   onConfirm: () => void;
   onCancel: () => void;
   isDestructive?: boolean;
+  children?: React.ReactNode;
   hideCancel?: boolean;
 }
 
@@ -29,6 +30,7 @@ export default function ConfirmModal({
   onConfirm,
   onCancel,
   isDestructive = true,
+  children,
   hideCancel = false
 }: ConfirmModalProps) {
   return (
@@ -39,7 +41,8 @@ export default function ConfirmModal({
             <Ionicons name={iconName} size={32} color={iconColor} />
           </View>
           <Text style={styles.title}>{title}</Text>
-          <Text style={styles.message}>{message}</Text>
+          {message ? <Text style={styles.message}>{message}</Text> : null}
+          {children}
           <View style={styles.buttonRow}>
             {!hideCancel && (
               <TouchableOpacity style={styles.cancelButton} onPress={onCancel} activeOpacity={0.7}>

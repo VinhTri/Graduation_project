@@ -52,6 +52,20 @@ public class BankAccountController {
                 .build());
     }
 
+    // ====================== XÓA TÀI KHOẢN NGÂN HÀNG ======================
+    @DeleteMapping("/{accountId}")
+    public ResponseEntity<ApiResponse<Void>> deleteBankAccount(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @PathVariable Long accountId) {
+        
+        bankAccountService.deleteBankAccount(userDetails.getUser(), accountId);
+        
+        return ResponseEntity.ok(ApiResponse.<Void>builder()
+                .success(true)
+                .message("Hủy liên kết ngân hàng thành công")
+                .build());
+    }
+
     // ====================== TRA CỨU TÊN CHỦ TÀI KHOẢN ======================
     @GetMapping("/lookup")
     public ResponseEntity<ApiResponse<String>> lookupBankAccount(

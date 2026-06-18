@@ -18,6 +18,7 @@ export interface TopUpResponse {
 export interface WithdrawRequest {
   amount: number;
   bankAccountId: number;
+  pinCode: string;
 }
 
 export interface WithdrawResponse {

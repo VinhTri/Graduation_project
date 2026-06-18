@@ -67,5 +67,19 @@ export const authService = {
     
     // Gọi hàm chạy đồng thời tất cả các API đã tạo
     return runConcurrent(promises as any);
+  },
+
+  /**
+   * Gọi API Quên mã PIN (Gửi OTP)
+   */
+  forgotPin: async () => {
+    return axiosClient.post(ENDPOINTS.AUTH.FORGOT_PIN);
+  },
+
+  /**
+   * Gọi API Đặt lại mã PIN mới
+   */
+  resetPin: async (data: { otp: string; newPinCode: string }) => {
+    return axiosClient.post(ENDPOINTS.AUTH.RESET_PIN, data);
   }
 };
