@@ -4,6 +4,7 @@ export type ServiceItem = {
   icon: string;
   color: string;
   bgColor: string;
+  isCustom?: boolean;
 };
 
 export type CategoryGroup = {
