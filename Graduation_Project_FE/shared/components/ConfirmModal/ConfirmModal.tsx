@@ -16,6 +16,7 @@ interface ConfirmModalProps {
   onCancel: () => void;
   isDestructive?: boolean;
   children?: React.ReactNode;
+  hideCancel?: boolean;
 }
 
 export default function ConfirmModal({
@@ -29,7 +30,8 @@ export default function ConfirmModal({
   onConfirm,
   onCancel,
   isDestructive = true,
-  children
+  children,
+  hideCancel = false
 }: ConfirmModalProps) {
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onCancel}>
@@ -42,9 +44,11 @@ export default function ConfirmModal({
           {message ? <Text style={styles.message}>{message}</Text> : null}
           {children}
           <View style={styles.buttonRow}>
-            <TouchableOpacity style={styles.cancelButton} onPress={onCancel} activeOpacity={0.7}>
-              <Text style={styles.cancelButtonText}>{cancelText}</Text>
-            </TouchableOpacity>
+            {!hideCancel && (
+              <TouchableOpacity style={styles.cancelButton} onPress={onCancel} activeOpacity={0.7}>
+                <Text style={styles.cancelButtonText}>{cancelText}</Text>
+              </TouchableOpacity>
+            )}
             <TouchableOpacity 
               style={[styles.confirmButton, { backgroundColor: isDestructive ? Colors.error : Colors.primary }]} 
               onPress={onConfirm} 

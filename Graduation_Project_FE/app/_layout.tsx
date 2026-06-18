@@ -1,7 +1,10 @@
 import { Stack } from 'expo-router';
+import { CategoryProvider } from '../shared/contexts/CategoryContext';
 
 export default function RootLayout() {
   return (
-    <Stack screenOptions={{ headerShown: false }} />
+    <CategoryProvider>
+      <Stack screenOptions={{ headerShown: false }} />
+    </CategoryProvider>
   );
 }

@@ -17,6 +17,7 @@ import { useRouter } from "expo-router";
 import Colors from "../../../../shared/constants/Colors";
 import { styles } from "./TopUpScreen.styles";
 import { transactionService } from "../../../../shared/api/services/transactionService";
+import { CategorySelectModal } from "../../../categories/components/CategorySelectModal";
 
 const QUICK_AMOUNTS = [100000, 200000, 500000, 1000000, 2000000, 5000000];
 
@@ -26,6 +27,8 @@ export default function TopUpScreen() {
   const [amount, setAmount] = useState<string>("");
   const [note, setNote] = useState<string>("");
   const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [isCategoryModalVisible, setIsCategoryModalVisible] = useState(false);
+  const [selectedCategory, setSelectedCategory] = useState<any>(null);
 
   const handleAmountChange = (text: string) => {
     // Remove non-numeric characters
@@ -57,6 +60,10 @@ export default function TopUpScreen() {
         params: { 
           amount: response.amount.toString(), 
           note: note,
+          category: selectedCategory ? selectedCategory.label : "",
+          categoryIcon: selectedCategory ? selectedCategory.icon : "",
+          categoryColor: selectedCategory ? selectedCategory.color : "",
+          categoryBgColor: selectedCategory ? selectedCategory.bgColor : "",
           transactionCode: response.transactionCode,
           qrUrl: response.qrUrl,
           expiresAt: response.expiresAt,
@@ -142,13 +149,25 @@ export default function TopUpScreen() {
               {/* Category Section */}
               <View style={styles.paymentSection}>
                 <Text style={styles.sectionTitle}>Chọn danh mục</Text>
-                <TouchableOpacity style={styles.paymentMethodCard} activeOpacity={0.8}>
-                  <View style={[styles.paymentIconBg, { backgroundColor: Colors.primary + "1A" }]}>
-                    <Ionicons name="folder-open" size={20} color={Colors.primaryDark} />
+                <TouchableOpacity 
+                  style={styles.paymentMethodCard} 
+                  activeOpacity={0.8}
+                  onPress={() => setIsCategoryModalVisible(true)}
+                >
+                  <View style={[styles.paymentIconBg, { backgroundColor: selectedCategory ? selectedCategory.bgColor : Colors.primary + "1A" }]}>
+                    <Ionicons 
+                      name={selectedCategory ? selectedCategory.icon : "folder-open"} 
+                      size={20} 
+                      color={selectedCategory ? selectedCategory.color : Colors.primaryDark} 
+                    />
                   </View>
                   <View style={styles.paymentInfo}>
-                    <Text style={styles.paymentTitle}>Chi tiêu cá nhân</Text>
-                    <Text style={styles.paymentSubtitle}>Ví SmartSpend</Text>
+                    <Text style={styles.paymentTitle}>
+                      {selectedCategory ? selectedCategory.label : "Chưa chọn danh mục"}
+                    </Text>
+                    <Text style={styles.paymentSubtitle}>
+                      {selectedCategory ? selectedCategory.groupName : "Bấm để chọn danh mục thu/chi"}
+                    </Text>
                   </View>
                   <Ionicons name="chevron-down" size={20} color={Colors.textMuted} />
                 </TouchableOpacity>
@@ -200,6 +219,15 @@ export default function TopUpScreen() {
 
           </View>
         </TouchableWithoutFeedback>
+
+        <CategorySelectModal 
+          visible={isCategoryModalVisible}
+          onClose={() => setIsCategoryModalVisible(false)}
+          onSelect={(category, groupName) => {
+            setSelectedCategory({ ...category, groupName });
+            setIsCategoryModalVisible(false);
+          }}
+        />
       </KeyboardAvoidingView>
     </View>
   );
