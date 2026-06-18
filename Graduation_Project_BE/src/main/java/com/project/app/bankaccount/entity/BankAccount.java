@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import lombok.*;
 
 import java.time.LocalDateTime;
+import com.project.app.user.entity.User;
 
 @Entity
 @Table(name = "bank_accounts")
