@@ -1,5 +1,6 @@
 package com.project.app.bankaccount.entity;
 
+import com.project.app.user.entity.User;
 import jakarta.persistence.*;
 import lombok.*;
 
