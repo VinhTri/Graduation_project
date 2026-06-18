@@ -77,7 +77,7 @@ public class TransactionServiceImpl implements TransactionService {
         // Tạo link VietQR nạp tiền qua SePay
         String qrUrl = sePayService.generateVietQrUrl(transaction.getAmount(), transactionCode);
         
-        LocalDateTime expiresAt = LocalDateTime.now().plusMinutes(15);
+        LocalDateTime expiresAt = LocalDateTime.now().plusMinutes(10);
 
         return new TopUpResponse(
                 transactionCode,
@@ -210,5 +210,35 @@ public class TransactionServiceImpl implements TransactionService {
                 transaction.getAmount(),
                 transaction.getCreatedAt()
         );
+    }
+
+    // ====================== TÌM GIAO DỊCH CHỜ XỬ LÝ ======================
+    @Override
+    public TopUpResponse getPendingTopUp(User user) {
+        // Tìm giao dịch TOP_UP, PENDING mới nhất và còn hạn (created_at trong vòng 10 phút trước)
+        LocalDateTime validTime = LocalDateTime.now().minusMinutes(10);
+        return transactionRepository.findFirstByUserAndTypeAndStatusAndCreatedAtAfterOrderByCreatedAtDesc(
+                user, TransactionType.TOP_UP, TransactionStatus.PENDING, validTime
+        ).map(tx -> {
+            String qrUrl = sePayService.generateVietQrUrl(tx.getAmount(), tx.getTransactionCode());
+            LocalDateTime expiresAt = tx.getCreatedAt().plusMinutes(10);
+            return new TopUpResponse(
+                    tx.getTransactionCode(),
+                    qrUrl,
+                    expiresAt,
+                    tx.getAmount(),
+                    tx.getCreatedAt()
+            );
+        }).orElse(null);
+    }
+
+    // ====================== HỦY GIAO DỊCH ======================
+    @Override
+    public void cancelTransaction(String transactionCode, User user) {
+        Transaction transaction = getTransactionByCode(transactionCode, user);
+        if (transaction.getStatus() == TransactionStatus.PENDING) {
+            transaction.setStatus(TransactionStatus.CANCELLED);
+            transactionRepository.save(transaction);
+        }
     }
 }

@@ -1,13 +1,33 @@
-import React, { useState } from "react";
+import React, { useState, useCallback } from "react";
 import { View, Text, TouchableOpacity } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { styles } from "./HomeWalletSummary.styles";
 import Colors from "@/shared/constants/Colors";
+import { transactionService } from "@/shared/api/services/transactionService";
+import { useFocusEffect } from "expo-router";
 
 export const HomeWalletSummary = () => {
   const [isBalanceVisible, setIsBalanceVisible] = useState(true);
+  const [walletBalance, setWalletBalance] = useState<number>(0);
 
   const toggleBalance = () => setIsBalanceVisible(!isBalanceVisible);
+
+  const fetchWallet = async () => {
+    try {
+      const response = await transactionService.getWalletMe();
+      if (response && response.data) {
+        setWalletBalance(response.data.balance);
+      }
+    } catch (error) {
+      console.log("Error fetching wallet in HomeWalletSummary", error);
+    }
+  };
+
+  useFocusEffect(
+    useCallback(() => {
+      fetchWallet();
+    }, [])
+  );
 
   return (
     <View style={styles.container}>
@@ -19,10 +39,10 @@ export const HomeWalletSummary = () => {
         {/* SmartSpend */}
         <View style={styles.walletItem}>
           <Text style={styles.walletLabel}>
-            Ví <Text style={styles.smartSpendLabel}>SmartSp...</Text>
+            Ví <Text style={styles.smartSpendLabel}>SmartSpend</Text>
           </Text>
           <View style={styles.walletBalanceRow}>
-            <Text style={styles.walletBalance}>{isBalanceVisible ? "3.671đ" : "***"}</Text>
+            <Text style={styles.walletBalance}>{isBalanceVisible ? `${walletBalance.toLocaleString("vi-VN")}đ` : "***"}</Text>
             <Ionicons name="chevron-forward" size={14} color={Colors.textMuted} />
           </View>
         </View>
@@ -31,7 +51,7 @@ export const HomeWalletSummary = () => {
         <View style={styles.walletItem}>
           <Text style={styles.walletLabel}>Ví Tiết Kiệm</Text>
           <View style={styles.walletBalanceRow}>
-            <Text style={styles.walletBalance}>{isBalanceVisible ? "0đ" : "***"}</Text>
+            <Text style={[styles.walletBalance, { color: Colors.textMuted, fontSize: 13, fontWeight: "500" }]}>Chưa liên kết</Text>
             <Ionicons name="chevron-forward" size={14} color={Colors.textMuted} />
           </View>
         </View>
@@ -40,7 +60,7 @@ export const HomeWalletSummary = () => {
         <View style={[styles.walletItem, styles.walletItemNoBorder]}>
           <Text style={styles.walletLabel}>Quỹ</Text>
           <View style={styles.walletBalanceRow}>
-            <Text style={styles.walletBalance}>{isBalanceVisible ? "210đ" : "***"}</Text>
+            <Text style={[styles.walletBalance, { color: Colors.textMuted, fontSize: 13, fontWeight: "500" }]}>Chưa liên kết</Text>
             <Ionicons name="chevron-forward" size={14} color={Colors.textMuted} />
           </View>
         </View>

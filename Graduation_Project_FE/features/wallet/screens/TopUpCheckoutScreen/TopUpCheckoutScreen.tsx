@@ -7,6 +7,7 @@ import Colors from "../../../../shared/constants/Colors";
 import { ConfirmModal, SuccessModal } from "../../../../shared/components";
 import { styles } from "./TopUpCheckoutScreen.styles";
 import { transactionService } from "../../../../shared/api/services/transactionService";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 export default function TopUpCheckoutScreen() {
   const router = useRouter();
@@ -201,7 +202,7 @@ export default function TopUpCheckoutScreen() {
         isDestructive={false}
         onConfirm={() => {
           setShowBackModal(false);
-          router.replace('/(tabs)/wallet');
+          router.replace('/(tabs)/home');
         }}
         onCancel={() => setShowBackModal(false)}
       />
@@ -215,9 +216,17 @@ export default function TopUpCheckoutScreen() {
         confirmText="Đồng ý hủy"
         cancelText="Không"
         isDestructive={true}
-        onConfirm={() => {
+        onConfirm={async () => {
           setShowCancelModal(false);
-          router.replace('/(tabs)/wallet');
+          if (transactionCode) {
+            try {
+              await transactionService.cancelTransaction(transactionCode as string);
+            } catch (e) {
+              console.log("Failed to cancel on backend", e);
+            }
+            await AsyncStorage.setItem(`cancelled_tx_${transactionCode}`, "true");
+          }
+          router.replace('/(tabs)/home');
         }}
         onCancel={() => setShowCancelModal(false)}
       />

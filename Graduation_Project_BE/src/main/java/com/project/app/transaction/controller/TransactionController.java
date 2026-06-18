@@ -71,6 +71,19 @@ public class TransactionController {
                 .build());
     }
 
+    @GetMapping("/pending-topup")
+    public ResponseEntity<ApiResponse<TopUpResponse>> getPendingTopUp(
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+        
+        TopUpResponse response = transactionService.getPendingTopUp(userDetails.getUser());
+        
+        return ResponseEntity.ok(ApiResponse.<TopUpResponse>builder()
+                .success(true)
+                .message(response != null ? "Tìm thấy giao dịch chờ xử lý" : "Không có giao dịch chờ xử lý")
+                .data(response)
+                .build());
+    }
+
     // ====================== RÚT TIỀN ======================
     @PostMapping("/withdraw")
     public ResponseEntity<ApiResponse<WithdrawResponse>> processWithdrawal(
@@ -82,6 +95,19 @@ public class TransactionController {
                 .success(true)
                 .message("Rút tiền thành công")
                 .data(response)
+                .build());
+    }
+
+    // ====================== HỦY GIAO DỊCH ======================
+    @PostMapping("/{transactionCode}/cancel")
+    public ResponseEntity<ApiResponse<Void>> cancelTransaction(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @PathVariable String transactionCode) {
+        
+        transactionService.cancelTransaction(transactionCode, userDetails.getUser());
+        return ResponseEntity.ok(ApiResponse.<Void>builder()
+                .success(true)
+                .message("Hủy giao dịch thành công")
                 .build());
     }
 }

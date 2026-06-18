@@ -47,6 +47,20 @@ export const transactionService = {
     return response.data;
   },
 
+  getPendingTopUp: async (): Promise<TopUpResponse | null> => {
+    try {
+      const response = await axiosClient.get(ENDPOINTS.TRANSACTION.PENDING_TOPUP);
+      return response.data || null;
+    } catch (error) {
+      console.error("Failed to fetch pending top-up", error);
+      return null;
+    }
+  },
+
+  cancelTransaction: async (transactionCode: string): Promise<void> => {
+    await axiosClient.post(ENDPOINTS.TRANSACTION.CANCEL(transactionCode));
+  },
+
   processWithdrawal: async (data: WithdrawRequest): Promise<WithdrawResponse> => {
     const response = await axiosClient.post(ENDPOINTS.TRANSACTION.WITHDRAW, data);
     return response.data;

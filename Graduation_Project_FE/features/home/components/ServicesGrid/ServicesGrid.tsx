@@ -23,11 +23,13 @@ const HOME_SERVICES = [
 export const ServicesGrid = () => {
   const router = useRouter();
 
-  const handlePress = (id: string) => {
+  const handlePress = (id: string, label: string) => {
     if (id === "danh_muc") {
       router.push('/categories');
     } else if (id === "tat_ca") {
       router.push('/all-services');
+    } else if (label === "Nạp tiền") {
+      router.push("/wallet/action?initialTab=topup");
     } else {
       // Handle normal service press
       console.log("Pressed service:", id);
@@ -62,7 +64,7 @@ export const ServicesGrid = () => {
             key={service.id}
             style={styles.serviceItem}
             activeOpacity={0.7}
-            onPress={() => handlePress(service.id)}
+            onPress={() => handlePress(service.id, service.label)}
           >
             <View style={[styles.iconContainer, { backgroundColor: service.bgColor }]}>
               <Ionicons name={service.icon as any} size={24} color={service.color} />
