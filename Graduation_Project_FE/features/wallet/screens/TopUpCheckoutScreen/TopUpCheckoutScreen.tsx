@@ -11,7 +11,11 @@ import { transactionService } from "../../../../shared/api/services/transactionS
 export default function TopUpCheckoutScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { amount, note, category, transactionCode, qrUrl, createdAt } = useLocalSearchParams();
+  const { 
+    amount, note, category, 
+    categoryIcon, categoryColor, categoryBgColor, 
+    transactionCode, qrUrl, createdAt 
+  } = useLocalSearchParams();
   const [timeLeft, setTimeLeft] = useState(15 * 60); // 15 minutes in seconds
   const [showSuccessModal, setShowSuccessModal] = useState(false);
 
@@ -140,7 +144,27 @@ export default function TopUpCheckoutScreen() {
             </View>
             <View style={styles.infoRow}>
               <Text style={styles.infoLabel}>Danh mục</Text>
-              <Text style={styles.infoValue}>{category || "Chưa chọn danh mục"}</Text>
+              {category ? (
+                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                  {categoryIcon ? (
+                    <View style={{ 
+                      backgroundColor: (categoryBgColor as string) || Colors.primary + '1A', 
+                      width: 24, height: 24, borderRadius: 12,
+                      justifyContent: 'center', alignItems: 'center',
+                      marginRight: 8
+                    }}>
+                      <Ionicons 
+                        name={(categoryIcon as any)} 
+                        size={14} 
+                        color={(categoryColor as string) || Colors.primary} 
+                      />
+                    </View>
+                  ) : null}
+                  <Text style={styles.infoValue}>{category}</Text>
+                </View>
+              ) : (
+                <Text style={styles.infoValue}>Chưa chọn danh mục</Text>
+              )}
             </View>
             <View style={styles.infoRow}>
               <Text style={styles.infoLabel}>Ghi chú</Text>

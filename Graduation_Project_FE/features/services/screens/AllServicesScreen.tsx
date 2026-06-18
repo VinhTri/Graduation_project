@@ -9,12 +9,14 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { styles } from "./AllServicesScreen.styles";
 import Colors from "../../../shared/constants/Colors";
 import { ALL_SERVICES_DATA } from "../data/allServices";
 
 export const AllServicesScreen = () => {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const [searchQuery, setSearchQuery] = useState("");
 
   const handleServicePress = (service: any) => {
@@ -23,11 +25,16 @@ export const AllServicesScreen = () => {
   };
 
   const renderHeader = () => (
-    <View style={styles.header}>
-      <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-        <Ionicons name="arrow-back" size={24} color={Colors.white} />
-      </TouchableOpacity>
-      <Text style={styles.headerTitle}>Tất cả dịch vụ</Text>
+    <View style={[styles.header, { paddingTop: insets.top + 12, paddingBottom: 12 }]}>
+      <View style={styles.leftSection}>
+        <TouchableOpacity onPress={() => router.back()} style={styles.backButton} activeOpacity={0.7}>
+          <Ionicons name="chevron-back-outline" size={22} color={Colors.white} />
+        </TouchableOpacity>
+        <View style={styles.titleContainer}>
+          <Text style={styles.headerTitle}>Tất cả dịch vụ</Text>
+          <Text style={styles.headerSubtitle}>Danh mục thông minh</Text>
+        </View>
+      </View>
       <View style={{ width: 24 }} />
     </View>
   );
@@ -40,7 +47,7 @@ export const AllServicesScreen = () => {
   })).filter(group => group.data.length > 0 || group.title.toLowerCase().includes(searchQuery.toLowerCase()));
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <View style={styles.safeArea}>
       {renderHeader()}
       
       <View style={styles.topActionsContainer}>
@@ -97,7 +104,7 @@ export const AllServicesScreen = () => {
         )}
         <View style={{ height: 40 }} />
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 };
 
