@@ -18,7 +18,9 @@ export const ENDPOINTS = {
   TRANSACTION: {
     TOP_UP: '/api/v1/transactions/top-up',
     WITHDRAW: '/api/v1/transactions/withdraw',
+    PENDING_TOPUP: '/api/v1/transactions/pending-topup',
     GET_STATUS: (code: string) => `/api/v1/transactions/${code}`,
+    CANCEL: (code: string) => `/api/v1/transactions/${code}/cancel`,
   },
   WALLET: {
     MY_WALLET: '/api/v1/wallets/me',

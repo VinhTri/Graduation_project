@@ -9,4 +9,11 @@ import java.util.Optional;
 @Repository
 public interface TransactionRepository extends JpaRepository<Transaction, Long> {
     Optional<Transaction> findByTransactionCode(String transactionCode);
+    
+    Optional<Transaction> findFirstByUserAndTypeAndStatusAndCreatedAtAfterOrderByCreatedAtDesc(
+            com.project.app.user.entity.User user, 
+            com.project.app.transaction.entity.TransactionType type, 
+            com.project.app.transaction.entity.TransactionStatus status, 
+            java.time.LocalDateTime createdAt
+    );
 }
