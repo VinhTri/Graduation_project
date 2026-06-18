@@ -4,7 +4,9 @@ import {
   Text, 
   TouchableOpacity, 
   ScrollView, 
-  TextInput
+  TextInput,
+  Alert,
+  Modal
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
@@ -13,6 +15,8 @@ import Colors from '../../../shared/constants/Colors';
 import { useCategoryContext } from '../../../shared/contexts/CategoryContext';
 import { AddCategoryModal } from '../components/AddCategoryModal';
 import { styles } from './CategoriesScreen.styles';
+import { ConfirmModal } from '../../../shared/components';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export default function CategoriesScreen() {
   const router = useRouter();
@@ -20,9 +24,65 @@ export default function CategoriesScreen() {
   const { categories, removeService } = useCategoryContext();
   const [searchQuery, setSearchQuery] = useState("");
   const [isModalVisible, setModalVisible] = useState(false);
+  const [itemToDelete, setItemToDelete] = useState<string | null>(null);
+  const [showSystemCategoryWarning, setShowSystemCategoryWarning] = useState(false);
+  
+  const [selectedService, setSelectedService] = useState<any>(null);
+  const [showOptions, setShowOptions] = useState(false);
+  const [itemToEdit, setItemToEdit] = useState<any>(null);
 
-  const handleDelete = (serviceId: string) => {
-    removeService(serviceId);
+  // Coachmark State
+  const [showCoachmark, setShowCoachmark] = useState(false);
+
+  React.useEffect(() => {
+    const checkCoachmark = async () => {
+      try {
+        const hasSeen = await AsyncStorage.getItem('hasSeenCategoryCoachmark');
+        if (hasSeen !== 'true') {
+          setShowCoachmark(true);
+        }
+      } catch (e) {
+        // ignore
+      }
+    };
+    checkCoachmark();
+  }, []);
+
+  const dismissCoachmark = async () => {
+    setShowCoachmark(false);
+    try {
+      await AsyncStorage.setItem('hasSeenCategoryCoachmark', 'true');
+    } catch (e) {
+      // ignore
+    }
+  };
+
+  const handleLongPress = (service: any, groupId: string) => {
+    // Nếu danh mục có cờ isCustom (đã restart backend) HOẶC id lớn hơn 10 (chưa restart backend nhưng chắc chắn là danh mục mới tạo)
+    if (service.isCustom === true || (service.isCustom === undefined && parseInt(service.id) > 10)) {
+      setSelectedService({ ...service, groupId });
+      setShowOptions(true);
+    } else {
+      setShowSystemCategoryWarning(true);
+    }
+  };
+
+  const handleEditOption = () => {
+    setShowOptions(false);
+    setItemToEdit(selectedService);
+    setModalVisible(true);
+  };
+
+  const handleDeleteOption = () => {
+    setShowOptions(false);
+    setItemToDelete(selectedService?.id);
+  };
+
+  const confirmDelete = async () => {
+    if (itemToDelete) {
+      await removeService(itemToDelete);
+      setItemToDelete(null);
+    }
   };
 
   const filteredCategories = categories.map(group => ({
@@ -74,6 +134,34 @@ export default function CategoriesScreen() {
         style={styles.scrollContainer}
         showsVerticalScrollIndicator={false}
       >
+        {/* --- COACHMARK / TOOLTIP BANNER --- */}
+        {showCoachmark && (
+          <View style={{
+            flexDirection: 'row',
+            backgroundColor: '#E0F2FE', // Light blue background
+            marginHorizontal: 20,
+            marginBottom: 20,
+            padding: 16,
+            borderRadius: 16,
+            alignItems: 'flex-start',
+            borderWidth: 1,
+            borderColor: '#BAE6FD'
+          }}>
+            <Text style={{ fontSize: 20, marginRight: 12 }}>💡</Text>
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontSize: 14, fontWeight: '700', color: '#0369A1', marginBottom: 4 }}>
+                Mẹo sử dụng
+              </Text>
+              <Text style={{ fontSize: 13, color: '#0C4A6E', lineHeight: 18 }}>
+                Nhấn giữ (Long press) vào danh mục bạn tự tạo để mở menu tùy chọn <Text style={{ fontWeight: 'bold' }}>Chỉnh sửa</Text> hoặc <Text style={{ fontWeight: 'bold' }}>Xóa</Text>.
+              </Text>
+            </View>
+            <TouchableOpacity onPress={dismissCoachmark} style={{ padding: 4, marginLeft: 8 }}>
+              <Ionicons name="close" size={20} color="#0369A1" />
+            </TouchableOpacity>
+          </View>
+        )}
+
         {filteredCategories.length > 0 ? (
           filteredCategories.map((group) => (
             <View key={group.id} style={styles.groupCard}>
@@ -86,17 +174,15 @@ export default function CategoriesScreen() {
               
               <View style={styles.gridContainer}>
                 {group.items.map((service) => (
-                  <TouchableOpacity key={service.id} style={styles.gridItem}>
+                  <TouchableOpacity 
+                    key={service.id} 
+                    style={styles.gridItem}
+                    onLongPress={() => handleLongPress(service, group.id)}
+                    delayLongPress={300}
+                    activeOpacity={0.7}
+                  >
                     <View style={styles.iconWrapper}>
                       <Ionicons name={service.icon as any} size={28} color={service.color} />
-                      {service.id && String(service.id).startsWith("custom_") ? (
-                        <TouchableOpacity 
-                          style={styles.deleteBadge}
-                          onPress={() => handleDelete(service.id)}
-                        >
-                          <Ionicons name="close-circle" size={20} color={Colors.error} />
-                        </TouchableOpacity>
-                      ) : null}
                     </View>
                     <Text style={styles.itemLabel} numberOfLines={2}>
                       {service.label}
@@ -119,8 +205,74 @@ export default function CategoriesScreen() {
 
       <AddCategoryModal 
         visible={isModalVisible} 
-        onClose={() => setModalVisible(false)} 
+        onClose={() => {
+          setModalVisible(false);
+          setItemToEdit(null);
+        }} 
+        initialData={itemToEdit}
       />
+
+      <ConfirmModal
+        visible={!!itemToDelete}
+        title="Xóa danh mục"
+        message="Bạn có chắc chắn muốn xóa danh mục này? Lịch sử các giao dịch cũ vẫn sẽ được giữ nguyên."
+        iconName="trash-outline"
+        iconColor={Colors.error}
+        confirmText="Xóa"
+        cancelText="Hủy"
+        isDestructive={true}
+        onConfirm={confirmDelete}
+        onCancel={() => setItemToDelete(null)}
+      />
+
+      <ConfirmModal
+        visible={showSystemCategoryWarning}
+        title="Không thể xóa"
+        message="Danh mục mặc định của hệ thống không thể bị xóa hoặc thay đổi. Vui lòng chọn danh mục bạn tự tạo."
+        iconName="information-circle-outline"
+        iconColor={Colors.primary}
+        confirmText="Đã hiểu"
+        isDestructive={false}
+        hideCancel={true}
+        onConfirm={() => setShowSystemCategoryWarning(false)}
+        onCancel={() => setShowSystemCategoryWarning(false)}
+      />
+
+      {/* Tùy chọn Modal (Action Sheet cho Web & Mobile) */}
+      <Modal visible={showOptions} transparent animationType="fade" onRequestClose={() => setShowOptions(false)}>
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center', padding: 24 }}>
+          <View style={{ width: '100%', backgroundColor: '#FFF', borderRadius: 24, padding: 24, alignItems: 'center' }}>
+            <View style={{ width: 64, height: 64, borderRadius: 32, backgroundColor: Colors.primary + '1A', justifyContent: 'center', alignItems: 'center', marginBottom: 16 }}>
+              <Ionicons name="settings-outline" size={32} color={Colors.primary} />
+            </View>
+            <Text style={{ fontSize: 20, fontWeight: '700', color: Colors.text, marginBottom: 12, textAlign: 'center' }}>Tùy chọn danh mục</Text>
+            <Text style={{ fontSize: 15, color: Colors.textMuted, textAlign: 'center', marginBottom: 24, lineHeight: 22 }}>
+              Bạn muốn làm gì với danh mục "{selectedService?.label}"?
+            </Text>
+            <View style={{ width: '100%', gap: 12 }}>
+              <TouchableOpacity 
+                style={{ width: '100%', paddingVertical: 14, borderRadius: 16, backgroundColor: Colors.primary, alignItems: 'center' }} 
+                onPress={handleEditOption}
+              >
+                <Text style={{ fontSize: 15, fontWeight: '600', color: '#FFF' }}>Chỉnh sửa</Text>
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={{ width: '100%', paddingVertical: 14, borderRadius: 16, backgroundColor: Colors.error, alignItems: 'center' }} 
+                onPress={handleDeleteOption}
+              >
+                <Text style={{ fontSize: 15, fontWeight: '600', color: '#FFF' }}>Xóa danh mục</Text>
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={{ width: '100%', paddingVertical: 14, borderRadius: 16, backgroundColor: Colors.background, alignItems: 'center' }} 
+                onPress={() => setShowOptions(false)}
+              >
+                <Text style={{ fontSize: 15, fontWeight: '600', color: Colors.text }}>Hủy</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
     </View>
   );
 };

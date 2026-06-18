@@ -15,6 +15,7 @@ interface ConfirmModalProps {
   onConfirm: () => void;
   onCancel: () => void;
   isDestructive?: boolean;
+  hideCancel?: boolean;
 }
 
 export default function ConfirmModal({
@@ -27,7 +28,8 @@ export default function ConfirmModal({
   cancelText = "Hủy",
   onConfirm,
   onCancel,
-  isDestructive = true
+  isDestructive = true,
+  hideCancel = false
 }: ConfirmModalProps) {
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onCancel}>
@@ -39,9 +41,11 @@ export default function ConfirmModal({
           <Text style={styles.title}>{title}</Text>
           <Text style={styles.message}>{message}</Text>
           <View style={styles.buttonRow}>
-            <TouchableOpacity style={styles.cancelButton} onPress={onCancel} activeOpacity={0.7}>
-              <Text style={styles.cancelButtonText}>{cancelText}</Text>
-            </TouchableOpacity>
+            {!hideCancel && (
+              <TouchableOpacity style={styles.cancelButton} onPress={onCancel} activeOpacity={0.7}>
+                <Text style={styles.cancelButtonText}>{cancelText}</Text>
+              </TouchableOpacity>
+            )}
             <TouchableOpacity 
               style={[styles.confirmButton, { backgroundColor: isDestructive ? Colors.error : Colors.primary }]} 
               onPress={onConfirm} 

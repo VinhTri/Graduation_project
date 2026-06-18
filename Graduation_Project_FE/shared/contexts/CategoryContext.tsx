@@ -4,7 +4,9 @@ import { axiosClient } from '../api/axiosClient';
 
 type CategoryContextType = {
   categories: CategoryGroup[];
+  loadCategories: () => Promise<void>;
   addService: (categoryId: string, newService: Omit<ServiceItem, 'id'>) => Promise<void>;
+  updateService: (serviceId: string, categoryId: string, updatedService: Omit<ServiceItem, 'id'>) => Promise<void>;
   removeService: (serviceId: string) => Promise<void>;
   addGroup: (title: string) => Promise<void>;
   isLoading: boolean;
@@ -54,6 +56,22 @@ export const CategoryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     }
   };
 
+  const updateService = async (serviceId: string, categoryId: string, updatedService: Omit<ServiceItem, 'id'>) => {
+    try {
+      await axiosClient.put(`/api/v1/categories/items/${serviceId}`, {
+        groupId: categoryId,
+        label: updatedService.label,
+        icon: updatedService.icon,
+        color: updatedService.color,
+        bgColor: updatedService.bgColor
+      });
+      await loadCategories();
+    } catch (error) {
+      console.error("Failed to update service", error);
+      throw error;
+    }
+  };
+
   const addGroup = async (title: string) => {
     try {
       const response = await axiosClient.post('/api/v1/categories/groups', {
@@ -71,12 +89,18 @@ export const CategoryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   };
 
   const removeService = async (serviceId: string) => {
-    // Optional: implement DELETE /api/v1/categories/items/{id} later
-    console.warn("removeService not yet implemented on backend");
+    try {
+      await axiosClient.delete(`/api/v1/categories/items/${serviceId}`);
+      // Refresh categories after deleting
+      await loadCategories();
+    } catch (error) {
+      console.error("Failed to remove service", error);
+      throw error;
+    }
   };
 
   return (
-    <CategoryContext.Provider value={{ categories, addService, removeService, addGroup, isLoading }}>
+    <CategoryContext.Provider value={{ categories, loadCategories, addService, updateService, removeService, addGroup, isLoading }}>
       {children}
     </CategoryContext.Provider>
   );

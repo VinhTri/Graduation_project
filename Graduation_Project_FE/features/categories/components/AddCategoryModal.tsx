@@ -33,13 +33,16 @@ interface AlertConfig {
   onCancel?: () => void;
 }
 
+import { ServiceItem } from '../../data/mockData';
+
 type AddCategoryModalProps = {
   visible: boolean;
   onClose: () => void;
+  initialData?: ServiceItem & { groupId?: string };
 };
 
-export const AddCategoryModal: React.FC<AddCategoryModalProps> = ({ visible, onClose }) => {
-  const { categories, addService } = useCategoryContext();
+export const AddCategoryModal: React.FC<AddCategoryModalProps> = ({ visible, onClose, initialData }) => {
+  const { categories, addService, updateService } = useCategoryContext();
 
   const [label, setLabel] = useState("");
   const [selectedIcon, setSelectedIcon] = useState("apps-outline");
@@ -77,16 +80,32 @@ export const AddCategoryModal: React.FC<AddCategoryModalProps> = ({ visible, onC
     'vàng': { groupName: 'Đầu tư', icon: 'stop-circle-outline', colorIndex: 1 }, // Yellow
   };
 
-  // Tự động chọn nhóm đầu tiên khi mở modal
+  // Tự động chọn nhóm đầu tiên khi mở modal hoặc fill data nếu ở chế độ Sửa
   React.useEffect(() => {
-    if (visible && categories.length > 0 && !selectedGroup) {
-      setSelectedGroup(categories[0].id);
+    if (visible) {
+      if (initialData) {
+        setLabel(initialData.label || "");
+        setSelectedIcon(initialData.icon || "apps-outline");
+        if (initialData.groupId) {
+          setSelectedGroup(initialData.groupId);
+        }
+        const colorIdx = AVAILABLE_COLORS.findIndex(c => c.color === initialData.color);
+        setSelectedColorIndex(colorIdx >= 0 ? colorIdx : 0);
+      } else {
+        // Reset form
+        setLabel("");
+        setSelectedIcon("apps-outline");
+        setSelectedColorIndex(0);
+        if (categories.length > 0) {
+          setSelectedGroup(categories[0].id);
+        }
+      }
     }
-  }, [visible, categories]);
+  }, [visible, initialData, categories]);
 
-  // Auto-suggest based on label
+  // Auto-suggest based on label (Only run if it's NOT edit mode)
   React.useEffect(() => {
-    if (!label.trim()) return;
+    if (initialData || !label.trim()) return;
     
     const lowerLabel = label.toLowerCase();
     for (const [keyword, suggestion] of Object.entries(KEYWORD_MAP)) {
@@ -105,12 +124,21 @@ export const AddCategoryModal: React.FC<AddCategoryModalProps> = ({ visible, onC
 
   const executeSave = async () => {
     const colorTheme = AVAILABLE_COLORS[selectedColorIndex];
-    await addService(selectedGroup, {
-      label: label.trim(),
-      icon: selectedIcon,
-      color: colorTheme.color,
-      bgColor: colorTheme.bgColor,
-    });
+    if (initialData) {
+      await updateService(initialData.id, selectedGroup, {
+        label: label.trim(),
+        icon: selectedIcon,
+        color: colorTheme.color,
+        bgColor: colorTheme.bgColor,
+      });
+    } else {
+      await addService(selectedGroup, {
+        label: label.trim(),
+        icon: selectedIcon,
+        color: colorTheme.color,
+        bgColor: colorTheme.bgColor,
+      });
+    }
 
     setLabel("");
     onClose();
@@ -127,11 +155,11 @@ export const AddCategoryModal: React.FC<AddCategoryModalProps> = ({ visible, onC
       return;
     }
 
-    // 1. CHUẨN LOGIC: Kiểm tra trùng lặp tên danh mục trên TOÀN BỘ hệ thống
+    // 1. CHUẨN LOGIC: Kiểm tra trùng lặp tên danh mục trên TOÀN BỘ hệ thống (bỏ qua chính nó nếu đang sửa)
     const normalizedLabel = trimmedLabel.toLowerCase();
     let duplicateGroupName = "";
     for (const group of categories) {
-      const found = group.items.find(item => item.label.toLowerCase() === normalizedLabel);
+      const found = group.items.find(item => item.label.toLowerCase() === normalizedLabel && item.id !== initialData?.id);
       if (found) {
         duplicateGroupName = group.title;
         break;
@@ -193,7 +221,7 @@ export const AddCategoryModal: React.FC<AddCategoryModalProps> = ({ visible, onC
       >
         <View style={styles.modalContainer}>
           <View style={styles.header}>
-            <Text style={styles.headerTitle}>Thêm Danh Mục Mới</Text>
+            <Text style={styles.headerTitle}>{initialData ? "Sửa Danh Mục" : "Thêm Danh Mục Mới"}</Text>
             <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
               <Ionicons name="close" size={24} color={Colors.text} />
             </TouchableOpacity>
@@ -266,7 +294,7 @@ export const AddCategoryModal: React.FC<AddCategoryModalProps> = ({ visible, onC
           {/* Footer actions */}
           <View style={styles.footer}>
             <TouchableOpacity style={styles.saveBtn} onPress={handleSave}>
-              <Text style={styles.saveBtnText}>Lưu & Thêm</Text>
+              <Text style={styles.saveBtnText}>{initialData ? "Cập Nhật" : "Lưu & Thêm"}</Text>
             </TouchableOpacity>
           </View>
         </View>
