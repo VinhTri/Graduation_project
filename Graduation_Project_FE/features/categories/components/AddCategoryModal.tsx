@@ -233,6 +233,7 @@ export const AddCategoryModal: React.FC<AddCategoryModalProps> = ({ visible, onC
             <TextInput
               style={styles.input}
               placeholder="Nhập tên (VD: Quà tặng, Vé máy bay...)"
+              placeholderTextColor={Colors.textMuted || '#9CA3AF'}
               value={label}
               onChangeText={setLabel}
               maxLength={30}
@@ -394,6 +395,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 16,
     fontSize: 16,
+    color: Colors.text,
     marginBottom: 20,
   },
   groupContainer: {
