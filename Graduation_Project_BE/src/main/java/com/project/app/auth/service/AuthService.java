@@ -15,4 +15,9 @@ public interface AuthService {
     void processForgotPassword(SendOtpRequest request);
     void processResetPassword(ResetPasswordRequest request);
     void verifyOtp(VerifyOtpRequest request);
+    
+    boolean hasPinCode(Long userId);
+    void setupPinCode(Long userId, String pinCode);
+    void sendForgotPinOtp(Long userId);
+    void resetPinCode(Long userId, String otp, String newPinCode);
 }

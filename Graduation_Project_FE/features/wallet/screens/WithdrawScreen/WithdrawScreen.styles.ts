@@ -33,6 +33,7 @@ export const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingHorizontal: 24,
+    paddingTop: 24,
     paddingBottom: 40,
   },
   amountSection: {
@@ -114,7 +115,8 @@ export const styles = StyleSheet.create({
     padding: 16,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: "transparent",
+    borderColor: "#E5E7EB", // Bọc khung màu xám nhạt cho đẹp
+    marginBottom: 12,       // Cách đều nhau
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.03,

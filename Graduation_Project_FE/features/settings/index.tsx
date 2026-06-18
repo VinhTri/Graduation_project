@@ -41,7 +41,7 @@ export function SettingsScreen() {
         <SettingsSection title="Quản lý tài chính" rightLink="Xem thêm">
           <SettingsItem 
             icon={<Ionicons name="card-outline" size={22} color={Colors.textMuted} />}
-            title="Tài khoản/thẻ liên kết"
+            title="Liên kết tài khoản ngân hàng"
             onPress={() => router.push('/settings/bank-binding')}
           />
           <SettingsItem 

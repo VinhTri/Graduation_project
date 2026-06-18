@@ -8,6 +8,8 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import com.project.app.auth.security.CustomUserDetails;
 
 @RestController
 @RequestMapping("/api/v1/auth")
@@ -63,6 +65,65 @@ public class AuthController {
         return ResponseEntity.ok(ApiResponse.<Void>builder()
                 .success(true)
                 .message("Đặt lại mật khẩu thành công!")
+                .build());
+    }
+
+    // ====================== MÃ PIN ======================
+    @GetMapping("/pin-status")
+    public ResponseEntity<ApiResponse<Boolean>> getPinStatus(@AuthenticationPrincipal CustomUserDetails userDetails) {
+        boolean hasPin = authService.hasPinCode(userDetails.getUser().getId());
+        return ResponseEntity.ok(ApiResponse.<Boolean>builder()
+                .success(true)
+                .message("Lấy trạng thái mã PIN thành công")
+                .data(hasPin)
+                .build());
+    }
+
+    @PostMapping("/setup-pin")
+    public ResponseEntity<ApiResponse<Void>> setupPin(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @RequestBody java.util.Map<String, String> request) {
+        String pinCode = request.get("pinCode");
+        if (pinCode == null || pinCode.length() != 6) {
+            return ResponseEntity.badRequest().body(ApiResponse.<Void>builder()
+                    .success(false)
+                    .message("Mã PIN phải có 6 chữ số")
+                    .build());
+        }
+        authService.setupPinCode(userDetails.getUser().getId(), pinCode);
+        return ResponseEntity.ok(ApiResponse.<Void>builder()
+                .success(true)
+                .message("Cài đặt mã PIN thành công")
+                .build());
+    }
+
+    @PostMapping("/forgot-pin")
+    public ResponseEntity<ApiResponse<Void>> forgotPin(@AuthenticationPrincipal CustomUserDetails userDetails) {
+        authService.sendForgotPinOtp(userDetails.getUser().getId());
+        return ResponseEntity.ok(ApiResponse.<Void>builder()
+                .success(true)
+                .message("Mã OTP khôi phục mã PIN đã được gửi đến email của bạn!")
+                .build());
+    }
+
+    @PostMapping("/reset-pin")
+    public ResponseEntity<ApiResponse<Void>> resetPin(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @RequestBody java.util.Map<String, String> request) {
+        String otp = request.get("otp");
+        String newPinCode = request.get("newPinCode");
+        
+        if (newPinCode == null || newPinCode.length() != 6) {
+            return ResponseEntity.badRequest().body(ApiResponse.<Void>builder()
+                    .success(false)
+                    .message("Mã PIN mới phải có 6 chữ số")
+                    .build());
+        }
+        
+        authService.resetPinCode(userDetails.getUser().getId(), otp, newPinCode);
+        return ResponseEntity.ok(ApiResponse.<Void>builder()
+                .success(true)
+                .message("Đặt lại mã PIN thành công")
                 .build());
     }
 

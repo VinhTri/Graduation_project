@@ -19,6 +19,9 @@ public class User {
     @Column(nullable = false, length = 100)
     private String password;
 
+    @Column(length = 100)
+    private String pinCode;
+
     @Enumerated(EnumType.STRING)
     @Column(length = 20, nullable = false, updatable = false)
     private Role role;
@@ -59,6 +62,14 @@ public class User {
 
     public void setPassword(String password) {
         this.password = password;
+    }
+
+    public String getPinCode() {
+        return pinCode;
+    }
+
+    public void setPinCode(String pinCode) {
+        this.pinCode = pinCode;
     }
 
     public Role getRole() {
