@@ -1,0 +1,93 @@
+import React from 'react';
+import { Layout, Menu, theme } from 'antd';
+import {
+  DashboardOutlined,
+  UserOutlined,
+  TransactionOutlined,
+  LogoutOutlined,
+} from '@ant-design/icons';
+import { Outlet, useNavigate, useLocation } from 'react-router-dom';
+
+const { Header, Content, Footer, Sider } = Layout;
+
+export const AdminLayout: React.FC = () => {
+  const navigate = useNavigate();
+  const location = useLocation();
+  
+  const {
+    token: { colorBgContainer, borderRadiusLG },
+  } = theme.useToken();
+
+  const handleMenuClick = (key: string) => {
+    if (key === 'logout') {
+      // Handle logout logic here
+      navigate('/login');
+      return;
+    }
+    navigate(key);
+  };
+
+  return (
+    <Layout style={{ minHeight: '100vh' }}>
+      <Sider breakpoint="lg" collapsedWidth="0">
+        <div style={{ height: 32, margin: 16, background: 'rgba(255, 255, 255, 0.2)', borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 'bold' }}>
+          SmartSpend Admin
+        </div>
+        <Menu
+          theme="dark"
+          mode="inline"
+          selectedKeys={[location.pathname]}
+          onClick={({ key }) => handleMenuClick(key)}
+          items={[
+            {
+              key: '/',
+              icon: <DashboardOutlined />,
+              label: 'Tổng quan',
+            },
+            {
+              key: '/users',
+              icon: <UserOutlined />,
+              label: 'Người dùng',
+            },
+            {
+              key: '/transactions',
+              icon: <TransactionOutlined />,
+              label: 'Giao dịch',
+            },
+            {
+              type: 'divider',
+            },
+            {
+              key: 'logout',
+              icon: <LogoutOutlined />,
+              label: 'Đăng xuất',
+              danger: true,
+            },
+          ]}
+        />
+      </Sider>
+      <Layout>
+        <Header style={{ padding: 0, background: colorBgContainer }}>
+          <div style={{ padding: '0 24px', fontSize: 18, fontWeight: 600 }}>
+            Hệ thống Quản trị SmartSpend
+          </div>
+        </Header>
+        <Content style={{ margin: '24px 16px 0' }}>
+          <div
+            style={{
+              padding: 24,
+              minHeight: 360,
+              background: colorBgContainer,
+              borderRadius: borderRadiusLG,
+            }}
+          >
+            <Outlet />
+          </div>
+        </Content>
+        <Footer style={{ textAlign: 'center' }}>
+          SmartSpend Admin ©{new Date().getFullYear()} Created by Graduation Team
+        </Footer>
+      </Layout>
+    </Layout>
+  );
+};
