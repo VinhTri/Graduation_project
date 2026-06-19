@@ -16,4 +16,6 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
             com.project.app.transaction.entity.TransactionStatus status, 
             java.time.LocalDateTime createdAt
     );
+
+    java.util.List<Transaction> findByUserIdOrderByCreatedAtDesc(Long userId);
 }

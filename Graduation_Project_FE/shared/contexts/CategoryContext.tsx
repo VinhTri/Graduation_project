@@ -32,7 +32,7 @@ export const CategoryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         setCategories(CATEGORIES_DATA);
       }
     } catch (error) {
-      console.error("Failed to load categories from API", error);
+      console.log("Failed to load categories from API (Fallback to mock data)", error);
       setCategories(CATEGORIES_DATA); // Fallback
     } finally {
       setIsLoading(false);
