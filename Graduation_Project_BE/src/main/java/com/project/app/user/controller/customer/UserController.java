@@ -1,4 +1,4 @@
-package com.project.app.user.controller;
+package com.project.app.user.controller.customer;
 
 import com.project.app.auth.security.CustomUserDetails;
 import com.project.app.common.dto.ApiResponse;
@@ -9,11 +9,17 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+
 import java.util.HashMap;
 import java.util.Map;
 
 @RestController
 @RequestMapping("/api/v1/user")
+@RequiredArgsConstructor
 public class UserController {
 
     @GetMapping("/me")
@@ -30,4 +36,5 @@ public class UserController {
                 .data(userData)
                 .build());
     }
+
 }

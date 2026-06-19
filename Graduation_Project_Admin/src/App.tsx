@@ -3,6 +3,7 @@ import { ConfigProvider } from 'antd';
 import { AdminLayout } from './layouts/AdminLayout';
 import { Dashboard } from './pages/Dashboard/Dashboard';
 import { Login } from './pages/Login/Login';
+import { Users } from './pages/Users/Users';
 
 function App() {
   return (
@@ -13,7 +14,7 @@ function App() {
           
           <Route path="/" element={<AdminLayout />}>
             <Route index element={<Dashboard />} />
-            <Route path="users" element={<div>Trang quản lý người dùng (Đang phát triển)</div>} />
+            <Route path="users" element={<Users />} />
             <Route path="transactions" element={<div>Trang quản lý giao dịch (Đang phát triển)</div>} />
           </Route>
           
