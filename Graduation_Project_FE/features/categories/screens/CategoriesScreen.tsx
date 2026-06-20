@@ -97,7 +97,17 @@ export default function CategoriesScreen() {
   const renderHeader = () => (
     <View style={[styles.header, { paddingTop: insets.top + 12, paddingBottom: 12 }]}>
       <View style={styles.leftSection}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backButton} activeOpacity={0.7}>
+        <TouchableOpacity 
+          onPress={() => {
+            if (router.canGoBack()) {
+              router.back();
+            } else {
+              router.replace('/(tabs)/home'); // Trở về trang chủ Home nếu không có lịch sử
+            }
+          }} 
+          style={styles.backButton} 
+          activeOpacity={0.7}
+        >
           <Ionicons name="chevron-back-outline" size={22} color={Colors.white} />
         </TouchableOpacity>
         <View style={styles.titleContainer}>
@@ -108,7 +118,10 @@ export default function CategoriesScreen() {
 
       <TouchableOpacity 
         style={styles.addButton}
-        onPress={() => setModalVisible(true)}
+        onPress={() => {
+          setItemToEdit(null);
+          setModalVisible(true);
+        }}
       >
         <Ionicons name="add-circle-outline" size={20} color={Colors.white} />
         <Text style={styles.addButtonText}>Tạo mới</Text>
