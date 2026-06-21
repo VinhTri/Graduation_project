@@ -150,11 +150,8 @@ export default function TopUpScreen() {
 
               {/* Category Section */}
               <View style={styles.paymentSection}>
-                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                <View style={{ marginBottom: 12 }}>
                   <Text style={[styles.sectionTitle, { marginBottom: 0 }]}>Chọn danh mục</Text>
-                  <TouchableOpacity onPress={() => setIsAddCategoryModalVisible(true)}>
-                    <Text style={{ color: Colors.primary, fontWeight: '600', fontSize: 14 }}>+ Tạo mới</Text>
-                  </TouchableOpacity>
                 </View>
                 <TouchableOpacity 
                   style={styles.paymentMethodCard} 
@@ -234,11 +231,16 @@ export default function TopUpScreen() {
             setSelectedCategory({ ...category, groupName });
             setIsCategoryModalVisible(false);
           }}
+          onAddCategory={() => setIsAddCategoryModalVisible(true)}
         />
 
         <AddCategoryModal 
           visible={isAddCategoryModalVisible}
           onClose={() => setIsAddCategoryModalVisible(false)}
+          onBack={() => {
+            setIsAddCategoryModalVisible(false);
+            setTimeout(() => setIsCategoryModalVisible(true), 300);
+          }}
         />
       </KeyboardAvoidingView>
     </View>
