@@ -4,16 +4,17 @@ import { Ionicons } from '@expo/vector-icons';
 import Colors from '../../../shared/constants/Colors';
 
 const AVAILABLE_ICONS = [
-  "apps-outline", "grid-outline", "list-outline", "layers-outline", 
-  "folder-outline", "briefcase-outline", "wallet-outline", "cash-outline",
-  "card-outline", "cart-outline", "bag-handle-outline", "pricetag-outline",
-  "car-outline", "bus-outline", "airplane-outline", "bicycle-outline",
-  "fast-food-outline", "cafe-outline", "restaurant-outline", "pizza-outline",
-  "heart-outline", "fitness-outline", "medkit-outline", "bed-outline",
-  "book-outline", "school-outline", "library-outline", "newspaper-outline",
-  "flash-outline", "water-outline", "home-outline", "construct-outline",
-  "game-controller-outline", "headset-outline", "tv-outline", "desktop-outline",
-  "film-outline", "musical-notes-outline", "ticket-outline", "color-palette-outline"
+  "apps", "grid", "list", "layers", 
+  "folder", "briefcase", "wallet", "cash",
+  "card", "cart", "bag-handle", "pricetag",
+  "car", "bus", "airplane", "bicycle",
+  "fast-food", "cafe", "restaurant", "pizza",
+  "heart", "fitness", "medkit", "bed",
+  "book", "school", "library", "newspaper",
+  "flash", "water", "home", "construct",
+  "game-controller", "headset", "tv", "desktop",
+  "film", "musical-notes", "ticket", "color-palette",
+  "diamond", "business", "receipt", "warning", "bolt", "star"
 ];
 
 interface IconPickerProps {

@@ -9,6 +9,8 @@ import com.project.app.category.entity.CategoryItem;
 import com.project.app.category.repository.CategoryGroupRepository;
 import com.project.app.category.repository.CategoryItemRepository;
 import com.project.app.category.service.CategoryService;
+import com.project.app.common.exception.AppException;
+import com.project.app.common.exception.ErrorCode;
 import com.project.app.user.entity.User;
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
@@ -33,49 +35,60 @@ public class CategoryServiceImpl implements CategoryService {
             // Group 1: Chi tiêu - sinh hoạt
             CategoryGroup chiTieu = groupRepository.save(CategoryGroup.builder()
                     .title("Chi tiêu - sinh hoạt")
-                    .icon("cart-outline")
+                    .icon("cart")
                     .color("#F97316")
                     .bgColor("#FFEDD5")
                     .build());
             
-            itemRepository.save(CategoryItem.builder().label("Ăn uống").icon("fast-food-outline").color("#F97316").bgColor("#FFEDD5").group(chiTieu).build());
-            itemRepository.save(CategoryItem.builder().label("Chợ, siêu thị").icon("basket-outline").color("#F97316").bgColor("#FFEDD5").group(chiTieu).build());
-            itemRepository.save(CategoryItem.builder().label("Cà phê").icon("cafe-outline").color("#F97316").bgColor("#FFEDD5").group(chiTieu).build());
+            itemRepository.save(CategoryItem.builder().label("Ăn uống").icon("restaurant").color("#F97316").bgColor("#FFEDD5").group(chiTieu).build());
+            itemRepository.save(CategoryItem.builder().label("Chợ, siêu thị").icon("bag-handle").color("#F97316").bgColor("#FFEDD5").group(chiTieu).build());
+            itemRepository.save(CategoryItem.builder().label("Cà phê").icon("cafe").color("#F97316").bgColor("#FFEDD5").group(chiTieu).build());
 
             // Group 2: Chi phí phát sinh
             CategoryGroup phatSinh = groupRepository.save(CategoryGroup.builder()
                     .title("Chi phí phát sinh")
-                    .icon("flash-outline")
+                    .icon("flash")
                     .color("#3B82F6")
                     .bgColor("#DBEAFE")
                     .build());
             
-            itemRepository.save(CategoryItem.builder().label("Di chuyển").icon("car-outline").color("#3B82F6").bgColor("#DBEAFE").group(phatSinh).build());
-            itemRepository.save(CategoryItem.builder().label("Mua sắm").icon("shirt-outline").color("#3B82F6").bgColor("#DBEAFE").group(phatSinh).build());
-            itemRepository.save(CategoryItem.builder().label("Giải trí").icon("game-controller-outline").color("#3B82F6").bgColor("#DBEAFE").group(phatSinh).build());
+            itemRepository.save(CategoryItem.builder().label("Di chuyển").icon("car").color("#3B82F6").bgColor("#DBEAFE").group(phatSinh).build());
+            itemRepository.save(CategoryItem.builder().label("Mua sắm").icon("pricetag").color("#3B82F6").bgColor("#DBEAFE").group(phatSinh).build());
+            itemRepository.save(CategoryItem.builder().label("Giải trí").icon("game-controller").color("#3B82F6").bgColor("#DBEAFE").group(phatSinh).build());
 
             // Group 3: Chi phí cố định
             CategoryGroup coDinh = groupRepository.save(CategoryGroup.builder()
                     .title("Chi phí cố định")
-                    .icon("calendar-outline")
+                    .icon("calendar")
                     .color("#EF4444")
                     .bgColor("#FEE2E2")
                     .build());
 
-            itemRepository.save(CategoryItem.builder().label("Tiền điện").icon("bulb-outline").color("#EF4444").bgColor("#FEE2E2").group(coDinh).build());
-            itemRepository.save(CategoryItem.builder().label("Tiền nước").icon("water-outline").color("#EF4444").bgColor("#FEE2E2").group(coDinh).build());
-            itemRepository.save(CategoryItem.builder().label("Tiền thuê nhà").icon("home-outline").color("#EF4444").bgColor("#FEE2E2").group(coDinh).build());
+            itemRepository.save(CategoryItem.builder().label("Tiền điện").icon("bulb").color("#EF4444").bgColor("#FEE2E2").group(coDinh).build());
+            itemRepository.save(CategoryItem.builder().label("Tiền nước").icon("water").color("#EF4444").bgColor("#FEE2E2").group(coDinh).build());
+            itemRepository.save(CategoryItem.builder().label("Tiền thuê nhà").icon("business").color("#EF4444").bgColor("#FEE2E2").group(coDinh).build());
 
             // Group 4: Đầu tư - tiết kiệm
             CategoryGroup dauTu = groupRepository.save(CategoryGroup.builder()
                     .title("Đầu tư - tiết kiệm")
-                    .icon("trending-up-outline")
+                    .icon("trending-up")
                     .color("#10B981")
                     .bgColor("#D1FAE5")
                     .build());
 
-            itemRepository.save(CategoryItem.builder().label("Gửi tiết kiệm").icon("wallet-outline").color("#10B981").bgColor("#D1FAE5").group(dauTu).build());
-            itemRepository.save(CategoryItem.builder().label("Mua vàng").icon("stop-circle-outline").color("#10B981").bgColor("#D1FAE5").group(dauTu).build());
+            itemRepository.save(CategoryItem.builder().label("Gửi tiết kiệm").icon("wallet").color("#10B981").bgColor("#D1FAE5").group(dauTu).build());
+            itemRepository.save(CategoryItem.builder().label("Mua vàng").icon("diamond").color("#10B981").bgColor("#D1FAE5").group(dauTu).build());
+
+            // Group 5: Khác
+            CategoryGroup khac = groupRepository.save(CategoryGroup.builder()
+                    .title("Khác")
+                    .icon("cube")
+                    .color("#64748B")
+                    .bgColor("#F1F5F9")
+                    .build());
+
+            itemRepository.save(CategoryItem.builder().label("Khác").icon("apps").color("#64748B").bgColor("#F1F5F9").group(khac).build());
+            itemRepository.save(CategoryItem.builder().label("Phí giao dịch").icon("receipt").color("#64748B").bgColor("#F1F5F9").group(khac).build());
         }
     }
 
@@ -101,7 +114,14 @@ public class CategoryServiceImpl implements CategoryService {
     @Override
     public CategoryItemResponse createItem(User user, CategoryItemRequest request) {
         CategoryGroup group = groupRepository.findById(request.getGroupId())
-                .orElseThrow(() -> new RuntimeException("Group not found"));
+                .orElseThrow(() -> new AppException(ErrorCode.CATEGORY_GROUP_NOT_FOUND));
+
+        long activeItemsCount = group.getItems() != null ? 
+                group.getItems().stream().filter(item -> !item.isDeleted()).count() : 0;
+        
+        if (activeItemsCount >= 8) {
+            throw new AppException(ErrorCode.CATEGORY_ITEM_LIMIT_EXCEEDED);
+        }
 
         CategoryItem item = CategoryItem.builder()
                 .label(request.getLabel())
@@ -118,10 +138,10 @@ public class CategoryServiceImpl implements CategoryService {
     @Override
     public void softDeleteCategoryItem(Long itemId, User user) {
         CategoryItem item = itemRepository.findById(itemId)
-                .orElseThrow(() -> new RuntimeException("Category item not found"));
+                .orElseThrow(() -> new AppException(ErrorCode.CATEGORY_ITEM_NOT_FOUND));
 
         if (item.getUser() == null || !item.getUser().getId().equals(user.getId())) {
-            throw new RuntimeException("Bạn không có quyền xóa danh mục này");
+            throw new AppException(ErrorCode.UNAUTHORIZED_ACCESS);
         }
 
         item.setDeleted(true);
@@ -131,14 +151,14 @@ public class CategoryServiceImpl implements CategoryService {
     @Override
     public CategoryItemResponse updateCategoryItem(Long itemId, User user, CategoryItemRequest request) {
         CategoryItem item = itemRepository.findById(itemId)
-                .orElseThrow(() -> new RuntimeException("Category item not found"));
+                .orElseThrow(() -> new AppException(ErrorCode.CATEGORY_ITEM_NOT_FOUND));
 
         if (item.getUser() == null || !item.getUser().getId().equals(user.getId())) {
-            throw new RuntimeException("Bạn không có quyền chỉnh sửa danh mục này");
+            throw new AppException(ErrorCode.UNAUTHORIZED_ACCESS);
         }
 
         CategoryGroup group = groupRepository.findById(request.getGroupId())
-                .orElseThrow(() -> new RuntimeException("Group not found"));
+                .orElseThrow(() -> new AppException(ErrorCode.CATEGORY_GROUP_NOT_FOUND));
 
         item.setLabel(request.getLabel());
         item.setIcon(request.getIcon());

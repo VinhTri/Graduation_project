@@ -18,6 +18,7 @@ import Colors from "../../../../shared/constants/Colors";
 import { styles } from "./TopUpScreen.styles";
 import { transactionService } from "../../../../shared/api/services/transactionService";
 import { CategorySelectModal } from "../../../categories/components/CategorySelectModal";
+import { AddCategoryModal } from "../../../categories/components/AddCategoryModal";
 
 const QUICK_AMOUNTS = [100000, 200000, 500000, 1000000, 2000000, 5000000];
 
@@ -29,6 +30,7 @@ export default function TopUpScreen() {
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [isCategoryModalVisible, setIsCategoryModalVisible] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<any>(null);
+  const [isAddCategoryModalVisible, setIsAddCategoryModalVisible] = useState(false);
 
   const handleAmountChange = (text: string) => {
     // Remove non-numeric characters
@@ -148,7 +150,12 @@ export default function TopUpScreen() {
 
               {/* Category Section */}
               <View style={styles.paymentSection}>
-                <Text style={styles.sectionTitle}>Chọn danh mục</Text>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                  <Text style={[styles.sectionTitle, { marginBottom: 0 }]}>Chọn danh mục</Text>
+                  <TouchableOpacity onPress={() => setIsAddCategoryModalVisible(true)}>
+                    <Text style={{ color: Colors.primary, fontWeight: '600', fontSize: 14 }}>+ Tạo mới</Text>
+                  </TouchableOpacity>
+                </View>
                 <TouchableOpacity 
                   style={styles.paymentMethodCard} 
                   activeOpacity={0.8}
@@ -227,6 +234,11 @@ export default function TopUpScreen() {
             setSelectedCategory({ ...category, groupName });
             setIsCategoryModalVisible(false);
           }}
+        />
+
+        <AddCategoryModal 
+          visible={isAddCategoryModalVisible}
+          onClose={() => setIsAddCategoryModalVisible(false)}
         />
       </KeyboardAvoidingView>
     </View>
