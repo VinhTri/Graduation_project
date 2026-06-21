@@ -38,10 +38,11 @@ import { ServiceItem } from '../../data/mockData';
 type AddCategoryModalProps = {
   visible: boolean;
   onClose: () => void;
+  onBack?: () => void;
   initialData?: ServiceItem & { groupId?: string };
 };
 
-export const AddCategoryModal: React.FC<AddCategoryModalProps> = ({ visible, onClose, initialData }) => {
+export const AddCategoryModal: React.FC<AddCategoryModalProps> = ({ visible, onClose, onBack, initialData }) => {
   const { categories, addService, updateService } = useCategoryContext();
 
   const [label, setLabel] = useState("");
@@ -240,7 +241,14 @@ export const AddCategoryModal: React.FC<AddCategoryModalProps> = ({ visible, onC
       >
         <View style={styles.modalContainer}>
           <View style={styles.header}>
-            <Text style={styles.headerTitle}>{initialData ? "Sửa Danh Mục" : "Thêm Danh Mục Mới"}</Text>
+            {onBack ? (
+              <TouchableOpacity onPress={onBack} style={styles.backBtn}>
+                <Ionicons name="arrow-back" size={24} color={Colors.text} />
+              </TouchableOpacity>
+            ) : <View style={{ width: 32 }} />}
+            <Text style={[styles.headerTitle, { flex: 1, textAlign: 'center' }]}>
+              {initialData ? "Sửa Danh Mục" : "Thêm Danh Mục Mới"}
+            </Text>
             <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
               <Ionicons name="close" size={24} color={Colors.text} />
             </TouchableOpacity>
@@ -393,8 +401,15 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: Colors.text,
   },
+  backBtn: {
+    padding: 4,
+    width: 32,
+    alignItems: 'center',
+  },
   closeBtn: {
     padding: 4,
+    width: 32,
+    alignItems: 'center',
   },
   content: {
     flex: 1,
