@@ -28,5 +28,9 @@ export const ENDPOINTS = {
   },
   BANK_ACCOUNT: {
     GET_ALL: '/api/v1/bank-accounts',
+  },
+  REPORT: {
+    DISTRIBUTION: '/api/v1/reports/distribution',
+    TREND: '/api/v1/reports/trend',
   }
 };
