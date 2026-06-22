@@ -18,4 +18,13 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
     );
 
     java.util.List<Transaction> findByUserIdOrderByCreatedAtDesc(Long userId);
+
+    @org.springframework.data.jpa.repository.Query("SELECT COALESCE(SUM(t.amount), 0) FROM Transaction t WHERE t.wallet.id = :walletId " +
+           "AND t.type IN :types AND t.status = :status AND t.createdAt >= :startOfDay")
+    java.math.BigDecimal sumDailyTransactedAmount(
+            @org.springframework.data.repository.query.Param("walletId") Long walletId, 
+            @org.springframework.data.repository.query.Param("types") java.util.List<com.project.app.transaction.entity.TransactionType> types,
+            @org.springframework.data.repository.query.Param("status") com.project.app.transaction.entity.TransactionStatus status,
+            @org.springframework.data.repository.query.Param("startOfDay") java.time.LocalDateTime startOfDay
+    );
 }
