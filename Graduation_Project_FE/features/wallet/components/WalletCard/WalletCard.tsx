@@ -162,7 +162,11 @@ export const WalletCard: React.FC<WalletCardProps> = ({
               <Text style={styles.actionLabel}>Lịch sử</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity style={styles.actionButton} activeOpacity={0.7}>
+            <TouchableOpacity 
+              style={styles.actionButton} 
+              activeOpacity={0.7}
+              onPress={() => router.push({ pathname: "/wallet/settings", params: { walletId: (wallet as any).numericId || wallet.id } })}
+            >
               <View style={styles.actionIconBg}>
                 <Ionicons name="settings-outline" size={18} color={wallet.color} />
               </View>

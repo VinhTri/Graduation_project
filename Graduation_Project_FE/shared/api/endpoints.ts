@@ -24,6 +24,7 @@ export const ENDPOINTS = {
   },
   WALLET: {
     MY_WALLET: '/api/v1/wallets/me',
+    UPDATE_SETTINGS: (id: number) => `/api/v1/wallets/${id}/settings`,
   },
   BANK_ACCOUNT: {
     GET_ALL: '/api/v1/bank-accounts',
