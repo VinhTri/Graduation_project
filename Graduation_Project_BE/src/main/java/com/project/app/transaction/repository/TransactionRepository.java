@@ -23,6 +23,8 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
             com.project.app.transaction.entity.TransactionStatus status,
             java.time.LocalDateTime startDate,
             java.time.LocalDateTime endDate
+    );
+
     java.util.List<Transaction> findByUserIdOrderByCreatedAtDesc(Long userId);
 
     @org.springframework.data.jpa.repository.Query("SELECT COALESCE(SUM(t.amount), 0) FROM Transaction t WHERE t.wallet.id = :walletId " +
