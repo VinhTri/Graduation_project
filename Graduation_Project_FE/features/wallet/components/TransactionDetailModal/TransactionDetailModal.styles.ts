@@ -26,6 +26,13 @@ export const styles = StyleSheet.create({
     position: "relative", // Để định vị tuyệt đối các Notch tròn bên mép hóa đơn
     overflow: "hidden",
   },
+  closeIconButton: {
+    position: "absolute",
+    left: 16,
+    top: 16,
+    zIndex: 20,
+    padding: 4,
+  },
   
   // Notch cắt tròn ở mép hóa đơn tạo cảm giác vé/hóa đơn thật
   notchLeft: {
@@ -144,32 +151,6 @@ export const styles = StyleSheet.create({
     padding: 2,
   },
 
-  // Mã vạch giả lập (Barcode) tạo độ chân thực cao cho Bill
-  barcodeSection: {
-    alignItems: "center",
-    marginTop: 20,
-    marginBottom: 10,
-  },
-  barcodeContainer: {
-    flexDirection: "row",
-    height: 36,
-    alignItems: "center",
-    justifyContent: "center",
-    opacity: 0.75,
-  },
-  barcodeLine: {
-    height: "100%",
-    backgroundColor: Colors.black,
-    marginHorizontal: 1,
-  },
-  barcodeText: {
-    fontSize: 10,
-    color: Colors.textMuted,
-    fontWeight: "600",
-    letterSpacing: 3,
-    marginTop: 4,
-  },
-
   // Nhãn thông báo sao chép
   toastContainer: {
     position: "absolute",
@@ -193,13 +174,13 @@ export const styles = StyleSheet.create({
 
   // Các nút hành động
   actionContainer: {
-    flexDirection: "row",
+    flexDirection: "column",
     width: "100%",
     gap: 12,
     marginTop: 20,
   },
   actionButton: {
-    flex: 1,
+    width: "100%",
     height: 46,
     borderRadius: 12,
     flexDirection: "row",
@@ -222,20 +203,6 @@ export const styles = StyleSheet.create({
   },
   secondaryButtonText: {
     color: Colors.text,
-    fontSize: 14,
-    fontWeight: "600",
-  },
-  closeButton: {
-    width: "100%",
-    height: 46,
-    borderRadius: 12,
-    backgroundColor: Colors.background,
-    alignItems: "center",
-    justifyContent: "center",
-    marginTop: 12,
-  },
-  closeButtonText: {
-    color: Colors.textMuted,
     fontSize: 14,
     fontWeight: "600",
   },

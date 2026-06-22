@@ -106,16 +106,7 @@ export default function TransactionDetailModal({
   };
 
   const getSourceOfFund = (type: string) => {
-    switch (type) {
-      case "topup":
-        return "Tài khoản liên kết (Vietcombank)";
-      case "withdraw":
-        return "Số dư ví SmartWallet";
-      case "payment":
-        return "Số dư ví SmartWallet";
-      default:
-        return "Số dư ví SmartWallet";
-    }
+    return "Ví";
   };
 
   const statusInfo = getStatusDetails(transaction.status);
@@ -157,16 +148,6 @@ export default function TransactionDetailModal({
     }
   };
 
-  const handleSaveBill = () => {
-    // Mô phỏng lưu ảnh thành công
-    setToastMessage("Đã lưu hóa đơn vào Thư viện ảnh!");
-  };
-
-  // Tạo mảng chiều rộng cho các nét của mã vạch giả lập (barcode)
-  const barcodeLines = [
-    2, 1, 3, 1, 2, 4, 1, 2, 1, 3, 2, 1, 4, 1, 2, 1, 3, 1, 2, 4, 1, 2, 1, 3, 2, 1, 4, 1, 2
-  ];
-
   return (
     <Modal
       visible={visible}
@@ -185,15 +166,21 @@ export default function TransactionDetailModal({
           activeOpacity={1}
           onPress={() => {}} // Ngăn đóng modal khi bấm vào bên trong hóa đơn
         >
+          {/* Close Icon Button */}
+          <TouchableOpacity
+            style={styles.closeIconButton}
+            onPress={onClose}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="close" size={24} color={Colors.textMuted} />
+          </TouchableOpacity>
+
           {/* Notches */}
           <View style={styles.notchLeft} />
           <View style={styles.notchRight} />
 
           {/* Bill Header */}
           <View style={styles.billHeader}>
-            <View style={[styles.logoContainer, { backgroundColor: Colors.primaryLight }]}>
-              <Ionicons name="wallet" size={28} color={Colors.primary} />
-            </View>
             <Text style={styles.brandName}>SmartWallet</Text>
             
             <View style={[styles.statusBadge, { backgroundColor: statusInfo.bgColor }]}>
@@ -263,13 +250,7 @@ export default function TransactionDetailModal({
               </View>
             </View>
 
-            {/* Phí giao dịch */}
-            <View style={styles.detailRow}>
-              <Text style={styles.detailLabel}>Phí giao dịch</Text>
-              <View style={styles.detailValueContainer}>
-                <Text style={[styles.detailValue, { color: Colors.success }]}>Miễn phí</Text>
-              </View>
-            </View>
+
 
             {/* Danh mục */}
             {transaction.category && (
@@ -292,48 +273,17 @@ export default function TransactionDetailModal({
             </View>
           </View>
 
-          {/* Barcode Section */}
-          <View style={styles.barcodeSection}>
-            <View style={styles.barcodeContainer}>
-              {barcodeLines.map((lineWidth, idx) => (
-                <View
-                  key={idx}
-                  style={[styles.barcodeLine, { width: lineWidth }]}
-                />
-              ))}
-            </View>
-            <Text style={styles.barcodeText}>{transaction.id.toUpperCase()}</Text>
-          </View>
-
           {/* Action Buttons */}
           <View style={styles.actionContainer}>
             <TouchableOpacity
-              style={[styles.actionButton, styles.secondaryButton]}
+              style={[styles.actionButton, styles.primaryButton]}
               onPress={handleShare}
               activeOpacity={0.8}
             >
-              <Ionicons name="share-social-outline" size={18} color={Colors.text} />
-              <Text style={styles.secondaryButtonText}>Chia sẻ</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[styles.actionButton, styles.primaryButton]}
-              onPress={handleSaveBill}
-              activeOpacity={0.8}
-            >
-              <Ionicons name="download-outline" size={18} color={Colors.white} />
-              <Text style={styles.primaryButtonText}>Lưu bill</Text>
+              <Ionicons name="share-social-outline" size={18} color={Colors.white} />
+              <Text style={styles.primaryButtonText}>Chia sẻ</Text>
             </TouchableOpacity>
           </View>
-
-          {/* Close Button */}
-          <TouchableOpacity
-            style={styles.closeButton}
-            onPress={onClose}
-            activeOpacity={0.7}
-          >
-            <Text style={styles.closeButtonText}>Đóng</Text>
-          </TouchableOpacity>
         </TouchableOpacity>
 
         {/* Custom Toast Alert */}
