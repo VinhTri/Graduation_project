@@ -7,7 +7,7 @@ import WalletCard from "../WalletCard/WalletCard";
 import { styles } from "./WalletList.styles";
 import Colors from "../../../../shared/constants/Colors";
 
-// Enable LayoutAnimation for Android
+
 if (
   Platform.OS === "android" &&
   UIManager.setLayoutAnimationEnabledExperimental
@@ -36,11 +36,15 @@ export const WalletList: React.FC = () => {
         try {
           const data = await walletService.getMyWallet();
           if (data) {
+            const stringId = data.id.toString();
             setWallets([{
               ...INITIAL_WALLET,
+              id: stringId,
+              numericId: data.id,
               balance: data.balance,
               name: data.name
             }]);
+            setExpandedId((prev) => (prev === "smartspend" || prev === null) ? stringId : prev);
           }
         } catch (error) {
           console.log("Error fetching wallet", error);
@@ -55,11 +59,10 @@ export const WalletList: React.FC = () => {
       duration: 350,
       update: {
         type: LayoutAnimation.Types.spring,
-        springDamping: 0.78, // Smooth physical slide rebound without any opacity flashing
+        springDamping: 0.78,
       },
     });
     if (expandedId === id) {
-      // Toggle off
       setExpandedId(null);
     } else {
       setExpandedId(id);
@@ -71,28 +74,20 @@ export const WalletList: React.FC = () => {
       <View style={styles.listContainer}>
         {wallets.map((wallet, index) => {
           const isExpanded = expandedId === wallet.id;
-          
-          // Calculate zIndex: base zIndex increases as we go down the stack
-          // so that Wallet 3 overlaps Wallet 2, and Wallet 2 overlaps Wallet 1.
-          // If a wallet is expanded, we give it zIndex 10 so it floats above all others.
           const zIndex = isExpanded ? 10 : index + 1;
-
-          // Overlap calculation:
-          // We always stack them tightly by overlapping them by -95px
-          // to keep the realistic pocket-nested wallet stack design.
           let marginTop = 0;
           if (index > 0) {
             marginTop = -95;
           }
 
           return (
-            <View 
-              key={wallet.id} 
-              style={{ 
-                zIndex, 
+            <View
+              key={wallet.id}
+              style={{
+                zIndex,
                 marginTop,
                 position: "relative",
-                backgroundColor: Colors.background, // Match system background color
+                backgroundColor: Colors.background,
                 borderRadius: 24,
               }}
             >
