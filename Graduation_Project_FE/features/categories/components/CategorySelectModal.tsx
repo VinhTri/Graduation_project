@@ -1,7 +1,7 @@
-import React from 'react';
+import React, { useState, useMemo } from 'react';
 import { 
   View, Text, TouchableOpacity, Modal, 
-  StyleSheet, ScrollView, Platform 
+  StyleSheet, ScrollView, Platform, TextInput
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import Colors from '../../../shared/constants/Colors';
@@ -11,10 +11,23 @@ interface CategorySelectModalProps {
   visible: boolean;
   onClose: () => void;
   onSelect: (category: any, groupName: string) => void;
+  onAddCategory?: () => void;
 }
 
-export function CategorySelectModal({ visible, onClose, onSelect }: CategorySelectModalProps) {
+export function CategorySelectModal({ visible, onClose, onSelect, onAddCategory }: CategorySelectModalProps) {
   const { categories } = useCategoryContext();
+  const [searchQuery, setSearchQuery] = useState('');
+
+  const filteredCategories = useMemo(() => {
+    if (!searchQuery) return categories;
+    const lowerQuery = searchQuery.toLowerCase();
+    return categories.map(group => ({
+      ...group,
+      items: group.items.filter((item: any) => 
+        item.label.toLowerCase().includes(lowerQuery)
+      )
+    })).filter(group => group.items.length > 0);
+  }, [categories, searchQuery]);
 
   return (
     <Modal
@@ -32,14 +45,34 @@ export function CategorySelectModal({ visible, onClose, onSelect }: CategorySele
             </TouchableOpacity>
           </View>
 
+          {/* Search and Add new */}
+          <View style={styles.searchRow}>
+            <View style={styles.searchContainer}>
+              <Ionicons name="search" size={20} color={Colors.textMuted} style={styles.searchIcon} />
+              <TextInput 
+                style={styles.searchInput}
+                placeholder="Tìm kiếm"
+                placeholderTextColor={Colors.textMuted}
+                value={searchQuery}
+                onChangeText={setSearchQuery}
+              />
+            </View>
+            {onAddCategory && (
+              <TouchableOpacity style={styles.addBtn} onPress={() => { onClose(); setTimeout(onAddCategory, 100); }}>
+                <Ionicons name="add-circle-outline" size={20} color={Colors.text} style={styles.addIcon} />
+                <Text style={styles.addBtnText}>Tạo mới</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+
           <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-            {categories.map((group) => {
+            {filteredCategories.map((group) => {
               if (group.items.length === 0) return null;
               return (
                 <View key={group.id} style={styles.groupContainer}>
                   <Text style={styles.groupTitle}>{group.title}</Text>
                   <View style={styles.gridContainer}>
-                    {group.items.map((item) => (
+                    {group.items.map((item: any) => (
                       <TouchableOpacity 
                         key={item.id} 
                         style={styles.gridItem}
@@ -74,7 +107,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.background,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
-    maxHeight: '80%',
+    maxHeight: '90%',
   },
   header: {
     flexDirection: 'row',
@@ -94,8 +127,51 @@ const styles = StyleSheet.create({
     right: 20,
     padding: 4,
   },
+  searchRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    gap: 12,
+  },
+  searchContainer: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F3F4F6',
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    height: 44,
+  },
+  searchIcon: {
+    marginRight: 8,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 15,
+    color: Colors.text,
+  },
+  addBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Colors.white,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    height: 44,
+  },
+  addIcon: {
+    marginRight: 4,
+  },
+  addBtnText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: Colors.text,
+  },
   content: {
     padding: 20,
+    paddingTop: 8,
   },
   groupContainer: {
     marginBottom: 24,

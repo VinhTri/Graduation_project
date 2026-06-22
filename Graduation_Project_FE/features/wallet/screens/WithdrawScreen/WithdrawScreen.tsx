@@ -23,6 +23,8 @@ import { axiosClient } from "../../../../shared/api/axiosClient";
 import { authService } from "../../../../shared/api/services/auth.service";
 import { ENDPOINTS } from "../../../../shared/api/endpoints";
 import { PinModal, OtpModal, ResetPinModal, SuccessModal } from "../../../../shared/components";
+import { CategorySelectModal } from "../../../categories/components/CategorySelectModal";
+import { AddCategoryModal } from "../../../categories/components/AddCategoryModal";
 
 const QUICK_AMOUNTS = [100000, 200000, 500000, 1000000, 2000000, 5000000];
 
@@ -58,6 +60,10 @@ export default function WithdrawScreen() {
   const [walletBalance, setWalletBalance] = useState<number>(0);
   const [bankAccounts, setBankAccounts] = useState<any[]>([]);
   const [selectedBankId, setSelectedBankId] = useState<number | null>(null);
+  
+  const [isCategoryModalVisible, setIsCategoryModalVisible] = useState(false);
+  const [selectedCategory, setSelectedCategory] = useState<any>(null);
+  const [isAddCategoryModalVisible, setIsAddCategoryModalVisible] = useState(false);
 
   // States for PIN Modal
   const [isPinModalVisible, setIsPinModalVisible] = useState<boolean>(false);
@@ -165,7 +171,10 @@ export default function WithdrawScreen() {
           accountNumber: selectedBank?.accountNumber || "",
           accountName: selectedBank?.accountName || "",
           note: note,
-          category: "Chi tiêu cá nhân"
+          category: selectedCategory ? selectedCategory.label : "Chi tiêu cá nhân",
+          categoryIcon: selectedCategory ? selectedCategory.icon : "",
+          categoryColor: selectedCategory ? selectedCategory.color : "",
+          categoryBgColor: selectedCategory ? selectedCategory.bgColor : ""
         }
       });
     } catch (error: any) {
@@ -414,14 +423,28 @@ export default function WithdrawScreen() {
 
               {/* Category Section */}
               <View style={styles.paymentSection}>
-                <Text style={styles.sectionTitle}>Chọn danh mục</Text>
-                <TouchableOpacity style={[styles.paymentMethodCard, { marginBottom: 12, width: '100%', marginRight: 0 }]} activeOpacity={0.8}>
-                  <View style={[styles.paymentIconBg, { backgroundColor: Colors.primary + "1A", width: 40, height: 40, borderRadius: 10, alignItems: "center", justifyContent: "center", marginRight: 12 }]}>
-                    <Ionicons name="folder-open" size={20} color={Colors.primaryDark} />
+                <View style={{ marginBottom: 12 }}>
+                  <Text style={[styles.sectionTitle, { marginBottom: 0 }]}>Chọn danh mục</Text>
+                </View>
+                <TouchableOpacity 
+                  style={[styles.paymentMethodCard, { marginBottom: 12, width: '100%', marginRight: 0 }]} 
+                  activeOpacity={0.8}
+                  onPress={() => setIsCategoryModalVisible(true)}
+                >
+                  <View style={[styles.paymentIconBg, { backgroundColor: selectedCategory ? selectedCategory.bgColor : Colors.primary + "1A", width: 40, height: 40, borderRadius: 10, alignItems: "center", justifyContent: "center", marginRight: 12 }]}>
+                    <Ionicons 
+                      name={selectedCategory ? selectedCategory.icon : "folder-open"} 
+                      size={20} 
+                      color={selectedCategory ? selectedCategory.color : Colors.primaryDark} 
+                    />
                   </View>
                   <View style={styles.paymentInfo}>
-                    <Text style={styles.paymentTitle}>Chi tiêu cá nhân</Text>
-                    <Text style={styles.paymentSubtitle}>Ví SmartSpend</Text>
+                    <Text style={styles.paymentTitle}>
+                      {selectedCategory ? selectedCategory.label : "Chi tiêu cá nhân"}
+                    </Text>
+                    <Text style={styles.paymentSubtitle}>
+                      {selectedCategory ? selectedCategory.groupName : "Ví SmartSpend"}
+                    </Text>
                   </View>
                   <Ionicons name="chevron-down" size={20} color={Colors.textMuted} />
                 </TouchableOpacity>
@@ -503,6 +526,25 @@ export default function WithdrawScreen() {
         message={successModalConfig.message}
         isAutoClose={successModalConfig.isAutoClose}
         onClose={successModalConfig.onClose}
+      />
+
+      <CategorySelectModal 
+        visible={isCategoryModalVisible}
+        onClose={() => setIsCategoryModalVisible(false)}
+        onSelect={(category, groupName) => {
+          setSelectedCategory({ ...category, groupName });
+          setIsCategoryModalVisible(false);
+        }}
+        onAddCategory={() => setIsAddCategoryModalVisible(true)}
+      />
+
+      <AddCategoryModal 
+        visible={isAddCategoryModalVisible}
+        onClose={() => setIsAddCategoryModalVisible(false)}
+        onBack={() => {
+          setIsAddCategoryModalVisible(false);
+          setTimeout(() => setIsCategoryModalVisible(true), 300);
+        }}
       />
     </View>
   );

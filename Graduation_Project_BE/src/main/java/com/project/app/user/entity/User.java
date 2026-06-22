@@ -29,6 +29,10 @@ public class User {
     @Column(nullable = false)
     private boolean isActive = true;
 
+    @org.hibernate.annotations.CreationTimestamp
+    @Column(name = "created_at", updatable = false)
+    private java.time.LocalDateTime createdAt;
+
     public User() {
     }
 
@@ -82,5 +86,9 @@ public class User {
 
     public void setActive(boolean active) {
         isActive = active;
+    }
+
+    public java.time.LocalDateTime getCreatedAt() {
+        return createdAt;
     }
 }

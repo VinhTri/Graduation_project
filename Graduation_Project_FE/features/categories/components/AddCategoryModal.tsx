@@ -38,14 +38,15 @@ import { ServiceItem } from '../../data/mockData';
 type AddCategoryModalProps = {
   visible: boolean;
   onClose: () => void;
+  onBack?: () => void;
   initialData?: ServiceItem & { groupId?: string };
 };
 
-export const AddCategoryModal: React.FC<AddCategoryModalProps> = ({ visible, onClose, initialData }) => {
+export const AddCategoryModal: React.FC<AddCategoryModalProps> = ({ visible, onClose, onBack, initialData }) => {
   const { categories, addService, updateService } = useCategoryContext();
 
   const [label, setLabel] = useState("");
-  const [selectedIcon, setSelectedIcon] = useState("apps-outline");
+  const [selectedIcon, setSelectedIcon] = useState("apps");
   const [selectedColorIndex, setSelectedColorIndex] = useState(0);
   const [selectedGroup, setSelectedGroup] = useState<string>("");
   const [alertConfig, setAlertConfig] = useState<AlertConfig>({
@@ -57,27 +58,32 @@ export const AddCategoryModal: React.FC<AddCategoryModalProps> = ({ visible, onC
 
   // Mapping keywords to group names and suggested icons/colors
   const KEYWORD_MAP: Record<string, { groupName: string; icon: string; colorIndex: number }> = {
-    'ăn': { groupName: 'Chi tiêu', icon: 'fast-food-outline', colorIndex: 9 }, // Orange
-    'uống': { groupName: 'Chi tiêu', icon: 'cafe-outline', colorIndex: 9 },
-    'chợ': { groupName: 'Chi tiêu', icon: 'basket-outline', colorIndex: 9 },
-    'siêu thị': { groupName: 'Chi tiêu', icon: 'cart-outline', colorIndex: 9 },
+    'ăn': { groupName: 'Chi tiêu', icon: 'restaurant', colorIndex: 9 }, // Orange
+    'uống': { groupName: 'Chi tiêu', icon: 'cafe', colorIndex: 9 },
+    'chợ': { groupName: 'Chi tiêu', icon: 'bag-handle', colorIndex: 9 },
+    'siêu thị': { groupName: 'Chi tiêu', icon: 'cart', colorIndex: 9 },
     
-    'chơi': { groupName: 'phát sinh', icon: 'game-controller-outline', colorIndex: 3 }, // Blue
-    'phim': { groupName: 'phát sinh', icon: 'film-outline', colorIndex: 3 },
-    'du lịch': { groupName: 'phát sinh', icon: 'airplane-outline', colorIndex: 6 },
-    'mua sắm': { groupName: 'phát sinh', icon: 'shirt-outline', colorIndex: 5 },
-    'quà': { groupName: 'phát sinh', icon: 'gift-outline', colorIndex: 5 },
-    'xe': { groupName: 'phát sinh', icon: 'car-outline', colorIndex: 3 },
+    'chơi': { groupName: 'phát sinh', icon: 'game-controller', colorIndex: 3 }, // Blue
+    'phim': { groupName: 'phát sinh', icon: 'film', colorIndex: 3 },
+    'du lịch': { groupName: 'phát sinh', icon: 'airplane', colorIndex: 6 },
+    'mua sắm': { groupName: 'phát sinh', icon: 'pricetag', colorIndex: 5 },
+    'quà': { groupName: 'phát sinh', icon: 'gift', colorIndex: 5 },
+    'xe': { groupName: 'phát sinh', icon: 'car', colorIndex: 3 },
     
-    'điện': { groupName: 'cố định', icon: 'bulb-outline', colorIndex: 0 }, // Red
-    'nước': { groupName: 'cố định', icon: 'water-outline', colorIndex: 6 },
-    'nhà': { groupName: 'cố định', icon: 'home-outline', colorIndex: 0 },
-    'mạng': { groupName: 'cố định', icon: 'wifi-outline', colorIndex: 0 },
+    'điện': { groupName: 'cố định', icon: 'bulb', colorIndex: 0 }, // Red
+    'nước': { groupName: 'cố định', icon: 'water', colorIndex: 6 },
+    'nhà': { groupName: 'cố định', icon: 'business', colorIndex: 0 },
+    'mạng': { groupName: 'cố định', icon: 'wifi', colorIndex: 0 },
     
-    'tiết kiệm': { groupName: 'Đầu tư', icon: 'wallet-outline', colorIndex: 2 }, // Green
-    'đầu tư': { groupName: 'Đầu tư', icon: 'trending-up-outline', colorIndex: 2 },
-    'chứng khoán': { groupName: 'Đầu tư', icon: 'bar-chart-outline', colorIndex: 2 },
-    'vàng': { groupName: 'Đầu tư', icon: 'stop-circle-outline', colorIndex: 1 }, // Yellow
+    'tiết kiệm': { groupName: 'Đầu tư', icon: 'wallet', colorIndex: 2 }, // Green
+    'đầu tư': { groupName: 'Đầu tư', icon: 'trending-up', colorIndex: 2 },
+    'chứng khoán': { groupName: 'Đầu tư', icon: 'bar-chart', colorIndex: 2 },
+    'vàng': { groupName: 'Đầu tư', icon: 'diamond', colorIndex: 1 }, // Yellow
+
+    'khác': { groupName: 'Khác', icon: 'cube', colorIndex: 11 }, // Slate / Gray
+    'phí': { groupName: 'Khác', icon: 'receipt', colorIndex: 11 },
+    'phạt': { groupName: 'Khác', icon: 'warning', colorIndex: 11 },
+    'linh tinh': { groupName: 'Khác', icon: 'apps', colorIndex: 11 },
   };
 
   // Tự động chọn nhóm đầu tiên khi mở modal hoặc fill data nếu ở chế độ Sửa
@@ -85,7 +91,7 @@ export const AddCategoryModal: React.FC<AddCategoryModalProps> = ({ visible, onC
     if (visible) {
       if (initialData) {
         setLabel(initialData.label || "");
-        setSelectedIcon(initialData.icon || "apps-outline");
+        setSelectedIcon(initialData.icon || "apps");
         if (initialData.groupId) {
           setSelectedGroup(initialData.groupId);
         }
@@ -94,7 +100,7 @@ export const AddCategoryModal: React.FC<AddCategoryModalProps> = ({ visible, onC
       } else {
         // Reset form
         setLabel("");
-        setSelectedIcon("apps-outline");
+        setSelectedIcon("apps");
         setSelectedColorIndex(0);
         if (categories.length > 0) {
           setSelectedGroup(categories[0].id);
@@ -155,7 +161,21 @@ export const AddCategoryModal: React.FC<AddCategoryModalProps> = ({ visible, onC
       return;
     }
 
-    // 1. CHUẨN LOGIC: Kiểm tra trùng lặp tên danh mục trên TOÀN BỘ hệ thống (bỏ qua chính nó nếu đang sửa)
+    // 1. Kiểm tra giới hạn 8 danh mục con (chỉ khi tạo mới)
+    if (!initialData) {
+      const groupToSave = categories.find(c => c.id === selectedGroup);
+      if (groupToSave && groupToSave.items.length >= 8) {
+        setAlertConfig({
+          visible: true,
+          title: "Giới hạn danh mục",
+          message: "Mỗi nhóm danh mục chỉ được tối đa 8 danh mục con!",
+          type: "error",
+        });
+        return;
+      }
+    }
+
+    // 2. CHUẨN LOGIC: Kiểm tra trùng lặp tên danh mục trên TOÀN BỘ hệ thống (bỏ qua chính nó nếu đang sửa)
     const normalizedLabel = trimmedLabel.toLowerCase();
     let duplicateGroupName = "";
     for (const group of categories) {
@@ -221,7 +241,14 @@ export const AddCategoryModal: React.FC<AddCategoryModalProps> = ({ visible, onC
       >
         <View style={styles.modalContainer}>
           <View style={styles.header}>
-            <Text style={styles.headerTitle}>{initialData ? "Sửa Danh Mục" : "Thêm Danh Mục Mới"}</Text>
+            {onBack ? (
+              <TouchableOpacity onPress={onBack} style={styles.backBtn}>
+                <Ionicons name="arrow-back" size={24} color={Colors.text} />
+              </TouchableOpacity>
+            ) : <View style={{ width: 32 }} />}
+            <Text style={[styles.headerTitle, { flex: 1, textAlign: 'center' }]}>
+              {initialData ? "Sửa Danh Mục" : "Thêm Danh Mục Mới"}
+            </Text>
             <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
               <Ionicons name="close" size={24} color={Colors.text} />
             </TouchableOpacity>
@@ -374,8 +401,15 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: Colors.text,
   },
+  backBtn: {
+    padding: 4,
+    width: 32,
+    alignItems: 'center',
+  },
   closeBtn: {
     padding: 4,
+    width: 32,
+    alignItems: 'center',
   },
   content: {
     flex: 1,
