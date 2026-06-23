@@ -1,15 +1,13 @@
 import React, { useState, useEffect } from "react";
 import { View, Text, TouchableOpacity, ScrollView, Dimensions, Modal, TouchableWithoutFeedback, Platform } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Ionicons, Feather, FontAwesome5 } from "@expo/vector-icons";
+import { Ionicons, Feather } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { PieChart, BarChart } from "react-native-gifted-charts";
 
 import Colors from "../../../../shared/constants/Colors";
 import { styles } from "./ReportScreen.styles";
 import { reportService, ReportDistributionResponse, ReportTrendResponse } from "../../../../shared/api/services/reportService";
-
-const { width } = Dimensions.get("window");
 
 export default function ReportScreen() {
   const router = useRouter();
@@ -327,7 +325,7 @@ export default function ReportScreen() {
                 <View style={styles.donutContainer}>
                   {pieChartData.length > 0 ? (
                     <PieChart
-                      data={pieChartData}
+                      data={pieChartData as any}
                       donut
                       radius={100}
                       innerRadius={55}
@@ -357,11 +355,11 @@ export default function ReportScreen() {
             ) : (
               <View style={styles.barChartWrapper}>
                 <View style={styles.yAxisLabelContainer}>
-                  <Text style={styles.yAxisLabel}>(Triệu)</Text>
+                  {/* Label removed since we now use formatYLabel directly on BarChart */}
                 </View>
                 <View style={styles.barChartInner}>
                   <BarChart
-                    data={barChartData}
+                    data={barChartData as any}
                     barWidth={35}
                     spacing={30}
                     roundedTop
@@ -372,10 +370,12 @@ export default function ReportScreen() {
                     xAxisColor="#E5E7EB"
                     yAxisThickness={0}
                     yAxisTextStyle={styles.yAxisLabel}
-                    noOfSections={6}
-                    maxValue={1.2}
-                    stepValue={0.2}
-                    yAxisLabelTexts={['0', '0.2', '0.4', '0.6', '0.8', '1', '']}
+                    formatYLabel={(label) => {
+                      const val = Number(label);
+                      if (val >= 1000000) return (val / 1000000).toFixed(1) + 'Tr';
+                      if (val >= 1000) return (val / 1000).toFixed(0) + 'K';
+                      return label;
+                    }}
                   />
                 </View>
               </View>
