@@ -60,10 +60,10 @@ export const Dashboard: React.FC = () => {
         </Col>
       </Row>
 
-      <div style={{ marginTop: 24 }}>
+      <Card style={{ marginTop: 24, borderRadius: '12px' }}>
         <Title level={4}>Giao dịch gần đây</Title>
         <Table dataSource={recentTransactions} columns={columns} pagination={false} />
-      </div>
+      </Card>
     </div>
   );
 };

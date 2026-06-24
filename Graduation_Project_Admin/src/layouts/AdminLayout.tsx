@@ -5,6 +5,7 @@ import {
   UserOutlined,
   TransactionOutlined,
   LogoutOutlined,
+  BarChartOutlined,
 } from '@ant-design/icons';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 
@@ -28,8 +29,8 @@ export const AdminLayout: React.FC = () => {
   };
 
   return (
-    <Layout style={{ minHeight: '100vh' }}>
-      <Sider breakpoint="lg" collapsedWidth="0">
+    <Layout style={{ height: '100vh', overflow: 'hidden' }}>
+      <Sider breakpoint="lg" collapsedWidth="0" style={{ height: '100vh', overflow: 'auto' }}>
         <div style={{ height: 32, margin: 16, background: 'rgba(255, 255, 255, 0.2)', borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 'bold' }}>
           SmartSpend Admin
         </div>
@@ -55,6 +56,11 @@ export const AdminLayout: React.FC = () => {
               label: 'Giao dịch',
             },
             {
+              key: '/reports',
+              icon: <BarChartOutlined />,
+              label: 'Báo cáo',
+            },
+            {
               type: 'divider',
             },
             {
@@ -66,23 +72,14 @@ export const AdminLayout: React.FC = () => {
           ]}
         />
       </Sider>
-      <Layout>
+      <Layout style={{ overflowY: 'auto' }}>
         <Header style={{ padding: 0, background: colorBgContainer }}>
           <div style={{ padding: '0 24px', fontSize: 18, fontWeight: 600 }}>
             Hệ thống Quản trị SmartSpend
           </div>
         </Header>
-        <Content style={{ margin: '24px 16px 0' }}>
-          <div
-            style={{
-              padding: 24,
-              minHeight: 360,
-              background: colorBgContainer,
-              borderRadius: borderRadiusLG,
-            }}
-          >
-            <Outlet />
-          </div>
+        <Content style={{ margin: '24px', minHeight: 360 }}>
+          <Outlet />
         </Content>
         <Footer style={{ textAlign: 'center' }}>
           SmartSpend Admin ©{new Date().getFullYear()} Created by Graduation Team
