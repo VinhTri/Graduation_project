@@ -207,7 +207,7 @@ export const Users = () => {
   ];
 
   return (
-    <Card style={{ margin: '24px', borderRadius: '12px' }}>
+    <Card style={{ borderRadius: '12px' }}>
       <Title level={4} style={{ marginBottom: '24px' }}>Quản Lý Người Dùng</Title>
       <Table
         columns={columns}

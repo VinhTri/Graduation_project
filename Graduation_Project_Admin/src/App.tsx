@@ -4,6 +4,7 @@ import { AdminLayout } from './layouts/AdminLayout';
 import { Dashboard } from './pages/Dashboard/Dashboard';
 import { Login } from './pages/Login/Login';
 import { Users } from './pages/Users/Users';
+import { Report } from './pages/Report/Report';
 
 function App() {
   return (
@@ -16,6 +17,7 @@ function App() {
             <Route index element={<Dashboard />} />
             <Route path="users" element={<Users />} />
             <Route path="transactions" element={<div>Trang quản lý giao dịch (Đang phát triển)</div>} />
+            <Route path="reports" element={<Report />} />
           </Route>
           
           <Route path="*" element={<Navigate to="/" replace />} />
