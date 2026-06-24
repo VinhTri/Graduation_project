@@ -136,5 +136,35 @@ export const styles = StyleSheet.create({
     fontSize: 15,
     color: Colors.textMuted,
     textAlign: "center",
+  },
+  filterContainer: {
+    flexDirection: "row",
+    backgroundColor: Colors.white,
+    borderRadius: 12,
+    padding: 4,
+    marginBottom: 20,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 1,
+  },
+  filterTab: {
+    flex: 1,
+    paddingVertical: 10,
+    alignItems: "center",
+    borderRadius: 8,
+  },
+  filterTabActive: {
+    backgroundColor: Colors.primaryLight,
+  },
+  filterTabText: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: Colors.textMuted,
+  },
+  filterTabTextActive: {
+    color: Colors.primaryDark,
+    fontWeight: "700",
   }
 });
