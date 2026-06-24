@@ -1,17 +1,26 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, TextInput, StyleSheet, ActivityIndicator, Alert, ScrollView } from 'react-native';
+import { View, Text, TouchableOpacity, TextInput, StyleSheet, ActivityIndicator, Alert, ScrollView, Image } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import Colors from '../../../../shared/constants/Colors';
 import { axiosClient } from '../../../../shared/api/axiosClient';
+import ConfirmModal from '../../../../shared/components/ConfirmModal/ConfirmModal';
+import SuccessModal from '../../../../shared/components/SuccessModal/SuccessModal';
 
 const COMMON_BANKS = [
-  { code: '970422', name: 'MBBank', shortName: 'MB' },
-  { code: '970436', name: 'Vietcombank', shortName: 'VCB' },
-  { code: '970407', name: 'Techcombank', shortName: 'TCB' },
-  { code: '970415', name: 'VietinBank', shortName: 'CTG' },
-  { code: '970418', name: 'BIDV', shortName: 'BIDV' },
+  { code: '970422', name: 'MBBank', shortName: 'MB', logo: 'https://api.vietqr.io/img/MB.png' },
+  { code: '970436', name: 'Vietcombank', shortName: 'VCB', logo: 'https://api.vietqr.io/img/VCB.png' },
+  { code: '970407', name: 'Techcombank', shortName: 'TCB', logo: 'https://api.vietqr.io/img/TCB.png' },
+  { code: '970418', name: 'BIDV', shortName: 'BIDV', logo: 'https://api.vietqr.io/img/BIDV.png' },
+  { code: '970432', name: 'VPBank', shortName: 'VPB', logo: 'https://api.vietqr.io/img/VPB.png' },
+  { code: '970423', name: 'TPBank', shortName: 'TPB', logo: 'https://api.vietqr.io/img/TPB.png' },
+  { code: '970415', name: 'VietinBank', shortName: 'ICB', logo: 'https://api.vietqr.io/img/ICB.png' },
+  { code: '970405', name: 'Agribank', shortName: 'VBA', logo: 'https://api.vietqr.io/img/VBA.png' },
+  { code: '970403', name: 'Sacombank', shortName: 'STB', logo: 'https://api.vietqr.io/img/STB.png' },
+  { code: '970416', name: 'ACB', shortName: 'ACB', logo: 'https://api.vietqr.io/img/ACB.png' },
+  { code: '970441', name: 'VIB', shortName: 'VIB', logo: 'https://api.vietqr.io/img/VIB.png' },
+  { code: '970443', name: 'SHB', shortName: 'SHB', logo: 'https://api.vietqr.io/img/SHB.png' },
 ];
 
 export default function AddBankScreen() {
@@ -23,9 +32,15 @@ export default function AddBankScreen() {
   const [accountName, setAccountName] = useState('');
   const [isLinking, setIsLinking] = useState(false);
   const [isLookingUp, setIsLookingUp] = useState(false);
+  const [accountError, setAccountError] = useState('');
+  const [isConfirmModalVisible, setIsConfirmModalVisible] = useState(false);
+  const [isSuccessModalVisible, setIsSuccessModalVisible] = useState(false);
 
   const handleLookup = async () => {
-    if (!accountNumber) return;
+    if (!accountNumber.trim()) {
+      setAccountError('Vui lòng nhập số tài khoản');
+      return;
+    }
     try {
       setIsLookingUp(true);
       const res: any = await axiosClient.get('/api/v1/bank-accounts/lookup', {
@@ -38,7 +53,7 @@ export default function AddBankScreen() {
         setAccountName(res.data);
       }
     } catch (error: any) {
-      Alert.alert('Lỗi tra cứu', error?.message || 'Không tìm thấy thông tin tài khoản');
+      setAccountError('Số tài khoản không tồn tại hoặc sai, vui lòng nhập lại');
       setAccountName('');
     } finally {
       setIsLookingUp(false);
@@ -56,24 +71,26 @@ export default function AddBankScreen() {
       });
 
       if (res.success) {
-        Alert.alert('Thành công', 'Đã liên kết tài khoản ngân hàng', [
-          { text: 'OK', onPress: () => router.back() }
-        ]);
+        setIsSuccessModalVisible(true);
       }
     } catch (error: any) {
-      Alert.alert('Lỗi liên kết', error?.message || 'Không thể liên kết tài khoản');
+      if (error?.message?.includes('đã được liên kết')) {
+        setAccountError(error.message);
+      } else {
+        Alert.alert('Lỗi liên kết', error?.message || 'Không thể liên kết tài khoản');
+      }
     } finally {
       setIsLinking(false);
     }
   };
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
-      <View style={styles.header}>
+    <View style={styles.container}>
+      <View style={[styles.header, { paddingTop: insets.top + 16, paddingBottom: 16 }]}>
         <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
           <Ionicons name="chevron-back" size={24} color={Colors.text} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Thêm thẻ / tài khoản</Text>
+        <Text style={styles.headerTitle}>Liên kết ngân hàng</Text>
         <View style={{ width: 40 }} />
       </View>
 
@@ -90,6 +107,11 @@ export default function AddBankScreen() {
               ]}
               onPress={() => setSelectedBank(bank)}
             >
+              <Image 
+                source={{ uri: bank.logo }} 
+                style={styles.bankLogo}
+                resizeMode="contain"
+              />
               <Text style={[
                 styles.bankItemText,
                 selectedBank.code === bank.code && styles.bankItemTextSelected
@@ -99,7 +121,7 @@ export default function AddBankScreen() {
         </View>
 
         <Text style={styles.label}>Số tài khoản</Text>
-        <View style={styles.inputContainer}>
+        <View style={[styles.inputContainer, accountError ? { borderColor: '#EF4444', marginBottom: 8 } : null]}>
           <TextInput
             style={styles.input}
             placeholder="Nhập số tài khoản"
@@ -107,15 +129,17 @@ export default function AddBankScreen() {
             value={accountNumber}
             onChangeText={(text) => {
               setAccountNumber(text);
+              setAccountError('');
               setAccountName(''); // Reset name when account number changes
             }}
           />
         </View>
+        {!!accountError && <Text style={styles.errorText}>{accountError}</Text>}
 
         <TouchableOpacity 
           style={styles.lookupButton}
           onPress={handleLookup}
-          disabled={isLookingUp || !accountNumber}
+          disabled={isLookingUp}
         >
           {isLookingUp ? (
             <ActivityIndicator color={Colors.primary} />
@@ -136,17 +160,60 @@ export default function AddBankScreen() {
 
         <TouchableOpacity 
           style={styles.linkButton}
-          onPress={handleLink}
+          onPress={() => setIsConfirmModalVisible(true)}
           disabled={isLinking || !accountName || !accountNumber}
         >
           {isLinking ? (
             <ActivityIndicator color={Colors.white} />
           ) : (
-            <Text style={styles.linkButtonText}>Liên kết thẻ ngay</Text>
+            <Text style={styles.linkButtonText}>Liên kết</Text>
           )}
         </TouchableOpacity>
 
       </ScrollView>
+
+      <ConfirmModal
+        visible={isConfirmModalVisible}
+        title="Xác nhận liên kết"
+        iconName="link-outline"
+        iconColor={Colors.primary}
+        confirmText="Xác nhận"
+        cancelText="Hủy"
+        onConfirm={() => {
+          setIsConfirmModalVisible(false);
+          handleLink();
+        }}
+        onCancel={() => setIsConfirmModalVisible(false)}
+        isDestructive={false}
+      >
+        <View style={styles.modalContent}>
+          <Image 
+            source={{ uri: selectedBank.logo }} 
+            style={styles.modalBankLogo}
+            resizeMode="contain"
+          />
+          <Text style={styles.modalBankName}>{selectedBank.name}</Text>
+          <View style={styles.modalAccountInfo}>
+            <Text style={styles.modalAccountLabel}>Số tài khoản</Text>
+            <Text style={styles.modalAccountNumber}>{accountNumber}</Text>
+          </View>
+          <View style={styles.modalAccountInfo}>
+            <Text style={styles.modalAccountLabel}>Chủ tài khoản</Text>
+            <Text style={styles.modalAccountName}>{accountName}</Text>
+          </View>
+        </View>
+      </ConfirmModal>
+
+      <SuccessModal
+        visible={isSuccessModalVisible}
+        title="Liên kết thành công"
+        message="Ngân hàng đã được liên kết với ví SmartSpend của bạn."
+        isAutoClose={true}
+        onClose={() => {
+          setIsSuccessModalVisible(false);
+          router.back();
+        }}
+      />
     </View>
   );
 }
@@ -161,19 +228,26 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingVertical: 16,
     backgroundColor: Colors.white,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.border,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 15,
+    elevation: 4,
+    zIndex: 10,
   },
   backButton: {
     padding: 8,
     marginLeft: -8,
+    backgroundColor: '#F3F4F6',
+    borderRadius: 12,
   },
   headerTitle: {
     fontSize: 18,
-    fontWeight: '700',
+    fontWeight: '800',
     color: Colors.text,
+    letterSpacing: 0.5,
   },
   content: {
     padding: 20,
@@ -190,13 +264,20 @@ const styles = StyleSheet.create({
     gap: 10,
     marginBottom: 24,
   },
+  bankLogo: {
+    width: 60,
+    height: 30,
+    marginBottom: 8,
+  },
   bankItem: {
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 12,
+    borderRadius: 12,
     borderWidth: 1,
     borderColor: Colors.border,
     backgroundColor: Colors.white,
+    alignItems: 'center',
+    width: '30%',
   },
   bankItemSelected: {
     borderColor: Colors.primary,
@@ -223,6 +304,12 @@ const styles = StyleSheet.create({
   input: {
     fontSize: 16,
     color: Colors.text,
+  },
+  errorText: {
+    color: '#EF4444',
+    fontSize: 13,
+    marginBottom: 16,
+    marginLeft: 4,
   },
   lookupButton: {
     backgroundColor: 'rgba(16, 145, 133, 0.1)',
@@ -267,5 +354,46 @@ const styles = StyleSheet.create({
     color: Colors.white,
     fontWeight: '700',
     fontSize: 16,
+  },
+  modalContent: {
+    alignItems: 'center',
+    marginVertical: 16,
+    paddingHorizontal: 8,
+    width: '100%',
+  },
+  modalBankLogo: {
+    width: 100,
+    height: 50,
+    marginBottom: 12,
+  },
+  modalBankName: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: Colors.text,
+    marginBottom: 20,
+    textAlign: 'center',
+  },
+  modalAccountInfo: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    width: '100%',
+    marginBottom: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
+    paddingBottom: 8,
+  },
+  modalAccountLabel: {
+    fontSize: 14,
+    color: Colors.textMuted,
+  },
+  modalAccountNumber: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: Colors.text,
+  },
+  modalAccountName: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: Colors.primary,
   },
 });

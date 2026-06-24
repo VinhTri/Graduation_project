@@ -8,6 +8,7 @@ import { styles } from './_login.styles';
 import FeatureSlider from '../../../shared/components/FeatureSlider/FeatureSlider';
 import { useRouter } from 'expo-router';
 import { authService } from '../../../shared/api/services/auth.service';
+import { axiosClient } from '../../../shared/api/axiosClient';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import SuccessModal from '../../../shared/components/SuccessModal/SuccessModal';
 
@@ -88,10 +89,18 @@ export default function LoginScreen() {
     }
   };
 
-  const handleSuccessClose = () => {
+  const handleSuccessClose = async () => {
     setIsSuccessModalVisible(false);
-    // Chuyển hướng vào màn hình chính sau khi đăng nhập thành công
-    router.replace('/(tabs)/home');
+    try {
+      const res: any = await axiosClient.get('/api/v1/auth/pin-status');
+      if (res.data === true) {
+        router.replace('/(tabs)/home');
+      } else {
+        router.replace('/(auth)/setup-pin');
+      }
+    } catch (error) {
+      router.replace('/(tabs)/home');
+    }
   };
 
   return (

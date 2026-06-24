@@ -18,6 +18,7 @@ export interface TopUpResponse {
 export interface WithdrawRequest {
   amount: number;
   bankAccountId: number;
+  pinCode: string;
 }
 
 export interface WithdrawResponse {
@@ -44,6 +45,20 @@ export const transactionService = {
   getTransactionStatus: async (transactionCode: string): Promise<TransactionStatusResponse> => {
     const response = await axiosClient.get(ENDPOINTS.TRANSACTION.GET_STATUS(transactionCode));
     return response.data;
+  },
+
+  getPendingTopUp: async (): Promise<TopUpResponse | null> => {
+    try {
+      const response = await axiosClient.get(ENDPOINTS.TRANSACTION.PENDING_TOPUP);
+      return response.data || null;
+    } catch (error) {
+      console.error("Failed to fetch pending top-up", error);
+      return null;
+    }
+  },
+
+  cancelTransaction: async (transactionCode: string): Promise<void> => {
+    await axiosClient.post(ENDPOINTS.TRANSACTION.CANCEL(transactionCode));
   },
 
   processWithdrawal: async (data: WithdrawRequest): Promise<WithdrawResponse> => {

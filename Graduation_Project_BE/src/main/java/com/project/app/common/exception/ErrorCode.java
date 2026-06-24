@@ -15,10 +15,17 @@ public enum ErrorCode {
     UNAUTHORIZED_ACCESS("Bạn không có quyền thực hiện hành động này!", HttpStatus.FORBIDDEN),
 
     // ---- LỖI VÍ & GIAO DỊCH ----
+    INVALID_PIN("Mã PIN không chính xác!", HttpStatus.BAD_REQUEST),
     WALLET_NOT_FOUND("Không tìm thấy ví khả dụng!", HttpStatus.NOT_FOUND),
     INVALID_TRANSACTION("Giao dịch không hợp lệ hoặc đã xử lý!", HttpStatus.BAD_REQUEST),
     BANK_ACCOUNT_NOT_FOUND("Không tìm thấy thông tin tài khoản ngân hàng!", HttpStatus.BAD_REQUEST),
+    BANK_ACCOUNT_ALREADY_EXISTS("Tài khoản ngân hàng này đã được liên kết với ví của bạn!", HttpStatus.CONFLICT),
     INSUFFICIENT_BALANCE("Số dư trong ví không đủ để thực hiện giao dịch!", HttpStatus.BAD_REQUEST),
+
+    // ---- LỖI DANH MỤC ----
+    CATEGORY_GROUP_NOT_FOUND("Không tìm thấy nhóm danh mục!", HttpStatus.NOT_FOUND),
+    CATEGORY_ITEM_NOT_FOUND("Không tìm thấy danh mục!", HttpStatus.NOT_FOUND),
+    CATEGORY_ITEM_LIMIT_EXCEEDED("Mỗi nhóm danh mục chỉ được tối đa 8 danh mục con!", HttpStatus.BAD_REQUEST),
 
     // ---- LỖI HỆ THỐNG CHUNG ----
     UNCATEGORIZED_EXCEPTION("Đã xảy ra lỗi hệ thống, vui lòng thử lại sau!", HttpStatus.INTERNAL_SERVER_ERROR);

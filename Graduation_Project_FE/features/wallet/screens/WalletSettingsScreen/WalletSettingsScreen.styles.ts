@@ -1,0 +1,148 @@
+import { StyleSheet, Platform } from "react-native";
+import Colors from "../../../../shared/constants/Colors";
+
+export const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: Colors.background,
+  },
+  header: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 16,
+    paddingTop: 16, 
+    paddingBottom: 24,
+    backgroundColor: Colors.primary,
+  },
+  backButton: {
+    padding: 8,
+    marginRight: 8,
+  },
+  headerTitle: {
+    fontSize: 20,
+    fontWeight: "700",
+    color: Colors.white,
+  },
+  content: {
+    flex: 1,
+    backgroundColor: Colors.background,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    marginTop: -16, 
+    overflow: "hidden",
+  },
+  scrollContent: {
+    paddingHorizontal: 24,
+    paddingTop: 24,
+    paddingBottom: 40,
+  },
+  section: {
+    marginBottom: 24,
+  },
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: Colors.text,
+    marginBottom: 16,
+  },
+  card: {
+    backgroundColor: Colors.white,
+    borderRadius: 16,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: "transparent",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.03,
+    shadowRadius: 4,
+    elevation: 1,
+  },
+  row: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 16,
+  },
+  rowLabelContainer: {
+    flex: 1,
+    marginRight: 16,
+  },
+  rowTitle: {
+    fontSize: 15,
+    fontWeight: "600",
+    color: Colors.text,
+    marginBottom: 4,
+  },
+  rowSubtitle: {
+    fontSize: 13,
+    color: Colors.textMuted,
+    lineHeight: 18,
+  },
+  inputContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: Colors.background,
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    marginTop: 8,
+  },
+  currencySymbol: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: Colors.text,
+    marginRight: 8,
+  },
+  input: {
+    flex: 1,
+    fontSize: 16,
+    fontWeight: "600",
+    color: Colors.text,
+    padding: 0,
+    margin: 0,
+  },
+  divider: {
+    height: 1,
+    backgroundColor: Colors.border,
+    marginVertical: 16,
+  },
+  footer: {
+    paddingHorizontal: 24,
+    paddingTop: 16,
+    paddingBottom: 24,
+    backgroundColor: "transparent",
+  },
+  saveButton: {
+    backgroundColor: Colors.primary,
+    paddingVertical: 16,
+    borderRadius: 16, 
+    alignItems: "center",
+  },
+  saveButtonDisabled: {
+    backgroundColor: Colors.border,
+  },
+  saveButtonText: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: Colors.white,
+  },
+  infoSection: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: 8,
+    marginBottom: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: Colors.primary + "1A", 
+    borderRadius: 12,
+  },
+  infoText: {
+    fontSize: 13,
+    color: Colors.primaryDark,
+    fontWeight: "500",
+    marginLeft: 12,
+    flex: 1,
+    lineHeight: 20,
+  },
+});

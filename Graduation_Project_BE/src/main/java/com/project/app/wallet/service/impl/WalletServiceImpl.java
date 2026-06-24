@@ -48,4 +48,23 @@ public class WalletServiceImpl implements WalletService {
         wallet.setBalance(wallet.getBalance().add(amount));
         walletRepository.save(wallet);
     }
+
+    // ====================== CẬP NHẬT THIẾT LẬP VÍ ======================
+    @Override
+    @Transactional
+    public void updateWalletSettings(Long walletId, Long userId, com.project.app.wallet.dto.WalletSettingsDto request) {
+        Wallet wallet = getWalletById(walletId, userId);
+        
+        wallet.setLimitEnabled(request.isLimitEnabled());
+        if (request.isLimitEnabled()) {
+            wallet.setTransactionLimit(request.getTransactionLimit());
+            wallet.setDailyLimit(request.getDailyLimit());
+        } else {
+            // Optional: reset limits if disabled, or keep them for later when re-enabled
+            wallet.setTransactionLimit(request.getTransactionLimit());
+            wallet.setDailyLimit(request.getDailyLimit());
+        }
+        
+        walletRepository.save(wallet);
+    }
 }

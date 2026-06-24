@@ -35,7 +35,7 @@ public class BankAccountServiceImpl implements BankAccountService {
     @Transactional
     public BankAccountResponse addBankAccount(User user, BankAccountRequest request) {
         if (bankAccountRepository.existsByAccountNumberAndUserId(request.getAccountNumber(), user.getId())) {
-            throw new AppException(ErrorCode.UNCATEGORIZED_EXCEPTION); // TODO: Thêm mã lỗi BANK_ACCOUNT_ALREADY_EXISTS
+            throw new AppException(ErrorCode.BANK_ACCOUNT_ALREADY_EXISTS);
         }
 
         boolean isFirstAccount = bankAccountRepository.findByUserId(user.getId()).isEmpty();

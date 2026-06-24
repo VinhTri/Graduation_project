@@ -7,11 +7,16 @@ import Colors from "../../../../shared/constants/Colors";
 import { ConfirmModal, SuccessModal } from "../../../../shared/components";
 import { styles } from "./TopUpCheckoutScreen.styles";
 import { transactionService } from "../../../../shared/api/services/transactionService";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 export default function TopUpCheckoutScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { amount, note, category, transactionCode, qrUrl, createdAt } = useLocalSearchParams();
+  const { 
+    amount, note, category, 
+    categoryIcon, categoryColor, categoryBgColor, 
+    transactionCode, qrUrl, createdAt 
+  } = useLocalSearchParams();
   const [timeLeft, setTimeLeft] = useState(15 * 60); // 15 minutes in seconds
   const [showSuccessModal, setShowSuccessModal] = useState(false);
 
@@ -140,7 +145,27 @@ export default function TopUpCheckoutScreen() {
             </View>
             <View style={styles.infoRow}>
               <Text style={styles.infoLabel}>Danh mục</Text>
-              <Text style={styles.infoValue}>{category || "Chưa chọn danh mục"}</Text>
+              {category ? (
+                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                  {categoryIcon ? (
+                    <View style={{ 
+                      backgroundColor: (categoryBgColor as string) || Colors.primary + '1A', 
+                      width: 24, height: 24, borderRadius: 12,
+                      justifyContent: 'center', alignItems: 'center',
+                      marginRight: 8
+                    }}>
+                      <Ionicons 
+                        name={(categoryIcon as any)} 
+                        size={14} 
+                        color={(categoryColor as string) || Colors.primary} 
+                      />
+                    </View>
+                  ) : null}
+                  <Text style={styles.infoValue}>{category}</Text>
+                </View>
+              ) : (
+                <Text style={styles.infoValue}>Chưa chọn danh mục</Text>
+              )}
             </View>
             <View style={styles.infoRow}>
               <Text style={styles.infoLabel}>Ghi chú</Text>
@@ -177,7 +202,7 @@ export default function TopUpCheckoutScreen() {
         isDestructive={false}
         onConfirm={() => {
           setShowBackModal(false);
-          router.replace('/(tabs)/wallet');
+          router.replace('/(tabs)/home');
         }}
         onCancel={() => setShowBackModal(false)}
       />
@@ -191,9 +216,17 @@ export default function TopUpCheckoutScreen() {
         confirmText="Đồng ý hủy"
         cancelText="Không"
         isDestructive={true}
-        onConfirm={() => {
+        onConfirm={async () => {
           setShowCancelModal(false);
-          router.replace('/(tabs)/wallet');
+          if (transactionCode) {
+            try {
+              await transactionService.cancelTransaction(transactionCode as string);
+            } catch (e) {
+              console.log("Failed to cancel on backend", e);
+            }
+            await AsyncStorage.setItem(`cancelled_tx_${transactionCode}`, "true");
+          }
+          router.replace('/(tabs)/home');
         }}
         onCancel={() => setShowCancelModal(false)}
       />

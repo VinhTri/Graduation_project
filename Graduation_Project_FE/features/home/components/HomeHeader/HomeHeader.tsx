@@ -4,7 +4,11 @@ import { Ionicons } from "@expo/vector-icons";
 import { styles } from "./HomeHeader.styles";
 import Colors from "@/shared/constants/Colors";
 
+import { useRouter } from "expo-router";
+
 export const HomeHeader = () => {
+  const router = useRouter();
+  
   return (
     <View style={styles.container}>
       {/* Search and Notification Row */}
@@ -25,7 +29,7 @@ export const HomeHeader = () => {
 
       {/* Quick Actions */}
       <View style={styles.quickActionsRow}>
-        <TouchableOpacity style={styles.actionItem} activeOpacity={0.7}>
+        <TouchableOpacity style={styles.actionItem} activeOpacity={0.7} onPress={() => router.push("/wallet/action?initialTab=topup")}>
           <View style={[styles.iconWrapper, { backgroundColor: "#E0F2FE" }]}>
              <Ionicons name="swap-vertical" size={24} color="#0284C7" />
           </View>

@@ -14,4 +14,6 @@ public interface TransactionService {
     void processSePayWebhook(SePayWebhookRequest request);
     Transaction getTransactionByCode(String transactionCode, User user);
     WithdrawResponse processWithdrawal(User user, WithdrawRequest request);
+    TopUpResponse getPendingTopUp(User user);
+    void cancelTransaction(String transactionCode, User user);
 }

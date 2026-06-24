@@ -29,6 +29,15 @@ public class Wallet {
     @Column(name = "is_deletable", nullable = false)
     private boolean isDeletable = true;
 
+    @Column(name = "is_limit_enabled", nullable = false)
+    private boolean isLimitEnabled = false;
+
+    @Column(name = "transaction_limit")
+    private BigDecimal transactionLimit;
+
+    @Column(name = "daily_limit")
+    private BigDecimal dailyLimit;
+
     public Wallet() {
     }
 
@@ -84,5 +93,29 @@ public class Wallet {
 
     public void setDeletable(boolean isDeletable) {
         this.isDeletable = isDeletable;
+    }
+
+    public boolean isLimitEnabled() {
+        return isLimitEnabled;
+    }
+
+    public void setLimitEnabled(boolean limitEnabled) {
+        isLimitEnabled = limitEnabled;
+    }
+
+    public BigDecimal getTransactionLimit() {
+        return transactionLimit;
+    }
+
+    public void setTransactionLimit(BigDecimal transactionLimit) {
+        this.transactionLimit = transactionLimit;
+    }
+
+    public BigDecimal getDailyLimit() {
+        return dailyLimit;
+    }
+
+    public void setDailyLimit(BigDecimal dailyLimit) {
+        this.dailyLimit = dailyLimit;
     }
 }

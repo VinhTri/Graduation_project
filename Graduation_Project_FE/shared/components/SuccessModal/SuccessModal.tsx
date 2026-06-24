@@ -62,7 +62,7 @@ export default function SuccessModal({ visible, title, message, isAutoClose = fa
           {isAutoClose ? (
             <View style={styles.autoCloseContainer}>
               <ActivityIndicator size="small" color="#109185" />
-              <Text style={styles.autoCloseText}>Chuyển hướng sau {timeLeft}s...</Text>
+              <Text style={styles.autoCloseText}>Đang chuyển hướng...</Text>
             </View>
           ) : (
             <TouchableOpacity 

@@ -15,4 +15,7 @@ public class WithdrawRequest {
 
     @NotNull(message = "Tài khoản ngân hàng không được để trống")
     private Long bankAccountId;
+
+    @NotNull(message = "Mã PIN không được để trống")
+    private String pinCode;
 }
