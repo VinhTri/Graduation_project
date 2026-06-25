@@ -24,22 +24,10 @@ export const styles = StyleSheet.create({
     overflow: "hidden",
     // No shadow here to keep it clean, or very subtle shadow
   },
-  imagePlaceholder: {
-    height: 100,
-    padding: 12,
-    justifyContent: "flex-start",
-  },
-  imageOverlayText: {
-    color: Colors.white,
-    fontSize: 12,
-    fontWeight: "700",
-    textTransform: "uppercase",
-    marginBottom: 4,
-  },
-  imageOverlaySubtext: {
-    color: Colors.white,
-    fontSize: 11,
-    fontWeight: "500",
+  imageCover: {
+    width: "100%",
+    aspectRatio: 16 / 9,
+    backgroundColor: Colors.border,
   },
   cardContent: {
     padding: 12,
@@ -51,9 +39,5 @@ export const styles = StyleSheet.create({
     marginBottom: 8,
     lineHeight: 18,
   },
-  cardAction: {
-    fontSize: 12,
-    fontWeight: "700",
-    color: Colors.primary,
-  },
+
 });
