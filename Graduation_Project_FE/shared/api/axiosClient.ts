@@ -19,6 +19,8 @@ if (__DEV__ && debuggerHost) {
 
 console.log("=== API BASE_URL IS: ===", BASE_URL);
 
+export const getApiBaseUrl = () => BASE_URL;
+
 export const axiosClient = axios.create({
   baseURL: BASE_URL,
   timeout: 30000, // Tăng thời gian chờ lên 30 giây để tránh lỗi timeout do gửi email (SMTP) chậm

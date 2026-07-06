@@ -32,5 +32,8 @@ export const ENDPOINTS = {
   REPORT: {
     DISTRIBUTION: '/api/v1/reports/distribution',
     TREND: '/api/v1/reports/trend',
+  },
+  POSTS: {
+    PUBLIC_ALL: '/api/v1/public/posts',
   }
 };
