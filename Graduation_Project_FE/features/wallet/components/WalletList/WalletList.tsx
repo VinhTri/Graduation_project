@@ -40,7 +40,6 @@ export const WalletList: React.FC = () => {
             setWallets([{
               ...INITIAL_WALLET,
               id: stringId,
-              numericId: data.id,
               balance: data.balance,
               name: data.name
             }]);
