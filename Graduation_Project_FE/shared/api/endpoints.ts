@@ -14,6 +14,7 @@ export const ENDPOINTS = {
   },
   USER: {
     PROFILE: '/api/v1/user/me',                                 // Lấy thông tin tài khoản đang đăng nhập
+    SEARCH: (email: string) => `/api/v1/user/search?email=${encodeURIComponent(email)}`, // Tra cứu user
   },
   TRANSACTION: {
     TOP_UP: '/api/v1/transactions/top-up',
@@ -35,5 +36,18 @@ export const ENDPOINTS = {
   },
   POSTS: {
     PUBLIC_ALL: '/api/v1/public/posts',
+  },
+  FRIENDSHIP: {
+    REQUEST: (email: string) => `/api/v1/friends/request?email=${encodeURIComponent(email)}`,
+    ACCEPT: (id: number) => `/api/v1/friends/accept/${id}`,
+    REJECT: (id: number) => `/api/v1/friends/reject/${id}`,
+    REMOVE: (id: number) => `/api/v1/friends/remove/${id}`,
+    LIST_FRIENDS: "/api/v1/friends",
+    LIST_REQUESTS: "/api/v1/friends/requests"
+  },
+  NOTIFICATION: {
+    GET_ALL: "/api/v1/notifications",
+    UNREAD_COUNT: "/api/v1/notifications/unread-count",
+    READ_ALL: "/api/v1/notifications/read-all"
   }
 };

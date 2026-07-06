@@ -1,14 +1,34 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { View, Text, TextInput, TouchableOpacity } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { styles } from "./HomeHeader.styles";
 import Colors from "@/shared/constants/Colors";
-
 import { useRouter } from "expo-router";
+import { notificationService } from "@/shared/api/services/notification.service";
+import { useFocusEffect } from "@react-navigation/native";
 
 export const HomeHeader = () => {
   const router = useRouter();
-  
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  useFocusEffect(
+    React.useCallback(() => {
+      loadUnreadCount();
+    }, [])
+  );
+
+  const loadUnreadCount = async () => {
+    try {
+      const res: any = await notificationService.getUnreadCount();
+      console.log("🚀 ~ loadUnreadCount ~ res:", res);
+      if (res && res.success !== undefined) {
+         setUnreadCount(Number(res.data));
+      }
+    } catch (error) {
+      console.log("Error loading unread count", error);
+    }
+  };
+
   return (
     <View style={styles.container}>
       {/* Search and Notification Row */}
@@ -21,9 +41,19 @@ export const HomeHeader = () => {
             placeholderTextColor="rgba(255, 255, 255, 0.7)"
           />
         </View>
-        <TouchableOpacity style={styles.notificationBtn} activeOpacity={0.7}>
+        <TouchableOpacity 
+          style={styles.notificationBtn} 
+          activeOpacity={0.7}
+          onPress={() => router.push("/notifications")}
+        >
           <Ionicons name="notifications-outline" size={22} color={Colors.white} />
-          <View style={styles.badge} />
+          {unreadCount > 0 && (
+            <View style={styles.badge}>
+              <Text style={{ color: 'white', fontSize: 8, fontWeight: 'bold' }}>
+                {unreadCount > 99 ? '99+' : unreadCount}
+              </Text>
+            </View>
+          )}
         </TouchableOpacity>
       </View>
 
