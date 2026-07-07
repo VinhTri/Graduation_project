@@ -32,5 +32,10 @@ export const ENDPOINTS = {
   REPORT: {
     DISTRIBUTION: '/api/v1/reports/distribution',
     TREND: '/api/v1/reports/trend',
+  },
+  INVOICE: {
+    BASE: '/api/v1/invoices',
+    DETAIL: (id: number) => `/api/v1/invoices/${id}`,
+    STATUS: (id: number) => `/api/v1/invoices/${id}/status`,
   }
 };
