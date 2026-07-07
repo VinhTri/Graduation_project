@@ -14,6 +14,7 @@ export const ENDPOINTS = {
   },
   USER: {
     PROFILE: '/api/v1/user/me',                                 // Lấy thông tin tài khoản đang đăng nhập
+    SEARCH: (email: string) => `/api/v1/user/search?email=${encodeURIComponent(email)}`, // Tra cứu user
   },
   TRANSACTION: {
     TOP_UP: '/api/v1/transactions/top-up',
