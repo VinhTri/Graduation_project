@@ -1,56 +1,74 @@
-import React from "react";
-import { View, Text, TouchableOpacity } from "react-native";
+import React, { useEffect, useState } from "react";
+import { View, Text, TouchableOpacity, ActivityIndicator, Image, Linking } from "react-native";
 import { styles } from "./DiscoverMore.styles";
+import { postService, PostResponse } from "../../../../shared/api/services/post.service";
+import { getApiBaseUrl } from "../../../../shared/api/axiosClient";
 
-const BANNERS = [
-  {
-    id: "1",
-    overlayTitle: "NẠP DATA 4G/5G",
-    overlaySub: "AI gợi ý gói tốt nhất",
-    bgColor: "#8B5CF6", // Purple placeholder
-    title: "Tặng bạn bộ quà đến 10K khi nạp 4G/5G",
-    actionText: "XEM NGAY",
-  },
-  {
-    id: "2",
-    overlayTitle: "CHUYỂN CHỈ 111Đ",
-    overlaySub: "Săn lì xì 10 triệu",
-    bgColor: "#D97706", // Gold/Orange placeholder
-    title: "Chuyển 111Đ, săn lì xì 10 triệu",
-    actionText: "CHUYỂN NGAY",
-  },
-  {
-    id: "3",
-    overlayTitle: "THÁNG 5 LÀ LỜI",
-    overlaySub: "Đến 1 triệu Xu",
-    bgColor: "#E11D48", // Red placeholder
-    title: "Chuyển 111Đ, săn thưởng đến 1 triệu Xu",
-    actionText: "CHUYỂN NGAY",
-  },
-  {
-    id: "4",
-    overlayTitle: "RỦ BẠN DÙNG APP",
-    overlaySub: "Nhận lì xì tiền mặt",
-    bgColor: "#BE185D", // Pink/Dark red placeholder
-    title: "100% cả hai có 20K tiền mặt",
-    actionText: "MỜI BẠN NGAY",
-  },
-];
+const getValidImageUrl = (url: string) => {
+  if (!url) return '';
+  // Nếu url chứa localhost (được admin lưu từ web browser)
+  // Ta phải đổi nó thành IP thật của mạng LAN để điện thoại tải được ảnh
+  if (url.includes('localhost')) {
+    const baseUrl = getApiBaseUrl(); // ví dụ: http://192.168.1.5:9090
+    return url.replace(/http:\/\/localhost:\d+/, baseUrl);
+  }
+  return url;
+};
 
 export const DiscoverMore = () => {
+  const [banners, setBanners] = useState<PostResponse[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchBanners = async () => {
+      try {
+        const data = await postService.getActivePosts();
+        // Cần map `bgColor` nếu null về màu mặc định hoặc xử lý an toàn
+        setBanners(data);
+      } catch (error) {
+        console.error("Failed to fetch banners:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchBanners();
+  }, []);
+
+  if (loading) {
+    return (
+      <View style={[styles.container, { justifyContent: 'center', alignItems: 'center', minHeight: 150 }]}>
+        <ActivityIndicator size="small" color="#0ea5e9" />
+      </View>
+    );
+  }
+
+  if (banners.length === 0) {
+    return null; // Ẩn phần này nếu không có bài viết nào
+  }
+
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Khám phá thêm</Text>
       <View style={styles.grid}>
-        {BANNERS.map((banner) => (
-          <TouchableOpacity key={banner.id} style={styles.card} activeOpacity={0.8}>
-            <View style={[styles.imagePlaceholder, { backgroundColor: banner.bgColor }]}>
-              <Text style={styles.imageOverlayText}>{banner.overlayTitle}</Text>
-              <Text style={styles.imageOverlaySubtext}>{banner.overlaySub}</Text>
-            </View>
+        {banners.map((banner) => (
+          <TouchableOpacity 
+            key={banner.id} 
+            style={styles.card} 
+            activeOpacity={0.8}
+            onPress={() => {
+              if (banner.targetLink) {
+                Linking.openURL(banner.targetLink).catch(err => console.error("Couldn't load page", err));
+              }
+            }}
+          >
+            <Image 
+              source={{ uri: getValidImageUrl(banner.imageUrl) }} 
+              style={styles.imageCover} 
+              resizeMode="cover"
+            />
             <View style={styles.cardContent}>
               <Text style={styles.cardTitle} numberOfLines={2}>{banner.title}</Text>
-              <Text style={styles.cardAction}>{banner.actionText}</Text>
             </View>
           </TouchableOpacity>
         ))}

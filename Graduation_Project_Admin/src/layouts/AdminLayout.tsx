@@ -6,6 +6,7 @@ import {
   TransactionOutlined,
   LogoutOutlined,
   BarChartOutlined,
+  FileTextOutlined,
 } from '@ant-design/icons';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 
@@ -59,6 +60,11 @@ export const AdminLayout: React.FC = () => {
               key: '/reports',
               icon: <BarChartOutlined />,
               label: 'Báo cáo',
+            },
+            {
+              key: '/posts',
+              icon: <FileTextOutlined />,
+              label: 'Bài viết',
             },
             {
               type: 'divider',
