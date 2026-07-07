@@ -27,8 +27,8 @@ public enum ErrorCode {
     CATEGORY_ITEM_NOT_FOUND("Không tìm thấy danh mục!", HttpStatus.NOT_FOUND),
     CATEGORY_ITEM_LIMIT_EXCEEDED("Mỗi nhóm danh mục chỉ được tối đa 8 danh mục con!", HttpStatus.BAD_REQUEST),
 
-    // ---- LỖI BÀI VIẾT ----
-    POST_NOT_FOUND("Không tìm thấy bài viết này!", HttpStatus.NOT_FOUND),
+    // ---- LỖI HÓA ĐƠN ----
+    INVOICE_NOT_FOUND("Không tìm thấy hóa đơn!", HttpStatus.NOT_FOUND),
 
     // ---- LỖI HỆ THỐNG CHUNG ----
     UNCATEGORIZED_EXCEPTION("Đã xảy ra lỗi hệ thống, vui lòng thử lại sau!", HttpStatus.INTERNAL_SERVER_ERROR);
