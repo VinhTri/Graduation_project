@@ -3,7 +3,7 @@ import { View, Text, TouchableOpacity } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { styles } from "./HomeWalletSummary.styles";
 import Colors from "@/shared/constants/Colors";
-import { transactionService } from "@/shared/api/services/transactionService";
+import { walletService } from "@/shared/api/services/walletService";
 import { useFocusEffect } from "expo-router";
 
 export const HomeWalletSummary = () => {
@@ -14,9 +14,9 @@ export const HomeWalletSummary = () => {
 
   const fetchWallet = async () => {
     try {
-      const response = await transactionService.getWalletMe();
-      if (response && response.data) {
-        setWalletBalance(response.data.balance);
+      const response = await walletService.getMyWallet();
+      if (response) {
+        setWalletBalance(response.balance);
       }
     } catch (error) {
       console.log("Error fetching wallet in HomeWalletSummary", error);
