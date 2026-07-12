@@ -29,6 +29,7 @@ public class InvoiceServiceImpl implements InvoiceService {
                 .amount(request.getAmount())
                 .dueDate(request.getDueDate())
                 .reminderOption(request.getReminderOption())
+                .reminderTime(request.getReminderTime())
                 .isPaid(request.isPaid())
                 .user(user)
                 .build();
@@ -58,11 +59,21 @@ public class InvoiceServiceImpl implements InvoiceService {
     public InvoiceResponse updateInvoice(Long id, User user, InvoiceRequest request) {
         Invoice invoice = getInvoice(id, user);
         
+        boolean reminderChanged = false;
+        if (request.getReminderOption() != null && !request.getReminderOption().equals(invoice.getReminderOption())) reminderChanged = true;
+        if (request.getReminderTime() != null && !request.getReminderTime().equals(invoice.getReminderTime())) reminderChanged = true;
+        if (request.getDueDate() != null && !request.getDueDate().equals(invoice.getDueDate())) reminderChanged = true;
+        
         invoice.setInvoiceName(request.getInvoiceName());
         invoice.setAmount(request.getAmount());
         invoice.setDueDate(request.getDueDate());
         invoice.setReminderOption(request.getReminderOption());
+        invoice.setReminderTime(request.getReminderTime());
         invoice.setPaid(request.isPaid());
+        
+        if (reminderChanged) {
+            invoice.setNotified(false);
+        }
         
         Invoice updatedInvoice = invoiceRepository.save(invoice);
         return mapToResponse(updatedInvoice);
@@ -101,6 +112,7 @@ public class InvoiceServiceImpl implements InvoiceService {
                 .amount(invoice.getAmount())
                 .dueDate(invoice.getDueDate())
                 .reminderOption(invoice.getReminderOption())
+                .reminderTime(invoice.getReminderTime())
                 .isPaid(invoice.isPaid())
                 .createdAt(invoice.getCreatedAt())
                 .updatedAt(invoice.getUpdatedAt())

@@ -9,6 +9,7 @@ import org.hibernate.annotations.UpdateTimestamp;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 
 @Entity
 @Table(name = "invoices")
@@ -35,9 +36,16 @@ public class Invoice {
     @Column
     private String reminderOption;
 
+    @Column
+    private LocalTime reminderTime;
+
     @Column(nullable = false)
     @Builder.Default
     private boolean isPaid = false;
+
+    @Column(nullable = false)
+    @Builder.Default
+    private boolean isNotified = false;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)

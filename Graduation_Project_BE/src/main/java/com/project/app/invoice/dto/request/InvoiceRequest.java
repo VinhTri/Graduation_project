@@ -12,6 +12,7 @@ import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalTime;
 
 @Data
 @Builder
@@ -31,6 +32,8 @@ public class InvoiceRequest {
     private LocalDate dueDate;
 
     private String reminderOption;
+    
+    private LocalTime reminderTime;
     
     @JsonProperty("isPaid")
     @Builder.Default

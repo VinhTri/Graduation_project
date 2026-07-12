@@ -10,4 +10,7 @@ import java.util.List;
 @Repository
 public interface InvoiceRepository extends JpaRepository<Invoice, Long> {
     List<Invoice> findByUserOrderByDueDateAsc(User user);
+    
+    // Tìm các hóa đơn chưa thanh toán, chưa gửi thông báo, và có cài đặt thời gian nhắc nhở
+    List<Invoice> findByIsNotifiedFalseAndIsPaidFalseAndReminderTimeIsNotNull();
 }
