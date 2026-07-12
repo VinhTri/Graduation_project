@@ -30,6 +30,9 @@ public enum ErrorCode {
     // ---- LỖI HÓA ĐƠN ----
     INVOICE_NOT_FOUND("Không tìm thấy hóa đơn!", HttpStatus.NOT_FOUND),
 
+    // ---- LỖI BÀI VIẾT ----
+    POST_NOT_FOUND("Không tìm thấy bài viết!", HttpStatus.NOT_FOUND),
+
     // ---- LỖI HỆ THỐNG CHUNG ----
     UNCATEGORIZED_EXCEPTION("Đã xảy ra lỗi hệ thống, vui lòng thử lại sau!", HttpStatus.INTERNAL_SERVER_ERROR);
 

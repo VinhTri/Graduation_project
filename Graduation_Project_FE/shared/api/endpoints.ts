@@ -38,5 +38,18 @@ export const ENDPOINTS = {
     BASE: '/api/v1/invoices',
     DETAIL: (id: number) => `/api/v1/invoices/${id}`,
     STATUS: (id: number) => `/api/v1/invoices/${id}/status`,
+  },
+  NOTIFICATION: {
+    GET_ALL: '/api/v1/notifications',
+    UNREAD_COUNT: '/api/v1/notifications/unread-count',
+    READ_ALL: '/api/v1/notifications/read-all',
+  },
+  FRIENDSHIP: {
+    REQUEST: (email: string) => `/api/v1/friends/request?email=${encodeURIComponent(email)}`,
+    ACCEPT: (id: number) => `/api/v1/friends/accept/${id}`,
+    REJECT: (id: number) => `/api/v1/friends/reject/${id}`,
+    REMOVE: (id: number) => `/api/v1/friends/remove/${id}`,
+    LIST_FRIENDS: '/api/v1/friends',
+    LIST_REQUESTS: '/api/v1/friends/requests',
   }
 };
