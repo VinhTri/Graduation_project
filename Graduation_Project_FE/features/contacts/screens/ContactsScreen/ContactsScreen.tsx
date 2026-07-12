@@ -3,6 +3,7 @@ import { View, Text, TouchableOpacity, TextInput, FlatList, ActivityIndicator } 
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Swipeable } from 'react-native-gesture-handler';
 import { styles } from './ContactsScreen.styles';
 import Colors from '../../../../shared/constants/Colors';
 import { friendshipService, FriendshipResponse } from '../../../../shared/api/services/friendship.service';
@@ -139,57 +140,84 @@ export const ContactsScreen = () => {
     );
   };
 
-  const renderItem = ({ item }: { item: FriendshipResponse }) => (
-    <View style={styles.listItem}>
-      <View style={styles.userInfo}>
-        {renderUserAvatar(item.friendUsername)}
-        <View style={{ flex: 1, marginRight: 8 }}>
-          <Text style={styles.userName} numberOfLines={1} ellipsizeMode="tail">{item.friendUsername}</Text>
-          <Text style={styles.userEmail} numberOfLines={1} ellipsizeMode="tail">{item.friendEmail}</Text>
-        </View>
-      </View>
-      
-      {activeTab === 'REQUESTS' ? (
-        <View style={styles.actionButtons}>
-          <TouchableOpacity style={styles.acceptButton} onPress={() => handleAccept(item.id)}>
-            <Text style={styles.acceptText}>Đồng ý</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.rejectButton} onPress={() => handleReject(item.id)}>
-            <Text style={styles.rejectText}>Xóa</Text>
-          </TouchableOpacity>
-        </View>
-      ) : (
-        <View style={styles.actionButtons}>
-          <TouchableOpacity style={styles.removeFriendButton} onPress={() => handleRemoveFriend(item.id, item.friendUsername)}>
-            <Ionicons name="trash-outline" size={18} color="#EF4444" />
-          </TouchableOpacity>
-        </View>
-      )}
-    </View>
+  const renderRightActions = (item: FriendshipResponse) => (
+    <TouchableOpacity 
+      style={styles.deleteAction}
+      onPress={() => handleRemoveFriend(item.id, item.friendUsername)}
+    >
+      <Ionicons name="trash" size={24} color="#FFF" />
+      <Text style={styles.deleteActionText}>Xóa</Text>
+    </TouchableOpacity>
   );
+
+  const renderItem = ({ item }: { item: FriendshipResponse }) => {
+    if (activeTab === 'REQUESTS') {
+      return (
+        <View style={styles.listItem}>
+          <View style={styles.userInfo}>
+            {renderUserAvatar(item.friendUsername)}
+            <View style={{ flex: 1, marginRight: 8 }}>
+              <Text style={styles.userName} numberOfLines={1} ellipsizeMode="tail">{item.friendUsername}</Text>
+              <Text style={styles.userEmail} numberOfLines={1} ellipsizeMode="tail">{item.friendEmail}</Text>
+            </View>
+          </View>
+          
+          <View style={styles.actionButtons}>
+            <TouchableOpacity style={styles.acceptButton} onPress={() => handleAccept(item.id)}>
+              <Text style={styles.acceptText}>Đồng ý</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.rejectButton} onPress={() => handleReject(item.id)}>
+              <Text style={styles.rejectText}>Xóa</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      );
+    }
+
+    return (
+      <Swipeable
+        renderRightActions={() => renderRightActions(item)}
+        overshootRight={false}
+      >
+        <View style={styles.listItem}>
+          <View style={styles.userInfo}>
+            {renderUserAvatar(item.friendUsername)}
+            <View style={{ flex: 1, marginRight: 8 }}>
+              <Text style={styles.userName} numberOfLines={1} ellipsizeMode="tail">{item.friendUsername}</Text>
+              <Text style={styles.userEmail} numberOfLines={1} ellipsizeMode="tail">{item.friendEmail}</Text>
+            </View>
+          </View>
+        </View>
+      </Swipeable>
+    );
+  };
 
   return (
     <View style={styles.container}>
       <View style={{ backgroundColor: Colors.primary, height: insets.top, position: 'absolute', top: 0, left: 0, right: 0 }} />
       
       <View style={{ flex: 1, paddingTop: insets.top }}>
-        {/* Header */}
-        <View style={styles.header}>
-        <TouchableOpacity 
-          style={styles.backButton} 
-          activeOpacity={0.7}
-          onPress={() => {
-            if (router.canGoBack()) {
-              router.back();
-            } else {
-              router.replace('/(tabs)/home');
-            }
-          }}
-        >
-          <Ionicons name="arrow-back" size={24} color={Colors.white} />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Danh bạ</Text>
-      </View>
+        <View style={[styles.header, { paddingTop: 12, paddingBottom: 24 }]}>
+          <View style={styles.leftSection}>
+            <TouchableOpacity 
+              style={styles.backButton} 
+              activeOpacity={0.7}
+              onPress={() => {
+                if (router.canGoBack()) {
+                  router.back();
+                } else {
+                  router.replace('/(tabs)/home');
+                }
+              }}
+            >
+              <Ionicons name="chevron-back-outline" size={22} color={Colors.white} />
+            </TouchableOpacity>
+            <View style={styles.titleContainer}>
+              <Text style={styles.headerTitle}>Danh bạ</Text>
+              <Text style={styles.headerSubtitle}>Quản lý bạn bè & Lời mời</Text>
+            </View>
+          </View>
+        </View>
       <View style={styles.content}>
 
       {/* Search Bar */}
