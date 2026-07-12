@@ -6,6 +6,8 @@ import { useRouter } from "expo-router";
 import Colors from "../../../shared/constants/Colors";
 import { notificationService, NotificationResponse } from "../../../shared/api/services/notification.service";
 
+import { Swipeable } from "react-native-gesture-handler";
+
 const timeAgo = (dateInput: string) => {
   const date = new Date(dateInput);
   const now = new Date();
@@ -56,18 +58,44 @@ export default function NotificationScreen() {
     }
   };
 
+  const handleDelete = async (id: number) => {
+    try {
+      // Optimistic update
+      setNotifications(prev => prev.filter(n => n.id !== id));
+      await notificationService.delete(id);
+    } catch (error) {
+      console.log("Error deleting notification:", error);
+      // Rollback nếu cần (hiện tại đơn giản hóa)
+      loadNotifications();
+    }
+  };
+
+  const renderRightActions = (id: number) => {
+    return (
+      <TouchableOpacity 
+        style={styles.deleteButton} 
+        onPress={() => handleDelete(id)}
+      >
+        <Ionicons name="trash-outline" size={24} color={Colors.white} />
+        <Text style={styles.deleteText}>Xóa</Text>
+      </TouchableOpacity>
+    );
+  };
+
   const renderItem = ({ item }: { item: NotificationResponse }) => (
-    <View style={[styles.notificationCard, !item.isRead && styles.unreadCard]}>
-      <View style={styles.iconContainer}>
-        <Ionicons name="notifications" size={24} color={Colors.primary} />
+    <Swipeable renderRightActions={() => renderRightActions(item.id)}>
+      <View style={[styles.notificationCard, !item.isRead && styles.unreadCard]}>
+        <View style={styles.iconContainer}>
+          <Ionicons name="notifications" size={24} color={Colors.primary} />
+        </View>
+        <View style={styles.contentContainer}>
+          <Text style={styles.title}>{item.title}</Text>
+          <Text style={styles.message}>{item.message}</Text>
+          <Text style={styles.time}>{timeAgo(item.createdAt)}</Text>
+        </View>
+        {!item.isRead && <View style={styles.unreadDot} />}
       </View>
-      <View style={styles.contentContainer}>
-        <Text style={styles.title}>{item.title}</Text>
-        <Text style={styles.message}>{item.message}</Text>
-        <Text style={styles.time}>{timeAgo(item.createdAt)}</Text>
-      </View>
-      {!item.isRead && <View style={styles.unreadDot} />}
-    </View>
+    </Swipeable>
   );
 
   return (
@@ -205,5 +233,19 @@ const styles = StyleSheet.create({
     marginTop: 16,
     fontSize: 16,
     color: Colors.textMuted,
+  },
+  deleteButton: {
+    backgroundColor: "#ef4444",
+    justifyContent: "center",
+    alignItems: "center",
+    width: 80,
+    marginBottom: 12,
+    borderRadius: 12,
+    marginLeft: 8,
+  },
+  deleteText: {
+    color: Colors.white,
+    fontWeight: "600",
+    marginTop: 4,
   }
 });

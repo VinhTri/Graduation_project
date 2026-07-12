@@ -23,5 +23,10 @@ export const notificationService = {
   readAll: async () => {
     const response = await axiosClient.put(ENDPOINTS.NOTIFICATION.READ_ALL);
     return response;
+  },
+
+  delete: async (id: number) => {
+    const response = await axiosClient.delete(ENDPOINTS.NOTIFICATION.DELETE(id));
+    return response;
   }
 };

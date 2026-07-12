@@ -43,6 +43,7 @@ export const ENDPOINTS = {
     GET_ALL: '/api/v1/notifications',
     UNREAD_COUNT: '/api/v1/notifications/unread-count',
     READ_ALL: '/api/v1/notifications/read-all',
+    DELETE: (id: number) => `/api/v1/notifications/${id}`,
   },
   FRIENDSHIP: {
     REQUEST: (email: string) => `/api/v1/friends/request?email=${encodeURIComponent(email)}`,
@@ -51,5 +52,8 @@ export const ENDPOINTS = {
     REMOVE: (id: number) => `/api/v1/friends/remove/${id}`,
     LIST_FRIENDS: '/api/v1/friends',
     LIST_REQUESTS: '/api/v1/friends/requests',
+  },
+  POSTS: {
+    PUBLIC_ALL: '/api/v1/public/posts',
   }
 };
