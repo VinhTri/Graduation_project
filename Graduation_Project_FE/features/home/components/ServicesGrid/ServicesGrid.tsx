@@ -17,7 +17,7 @@ const HOME_SERVICES = [
 
   { id: "9", label: "Tiết kiệm", icon: "save-outline", color: "#E11D48", bgColor: "#FFE4E6" },
   { id: "10", label: "Cộng đồng", icon: "people-outline", color: "#8B5CF6", bgColor: "#EDE9FE" },
-  { id: "11", label: "Mua vé", icon: "film-outline", color: "#06B6D4", bgColor: "#CFFAFE" },
+  { id: "ngan_sach", label: "Ngân sách", icon: "wallet-outline", color: "#8B5CF6", bgColor: "#EDE9FE" },
 ];
 
 export const ServicesGrid = () => {
@@ -28,6 +28,8 @@ export const ServicesGrid = () => {
       router.push('/categories');
     } else if (id === "tat_ca") {
       router.push('/all-services');
+    } else if (id === "ngan_sach") {
+      router.push('/budget');
     } else if (label === "Nạp tiền") {
       router.push("/wallet/action?initialTab=topup");
     } else {

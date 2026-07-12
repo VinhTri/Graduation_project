@@ -1,10 +1,13 @@
 import { Stack } from 'expo-router';
 import { CategoryProvider } from '../shared/contexts/CategoryContext';
+import { BudgetProvider } from '../shared/contexts/BudgetContext';
 
 export default function RootLayout() {
   return (
     <CategoryProvider>
-      <Stack screenOptions={{ headerShown: false }} />
+      <BudgetProvider>
+        <Stack screenOptions={{ headerShown: false }} />
+      </BudgetProvider>
     </CategoryProvider>
   );
 }

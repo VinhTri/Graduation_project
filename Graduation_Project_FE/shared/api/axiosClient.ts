@@ -5,8 +5,8 @@ import Constants from 'expo-constants';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Tự động lấy IP của máy tính đang chạy Expo (dành cho chế độ Development)
-const BACKEND_PORT = '9090'; // SỬA CỔNG PORT Ở ĐÂY NẾU ĐỒNG ĐỘI CỦA BẠN DÙNG CỔNG KHÁC
-let BASE_URL = `http://localhost:${BACKEND_PORT}`; // Mặc định cho Web/Simulator
+const BACKEND_PORT = '8080'; // SỬA CỔNG PORT Ở ĐÂY NẾU ĐỒNG ĐỘI CỦA BẠN DÙNG CỔNG KHÁC
+let BASE_URL = `http://192.168.142.101:${BACKEND_PORT}`; // Mặc định dùng IP Wi-Fi của máy để test trên điện thoại thật
 const debuggerHost = Constants.expoConfig?.hostUri;
 
 if (__DEV__ && debuggerHost) {
