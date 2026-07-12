@@ -9,7 +9,7 @@ import { ManagePosts } from './pages/Posts';
 
 function App() {
   return (
-    <ConfigProvider theme={{ token: { colorPrimary: '#0ea5e9' } }}>
+    <ConfigProvider theme={{ token: { colorPrimary: '#0D9488' } }}>
       <BrowserRouter>
         <Routes>
           <Route path="/login" element={<Login />} />
