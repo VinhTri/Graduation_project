@@ -6,6 +6,7 @@ export interface InvoiceRequest {
   amount: number;
   dueDate: string;
   reminderOption: string;
+  reminderTime?: string;
   isPaid: boolean;
 }
 
@@ -15,6 +16,7 @@ export interface InvoiceResponse {
   amount: number;
   dueDate: string;
   reminderOption: string;
+  reminderTime?: string;
   isPaid: boolean;
   createdAt: string;
   updatedAt: string;

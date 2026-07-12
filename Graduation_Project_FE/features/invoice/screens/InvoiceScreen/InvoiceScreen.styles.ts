@@ -31,10 +31,19 @@ export const styles = StyleSheet.create({
     alignItems: "center",
     marginRight: 14,
   },
+  titleContainer: {
+    flexDirection: "column",
+  },
   headerTitle: {
     color: '#FFF',
     fontSize: 20,
     fontWeight: 'bold',
+  },
+  headerSubtitle: {
+    fontSize: 11,
+    color: "rgba(255, 255, 255, 0.65)",
+    fontWeight: "600",
+    marginTop: 2,
   },
   createButton: {
     backgroundColor: 'rgba(255, 255, 255, 0.2)',
@@ -140,7 +149,18 @@ export const styles = StyleSheet.create({
     borderRadius: 8,
     marginLeft: 8,
   },
-  deleteButton: {
-    backgroundColor: '#FEF2F2',
+  swipeDeleteButton: {
+    backgroundColor: "#ef4444",
+    justifyContent: "center",
+    alignItems: "center",
+    width: 80,
+    marginBottom: 16,
+    borderRadius: 16,
+    marginLeft: 8,
+  },
+  swipeDeleteText: {
+    color: Colors.white,
+    fontWeight: "600",
+    marginTop: 4,
   }
 });

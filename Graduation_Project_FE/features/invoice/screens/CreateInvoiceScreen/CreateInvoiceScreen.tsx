@@ -9,12 +9,12 @@ import {
   Platform,
   Modal,
   TouchableWithoutFeedback,
-  Alert,
   ActivityIndicator
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
+import { ConfirmModal } from '@/shared/components';
 import { styles } from './CreateInvoiceScreen.styles';
 import Colors from '@/shared/constants/Colors';
 import { invoiceService } from '@/shared/api/services/invoiceService';
@@ -24,6 +24,9 @@ export const CreateInvoiceScreen = () => {
   const router = useRouter();
   
   const [loading, setLoading] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [errorModalVisible, setErrorModalVisible] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
 
   const [invoiceName, setInvoiceName] = useState('');
   const [amount, setAmount] = useState('');
@@ -34,6 +37,13 @@ export const CreateInvoiceScreen = () => {
 
   const availableReminderOptions = getAvailableReminderOptions(dueDate);
   const [reminderOption, setReminderOption] = useState('Đúng ngày');
+  
+  const [reminderTime, setReminderTime] = useState(() => {
+    const d = new Date();
+    d.setHours(9, 0, 0, 0); // Default to 09:00
+    return d;
+  });
+  const [showTimePicker, setShowTimePicker] = useState(false);
 
   const handleAmountChange = (text: string) => {
     const numericValue = text.replace(/[^0-9]/g, '');
@@ -57,36 +67,53 @@ export const CreateInvoiceScreen = () => {
     }
   };
 
+  const onTimeChange = (event: any, selectedTime?: Date) => {
+    if (Platform.OS === 'android') {
+      setShowTimePicker(false);
+    }
+    if (selectedTime) {
+      setReminderTime(selectedTime);
+    }
+  };
+
   const handleSave = async () => {
     if (!invoiceName.trim()) {
-      Alert.alert("Lỗi", "Vui lòng nhập tên hóa đơn.");
+      setErrorMessage("Vui lòng nhập tên hóa đơn.");
+      setErrorModalVisible(true);
       return;
     }
     
     const numericAmount = parseFloat(amount.replace(/,/g, ''));
     if (isNaN(numericAmount) || numericAmount <= 0) {
-      Alert.alert("Lỗi", "Vui lòng nhập số tiền hợp lệ.");
+      setErrorMessage("Vui lòng nhập số tiền hợp lệ.");
+      setErrorModalVisible(true);
       return;
     }
 
     try {
       setLoading(true);
+      
+      const year = dueDate.getFullYear();
+      const month = String(dueDate.getMonth() + 1).padStart(2, '0');
+      const day = String(dueDate.getDate()).padStart(2, '0');
+      const localDueDate = `${year}-${month}-${day}`;
+
       const requestData = {
         invoiceName: invoiceName.trim(),
         amount: numericAmount,
-        dueDate: dueDate.toISOString().split('T')[0], // format yyyy-mm-dd
+        dueDate: localDueDate,
         reminderOption: reminderOption,
+        reminderTime: reminderTime.toTimeString().split(' ')[0], // format HH:mm:ss
         isPaid: false
       };
       
       await invoiceService.createInvoice(requestData);
       
-      Alert.alert("Thành công", "Đã lưu hóa đơn thành công!", [
-        { text: "OK", onPress: () => router.back() }
-      ]);
+      setShowSuccessModal(true);
     } catch (error: any) {
       console.error(error);
-      Alert.alert("Lỗi", error?.response?.data?.message || "Có lỗi xảy ra khi lưu hóa đơn.");
+      setErrorMessage(error?.response?.data?.message || "Có lỗi xảy ra khi lưu hóa đơn.");
+      setErrorModalVisible(true);
     } finally {
       setLoading(false);
     }
@@ -179,6 +206,47 @@ export const CreateInvoiceScreen = () => {
               <Ionicons name="chevron-down-outline" size={20} color="#64748B" />
             </TouchableOpacity>
           </View>
+          
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Giờ thông báo</Text>
+            <TouchableOpacity 
+              style={styles.dropdownButton}
+              onPress={() => setShowTimePicker(!showTimePicker)}
+            >
+              <Text style={styles.dropdownButtonText}>
+                {reminderTime.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}
+              </Text>
+              <Ionicons name="time-outline" size={20} color={Colors.primary} />
+            </TouchableOpacity>
+            
+            {showTimePicker && (
+              <View style={{ alignItems: 'center', width: '100%', marginTop: 8 }}>
+                <DateTimePicker
+                  value={reminderTime}
+                  mode="time"
+                  display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                  themeVariant="light"
+                  onChange={onTimeChange}
+                  style={{ alignSelf: 'center' }}
+                />
+                {Platform.OS === 'ios' && (
+                  <TouchableOpacity 
+                    style={{ 
+                      marginTop: 16,
+                      width: '100%',
+                      backgroundColor: Colors.primary + '1A',
+                      paddingVertical: 14,
+                      borderRadius: 16,
+                      alignItems: 'center'
+                    }}
+                    onPress={() => setShowTimePicker(false)}
+                  >
+                    <Text style={{ color: Colors.primary, fontSize: 16, fontWeight: 'bold' }}>Xong</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+            )}
+          </View>
         </View>
 
       </ScrollView>
@@ -236,6 +304,35 @@ export const CreateInvoiceScreen = () => {
           )}
         </TouchableOpacity>
       </View>
+
+      <ConfirmModal
+        visible={showSuccessModal}
+        title="Thành công"
+        message="Đã lưu hóa đơn thành công!"
+        iconName="checkmark-circle"
+        iconColor={Colors.success || "#10B981"}
+        confirmText="Hoàn tất"
+        isDestructive={false}
+        hideCancel={true}
+        onConfirm={() => {
+          setShowSuccessModal(false);
+          router.back();
+        }}
+        onCancel={() => setShowSuccessModal(false)}
+      />
+
+      <ConfirmModal
+        visible={errorModalVisible}
+        title="Lỗi"
+        message={errorMessage}
+        iconName="alert-circle"
+        iconColor={Colors.error}
+        confirmText="Đã hiểu"
+        isDestructive={false}
+        hideCancel={true}
+        onConfirm={() => setErrorModalVisible(false)}
+        onCancel={() => setErrorModalVisible(false)}
+      />
     </KeyboardAvoidingView>
   );
 };
