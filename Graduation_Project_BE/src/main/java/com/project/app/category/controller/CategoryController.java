@@ -21,6 +21,16 @@ import java.util.List;
 public class CategoryController {
 
     private final CategoryService categoryService;
+    private final com.project.app.category.repository.CategoryItemRepository itemRepository;
+    private final com.project.app.category.repository.CategoryGroupRepository groupRepository;
+
+    @GetMapping("/test")
+    public ResponseEntity<?> testCategories() {
+        return ResponseEntity.ok(java.util.Map.of(
+            "groups", groupRepository.findAll(),
+            "items", itemRepository.findAll()
+        ));
+    }
 
     @GetMapping
     public ResponseEntity<ApiResponse<List<CategoryGroupResponse>>> getCategories(
