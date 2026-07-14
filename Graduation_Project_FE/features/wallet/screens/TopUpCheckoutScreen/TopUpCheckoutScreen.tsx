@@ -143,36 +143,6 @@ export default function TopUpCheckoutScreen() {
               <Text style={styles.infoLabel}>Hết hạn sau</Text>
               <Text style={[styles.infoValue, { color: Colors.error }]}>{formatTime(timeLeft)}</Text>
             </View>
-            <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>Danh mục</Text>
-              {category ? (
-                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                  {categoryIcon ? (
-                    <View style={{ 
-                      backgroundColor: (categoryBgColor as string) || Colors.primary + '1A', 
-                      width: 24, height: 24, borderRadius: 12,
-                      justifyContent: 'center', alignItems: 'center',
-                      marginRight: 8
-                    }}>
-                      <Ionicons 
-                        name={(categoryIcon as any)} 
-                        size={14} 
-                        color={(categoryColor as string) || Colors.primary} 
-                      />
-                    </View>
-                  ) : null}
-                  <Text style={styles.infoValue}>{category}</Text>
-                </View>
-              ) : (
-                <Text style={styles.infoValue}>Chưa chọn danh mục</Text>
-              )}
-            </View>
-            <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>Ghi chú</Text>
-              <Text style={[styles.infoValue, { flex: 1, textAlign: "right", marginLeft: 16 }]} numberOfLines={3}>
-                {note || "Chưa có ghi chú"}
-              </Text>
-            </View>
           </View>
 
         </View>
@@ -235,7 +205,7 @@ export default function TopUpCheckoutScreen() {
       <SuccessModal
         visible={showSuccessModal}
         title="Thanh toán thành công"
-        message="Tiền đã được nạp thành công vào ví của bạn."
+        message="Bạn vừa có một giao dịch nạp tiền chưa thiết lập danh mục và ghi chú, hãy vào lịch sử giao dịch để thiết lập quản lý chi tiêu tốt nhất bạn nhé"
         isAutoClose={true}
         onClose={() => {
           setShowSuccessModal(false);

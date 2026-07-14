@@ -64,5 +64,15 @@ export const transactionService = {
   processWithdrawal: async (data: WithdrawRequest): Promise<WithdrawResponse> => {
     const response = await axiosClient.post(ENDPOINTS.TRANSACTION.WITHDRAW, data);
     return response.data;
+  },
+
+  getTransactionHistory: async (): Promise<any[]> => {
+    const response = await axiosClient.get('/api/v1/history/transactions');
+    return response.data;
+  },
+
+  updateTransaction: async (code: string, data: { categoryId?: number; note?: string }): Promise<any> => {
+    const response = await axiosClient.put(`/api/v1/transactions/${code}`, data);
+    return response.data;
   }
 };

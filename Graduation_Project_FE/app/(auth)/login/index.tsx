@@ -91,16 +91,7 @@ export default function LoginScreen() {
 
   const handleSuccessClose = async () => {
     setIsSuccessModalVisible(false);
-    try {
-      const res: any = await axiosClient.get('/api/v1/auth/pin-status');
-      if (res.data === true) {
-        router.replace('/(tabs)/home');
-      } else {
-        router.replace('/(auth)/setup-pin');
-      }
-    } catch (error) {
-      router.replace('/(tabs)/home');
-    }
+    router.replace('/(auth)/verify-stk');
   };
 
   return (

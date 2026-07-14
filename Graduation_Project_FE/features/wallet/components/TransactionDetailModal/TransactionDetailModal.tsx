@@ -6,12 +6,16 @@ import {
   TouchableOpacity,
   Share,
   Alert,
-  Platform
+  Platform,
+  ActivityIndicator
 } from "react-native";
 import * as ReactNative from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import Colors from "../../../../shared/constants/Colors";
 import { styles } from "./TransactionDetailModal.styles";
+import { CategorySelectModal } from "../../../categories/components/CategorySelectModal";
+import { AddCategoryModal } from "../../../categories/components/AddCategoryModal";
+import { transactionService } from "../../../../shared/api/services/transactionService";
 
 // Safe dynamic lookup for Clipboard to support newer React Native versions without TS compile errors
 const NativeClipboard = (ReactNative as any).Clipboard;
@@ -32,14 +36,32 @@ interface TransactionDetailModalProps {
   visible: boolean;
   transaction: Transaction | null;
   onClose: () => void;
+  onRefresh?: () => void;
 }
 
 export default function TransactionDetailModal({
   visible,
   transaction,
   onClose,
+  onRefresh,
 }: TransactionDetailModalProps) {
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [selectedCategory, setSelectedCategory] = useState<any>(null);
+  const [editedNote, setEditedNote] = useState<string>("");
+  const [isCategoryModalVisible, setIsCategoryModalVisible] = useState(false);
+  const [isAddCategoryModalVisible, setIsAddCategoryModalVisible] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (transaction) {
+      setEditedNote(transaction.notes || "");
+      if (transaction.categoryId) {
+        setSelectedCategory({ id: transaction.categoryId, label: transaction.category });
+      } else {
+        setSelectedCategory(null);
+      }
+    }
+  }, [transaction]);
 
   useEffect(() => {
     if (toastMessage) {
@@ -148,6 +170,26 @@ export default function TransactionDetailModal({
     }
   };
 
+  const handleSaveChanges = async () => {
+    if (!transaction) return;
+    setSaving(true);
+    try {
+      await transactionService.updateTransaction(transaction.id, {
+        categoryId: selectedCategory ? Number(selectedCategory.id) : undefined,
+        note: editedNote,
+      });
+      Alert.alert("Thành công", "Cập nhật thông tin giao dịch thành công!");
+      if (onRefresh) {
+        onRefresh();
+      }
+      onClose();
+    } catch (error: any) {
+      Alert.alert("Lỗi", error.message || "Không thể cập nhật giao dịch");
+    } finally {
+      setSaving(false);
+    }
+  };
+
   return (
     <Modal
       visible={visible}
@@ -253,35 +295,59 @@ export default function TransactionDetailModal({
 
 
             {/* Danh mục */}
-            {transaction.category && (
-              <View style={styles.detailRow}>
-                <Text style={styles.detailLabel}>Danh mục</Text>
-                <View style={styles.detailValueContainer}>
-                  <Text style={styles.detailValue}>{transaction.category}</Text>
-                </View>
-              </View>
-            )}
+            <View style={styles.detailRow}>
+              <Text style={styles.detailLabel}>Danh mục</Text>
+              <TouchableOpacity 
+                style={[styles.detailValueContainer, { borderWidth: 1, borderColor: Colors.border, borderRadius: 8, paddingHorizontal: 8, paddingVertical: 4, backgroundColor: '#F9FAFB', flexDirection: 'row', alignItems: 'center' }]}
+                onPress={() => setIsCategoryModalVisible(true)}
+              >
+                <Text style={[styles.detailValue, { color: selectedCategory ? Colors.text : Colors.textMuted }]}>
+                  {selectedCategory ? selectedCategory.label : "Chọn danh mục"}
+                </Text>
+                <Ionicons name="chevron-down" size={14} color={Colors.textMuted} style={{ marginLeft: 6 }} />
+              </TouchableOpacity>
+            </View>
 
             {/* Ghi chú */}
             <View style={styles.detailRow}>
               <Text style={styles.detailLabel}>Ghi chú</Text>
-              <View style={styles.detailValueContainer}>
-                <Text style={styles.detailValue} numberOfLines={3}>
-                  {transaction.notes || transaction.title}
-                </Text>
+              <View style={[styles.detailValueContainer, { borderWidth: 1, borderColor: Colors.border, borderRadius: 8, paddingHorizontal: 8, width: '60%' }]}>
+                <ReactNative.TextInput
+                  style={[styles.detailValue, { width: '100%', paddingVertical: 4 }]}
+                  value={editedNote}
+                  onChangeText={setEditedNote}
+                  placeholder="Nhập ghi chú..."
+                  placeholderTextColor={Colors.textMuted}
+                />
               </View>
             </View>
           </View>
 
           {/* Action Buttons */}
-          <View style={styles.actionContainer}>
+          <View style={[styles.actionContainer, { flexDirection: 'row', gap: 12, marginTop: 24 }]}>
             <TouchableOpacity
-              style={[styles.actionButton, styles.primaryButton]}
+              style={[styles.actionButton, styles.primaryButton, { flex: 1 }]}
               onPress={handleShare}
               activeOpacity={0.8}
             >
               <Ionicons name="share-social-outline" size={18} color={Colors.white} />
               <Text style={styles.primaryButtonText}>Chia sẻ</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.actionButton, { flex: 1, backgroundColor: Colors.primary, justifyContent: 'center', alignItems: 'center', borderRadius: 8, flexDirection: 'row', gap: 6 }]}
+              onPress={handleSaveChanges}
+              activeOpacity={0.8}
+              disabled={saving}
+            >
+              {saving ? (
+                <ActivityIndicator size="small" color={Colors.white} />
+              ) : (
+                <>
+                  <Ionicons name="save-outline" size={18} color={Colors.white} />
+                  <Text style={{ color: Colors.white, fontWeight: '600', fontSize: 14 }}>Lưu</Text>
+                </>
+              )}
             </TouchableOpacity>
           </View>
         </TouchableOpacity>
@@ -293,6 +359,25 @@ export default function TransactionDetailModal({
           </View>
         )}
       </TouchableOpacity>
+
+      <CategorySelectModal 
+        visible={isCategoryModalVisible}
+        onClose={() => setIsCategoryModalVisible(false)}
+        onSelect={(category, groupName) => {
+          setSelectedCategory(category);
+          setIsCategoryModalVisible(false);
+        }}
+        onAddCategory={() => setIsAddCategoryModalVisible(true)}
+      />
+
+      <AddCategoryModal 
+        visible={isAddCategoryModalVisible}
+        onClose={() => setIsAddCategoryModalVisible(false)}
+        onBack={() => {
+          setIsAddCategoryModalVisible(false);
+          setTimeout(() => setIsCategoryModalVisible(true), 300);
+        }}
+      />
     </Modal>
   );
 }
