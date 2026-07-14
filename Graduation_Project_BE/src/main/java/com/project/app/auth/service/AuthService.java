@@ -1,0 +1,23 @@
+package com.project.app.auth.service;
+
+import com.project.app.auth.dto.request.LoginRequest;
+import com.project.app.auth.dto.request.RegisterRequest;
+import com.project.app.auth.dto.request.ResetPasswordRequest;
+import com.project.app.auth.dto.request.SendOtpRequest;
+import com.project.app.auth.dto.response.AuthResponse;
+
+import com.project.app.auth.dto.request.VerifyOtpRequest;
+
+public interface AuthService {
+    AuthResponse loginUser(LoginRequest request);
+    void sendRegisterOtp(SendOtpRequest request);
+    AuthResponse registerUser(RegisterRequest request);
+    void processForgotPassword(SendOtpRequest request);
+    void processResetPassword(ResetPasswordRequest request);
+    void verifyOtp(VerifyOtpRequest request);
+    
+    boolean hasPinCode(Long userId);
+    void setupPinCode(Long userId, String pinCode);
+    void sendForgotPinOtp(Long userId);
+    void resetPinCode(Long userId, String otp, String newPinCode);
+}
