@@ -86,6 +86,12 @@ public class Wallet {
         this.balance = balance;
     }
 
+    public void addBalance(BigDecimal amount) {
+        if (amount != null) {
+            this.balance = this.balance.add(amount);
+        }
+    }
+
     public boolean isDefault() {
         return isDefault;
     }

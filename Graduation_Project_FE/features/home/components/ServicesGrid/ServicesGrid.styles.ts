@@ -1,16 +1,18 @@
 import { StyleSheet } from "react-native";
-import Colors from "@/shared/constants/Colors";
+import { PASTEL_PALETTE } from "@/shared/constants/PastelPalette";
 
 export const styles = StyleSheet.create({
   container: {
-    backgroundColor: Colors.white,
+    backgroundColor: PASTEL_PALETTE.white,
     borderRadius: 24,
     padding: 16,
-    shadowColor: "#000",
+    shadowColor: PASTEL_PALETTE.lavender,
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
+    shadowOpacity: 0.08,
     shadowRadius: 8,
     elevation: 2,
+    borderWidth: 1,
+    borderColor: PASTEL_PALETTE.border,
   },
   grid: {
     flexDirection: "row",
@@ -18,7 +20,7 @@ export const styles = StyleSheet.create({
     justifyContent: "space-between",
   },
   serviceItem: {
-    width: "22%", // 4 items per row approximately, allowing for spacing
+    width: "22%",
     alignItems: "center",
     marginBottom: 20,
   },
@@ -32,7 +34,7 @@ export const styles = StyleSheet.create({
   },
   serviceLabel: {
     fontSize: 12,
-    color: Colors.text,
+    color: PASTEL_PALETTE.title,
     textAlign: "center",
     fontWeight: "500",
   },

@@ -20,9 +20,11 @@ const AVAILABLE_ICONS = [
 interface IconPickerProps {
   selectedIcon: string;
   onSelect: (iconName: string) => void;
+  color?: string;
 }
 
-export const IconPicker: React.FC<IconPickerProps> = ({ selectedIcon, onSelect }) => {
+export const IconPicker: React.FC<IconPickerProps> = ({ selectedIcon, onSelect, color }) => {
+  const activeColor = color || Colors.primary;
   return (
     <View style={styles.container}>
       <ScrollView horizontal showsHorizontalScrollIndicator={false}>
@@ -34,7 +36,7 @@ export const IconPicker: React.FC<IconPickerProps> = ({ selectedIcon, onSelect }
                 key={icon}
                 style={[
                   styles.iconItem,
-                  isSelected && styles.selectedIconItem
+                  isSelected && { backgroundColor: activeColor, borderColor: activeColor },
                 ]}
                 onPress={() => onSelect(icon)}
               >
@@ -74,8 +76,4 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: Colors.border,
   },
-  selectedIconItem: {
-    backgroundColor: Colors.primary,
-    borderColor: Colors.primary,
-  }
 });

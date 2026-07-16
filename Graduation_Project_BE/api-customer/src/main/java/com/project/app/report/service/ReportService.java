@@ -10,6 +10,8 @@ import java.util.List;
 
 public interface ReportService {
     List<ReportDistributionResponse> getDistributionReport(User user, TransactionType type, String filter, LocalDate date);
+
+    List<ReportDistributionResponse> getGroupDistributionReport(User user, TransactionType type, String filter, LocalDate date);
     
     List<ReportTrendResponse> getTrendReport(User user, TransactionType type, String filter, LocalDate date);
 }

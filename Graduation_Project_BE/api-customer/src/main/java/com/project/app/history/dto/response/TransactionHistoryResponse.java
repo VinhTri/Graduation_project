@@ -13,19 +13,27 @@ public class TransactionHistoryResponse {
     private BigDecimal amount;
     private String note;
     private Long categoryId;
+    private String categoryLabel;
+    private String categoryIcon;
+    private Boolean categoryDeleted;
     private LocalDateTime createdAt;
 
     public TransactionHistoryResponse() {
     }
 
-    public TransactionHistoryResponse(String transactionCode, TransactionType type, TransactionStatus status, 
-                                      BigDecimal amount, String note, Long categoryId, LocalDateTime createdAt) {
+    public TransactionHistoryResponse(String transactionCode, TransactionType type, TransactionStatus status,
+                                      BigDecimal amount, String note, Long categoryId,
+                                      String categoryLabel, String categoryIcon, Boolean categoryDeleted,
+                                      LocalDateTime createdAt) {
         this.transactionCode = transactionCode;
         this.type = type;
         this.status = status;
         this.amount = amount;
         this.note = note;
         this.categoryId = categoryId;
+        this.categoryLabel = categoryLabel;
+        this.categoryIcon = categoryIcon;
+        this.categoryDeleted = categoryDeleted;
         this.createdAt = createdAt;
     }
 
@@ -75,6 +83,30 @@ public class TransactionHistoryResponse {
 
     public void setCategoryId(Long categoryId) {
         this.categoryId = categoryId;
+    }
+
+    public String getCategoryLabel() {
+        return categoryLabel;
+    }
+
+    public void setCategoryLabel(String categoryLabel) {
+        this.categoryLabel = categoryLabel;
+    }
+
+    public String getCategoryIcon() {
+        return categoryIcon;
+    }
+
+    public void setCategoryIcon(String categoryIcon) {
+        this.categoryIcon = categoryIcon;
+    }
+
+    public Boolean getCategoryDeleted() {
+        return categoryDeleted;
+    }
+
+    public void setCategoryDeleted(Boolean categoryDeleted) {
+        this.categoryDeleted = categoryDeleted;
     }
 
     public LocalDateTime getCreatedAt() {

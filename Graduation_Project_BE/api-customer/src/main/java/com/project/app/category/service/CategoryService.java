@@ -15,4 +15,5 @@ public interface CategoryService {
     CategoryItemResponse createItem(User user, CategoryItemRequest request);
     void softDeleteCategoryItem(Long itemId, User user);
     CategoryItemResponse updateCategoryItem(Long itemId, User user, CategoryItemRequest request);
+    void softDeleteGroup(Long groupId, User user);
 }

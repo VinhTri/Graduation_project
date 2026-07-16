@@ -100,4 +100,17 @@ public class CategoryController {
                 .message("Xóa danh mục thành công")
                 .build());
     }
+
+    @DeleteMapping("/groups/{groupId}")
+    public ResponseEntity<ApiResponse<Void>> deleteGroup(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @PathVariable Long groupId) {
+
+        categoryService.softDeleteGroup(groupId, userDetails.getUser());
+
+        return ResponseEntity.ok(ApiResponse.<Void>builder()
+                .success(true)
+                .message("Xóa nhóm danh mục thành công")
+                .build());
+    }
 }

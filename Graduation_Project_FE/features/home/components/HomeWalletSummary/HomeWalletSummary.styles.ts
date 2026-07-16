@@ -1,23 +1,26 @@
 import { StyleSheet } from "react-native";
-import Colors from "@/shared/constants/Colors";
+import { PASTEL_PALETTE } from "@/shared/constants/PastelPalette";
 
 export const styles = StyleSheet.create({
   container: {
-    backgroundColor: Colors.white,
+    backgroundColor: PASTEL_PALETTE.white,
     marginHorizontal: 16,
     borderRadius: 24,
-    marginTop: -30, // Overlap the teal header
-    padding: 16,
-    shadowColor: "#000",
+    marginTop: -20,
+    padding: 14,
+    zIndex: 1,
+    shadowColor: PASTEL_PALETTE.lavender,
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.05,
+    shadowOpacity: 0.12,
     shadowRadius: 12,
     elevation: 4,
+    borderWidth: 1,
+    borderColor: PASTEL_PALETTE.border,
   },
   walletsRow: {
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: 16,
+    marginBottom: 12,
   },
   eyeIcon: {
     marginRight: 12,
@@ -25,21 +28,32 @@ export const styles = StyleSheet.create({
   walletItem: {
     flex: 1,
     borderRightWidth: 1,
-    borderRightColor: Colors.border,
+    borderRightColor: PASTEL_PALETTE.border,
     paddingHorizontal: 8,
   },
   walletItemNoBorder: {
     borderRightWidth: 0,
   },
+  smartSpendHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    marginBottom: 4,
+  },
   walletLabel: {
     fontSize: 12,
-    color: Colors.textMuted,
-    marginBottom: 4,
+    color: PASTEL_PALETTE.textMuted,
     fontWeight: "500",
   },
   smartSpendLabel: {
-    color: Colors.primary, // Teal
-    fontWeight: "700",
+    fontSize: 12,
+    fontWeight: "800",
+  },
+  brandSmart: {
+    color: PASTEL_PALETTE.title,
+  },
+  brandSpend: {
+    color: PASTEL_PALETTE.accent,
   },
   walletBalanceRow: {
     flexDirection: "row",
@@ -48,23 +62,25 @@ export const styles = StyleSheet.create({
   walletBalance: {
     fontSize: 15,
     fontWeight: "700",
-    color: Colors.text,
+    color: PASTEL_PALETTE.title,
     marginRight: 4,
   },
   financialCenterBtn: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    backgroundColor: "#F0F9FF", // Light blue
+    backgroundColor: PASTEL_PALETTE.lavenderSoft,
     borderRadius: 12,
     padding: 12,
+    borderWidth: 1,
+    borderColor: PASTEL_PALETTE.border,
   },
   financialCenterLeft: {
     flexDirection: "row",
     alignItems: "center",
   },
   financialCenterText: {
-    color: "#0284C7", // Blue text
+    color: PASTEL_PALETTE.subtitle,
     fontSize: 14,
     fontWeight: "600",
     marginLeft: 8,

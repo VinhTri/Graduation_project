@@ -7,7 +7,9 @@ import {
   Share,
   Alert,
   Platform,
-  ActivityIndicator
+  ActivityIndicator,
+  Keyboard,
+  KeyboardAvoidingView
 } from "react-native";
 import * as ReactNative from "react-native";
 import { Ionicons } from "@expo/vector-icons";
@@ -16,9 +18,12 @@ import { styles } from "./TransactionDetailModal.styles";
 import { CategorySelectModal } from "../../../categories/components/CategorySelectModal";
 import { AddCategoryModal } from "../../../categories/components/AddCategoryModal";
 import { transactionService } from "../../../../shared/api/services/transactionService";
+import { useCategoryContext } from "../../../../shared/contexts/CategoryContext";
 
 // Safe dynamic lookup for Clipboard to support newer React Native versions without TS compile errors
 const NativeClipboard = (ReactNative as any).Clipboard;
+
+const NOTE_MAX_LENGTH = 150;
 
 export interface Transaction {
   id: string;
@@ -29,6 +34,7 @@ export interface Transaction {
   status: string; // success, pending, failed
   icon: string;
   category?: string;
+  categoryId?: number | string;
   notes?: string;
 }
 
@@ -45,6 +51,7 @@ export default function TransactionDetailModal({
   onClose,
   onRefresh,
 }: TransactionDetailModalProps) {
+  const { categories } = useCategoryContext();
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<any>(null);
   const [editedNote, setEditedNote] = useState<string>("");
@@ -52,16 +59,48 @@ export default function TransactionDetailModal({
   const [isAddCategoryModalVisible, setIsAddCategoryModalVisible] = useState(false);
   const [saving, setSaving] = useState(false);
 
+  // Tìm danh mục đầy đủ (icon, màu, nhóm) theo id để hiển thị trực quan.
+  const findFullCategory = (categoryId: any) => {
+    for (const group of categories || []) {
+      const found = (group.items || []).find(
+        (item: any) => String(item.id) === String(categoryId)
+      );
+      if (found) {
+        return { ...found, groupName: group.title };
+      }
+    }
+    return null;
+  };
+
   useEffect(() => {
     if (transaction) {
       setEditedNote(transaction.notes || "");
       if (transaction.categoryId) {
-        setSelectedCategory({ id: transaction.categoryId, label: transaction.category });
+        const full = findFullCategory(transaction.categoryId);
+        if (full) {
+          setSelectedCategory(full);
+        } else if ((transaction as any).categoryLabel) {
+          setSelectedCategory({
+            id: transaction.categoryId,
+            label: (transaction as any).categoryDeleted
+              ? `${(transaction as any).categoryLabel} (đã xóa)`
+              : (transaction as any).categoryLabel,
+            icon: (transaction as any).categoryIcon || 'archive-outline',
+            deleted: (transaction as any).categoryDeleted,
+          });
+        } else {
+          setSelectedCategory({
+            id: transaction.categoryId,
+            label: 'Danh mục đã xóa',
+            icon: 'archive-outline',
+            deleted: true,
+          });
+        }
       } else {
         setSelectedCategory(null);
       }
     }
-  }, [transaction]);
+  }, [transaction, categories]);
 
   useEffect(() => {
     if (toastMessage) {
@@ -133,6 +172,10 @@ export default function TransactionDetailModal({
 
   const statusInfo = getStatusDetails(transaction.status);
   const isPositive = transaction.amount > 0;
+  // Chỉ giao dịch nạp tiền và rút tiền mới cần phân loại (danh mục/ghi chú).
+  const isTopUp = transaction.type === "topup";
+  const isWithdraw = transaction.type === "withdraw";
+  const canEditClassification = isTopUp || isWithdraw;
 
   const handleCopyTxId = () => {
     try {
@@ -197,6 +240,10 @@ export default function TransactionDetailModal({
       animationType="fade"
       onRequestClose={onClose}
     >
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+      >
       <TouchableOpacity
         style={styles.modalOverlay}
         activeOpacity={1}
@@ -206,7 +253,7 @@ export default function TransactionDetailModal({
         <TouchableOpacity
           style={styles.billContainer}
           activeOpacity={1}
-          onPress={() => {}} // Ngăn đóng modal khi bấm vào bên trong hóa đơn
+          onPress={() => Keyboard.dismiss()} // Bấm vùng trống trong hóa đơn để ẩn bàn phím
         >
           {/* Close Icon Button */}
           <TouchableOpacity
@@ -294,33 +341,76 @@ export default function TransactionDetailModal({
 
 
 
-            {/* Danh mục */}
-            <View style={styles.detailRow}>
-              <Text style={styles.detailLabel}>Danh mục</Text>
-              <TouchableOpacity 
-                style={[styles.detailValueContainer, { borderWidth: 1, borderColor: Colors.border, borderRadius: 8, paddingHorizontal: 8, paddingVertical: 4, backgroundColor: '#F9FAFB', flexDirection: 'row', alignItems: 'center' }]}
-                onPress={() => setIsCategoryModalVisible(true)}
-              >
-                <Text style={[styles.detailValue, { color: selectedCategory ? Colors.text : Colors.textMuted }]}>
-                  {selectedCategory ? selectedCategory.label : "Chọn danh mục"}
-                </Text>
-                <Ionicons name="chevron-down" size={14} color={Colors.textMuted} style={{ marginLeft: 6 }} />
-              </TouchableOpacity>
-            </View>
+            {/* Danh mục & Ghi chú — nạp tiền và rút tiền */}
+            {canEditClassification && (
+              <>
+                {/* Danh mục */}
+                <View style={styles.classifyBlock}>
+                  <Text style={styles.detailLabel}>Danh mục</Text>
+                  <TouchableOpacity
+                    style={styles.categorySelector}
+                    onPress={() => setIsCategoryModalVisible(true)}
+                    activeOpacity={0.7}
+                  >
+                    <View style={styles.categoryLeft}>
+                      <View
+                        style={[
+                          styles.categoryIcon,
+                          { backgroundColor: selectedCategory?.bgColor || Colors.border + "55" },
+                        ]}
+                      >
+                        <Ionicons
+                          name={(selectedCategory?.icon as any) || "pricetag-outline"}
+                          size={16}
+                          color={selectedCategory?.color || Colors.textMuted}
+                        />
+                      </View>
+                      <View style={{ flexShrink: 1 }}>
+                        <Text
+                          style={[
+                            styles.categoryLabel,
+                            { color: selectedCategory ? Colors.text : Colors.textMuted },
+                          ]}
+                          numberOfLines={1}
+                        >
+                          {selectedCategory ? selectedCategory.label : "Chọn danh mục"}
+                        </Text>
+                        {selectedCategory?.groupName ? (
+                          <Text style={styles.categoryGroup} numberOfLines={1}>
+                            {selectedCategory.groupName}
+                          </Text>
+                        ) : null}
+                      </View>
+                    </View>
+                    <Ionicons name="chevron-down" size={16} color={Colors.textMuted} />
+                  </TouchableOpacity>
+                </View>
 
-            {/* Ghi chú */}
-            <View style={styles.detailRow}>
-              <Text style={styles.detailLabel}>Ghi chú</Text>
-              <View style={[styles.detailValueContainer, { borderWidth: 1, borderColor: Colors.border, borderRadius: 8, paddingHorizontal: 8, width: '60%' }]}>
-                <ReactNative.TextInput
-                  style={[styles.detailValue, { width: '100%', paddingVertical: 4 }]}
-                  value={editedNote}
-                  onChangeText={setEditedNote}
-                  placeholder="Nhập ghi chú..."
-                  placeholderTextColor={Colors.textMuted}
-                />
-              </View>
-            </View>
+                {/* Ghi chú */}
+                <View style={styles.classifyBlock}>
+                  <View style={styles.noteHeaderRow}>
+                    <Text style={styles.detailLabel}>Ghi chú</Text>
+                    <Text style={styles.noteCounter}>
+                      {editedNote.length}/{NOTE_MAX_LENGTH}
+                    </Text>
+                  </View>
+                  <ReactNative.TextInput
+                    style={styles.noteInput}
+                    value={editedNote}
+                    onChangeText={setEditedNote}
+                    placeholder={
+                      isWithdraw
+                        ? "Nhập ghi chú cho giao dịch rút tiền..."
+                        : "Nhập ghi chú để phân loại chi tiêu..."
+                    }
+                    placeholderTextColor={Colors.textMuted}
+                    multiline
+                    maxLength={NOTE_MAX_LENGTH}
+                    textAlignVertical="top"
+                  />
+                </View>
+              </>
+            )}
           </View>
 
           {/* Action Buttons */}
@@ -334,21 +424,24 @@ export default function TransactionDetailModal({
               <Text style={styles.primaryButtonText}>Chia sẻ</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity
-              style={[styles.actionButton, { flex: 1, backgroundColor: Colors.primary, justifyContent: 'center', alignItems: 'center', borderRadius: 8, flexDirection: 'row', gap: 6 }]}
-              onPress={handleSaveChanges}
-              activeOpacity={0.8}
-              disabled={saving}
-            >
-              {saving ? (
-                <ActivityIndicator size="small" color={Colors.white} />
-              ) : (
-                <>
-                  <Ionicons name="save-outline" size={18} color={Colors.white} />
-                  <Text style={{ color: Colors.white, fontWeight: '600', fontSize: 14 }}>Lưu</Text>
-                </>
-              )}
-            </TouchableOpacity>
+            {/* Nút Lưu — phân loại danh mục/ghi chú cho nạp tiền và rút tiền */}
+            {canEditClassification && (
+              <TouchableOpacity
+                style={[styles.actionButton, { flex: 1, backgroundColor: Colors.primary, justifyContent: 'center', alignItems: 'center', borderRadius: 8, flexDirection: 'row', gap: 6 }]}
+                onPress={handleSaveChanges}
+                activeOpacity={0.8}
+                disabled={saving}
+              >
+                {saving ? (
+                  <ActivityIndicator size="small" color={Colors.white} />
+                ) : (
+                  <>
+                    <Ionicons name="save-outline" size={18} color={Colors.white} />
+                    <Text style={{ color: Colors.white, fontWeight: '600', fontSize: 14 }}>Lưu</Text>
+                  </>
+                )}
+              </TouchableOpacity>
+            )}
           </View>
         </TouchableOpacity>
 
@@ -359,12 +452,14 @@ export default function TransactionDetailModal({
           </View>
         )}
       </TouchableOpacity>
+      </KeyboardAvoidingView>
 
       <CategorySelectModal 
         visible={isCategoryModalVisible}
         onClose={() => setIsCategoryModalVisible(false)}
         onSelect={(category, groupName) => {
-          setSelectedCategory(category);
+          // Lưu đầy đủ icon/màu kèm tên nhóm để hiển thị trực quan.
+          setSelectedCategory({ ...category, groupName });
           setIsCategoryModalVisible(false);
         }}
         onAddCategory={() => setIsAddCategoryModalVisible(true)}

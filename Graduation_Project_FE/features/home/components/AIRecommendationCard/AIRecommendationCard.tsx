@@ -2,12 +2,13 @@ import React from "react";
 import { View, Text } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { styles } from "./AIRecommendationCard.styles";
+import { PASTEL_PALETTE } from "@/shared/constants/PastelPalette";
 
 export const AIRecommendationCard = () => {
   return (
     <View style={styles.container}>
       <View style={styles.iconContainer}>
-        <Ionicons name="sparkles" size={24} color="#EAB308" />
+        <Ionicons name="sparkles" size={24} color={PASTEL_PALETTE.lavender} />
       </View>
       <View style={styles.contentContainer}>
         <Text style={styles.title}>Trợ lý AI khuyên bạn</Text>

@@ -5,6 +5,7 @@ export interface WalletData {
   id: number;
   name: string;
   balance: number;
+  accountNumber?: string;
   isDefault: boolean;
   isLimitEnabled?: boolean;
   transactionLimit?: number;
@@ -16,6 +17,7 @@ export interface WalletSettingsRequest {
   isLimitEnabled: boolean;
   transactionLimit?: number;
   dailyLimit?: number;
+  pinCode: string;
 }
 
 export const walletService = {

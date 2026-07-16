@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
 import { 
-  View, Text, TextInput, TouchableOpacity, 
+  View, Text, TextInput, TouchableOpacity,
   ScrollView, SafeAreaView, Platform, KeyboardAvoidingView, Alert
 } from 'react-native';
-import { Feather, FontAwesome5 } from '@expo/vector-icons';
+import { Feather } from '@expo/vector-icons';
 import { styles } from './_login.styles';
+import { AUTH_INPUT_ICON, AUTH_INPUT_PLACEHOLDER } from '../../../shared/constants/authInputColors';
+import { AuthBrandHeader } from '../../../shared/components/AuthBrandHeader';
 import FeatureSlider from '../../../shared/components/FeatureSlider/FeatureSlider';
 import { useRouter } from 'expo-router';
 import { authService } from '../../../shared/api/services/auth.service';
@@ -112,20 +114,19 @@ export default function LoginScreen() {
           {/* ================= PHẦN DƯỚI (FORM) ================= */}
           <View style={styles.bottomSection}>
             <View style={styles.dragHandle} />
-            
-            <Text style={styles.brandTitle}>SmartSpend</Text>
-            <Text style={styles.brandSubtitle}>Đăng nhập để quản lý tài chính cá nhân</Text>
+
+            <AuthBrandHeader subtitle="Đăng nhập để quản lý tài chính cá nhân" />
 
             <View style={styles.formContainer}>
               {/* Email */}
               <View style={styles.inputGroup}>
                 <Text style={styles.label}>Địa chỉ Email</Text>
                 <View style={[styles.inputContainer, emailError ? { borderColor: '#EF4444' } : {}]}>
-                  <Feather name="mail" size={18} color="#9CA3AF" style={styles.inputIcon} />
+                  <Feather name="mail" size={18} color={AUTH_INPUT_ICON} style={styles.inputIcon} />
                   <TextInput 
                     style={styles.input} 
                     placeholder="Nhập email của bạn" 
-                    placeholderTextColor="#9CA3AF"
+                    placeholderTextColor={AUTH_INPUT_PLACEHOLDER}
                     keyboardType="email-address"
                     autoCapitalize="none"
                     value={email}
@@ -142,11 +143,11 @@ export default function LoginScreen() {
               <View style={styles.inputGroup}>
                 <Text style={styles.label}>Mật khẩu</Text>
                 <View style={[styles.inputContainer, passwordError ? { borderColor: '#EF4444' } : {}]}>
-                  <Feather name="lock" size={18} color="#9CA3AF" style={styles.inputIcon} />
+                  <Feather name="lock" size={18} color={AUTH_INPUT_ICON} style={styles.inputIcon} />
                   <TextInput 
                     style={styles.input} 
                     placeholder="Nhập mật khẩu" 
-                    placeholderTextColor="#9CA3AF"
+                    placeholderTextColor={AUTH_INPUT_PLACEHOLDER}
                     secureTextEntry={!showPassword}
                     value={password}
                     onChangeText={(text) => {
@@ -155,7 +156,7 @@ export default function LoginScreen() {
                     }}
                   />
                   <TouchableOpacity onPress={() => setShowPassword(!showPassword)} style={styles.eyeIcon}>
-                    <Feather name={showPassword ? "eye" : "eye-off"} size={18} color="#9CA3AF" />
+                    <Feather name={showPassword ? "eye" : "eye-off"} size={18} color={AUTH_INPUT_ICON} />
                   </TouchableOpacity>
                 </View>
                 {passwordError ? <Text style={styles.errorText}>{passwordError}</Text> : null}
@@ -169,8 +170,8 @@ export default function LoginScreen() {
               </View>
 
               {/* Nút đăng nhập */}
-              <TouchableOpacity onPress={handleLogin} style={styles.loginButton} activeOpacity={0.8}>
-                <Text style={styles.loginButtonText}>Đăng nhập</Text>
+              <TouchableOpacity onPress={handleLogin} style={styles.primaryButton} activeOpacity={0.8}>
+                <Text style={styles.primaryButtonText}>Đăng nhập</Text>
               </TouchableOpacity>
 
               {/* Hoặc tiếp tục bằng (Tạm ẩn) */}
@@ -199,10 +200,10 @@ export default function LoginScreen() {
               */}
 
               {/* Chuyển hướng đăng ký */}
-              <View style={styles.registerContainer}>
-                <Text style={styles.registerText}>Bạn chưa có tài khoản? </Text>
+              <View style={styles.linkRow}>
+                <Text style={styles.linkText}>Bạn chưa có tài khoản? </Text>
                 <TouchableOpacity onPress={() => router.replace("/(auth)/register")}>
-                  <Text style={styles.registerLink}>Đăng ký ngay</Text>
+                  <Text style={styles.linkAction}>Đăng ký ngay</Text>
                 </TouchableOpacity>
               </View>
             </View>

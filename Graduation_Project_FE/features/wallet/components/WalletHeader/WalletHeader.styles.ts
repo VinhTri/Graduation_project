@@ -1,51 +1,66 @@
 import { StyleSheet } from "react-native";
-import Colors from "../../../../shared/constants/Colors";
+import { PASTEL_PALETTE } from "../../../../shared/constants/PastelPalette";
 
 export const styles = StyleSheet.create({
   headerContainer: {
-    backgroundColor: Colors.primary,
-    borderBottomLeftRadius: 32,
-    borderBottomRightRadius: 32,
     paddingBottom: 8,
-    shadowColor: Colors.black,
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.08,
-    shadowRadius: 15,
-    elevation: 5,
   },
   topBar: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 24,
-    paddingVertical: 12,
+    marginBottom: 8,
+    gap: 10,
   },
   leftSection: {
+    flex: 1,
     flexDirection: "row",
     alignItems: "center",
+    minWidth: 0,
+  },
+  openAccountBtn: {
+    flexShrink: 0,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    backgroundColor: PASTEL_PALETTE.accent,
+    borderRadius: 18,
+    paddingHorizontal: 12,
+    paddingVertical: 9,
+    shadowColor: PASTEL_PALETTE.accentDeep,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  openAccountText: {
+    color: PASTEL_PALETTE.white,
+    fontSize: 12,
+    fontWeight: "800",
   },
   backButton: {
-    marginRight: 14,
-    width: 38,
-    height: 38,
-    borderRadius: 12,
-    backgroundColor: "rgba(255, 255, 255, 0.12)",
+    marginRight: 6,
+    marginLeft: -8,
+    width: 40,
+    height: 40,
     justifyContent: "center",
     alignItems: "center",
   },
   titleContainer: {
-    flexDirection: "column",
+    flex: 1,
+    minWidth: 0,
   },
   headerTitle: {
     fontSize: 22,
     fontWeight: "900",
-    color: Colors.white,
-    letterSpacing: 0.3,
+    color: PASTEL_PALETTE.title,
+    letterSpacing: 0.2,
   },
   headerSubtitle: {
-    fontSize: 11,
-    color: "rgba(255, 255, 255, 0.65)",
+    fontSize: 13,
+    color: PASTEL_PALETTE.subtitle,
     fontWeight: "600",
-    marginTop: 2,
+    marginTop: 4,
+    opacity: 0.85,
   },
 });
 export default styles;

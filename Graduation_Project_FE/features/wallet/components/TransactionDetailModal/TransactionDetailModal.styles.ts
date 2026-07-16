@@ -151,6 +151,69 @@ export const styles = StyleSheet.create({
     padding: 2,
   },
 
+  // Khối phân loại (danh mục + ghi chú) dạng cột, rộng hết hàng
+  classifyBlock: {
+    width: "100%",
+    paddingVertical: 10,
+  },
+  categorySelector: {
+    marginTop: 8,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    borderWidth: 1,
+    borderColor: Colors.border,
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    backgroundColor: "#F9FAFB",
+  },
+  categoryLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    flexShrink: 1,
+  },
+  categoryIcon: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: 10,
+  },
+  categoryLabel: {
+    fontSize: 14,
+    fontWeight: "600",
+  },
+  categoryGroup: {
+    fontSize: 12,
+    color: Colors.textMuted,
+    marginTop: 1,
+  },
+  noteHeaderRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  noteCounter: {
+    fontSize: 12,
+    color: Colors.textMuted,
+    fontWeight: "500",
+  },
+  noteInput: {
+    marginTop: 8,
+    minHeight: 64,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontSize: 14,
+    color: Colors.text,
+    backgroundColor: "#F9FAFB",
+    lineHeight: 20,
+  },
+
   // Nhãn thông báo sao chép
   toastContainer: {
     position: "absolute",

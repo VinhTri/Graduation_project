@@ -22,6 +22,7 @@ public enum ErrorCode {
     BANK_ACCOUNT_ALREADY_EXISTS("BANK_4002", "Tài khoản ngân hàng này đã được liên kết với ví của bạn!", HttpStatus.CONFLICT),
     INSUFFICIENT_BALANCE("WALL_2003", "Số dư trong ví không đủ để thực hiện giao dịch!", HttpStatus.BAD_REQUEST),
     BANK_VERIFICATION_FAILED("BANK_4003", "Không thể xác minh thông tin ngân hàng! Vui lòng kiểm tra lại số tài khoản.", HttpStatus.BAD_REQUEST),
+    BANK_ACCOUNT_LIMIT_REACHED("BANK_4004", "Bạn chỉ có thể liên kết tối đa 3 tài khoản ngân hàng!", HttpStatus.BAD_REQUEST),
     DUPLICATE_WEBHOOK("TX_3002", "Giao dịch này đã được xử lý trước đó!", HttpStatus.CONFLICT),
     ACCOUNT_LOCKED("AUTH_1010", "Tài khoản đã bị khóa do nhập sai PIN nhiều lần. Vui lòng thử lại sau!", HttpStatus.FORBIDDEN),
     ACCOUNT_NUMBER_NOT_FOUND("WALL_2004", "Ví chưa được thiết lập số tài khoản. Vui lòng thiết lập số tài khoản trước!", HttpStatus.BAD_REQUEST),
@@ -32,7 +33,9 @@ public enum ErrorCode {
     // ---- LỖI DANH MỤC ----
     CATEGORY_GROUP_NOT_FOUND("CAT_5001", "Không tìm thấy nhóm danh mục!", HttpStatus.NOT_FOUND),
     CATEGORY_ITEM_NOT_FOUND("CAT_5002", "Không tìm thấy danh mục!", HttpStatus.NOT_FOUND),
-    CATEGORY_ITEM_LIMIT_EXCEEDED("CAT_5003", "Mỗi nhóm danh mục chỉ được tối đa 8 danh mục con!", HttpStatus.BAD_REQUEST),
+    CATEGORY_ITEM_LIMIT_EXCEEDED("CAT_5003", "Mỗi nhóm danh mục chỉ được tối đa 4 danh mục!", HttpStatus.BAD_REQUEST),
+    CATEGORY_GROUP_LIMIT_EXCEEDED("CAT_5004", "Bạn chỉ có thể tạo tối đa 5 nhóm danh mục!", HttpStatus.BAD_REQUEST),
+    CATEGORY_ITEM_NOT_EDITABLE("CAT_5005", "Danh mục không thể chỉnh sửa. Vui lòng xóa và tạo lại!", HttpStatus.BAD_REQUEST),
 
     // ---- LỖI HÓA ĐƠN ----
     INVOICE_NOT_FOUND("INV_6001", "Không tìm thấy hóa đơn!", HttpStatus.NOT_FOUND),

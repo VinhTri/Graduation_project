@@ -1,40 +1,39 @@
 import { StyleSheet, Platform, Dimensions } from "react-native";
 import Colors from "../../../../shared/constants/Colors";
+import { PASTEL_PALETTE } from "../../../../shared/constants/PastelPalette";
 
 const { width } = Dimensions.get("window");
 
 export const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.background,
+    backgroundColor: PASTEL_PALETTE.bg,
   },
   header: {
+    paddingBottom: 18,
+  },
+  headerRow: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 24,
-    paddingBottom: 20,
-    backgroundColor: Colors.primary,
-    borderBottomLeftRadius: 24,
-    borderBottomRightRadius: 24,
-    paddingTop: Platform.OS === "android" ? 20 : 10,
-    zIndex: 10,
   },
   backButton: {
     width: 40,
     height: 40,
-    borderRadius: 20,
-    backgroundColor: "rgba(255, 255, 255, 0.2)",
     justifyContent: "center",
     alignItems: "center",
+    marginRight: 6,
+    marginLeft: -8,
   },
   headerTitle: {
-    fontSize: 20,
-    fontWeight: "700",
-    color: Colors.white,
-    marginLeft: 8,
+    flex: 1,
+    fontSize: 22,
+    fontWeight: "900",
+    color: PASTEL_PALETTE.title,
+    letterSpacing: 0.2,
   },
   content: {
     flex: 1,
+    backgroundColor: PASTEL_PALETTE.bg,
   },
   scrollContent: {
     padding: 20,
@@ -250,13 +249,82 @@ export const styles = StyleSheet.create({
   },
   pieChartWrapper: {
     alignItems: "center",
-    width: "100%",
     justifyContent: "center",
   },
-  legendIconBox: {
+  distributionTabs: {
+    flexDirection: "row",
+    alignSelf: "center",
+    backgroundColor: "#F1F5F9",
+    borderRadius: 14,
     padding: 4,
+    marginBottom: 16,
+  },
+  distributionTab: {
+    paddingHorizontal: 18,
+    paddingVertical: 8,
+    borderRadius: 10,
+  },
+  distributionTabActive: {
+    backgroundColor: Colors.white,
+    shadowColor: Colors.black,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.08,
+    shadowRadius: 3,
+    elevation: 2,
+  },
+  distributionTabText: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: Colors.textMuted,
+  },
+  distributionTabTextActive: {
+    color: Colors.primary,
+  },
+  legendContainer: {
+    width: "100%",
+    paddingHorizontal: 12,
+    marginTop: 20,
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "center",
+  },
+  legendItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    width: "46%",
+    marginBottom: 15,
+    marginHorizontal: "1%",
+  },
+  pageDots: {
+    flexDirection: "row",
+    justifyContent: "center",
+    gap: 8,
+    marginTop: 8,
+  },
+  pageDot: {
+    width: 8,
+    height: 8,
     borderRadius: 4,
+    backgroundColor: "#CBD5E1",
+  },
+  pageDotActive: {
+    width: 20,
+    backgroundColor: Colors.primary,
+  },
+  swipeHint: {
+    textAlign: "center",
+    fontSize: 12,
+    color: Colors.textMuted,
+    marginTop: 8,
+    marginBottom: 4,
+  },
+  legendIconBox: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
     marginRight: 4,
+    justifyContent: "center",
+    alignItems: "center",
   },
   legendValue: {
     fontSize: 20,
@@ -267,24 +335,69 @@ export const styles = StyleSheet.create({
     fontSize: 14,
     marginTop: 4,
   },
-  barChartWrapper: {
+  lineChartWrapper: {
     width: "100%",
+    alignItems: "stretch",
+    minHeight: 260,
+  },
+  lineChartLegend: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 10,
+    paddingHorizontal: 4,
+    flexWrap: "wrap",
+    gap: 8,
+  },
+  lineTrendDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  lineChartLegendText: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: Colors.text,
+  },
+  lineChartHint: {
+    fontSize: 11,
+    color: Colors.textMuted,
+    marginLeft: "auto",
+  },
+  lineChartPanel: {
+    backgroundColor: "#F8FAFC",
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    paddingTop: 8,
+    paddingBottom: 12,
+  },
+  lineChartScroll: {
+    paddingHorizontal: 8,
     alignItems: "center",
   },
-  yAxisLabelContainer: {
-    width: "100%",
-    alignItems: "flex-start",
-    paddingLeft: 10,
-    marginBottom: 10,
+  pointerLabel: {
+    backgroundColor: Colors.white,
+    borderRadius: 8,
+    borderWidth: 1,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    minWidth: 90,
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  pointerLabelText: {
+    fontSize: 12,
+    fontWeight: "700",
+    textAlign: "center",
   },
   yAxisLabel: {
     color: Colors.textMuted,
     fontSize: 13,
-  },
-  barChartInner: {
-    paddingLeft: 10,
-    width: "100%",
-    alignItems: "center",
   },
 
   // Modal Styles
@@ -424,5 +537,73 @@ export const styles = StyleSheet.create({
     color: Colors.white,
     fontSize: 16,
     fontWeight: "700",
-  }
+  },
+
+  // Unclassified transactions
+  unclassifiedSection: {
+    backgroundColor: "#FFFBEB",
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: "#FDE68A",
+  },
+  unclassifiedHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginBottom: 6,
+  },
+  unclassifiedTitle: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#92400E",
+  },
+  unclassifiedHint: {
+    fontSize: 13,
+    color: "#B45309",
+    marginBottom: 12,
+    lineHeight: 18,
+  },
+  unclassifiedItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: Colors.white,
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: "#FEF3C7",
+  },
+  unclassifiedItemTitle: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: Colors.text,
+    marginBottom: 4,
+  },
+  unclassifiedItemSub: {
+    fontSize: 13,
+    color: Colors.textMuted,
+  },
+  classifyBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    backgroundColor: Colors.primary,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 20,
+  },
+  classifyBtnText: {
+    color: Colors.white,
+    fontSize: 12,
+    fontWeight: "700",
+  },
+  savingOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(0,0,0,0.35)",
+    justifyContent: "center",
+    alignItems: "center",
+    zIndex: 999,
+  },
 });

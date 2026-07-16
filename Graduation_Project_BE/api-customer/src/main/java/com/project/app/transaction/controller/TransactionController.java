@@ -52,37 +52,6 @@ public class TransactionController {
                 .build());
     }
 
-    @GetMapping("/pending-topup")
-    public ResponseEntity<ApiResponse<TopUpResponse>> getPendingTopUp(
-            @AuthenticationPrincipal CustomUserDetails userDetails) {
-        return ResponseEntity.ok(ApiResponse.<TopUpResponse>builder()
-                .success(true)
-                .message("Không có giao dịch nạp tiền đang chờ xử lý")
-                .data(null)
-                .build());
-    }
-
-    // ====================== TRA CỨU GIAO DỊCH ======================
-    @GetMapping("/{transactionCode}")
-    public ResponseEntity<ApiResponse<TransactionStatusResponse>> getTransactionStatus(
-            @AuthenticationPrincipal CustomUserDetails userDetails,
-            @PathVariable String transactionCode) {
-        
-        Transaction transaction = transactionService.getTransactionByCode(transactionCode, userDetails.getUser());
-        TransactionStatusResponse response = new TransactionStatusResponse(
-                transaction.getTransactionCode(),
-                transaction.getStatus(),
-                transaction.getType(),
-                transaction.getAmount(),
-                transaction.getCreatedAt()
-        );
-        return ResponseEntity.ok(ApiResponse.<TransactionStatusResponse>builder()
-                .success(true)
-                .message("Lấy thông tin giao dịch thành công")
-                .data(response)
-                .build());
-    }
-
     // ====================== CẬP NHẬT GIAO DỊCH ======================
     @PutMapping("/{transactionCode}")
     public ResponseEntity<ApiResponse<TransactionStatusResponse>> updateTransaction(
@@ -116,19 +85,6 @@ public class TransactionController {
                 .success(true)
                 .message("Rút tiền thành công")
                 .data(response)
-                .build());
-    }
-
-    // ====================== HỦY GIAO DỊCH ======================
-    @PostMapping("/{transactionCode}/cancel")
-    public ResponseEntity<ApiResponse<Void>> cancelTransaction(
-            @AuthenticationPrincipal CustomUserDetails userDetails,
-            @PathVariable String transactionCode) {
-        
-        transactionService.cancelTransaction(transactionCode, userDetails.getUser());
-        return ResponseEntity.ok(ApiResponse.<Void>builder()
-                .success(true)
-                .message("Hủy giao dịch thành công")
                 .build());
     }
 }

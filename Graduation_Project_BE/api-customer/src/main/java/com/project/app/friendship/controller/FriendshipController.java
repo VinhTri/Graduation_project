@@ -56,6 +56,18 @@ public class FriendshipController {
                 .build());
     }
 
+    @DeleteMapping("/cancel/{id}")
+    public ResponseEntity<ApiResponse<Void>> cancelSentFriendRequest(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @PathVariable Long id) {
+
+        friendshipService.cancelSentFriendRequest(userDetails.getUser(), id);
+        return ResponseEntity.ok(ApiResponse.<Void>builder()
+                .success(true)
+                .message("Đã hủy lời mời kết bạn")
+                .build());
+    }
+
     @GetMapping
     public ResponseEntity<ApiResponse<List<FriendshipResponse>>> getFriendsList(
             @AuthenticationPrincipal CustomUserDetails userDetails) {
@@ -88,6 +100,18 @@ public class FriendshipController {
         return ResponseEntity.ok(ApiResponse.<List<FriendshipResponse>>builder()
                 .success(true)
                 .message("Lấy danh sách lời mời kết bạn thành công")
+                .data(requests)
+                .build());
+    }
+
+    @GetMapping("/sent-requests")
+    public ResponseEntity<ApiResponse<List<FriendshipResponse>>> getSentPendingRequests(
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+
+        List<FriendshipResponse> requests = friendshipService.getSentPendingRequests(userDetails.getUser());
+        return ResponseEntity.ok(ApiResponse.<List<FriendshipResponse>>builder()
+                .success(true)
+                .message("Lấy danh sách lời mời đang chờ thành công")
                 .data(requests)
                 .build());
     }

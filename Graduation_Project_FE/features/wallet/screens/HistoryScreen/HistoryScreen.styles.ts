@@ -1,35 +1,37 @@
 import { StyleSheet } from "react-native";
 import Colors from "../../../../shared/constants/Colors";
+import { PASTEL_PALETTE } from "../../../../shared/constants/PastelPalette";
 
 export const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.background,
+    backgroundColor: PASTEL_PALETTE.bg,
   },
   header: {
+    paddingBottom: 22,
+  },
+  headerRow: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 16,
-    paddingTop: 16,
-    paddingBottom: 24,
-    backgroundColor: Colors.primary,
   },
   backButton: {
-    padding: 8,
-    marginRight: 8,
+    width: 40,
+    height: 40,
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: 6,
+    marginLeft: -8,
   },
   headerTitle: {
-    fontSize: 20,
-    fontWeight: "700",
-    color: Colors.white,
+    flex: 1,
+    fontSize: 22,
+    fontWeight: "900",
+    color: PASTEL_PALETTE.title,
+    letterSpacing: 0.2,
   },
   content: {
     flex: 1,
-    backgroundColor: Colors.background,
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    marginTop: -16, // Kéo phần list đè lên một chút tạo khối 3D đẹp mắt
-    overflow: "hidden",
+    backgroundColor: PASTEL_PALETTE.bg,
   },
   scrollContent: {
     paddingHorizontal: 20,
@@ -113,6 +115,22 @@ export const styles = StyleSheet.create({
   transactionDate: {
     fontSize: 13,
     color: Colors.textMuted,
+  },
+  unclassifiedBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    alignSelf: "flex-start",
+    marginTop: 6,
+    backgroundColor: "#FEF3C7",
+    paddingVertical: 3,
+    paddingHorizontal: 8,
+    borderRadius: 100,
+  },
+  unclassifiedText: {
+    fontSize: 11,
+    fontWeight: "700",
+    color: "#B45309",
+    marginLeft: 4,
   },
   transactionAmountContainer: {
     alignItems: "flex-end",

@@ -10,6 +10,8 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter, useFocusEffect } from "expo-router";
 import Colors from "../../../../shared/constants/Colors";
+import { PASTEL_PALETTE } from "../../../../shared/constants/PastelPalette";
+import { PastelHeaderShell } from "../../../../shared/components/PastelHeaderShell";
 import { styles } from "./HistoryScreen.styles";
 import { TransactionDetailModal } from "../../components";
 import { transactionService } from "../../../../shared/api/services/transactionService";
@@ -55,13 +57,12 @@ export default function HistoryScreen() {
         let icon = isTopUp ? 'add-circle' : (isWithdraw ? 'cash' : 'receipt-outline');
         
         if (t.categoryId) {
-          for (const group of categories) {
-            const found = group.items.find((item: any) => String(item.id) === String(t.categoryId));
-            if (found) {
-              catLabel = found.label;
-              icon = found.icon;
-              break;
-            }
+          if (t.categoryLabel) {
+            catLabel = t.categoryDeleted ? `${t.categoryLabel} (đã xóa)` : t.categoryLabel;
+            icon = t.categoryIcon || icon;
+          } else if (t.categoryDeleted) {
+            catLabel = 'Danh mục đã xóa';
+            icon = 'archive-outline';
           }
         }
         
@@ -77,7 +78,12 @@ export default function HistoryScreen() {
           icon: icon,
           category: catLabel,
           categoryId: t.categoryId,
+          categoryDeleted: t.categoryDeleted,
+          categoryLabel: t.categoryLabel,
+          categoryIcon: t.categoryIcon,
           notes: t.note,
+          // Giao dịch nạp/rút chưa gắn danh mục -> cần phân loại.
+          unclassified: (isTopUp || isWithdraw) && !t.categoryId,
         };
       });
       
@@ -139,6 +145,12 @@ export default function HistoryScreen() {
         <View style={styles.transactionInfo}>
           <Text style={styles.transactionTitle} numberOfLines={1}>{item.title}</Text>
           <Text style={styles.transactionDate}>{item.date}</Text>
+          {item.unclassified && (
+            <View style={styles.unclassifiedBadge}>
+              <Ionicons name="pricetag-outline" size={11} color="#B45309" />
+              <Text style={styles.unclassifiedText}>Chưa phân loại</Text>
+            </View>
+          )}
         </View>
         <View style={styles.transactionAmountContainer}>
           <Text style={[
@@ -174,25 +186,25 @@ export default function HistoryScreen() {
 
   return (
     <View style={[styles.container, { paddingBottom: insets.bottom }]}>
-      <View style={{ backgroundColor: Colors.primary, height: insets.top, position: 'absolute', top: 0, left: 0, right: 0 }} />
-
-      <View style={{ flex: 1, paddingTop: insets.top }}>
-        {/* Header */}
-        <View style={styles.header}>
+      <PastelHeaderShell contentStyle={styles.header}>
+        <View style={styles.headerRow}>
           <TouchableOpacity
             style={styles.backButton}
             onPress={() => router.back()}
+            activeOpacity={0.7}
           >
-            <Ionicons name="arrow-back" size={24} color={Colors.white} />
+            <Ionicons name="chevron-back-outline" size={22} color={PASTEL_PALETTE.subtitle} />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Lịch sử giao dịch</Text>
+          <Text style={styles.headerTitle} numberOfLines={1} ellipsizeMode="tail">
+            Lịch sử giao dịch
+          </Text>
         </View>
+      </PastelHeaderShell>
 
-        {/* Main Content Area */}
-        <View style={styles.content}>
+      <View style={styles.content}>
           {loading ? (
             <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-              <ActivityIndicator size="large" color={Colors.primary} />
+              <ActivityIndicator size="large" color={PASTEL_PALETTE.accent} />
             </View>
           ) : (
             <FlatList
@@ -230,7 +242,6 @@ export default function HistoryScreen() {
               )}
             />
           )}
-        </View>
       </View>
 
       <TransactionDetailModal

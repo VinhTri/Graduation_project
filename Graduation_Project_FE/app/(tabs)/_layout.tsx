@@ -1,12 +1,18 @@
 import { Tabs } from "expo-router";
 import { CustomTabBar } from "../../shared/components";
+import { PASTEL_PALETTE } from "../../shared/constants/PastelPalette";
 
 export default function TabsLayout() {
   return (
     <Tabs
+      detachInactiveScreens={false}
       tabBar={(props) => <CustomTabBar {...props} />}
       screenOptions={{
         headerShown: false,
+        animation: "fade",
+        sceneStyle: {
+          backgroundColor: PASTEL_PALETTE.bg,
+        },
       }}
     >
       {/* Hide the index redirect route from the tab bar */}

@@ -15,8 +15,6 @@ export default function VerifyStkScreen() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
-  const [isNewSetup, setIsNewSetup] = useState(false);
-  const [correctStk, setCorrectStk] = useState<string | null>(null);
   const [wallet, setWallet] = useState<any>(null);
   const [isConfirmVisible, setIsConfirmVisible] = useState(false);
   const [isSuccessVisible, setIsSuccessVisible] = useState(false);
@@ -31,11 +29,12 @@ export default function VerifyStkScreen() {
       if (res.success && res.data) {
         setWallet(res.data);
         if (res.data.accountNumber) {
-          setCorrectStk(res.data.accountNumber);
-          setIsNewSetup(false);
-        } else {
-          setIsNewSetup(true);
+          // STK đã được thiết lập ở lần đăng nhập đầu -> không bắt xác thực lại,
+          // vào thẳng app theo trạng thái mã PIN.
+          await checkPinAndNavigate();
+          return;
         }
+        // Chưa có STK -> hiển thị màn thiết lập bên dưới.
       }
     } catch (err: any) {
       console.log('Error fetching wallet info:', err);
@@ -72,11 +71,7 @@ export default function VerifyStkScreen() {
       return;
     }
 
-    if (isNewSetup) {
-      setIsConfirmVisible(true);
-    } else {
-      executeVerification(cleanedStk);
-    }
+    setIsConfirmVisible(true);
   };
 
   const handleConfirmSetup = async () => {
@@ -99,21 +94,6 @@ export default function VerifyStkScreen() {
   const handleSuccessClose = async () => {
     setIsSuccessVisible(false);
     await checkPinAndNavigate();
-  };
-
-  const executeVerification = async (cleanedStk: string) => {
-    setSubmitting(true);
-    try {
-      if (cleanedStk === correctStk) {
-        await checkPinAndNavigate();
-      } else {
-        setError('Số tài khoản ví không chính xác. Vui lòng kiểm tra lại.');
-      }
-    } catch (err: any) {
-      setError(err?.message || 'Có lỗi xảy ra, vui lòng thử lại.');
-    } finally {
-      setSubmitting(false);
-    }
   };
 
   const formatCardNumber = (num: string) => {
@@ -148,13 +128,9 @@ export default function VerifyStkScreen() {
           {/* Phần tiêu đề và ví cố định ở phía trên */}
           <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
             <View style={{ paddingHorizontal: 24, paddingTop: 24 }}>
-              <Text style={styles.title}>
-                {isNewSetup ? 'Cài đặt số tài khoản ví' : 'Xác thực số tài khoản ví'}
-              </Text>
+              <Text style={styles.title}>Cài đặt số tài khoản ví</Text>
               <Text style={styles.subtitle}>
-                {isNewSetup 
-                  ? 'Tài khoản của bạn chưa được thiết lập số tài khoản ví. Vui lòng đặt số tài khoản của bạn để tiếp tục.'
-                  : 'Vui lòng nhập số tài khoản Ví SmartSpend của bạn để tiến hành xác thực danh tính.'}
+                Tài khoản của bạn chưa được thiết lập số tài khoản ví. Vui lòng đặt số tài khoản của bạn để tiếp tục.
               </Text>
 
               {/* Visual Leather Wallet Card */}
@@ -270,9 +246,7 @@ export default function VerifyStkScreen() {
               {submitting ? (
                 <ActivityIndicator size="small" color="#FFFFFF" />
               ) : (
-                <Text style={styles.buttonText}>
-                  {isNewSetup ? "Thiết lập tài khoản" : "Xác nhận truy cập"}
-                </Text>
+                <Text style={styles.buttonText}>Thiết lập tài khoản</Text>
               )}
             </TouchableOpacity>
           </View>

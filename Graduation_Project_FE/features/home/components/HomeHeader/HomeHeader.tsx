@@ -1,14 +1,49 @@
 import React, { useState, useEffect } from "react";
 import { View, Text, TextInput, TouchableOpacity } from "react-native";
+import { SmartSpendIcon } from "@/shared/components/SmartSpendIcon";
 import { Ionicons } from "@expo/vector-icons";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { styles } from "./HomeHeader.styles";
-import Colors from "@/shared/constants/Colors";
+import { PASTEL_PALETTE } from "@/shared/constants/PastelPalette";
+import { PastelHeaderShell } from "@/shared/components/PastelHeaderShell";
 import { useRouter } from "expo-router";
 import { notificationService } from "@/shared/api/services/notification.service";
 import { useFocusEffect } from "@react-navigation/native";
 
+const QUICK_ACTIONS = [
+  {
+    id: "topup",
+    label: "Nạp/Rút",
+    route: "/wallet/action?initialTab=topup",
+    type: "logo" as const,
+    bgColor: PASTEL_PALETTE.accentSoft,
+  },
+  {
+    id: "transfer",
+    label: "Chuyển tiền",
+    icon: "paper-plane-outline" as const,
+    color: PASTEL_PALETTE.lavender,
+    bgColor: PASTEL_PALETTE.lavenderSoft,
+  },
+  {
+    id: "qr",
+    label: "Quét mã QR",
+    icon: "qr-code-outline" as const,
+    color: PASTEL_PALETTE.accentDeep,
+    bgColor: PASTEL_PALETTE.accentSoft,
+  },
+  {
+    id: "utilities",
+    label: "Ví tiện ích",
+    icon: "grid-outline" as const,
+    color: PASTEL_PALETTE.subtitle,
+    bgColor: "rgba(255, 255, 255, 0.72)",
+  },
+];
+
 export const HomeHeader = () => {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const [unreadCount, setUnreadCount] = useState(0);
 
   useFocusEffect(
@@ -30,15 +65,18 @@ export const HomeHeader = () => {
   };
 
   return (
-    <View style={styles.container}>
+    <PastelHeaderShell
+      style={styles.headerShell}
+      contentStyle={[styles.container, { paddingTop: insets.top + 6 }]}
+    >
       {/* Search and Notification Row */}
       <View style={styles.topRow}>
         <View style={styles.searchContainer}>
-          <Ionicons name="search-outline" size={20} color="rgba(255, 255, 255, 0.7)" style={styles.searchIcon} />
+          <Ionicons name="search-outline" size={20} color={PASTEL_PALETTE.subtitle} style={styles.searchIcon} />
           <TextInput 
             style={styles.searchInput}
             placeholder="Tìm kiếm giao dịch, quỹ..."
-            placeholderTextColor="rgba(255, 255, 255, 0.7)"
+            placeholderTextColor={PASTEL_PALETTE.textMuted}
           />
         </View>
         <TouchableOpacity 
@@ -46,10 +84,10 @@ export const HomeHeader = () => {
           activeOpacity={0.7}
           onPress={() => router.push("/notifications")}
         >
-          <Ionicons name="notifications-outline" size={22} color={Colors.white} />
+          <Ionicons name="notifications-outline" size={22} color={PASTEL_PALETTE.subtitle} />
           {unreadCount > 0 && (
             <View style={styles.badge}>
-              <Text style={{ color: 'white', fontSize: 8, fontWeight: 'bold' }}>
+              <Text style={styles.badgeText}>
                 {unreadCount > 99 ? '99+' : unreadCount}
               </Text>
             </View>
@@ -59,35 +97,27 @@ export const HomeHeader = () => {
 
       {/* Quick Actions */}
       <View style={styles.quickActionsRow}>
-        <TouchableOpacity style={styles.actionItem} activeOpacity={0.7} onPress={() => router.push("/wallet/action?initialTab=topup")}>
-          <View style={[styles.iconWrapper, { backgroundColor: "#E0F2FE" }]}>
-             <Ionicons name="swap-vertical" size={24} color="#0284C7" />
-          </View>
-          <Text style={styles.actionLabel}>Nạp/Rút</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity style={styles.actionItem} activeOpacity={0.7}>
-          <View style={[styles.iconWrapper, { backgroundColor: "#DBEAFE" }]}>
-             <Ionicons name="paper-plane-outline" size={24} color="#2563EB" />
-          </View>
-          <Text style={styles.actionLabel}>Chuyển tiền</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity style={styles.actionItem} activeOpacity={0.7}>
-          <View style={[styles.iconWrapper, { backgroundColor: "#F3E8FF" }]}>
-             <Ionicons name="qr-code-outline" size={24} color="#9333EA" />
-          </View>
-          <Text style={styles.actionLabel}>Quét mã QR</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity style={styles.actionItem} activeOpacity={0.7}>
-          <View style={[styles.iconWrapper, { backgroundColor: "#FCE7F3" }]}>
-             <Ionicons name="grid-outline" size={24} color="#E11D48" />
-          </View>
-          <Text style={styles.actionLabel}>Ví tiện ích</Text>
-        </TouchableOpacity>
+        {QUICK_ACTIONS.map((action) => (
+          <TouchableOpacity
+            key={action.id}
+            style={styles.actionItem}
+            activeOpacity={0.7}
+            onPress={() => {
+              if (action.route) router.push(action.route as any);
+            }}
+          >
+            <View style={[styles.iconWrapper, { backgroundColor: action.bgColor }]}>
+              {action.type === "logo" ? (
+                <SmartSpendIcon size={32} borderRadius={8} />
+              ) : (
+                <Ionicons name={action.icon!} size={24} color={action.color} />
+              )}
+            </View>
+            <Text style={styles.actionLabel}>{action.label}</Text>
+          </TouchableOpacity>
+        ))}
       </View>
-    </View>
+    </PastelHeaderShell>
   );
 };
 

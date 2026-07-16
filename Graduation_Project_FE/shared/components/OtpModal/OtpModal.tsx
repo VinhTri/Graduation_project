@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { 
   View, Text, TextInput, TouchableOpacity, Modal, 
-  KeyboardAvoidingView, Platform, Alert 
+  KeyboardAvoidingView, Platform, Alert, ActivityIndicator
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { styles } from './OtpModal.styles';
@@ -10,11 +10,12 @@ interface OtpModalProps {
   visible: boolean;
   email: string;
   errorMessage?: string; // Lỗi truyền từ Component cha (như lỗi sai OTP)
+  isSendingOtp?: boolean;
   onClose: () => void;
   onVerify: (otp: string) => void;
 }
 
-export default function OtpModal({ visible, email, errorMessage, onClose, onVerify }: OtpModalProps) {
+export default function OtpModal({ visible, email, errorMessage, isSendingOtp = false, onClose, onVerify }: OtpModalProps) {
   const [otp, setOtp] = useState('');
   const [timeLeft, setTimeLeft] = useState(300); // 5 phút = 300 giây
 
@@ -73,32 +74,46 @@ export default function OtpModal({ visible, email, errorMessage, onClose, onVeri
 
           <Text style={styles.title}>Xác thực Email</Text>
           <Text style={styles.subtitle}>
-            Đã gửi mã OTP gồm 6 chữ số về email:{"\n"}
+            {isSendingOtp ? (
+              'Đang gửi mã OTP gồm 6 chữ số về email:'
+            ) : (
+              'Đã gửi mã OTP gồm 6 chữ số về email:'
+            )}
+            {"\n"}
             <Text style={styles.emailHighlight}>{email}</Text>
           </Text>
 
           <View style={styles.inputContainer}>
-            <TextInput
-              style={[
-                styles.otpInput, 
-                errorMessage ? styles.otpInputError : null
-              ]}
-              placeholder="000000"
-              placeholderTextColor="#9CA3AF"
-              keyboardType="number-pad"
-              maxLength={6}
-              value={otp}
-              onChangeText={setOtp}
-              editable={timeLeft > 0}
-            />
+            {isSendingOtp ? (
+              <View style={styles.sendingContainer}>
+                <ActivityIndicator size="small" color="#109185" />
+                <Text style={styles.sendingText}>Đang gửi mã OTP...</Text>
+              </View>
+            ) : (
+              <TextInput
+                style={[
+                  styles.otpInput, 
+                  errorMessage ? styles.otpInputError : null
+                ]}
+                placeholder="000000"
+                placeholderTextColor="#9CA3AF"
+                keyboardType="number-pad"
+                maxLength={6}
+                value={otp}
+                onChangeText={setOtp}
+                editable={timeLeft > 0}
+              />
+            )}
             {errorMessage ? (
               <Text style={styles.errorText}>{errorMessage}</Text>
             ) : null}
           </View>
 
-          <Text style={[styles.timerText, timeLeft <= 60 ? styles.timerUrgent : null]}>
-            {formatTime(timeLeft)}
-          </Text>
+          {!isSendingOtp && (
+            <Text style={[styles.timerText, timeLeft <= 60 ? styles.timerUrgent : null]}>
+              {formatTime(timeLeft)}
+            </Text>
+          )}
 
           <View style={styles.buttonContainer}>
             <TouchableOpacity 
@@ -111,10 +126,10 @@ export default function OtpModal({ visible, email, errorMessage, onClose, onVeri
             <TouchableOpacity 
               style={[
                 styles.verifyButton, 
-                (otp.length < 6 || timeLeft === 0) ? styles.verifyButtonDisabled : null
+                (isSendingOtp || otp.length < 6 || timeLeft === 0) ? styles.verifyButtonDisabled : null
               ]} 
               onPress={handleVerify}
-              disabled={otp.length < 6 || timeLeft === 0}
+              disabled={isSendingOtp || otp.length < 6 || timeLeft === 0}
             >
               <Text style={styles.verifyButtonText}>Xác nhận</Text>
             </TouchableOpacity>

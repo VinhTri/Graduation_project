@@ -9,19 +9,12 @@ import com.project.app.bankaccount.dto.response.BankAccountResponse;
 import com.project.app.bankaccount.entity.BankAccount;
 import com.project.app.user.entity.User;
 import com.project.app.bankaccount.repository.BankAccountRepository;
-import com.project.app.wallet.entity.Wallet;
-import com.project.app.wallet.repository.WalletRepository;
-import com.project.app.transaction.entity.Transaction;
-import com.project.app.transaction.enums.TransactionType;
-import com.project.app.transaction.enums.TransactionStatus;
-import com.project.app.transaction.repository.TransactionRepository;
 import com.project.app.transaction.service.PayOsPayoutService;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.math.BigDecimal;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -31,8 +24,6 @@ import java.util.stream.Collectors;
 public class BankAccountServiceImpl implements BankAccountService {
 
     private final BankAccountRepository bankAccountRepository;
-    private final WalletRepository walletRepository;
-    private final TransactionRepository transactionRepository;
     private final PayOsPayoutService payOsPayoutService;
 
     // ====================== LẤY DANH S�?CH ======================
@@ -44,6 +35,9 @@ public class BankAccountServiceImpl implements BankAccountService {
                 .collect(Collectors.toList());
     }
 
+    // Số tài khoản ngân hàng tối đa mỗi người dùng được liên kết.
+    private static final int MAX_BANK_ACCOUNTS = 3;
+
     // ====================== THÊM MỚI ======================
     @Transactional
     public BankAccountResponse addBankAccount(User user, BankAccountRequest request) {
@@ -51,39 +45,35 @@ public class BankAccountServiceImpl implements BankAccountService {
             throw new AppException(ErrorCode.BANK_ACCOUNT_ALREADY_EXISTS);
         }
 
-        Wallet wallet = walletRepository.findByUserIdAndIsDefaultTrue(user.getId())
-                .orElseThrow(() -> new AppException(ErrorCode.WALLET_NOT_FOUND));
-
-        BigDecimal fee = new BigDecimal("2000");
-
-        if (wallet.getBalance().compareTo(fee) < 0) {
-            throw new AppException(ErrorCode.INSUFFICIENT_BALANCE);
+        List<BankAccount> existingAccounts = bankAccountRepository.findByUserId(user.getId());
+        if (existingAccounts.size() >= MAX_BANK_ACCOUNTS) {
+            throw new AppException(ErrorCode.BANK_ACCOUNT_LIMIT_REACHED);
         }
 
-        // Trừ ti�?n trong ví
-        wallet.setBalance(wallet.getBalance().subtract(fee));
-        walletRepository.save(wallet);
+        // Liên kết miễn phí: KHÔNG trừ tiền trong ví. Hệ thống vẫn chi thật 2.000đ
+        // tới STK để xác minh & lấy tên chủ tài khoản -> khách được nhận 2.000đ.
+        int verifyPayoutAmount = 2000;
+        String reference = "LINK" + System.currentTimeMillis() + UUID.randomUUID().toString().substring(0, 4).toUpperCase();
 
-        // Lưu lịch sử giao dịch trừ ti�?n
-        String transactionCode = "FEE" + System.currentTimeMillis() + UUID.randomUUID().toString().substring(0, 4).toUpperCase();
-        Transaction transaction = new Transaction();
-        transaction.setUser(user);
-        transaction.setWallet(wallet);
-        transaction.setAmount(fee);
-        transaction.setType(TransactionType.BANK_LINK_FEE);
-        transaction.setStatus(TransactionStatus.SUCCESS);
-        transaction.setTransactionCode(transactionCode);
-        transaction.setNote("Phí xác minh liên kết tài khoản ngân hàng");
-        transactionRepository.save(transaction);
+        // Nội dung chuyển khoản bị Napas giới hạn ngắn (thường < 25 ký tự).
+        String description = "KIEM TRA TEN " + request.getAccountNumber();
+        if (description.length() > 25) {
+            description = "KIEM TRA TEN";
+        }
 
-        // G�?i PayOS để lấy tên bằng cách chuyển khoản mồi 2.000 VN�?
-        String accountName = payOsPayoutService.lookupAccountName(request.getBankCode(), request.getAccountNumber());
-        
+        String accountName = payOsPayoutService.verifyAndPayout(
+                request.getBankCode(),
+                request.getAccountNumber(),
+                verifyPayoutAmount,
+                description,
+                reference
+        );
+
         if (accountName == null) {
             throw new AppException(ErrorCode.BANK_VERIFICATION_FAILED);
         }
 
-        boolean isFirstAccount = bankAccountRepository.findByUserId(user.getId()).isEmpty();
+        boolean isFirstAccount = existingAccounts.isEmpty();
 
         BankAccount bankAccount = BankAccount.builder()
                 .user(user)

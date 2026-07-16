@@ -1,3 +1,14 @@
 ~$*.docx
 .DS_Store
 **/.DS_Store
+
+# IDE (IntelliJ / VS Code)
+.idea/
+*.iml
+*.iws
+*.ipr
+out/
+
+# Build output
+target/
+build/

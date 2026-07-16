@@ -5,7 +5,7 @@ import { WalletData as LocalWalletData } from "../WalletCard/WalletCard.types";
 import { walletService } from "../../../../shared/api/services/walletService";
 import WalletCard from "../WalletCard/WalletCard";
 import { styles } from "./WalletList.styles";
-import Colors from "../../../../shared/constants/Colors";
+import { PASTEL_PALETTE } from "../../../../shared/constants/PastelPalette";
 
 
 if (
@@ -17,17 +17,17 @@ if (
 
 const INITIAL_WALLET: LocalWalletData = {
   id: "smartspend",
-  name: "Ví SmartSpend",
+  name: "SmartSpend",
   type: "smartspend",
   balance: 0,
-  cardNumber: "•••• •••• •••• 8888",
-  color: "#0D9488", // Teal leather
-  flapColor: "#0F766E", // Darker Teal
-  buttonType: "gold",
+  cardNumber: "",
+  color: PASTEL_PALETTE.accentDeep,
+  flapColor: PASTEL_PALETTE.accent,
+  buttonType: "gold" as const,
 };
 
 export const WalletList: React.FC = () => {
-  const [expandedId, setExpandedId] = useState<string | null>("smartspend");
+  const [expandedId, setExpandedId] = useState<string | null>(null);
   const [wallets, setWallets] = useState<LocalWalletData[]>([INITIAL_WALLET]);
 
   useFocusEffect(
@@ -42,9 +42,12 @@ export const WalletList: React.FC = () => {
               id: stringId,
               numericId: data.id,
               balance: data.balance,
-              name: data.name
+              name: data.name,
+              cardNumber: data.accountNumber || "Chưa thiết lập STK",
+              isLimitEnabled: data.isLimitEnabled,
+              dailyLimit: data.dailyLimit,
+              transactionLimit: data.transactionLimit,
             }]);
-            setExpandedId((prev) => (prev === "smartspend" || prev === null) ? stringId : prev);
           }
         } catch (error) {
           console.log("Error fetching wallet", error);
@@ -55,13 +58,9 @@ export const WalletList: React.FC = () => {
   );
 
   const handlePressWallet = (id: string) => {
-    LayoutAnimation.configureNext({
-      duration: 350,
-      update: {
-        type: LayoutAnimation.Types.spring,
-        springDamping: 0.78,
-      },
-    });
+    LayoutAnimation.configureNext(
+      LayoutAnimation.create(320, LayoutAnimation.Types.easeInEaseOut, LayoutAnimation.Properties.opacity)
+    );
     if (expandedId === id) {
       setExpandedId(null);
     } else {
@@ -75,20 +74,13 @@ export const WalletList: React.FC = () => {
         {wallets.map((wallet, index) => {
           const isExpanded = expandedId === wallet.id;
           const zIndex = isExpanded ? 10 : index + 1;
-          let marginTop = 0;
-          if (index > 0) {
-            marginTop = -95;
-          }
 
           return (
             <View
               key={wallet.id}
               style={{
                 zIndex,
-                marginTop,
                 position: "relative",
-                backgroundColor: Colors.background,
-                borderRadius: 24,
               }}
             >
               <WalletCard

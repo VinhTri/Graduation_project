@@ -24,4 +24,7 @@ public interface FriendshipRepository extends JpaRepository<Friendship, Long> {
 
     // Get all pending requests received by a user
     List<Friendship> findByReceiverAndStatus(User receiver, FriendshipStatus status);
+
+    // Get all pending requests sent by a user
+    List<Friendship> findByRequesterAndStatus(User requester, FriendshipStatus status);
 }

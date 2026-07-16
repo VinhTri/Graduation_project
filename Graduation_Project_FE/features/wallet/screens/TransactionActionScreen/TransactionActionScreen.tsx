@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from "react";
+import React, { useState, useCallback, useRef } from "react";
 import { 
   View, 
   Text, 
@@ -19,13 +19,15 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter, useLocalSearchParams, useFocusEffect } from "expo-router";
 import Colors from "../../../../shared/constants/Colors";
+import { PASTEL_PALETTE } from "../../../../shared/constants/PastelPalette";
+import { PastelHeaderShell } from "../../../../shared/components/PastelHeaderShell";
+import { SmartSpendIcon } from "../../../../shared/components/SmartSpendIcon";
 import { styles } from "./TransactionActionScreen.styles";
 import { transactionService } from "../../../../shared/api/services/transactionService";
 import { axiosClient } from "../../../../shared/api/axiosClient";
 import { authService } from "../../../../shared/api/services/auth.service";
 import { ENDPOINTS } from "../../../../shared/api/endpoints";
 import { PinModal, OtpModal, ResetPinModal, SuccessModal } from "../../../../shared/components";
-import { CategorySelectModal } from "../../../categories/components/CategorySelectModal";
 
 if (Platform.OS === 'android') {
   if (UIManager.setLayoutAnimationEnabledExperimental) {
@@ -71,6 +73,7 @@ export default function TransactionActionScreen() {
   const [amount, setAmount] = useState<string>("");
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [isFetchingData, setIsFetchingData] = useState<boolean>(true);
+  const isInitialLoadRef = useRef(true);
   
   const [walletBalance, setWalletBalance] = useState<number>(0);
   const [bankAccounts, setBankAccounts] = useState<any[]>([]);
@@ -91,32 +94,44 @@ export default function TransactionActionScreen() {
 
   useFocusEffect(
     useCallback(() => {
-      fetchInitialData();
+      let cancelled = false;
+
+      const load = async () => {
+        const showFullLoading = isInitialLoadRef.current;
+        if (showFullLoading) setIsFetchingData(true);
+
+        try {
+          const [walletRes, bankRes, profileRes] = await Promise.all([
+            axiosClient.get(ENDPOINTS.WALLET.MY_WALLET),
+            axiosClient.get(ENDPOINTS.BANK_ACCOUNT.GET_ALL),
+            axiosClient.get(ENDPOINTS.USER.PROFILE),
+          ]);
+
+          if (cancelled) return;
+
+          setWalletBalance(walletRes.data.balance || 0);
+          setBankAccounts(bankRes.data || []);
+          setUserEmail(profileRes.data?.email || "");
+
+          if (bankRes.data && bankRes.data.length > 0) {
+            setSelectedBankId((prev) => prev ?? bankRes.data[0].id);
+          }
+        } catch (error: any) {
+          console.log(error);
+        } finally {
+          if (!cancelled) {
+            if (showFullLoading) setIsFetchingData(false);
+            isInitialLoadRef.current = false;
+          }
+        }
+      };
+
+      load();
+      return () => {
+        cancelled = true;
+      };
     }, [])
   );
-
-  const fetchInitialData = async () => {
-    setIsFetchingData(true);
-    try {
-      const [walletRes, bankRes, profileRes] = await Promise.all([
-        axiosClient.get(ENDPOINTS.WALLET.MY_WALLET),
-        axiosClient.get(ENDPOINTS.BANK_ACCOUNT.GET_ALL),
-        axiosClient.get(ENDPOINTS.USER.PROFILE)
-      ]);
-      
-      setWalletBalance(walletRes.data.balance || 0);
-      setBankAccounts(bankRes.data || []);
-      setUserEmail(profileRes.data?.email || "");
-      
-      if (bankRes.data && bankRes.data.length > 0) {
-        setSelectedBankId(bankRes.data[0].id);
-      }
-    } catch (error: any) {
-      console.log(error);
-    } finally {
-      setIsFetchingData(false);
-    }
-  };
 
   const handleAmountChange = (text: string) => {
     const numericValue = text.replace(/[^0-9]/g, "");
@@ -128,36 +143,9 @@ export default function TransactionActionScreen() {
     return parseInt(val, 10).toLocaleString("vi-VN");
   };
 
-  const handleTopUpConfirm = async () => {
-    const parsedAmount = parseInt(amount, 10);
-    if (!parsedAmount || parsedAmount === 0) return;
-    
-    setIsLoading(true);
-    try {
-      const response = await transactionService.initiateTopUp({
-        amount: parsedAmount,
-      });
-
-      router.push({
-        pathname: "/wallet/checkout",
-        params: { 
-          amount: response.amount.toString(), 
-          note: "",
-          category: "Nạp tiền vào ví",
-          categoryIcon: "wallet",
-          categoryColor: "#10B981",
-          categoryBgColor: "#D1FAE5",
-          transactionCode: response.transactionCode,
-          qrUrl: response.qrUrl,
-          expiresAt: response.expiresAt,
-          createdAt: response.createdAt
-        }
-      });
-    } catch (error: any) {
-      Alert.alert("Lỗi", error.message || "Không thể khởi tạo giao dịch nạp tiền");
-    } finally {
-      setIsLoading(false);
-    }
+  // Nạp bao nhiêu nhận bấy nhiêu: không nhập số tiền, vào thẳng màn QR tĩnh.
+  const handleTopUpConfirm = () => {
+    router.push("/wallet/checkout");
   };
 
   const handleWithdrawConfirm = async () => {
@@ -264,20 +252,25 @@ export default function TransactionActionScreen() {
     }
   };
 
+  const renderSmartSpendWalletCard = () => (
+    <View style={[styles.walletCard, styles.walletCardActive]}>
+      <SmartSpendIcon size={42} style={styles.brandLogo} borderRadius={12} />
+      <View style={styles.walletInfo}>
+        <Text style={styles.walletBrandName} numberOfLines={1}>
+          <Text style={styles.brandSmart}>Smart</Text>
+          <Text style={styles.brandSpend}>Spend</Text>
+        </Text>
+        <Text style={styles.walletBalance}>{walletBalance.toLocaleString("vi-VN")} ₫</Text>
+      </View>
+    </View>
+  );
+
   const renderTopUpForm = () => (
     <View style={styles.formContent}>
       <View style={styles.walletGroupContainer}>
         <Text style={[styles.sectionTitle, { paddingHorizontal: 16, marginTop: 0 }]}>Nạp tiền vào</Text>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.walletCardContent}>
-          <View style={[styles.walletCard, styles.walletCardActive]}>
-            <View style={[styles.walletIconContainer, { backgroundColor: Colors.primary }]}>
-              <Ionicons name="wallet" size={24} color={Colors.white} />
-            </View>
-            <View style={styles.walletInfo}>
-              <Text style={styles.walletName}>Ví SmartSpend</Text>
-              <Text style={styles.walletBalance}>{walletBalance.toLocaleString("vi-VN")} ₫</Text>
-            </View>
-          </View>
+          {renderSmartSpendWalletCard()}
 
           <View style={styles.walletCard}>
             <View style={[styles.walletIconContainer, { backgroundColor: "#F3F4F6" }]}>
@@ -301,44 +294,16 @@ export default function TransactionActionScreen() {
         </ScrollView>
       </View>
 
-      <View style={styles.amountContainer}>
-        <Text style={styles.amountLabel}>Số tiền cần nạp</Text>
-        <View style={styles.amountInputRow}>
-          <TextInput
-            style={styles.amountInput}
-            keyboardType="numeric"
-            value={formatDisplayAmount(amount)}
-            onChangeText={handleAmountChange}
-            placeholder="0"
-            placeholderTextColor="#D1D5DB"
-            maxLength={14}
-          />
-          <Text style={styles.currencySymbol}>₫</Text>
-        </View>
-      </View>
-
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginHorizontal: -16 }} contentContainerStyle={styles.suggestionContainer}>
-        {SUGGESTED_AMOUNTS.map((amt) => (
-          <TouchableOpacity 
-            key={amt} 
-            style={styles.suggestionChip}
-            onPress={() => setAmount(amt.toString())}
-          >
-            <Text style={styles.suggestionText}>{amt.toLocaleString("vi-VN")} ₫</Text>
-          </TouchableOpacity>
-        ))}
-      </ScrollView>
-
       <View style={styles.bannerContainer}>
         <Image source={{uri: "https://cdn-icons-png.flaticon.com/512/3135/3135673.png"}} style={{width: 40, height: 40, marginRight: 12}} />
-        <Text style={styles.bannerText}>Tối ưu tiền chi tiêu bằng cách nạp tiền vào Ví, an toàn và bảo mật.</Text>
+        <Text style={styles.bannerText}>Nạp bao nhiêu nhận bấy nhiêu. Bấm "Nạp tiền" để lấy mã QR, quét bằng app ngân hàng và tự nhập số tiền muốn nạp.</Text>
       </View>
 
       <Text style={[styles.sectionTitle, { marginTop: 24 }]}>Chọn cách nạp tiền</Text>
       <View style={styles.sourceContainer}>
         <TouchableOpacity style={[styles.sourceOption, styles.sourceOptionActive]}>
-          <View style={[styles.sourceIconContainer, { backgroundColor: "#DBEAFE" }]}>
-            <Ionicons name="qr-code" size={24} color="#3B82F6" />
+          <View style={[styles.sourceIconContainer, { backgroundColor: PASTEL_PALETTE.lavenderSoft }]}>
+            <Ionicons name="qr-code" size={24} color={PASTEL_PALETTE.lavender} />
           </View>
           <View style={styles.sourceInfo}>
             <Text style={styles.sourceTitle}>Chuyển khoản bằng VietQR</Text>
@@ -357,15 +322,7 @@ export default function TransactionActionScreen() {
       <View style={styles.walletGroupContainer}>
         <Text style={[styles.sectionTitle, { paddingHorizontal: 16, marginTop: 0 }]}>Rút tiền từ</Text>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.walletCardContent}>
-          <View style={[styles.walletCard, styles.walletCardActive]}>
-            <View style={[styles.walletIconContainer, { backgroundColor: Colors.primary }]}>
-              <Ionicons name="wallet" size={24} color={Colors.white} />
-            </View>
-            <View style={styles.walletInfo}>
-              <Text style={styles.walletName}>Ví SmartSpend</Text>
-              <Text style={styles.walletBalance}>{walletBalance.toLocaleString("vi-VN")} ₫</Text>
-            </View>
-          </View>
+          {renderSmartSpendWalletCard()}
 
           <View style={styles.walletCard}>
             <View style={[styles.walletIconContainer, { backgroundColor: "#F3F4F6" }]}>
@@ -418,102 +375,122 @@ export default function TransactionActionScreen() {
       </ScrollView>
 
       <Text style={[styles.sectionTitle, { marginTop: 24 }]}>Chuyển tiền đến ngân hàng</Text>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.walletCardScroll} contentContainerStyle={styles.walletCardContent}>
-        {bankAccounts.map((bank) => (
-          <TouchableOpacity 
-            key={bank.id} 
-            style={[
-              styles.walletCard,
-              selectedBankId === bank.id && styles.walletCardActive
-            ]}
-            onPress={() => setSelectedBankId(bank.id)}
+      {bankAccounts.length === 0 ? (
+        <>
+          <TouchableOpacity
+            style={styles.bankLinkCard}
+            onPress={() => router.push("/settings/bank-binding/add")}
+            activeOpacity={0.8}
           >
-            <View style={[styles.walletIconContainer, { backgroundColor: Colors.white, borderWidth: 1, borderColor: '#F3F4F6' }]}>
-              <Image 
-                source={{ uri: getBankLogo(bank.bankCode) }} 
-                style={{ width: 28, height: 28 }}
-                resizeMode="contain"
-              />
+            <View style={styles.bankLinkIconWrap}>
+              <Ionicons name="link-outline" size={22} color={Colors.textMuted} />
             </View>
-            <View style={styles.walletInfo}>
-              <Text style={styles.walletName} numberOfLines={1}>{bank.bankName}</Text>
-              <Text style={styles.walletBalance}>**** {bank.accountNumber.slice(-4)}</Text>
+            <View style={styles.bankLinkInfo}>
+              <Text style={styles.bankLinkTitle}>Liên kết tài khoản ngân hàng</Text>
             </View>
-            {selectedBankId === bank.id && (
-              <View style={[styles.radioOuter, styles.radioOuterActive, { position: 'absolute', top: 12, right: 12, width: 16, height: 16 }]}>
-                <View style={[styles.radioInner, { width: 8, height: 8 }]} />
-              </View>
-            )}
+            <Ionicons name="chevron-forward" size={20} color={Colors.textMuted} />
           </TouchableOpacity>
-        ))}
-      </ScrollView>
+          <Text style={styles.bankLinkHint}>
+            Bạn phải liên kết ngân hàng để thực hiện rút tiền.
+          </Text>
+        </>
+      ) : (
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.walletCardScroll} contentContainerStyle={styles.walletCardContent}>
+          {bankAccounts.map((bank) => (
+            <TouchableOpacity 
+              key={bank.id} 
+              style={[
+                styles.walletCard,
+                selectedBankId === bank.id && styles.walletCardActive
+              ]}
+              onPress={() => setSelectedBankId(bank.id)}
+            >
+              <View style={[styles.walletIconContainer, { backgroundColor: Colors.white, borderWidth: 1, borderColor: '#F3F4F6' }]}>
+                <Image 
+                  source={{ uri: getBankLogo(bank.bankCode) }} 
+                  style={{ width: 28, height: 28 }}
+                  resizeMode="contain"
+                />
+              </View>
+              <View style={styles.walletInfo}>
+                <Text style={styles.walletName} numberOfLines={1}>{bank.bankName}</Text>
+                <Text style={styles.walletBalance}>**** {bank.accountNumber.slice(-4)}</Text>
+              </View>
+              {selectedBankId === bank.id && (
+                <View style={[styles.radioOuter, styles.radioOuterActive, { position: 'absolute', top: 12, right: 12, width: 16, height: 16 }]}>
+                  <View style={[styles.radioInner, { width: 8, height: 8 }]} />
+                </View>
+              )}
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+      )}
     </View>
   );
 
   const parsedAmount = amount ? parseInt(amount, 10) : 0;
-  const isButtonDisabled = parsedAmount === 0 || (activeTab === 'withdraw' && !selectedBankId) || isLoading;
+  const isButtonDisabled = isLoading || (activeTab === 'withdraw' && (parsedAmount === 0 || !selectedBankId));
 
   if (isFetchingData) {
     return (
       <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
-        <ActivityIndicator size="large" color={Colors.primary} />
+        <ActivityIndicator size="large" color={PASTEL_PALETTE.accent} />
       </View>
     );
   }
 
   return (
     <View style={[styles.container, { paddingBottom: insets.bottom }]}>
-      {/* Curved Header Background */}
-      <View style={{ 
-        backgroundColor: Colors.primary, 
-        height: 220, 
-        position: 'absolute', 
-        top: 0, 
-        left: 0, 
-        right: 0,
-        borderBottomLeftRadius: 32,
-        borderBottomRightRadius: 32
-      }} />
-      
-      <KeyboardAvoidingView style={{ flex: 1, paddingTop: insets.top }} behavior={Platform.OS === "ios" ? "padding" : undefined}>
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : undefined}>
         <View style={{ flex: 1 }}>
-            
-            <View style={[styles.header, { backgroundColor: 'transparent' }]}>
-              <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-                <Ionicons name="chevron-back" size={28} color={Colors.white} />
+
+          <PastelHeaderShell contentStyle={styles.headerShell}>
+            <View style={[styles.header, { paddingTop: 0 }]}>
+              <TouchableOpacity style={styles.backButton} onPress={() => router.back()} activeOpacity={0.7}>
+                <Ionicons name="chevron-back-outline" size={22} color={PASTEL_PALETTE.subtitle} />
               </TouchableOpacity>
-              <Text style={[styles.headerTitle, { color: Colors.white }]}>Nạp/Rút</Text>
-              <View style={{ width: 40 }} />
+              <Text style={styles.headerTitle}>Nạp/Rút</Text>
+              <View style={styles.headerSpacer} />
             </View>
 
-            <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
-              
-              <View style={styles.folderTabContainer}>
-                <TouchableOpacity 
-                  style={[styles.folderTab, activeTab === 'topup' ? styles.folderTabActive : styles.folderTabInactive]}
+            <View style={styles.segmentWrap}>
+              <View style={styles.segmentContainer}>
+                <TouchableOpacity
+                  style={[styles.segment, activeTab === 'topup' && styles.segmentActive]}
                   onPress={() => handleTabChange('topup')}
-                  activeOpacity={1}
+                  activeOpacity={0.9}
                 >
-                  <Ionicons name={activeTab === 'topup' ? "arrow-down-circle" : "arrow-down-circle-outline"} size={22} color={activeTab === 'topup' ? Colors.primary : "#6B7280"} />
-                  <Text style={[styles.tabText, activeTab === 'topup' && styles.tabTextActive]}>Nạp tiền</Text>
+                  <Ionicons
+                    name="arrow-down-circle"
+                    size={20}
+                    color={activeTab === 'topup' ? PASTEL_PALETTE.accentDeep : PASTEL_PALETTE.subtitle}
+                  />
+                  <Text style={[styles.segmentText, activeTab === 'topup' && styles.segmentTextActive]}>Nạp tiền</Text>
                 </TouchableOpacity>
-                <TouchableOpacity 
-                  style={[styles.folderTab, activeTab === 'withdraw' ? styles.folderTabActive : styles.folderTabInactive]}
+                <TouchableOpacity
+                  style={[styles.segment, activeTab === 'withdraw' && styles.segmentActive]}
                   onPress={() => handleTabChange('withdraw')}
-                  activeOpacity={1}
+                  activeOpacity={0.9}
                 >
-                  <Ionicons name={activeTab === 'withdraw' ? "arrow-up-circle" : "arrow-up-circle-outline"} size={22} color={activeTab === 'withdraw' ? Colors.primary : "#6B7280"} />
-                  <Text style={[styles.tabText, activeTab === 'withdraw' && styles.tabTextActive]}>Rút tiền</Text>
+                  <Ionicons
+                    name="arrow-up-circle"
+                    size={20}
+                    color={activeTab === 'withdraw' ? PASTEL_PALETTE.accentDeep : PASTEL_PALETTE.subtitle}
+                  />
+                  <Text style={[styles.segmentText, activeTab === 'withdraw' && styles.segmentTextActive]}>Rút tiền</Text>
                 </TouchableOpacity>
               </View>
+            </View>
+          </PastelHeaderShell>
 
-              <View style={[styles.cardContainer, activeTab === 'topup' ? styles.cardTopLeftSquare : styles.cardTopRightSquare, { marginTop: 0 }]}>
+            <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+              <View style={styles.cardContainer}>
                 {activeTab === 'topup' ? renderTopUpForm() : renderWithdrawForm()}
               </View>
 
               <View style={styles.securityContainer}>
                 <View style={styles.securityIconContainer}>
-                  <Ionicons name="shield-checkmark" size={24} color={Colors.primary} />
+                  <Ionicons name="shield-checkmark" size={24} color={PASTEL_PALETTE.accentDeep} />
                 </View>
                 <View style={styles.securityInfo}>
                   <Text style={styles.securityText}>An toàn tài sản & Bảo mật thông tin của bạn là ưu tiên hàng đầu của chúng tôi.</Text>

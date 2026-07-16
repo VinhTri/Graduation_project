@@ -2,30 +2,42 @@ import React, { useState, useCallback } from "react";
 import { View, Text, TouchableOpacity } from "react-native";
 import { useFocusEffect } from "expo-router";
 import { walletService } from "../../../../shared/api/services/walletService";
+import { axiosClient } from "../../../../shared/api/axiosClient";
+import { ENDPOINTS } from "../../../../shared/api/endpoints";
 import { Ionicons } from "@expo/vector-icons";
-import Colors from "../../../../shared/constants/Colors";
 import { WalletTotalAssetProps } from "./WalletTotalAsset.types";
 import { styles } from "./WalletTotalAsset.styles";
+
+const getLinkedBankText = (count: number) => {
+  if (count <= 0) return "Chưa liên kết ngân hàng";
+  if (count === 1) return "1 tài khoản ngân hàng đang liên kết";
+  return `${count} tài khoản ngân hàng đang liên kết`;
+};
 
 export const WalletTotalAsset: React.FC<WalletTotalAssetProps> = ({
   totalBalance = 0,
 }) => {
   const [isBalanceHidden, setIsBalanceHidden] = useState(false);
   const [balance, setBalance] = useState(totalBalance);
+  const [linkedBankCount, setLinkedBankCount] = useState(0);
 
   useFocusEffect(
     useCallback(() => {
-      const fetchWallet = async () => {
+      const fetchWalletData = async () => {
         try {
-          const data = await walletService.getMyWallet();
-          if (data) {
-            setBalance(data.balance);
+          const [walletData, bankRes] = await Promise.all([
+            walletService.getMyWallet(),
+            axiosClient.get(ENDPOINTS.BANK_ACCOUNT.GET_ALL),
+          ]);
+          if (walletData) {
+            setBalance(walletData.balance);
           }
+          setLinkedBankCount(Array.isArray(bankRes.data) ? bankRes.data.length : 0);
         } catch (error) {
-          console.log("Error fetching wallet balance", error);
+          console.log("Error fetching wallet header data", error);
         }
       };
-      fetchWallet();
+      fetchWalletData();
     }, [])
   );
 
@@ -38,7 +50,7 @@ export const WalletTotalAsset: React.FC<WalletTotalAssetProps> = ({
     <View style={styles.balanceCard}>
       <View style={styles.balanceHeader}>
         <View style={styles.balanceLabelContainer}>
-          <Ionicons name="shield-checkmark-outline" size={14} color="rgba(255, 255, 255, 0.75)" />
+          <Ionicons name="shield-checkmark-outline" size={14} color="#7C3AED" />
           <Text style={styles.balanceLabel}>TỔNG TÀI SẢN KHẢ DỤNG</Text>
         </View>
         <TouchableOpacity 
@@ -49,7 +61,7 @@ export const WalletTotalAsset: React.FC<WalletTotalAssetProps> = ({
           <Ionicons 
             name={isBalanceHidden ? "eye-off-outline" : "eye-outline"} 
             size={18} 
-            color="rgba(255, 255, 255, 0.85)" 
+            color="#7C3AED" 
           />
         </TouchableOpacity>
       </View>
@@ -64,7 +76,10 @@ export const WalletTotalAsset: React.FC<WalletTotalAssetProps> = ({
           <Text style={styles.statText}>1 ví đang kết nối</Text>
         </View>
         <View style={styles.verticalDivider} />
-        <Text style={styles.safetyText}>Bảo mật 256-bit</Text>
+        <View style={styles.statItem}>
+          <View style={[styles.statDot, linkedBankCount === 0 && styles.statDotMuted]} />
+          <Text style={styles.statText}>{getLinkedBankText(linkedBankCount)}</Text>
+        </View>
       </View>
     </View>
   );

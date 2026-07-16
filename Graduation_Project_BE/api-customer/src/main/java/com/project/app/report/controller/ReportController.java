@@ -27,12 +27,20 @@ public class ReportController {
             @AuthenticationPrincipal CustomUserDetails userDetails,
             @RequestParam TransactionType type,
             @RequestParam(defaultValue = "MONTH") String filter,
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
+            @RequestParam(defaultValue = "CATEGORY") String groupBy) {
 
-        List<ReportDistributionResponse> data = reportService.getDistributionReport(userDetails.getUser(), type, filter, date);
+        List<ReportDistributionResponse> data = "GROUP".equalsIgnoreCase(groupBy)
+                ? reportService.getGroupDistributionReport(userDetails.getUser(), type, filter, date)
+                : reportService.getDistributionReport(userDetails.getUser(), type, filter, date);
+
+        String message = "GROUP".equalsIgnoreCase(groupBy)
+                ? "Lấy dữ liệu phân bổ theo nhóm thành công"
+                : "Lấy dữ liệu phân bổ thành công";
+
         return ResponseEntity.ok(ApiResponse.<List<ReportDistributionResponse>>builder()
                 .success(true)
-                .message("Lấy dữ liệu phân bổ thành công")
+                .message(message)
                 .data(data)
                 .build());
     }

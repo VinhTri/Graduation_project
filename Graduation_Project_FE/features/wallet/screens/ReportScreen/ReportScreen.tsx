@@ -1,13 +1,28 @@
-import React, { useState, useEffect } from "react";
-import { View, Text, TouchableOpacity, ScrollView, Dimensions, Modal, TouchableWithoutFeedback, Platform } from "react-native";
+import React, { useState, useEffect, useCallback, useRef } from "react";
+import { View, Text, TouchableOpacity, ScrollView, Dimensions, Modal, TouchableWithoutFeedback, Platform, Alert, ActivityIndicator, NativeSyntheticEvent, NativeScrollEvent } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons, Feather } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
-import { PieChart, BarChart } from "react-native-gifted-charts";
+import { useRouter, useFocusEffect } from "expo-router";
+import { PieChart, LineChart } from "react-native-gifted-charts";
 
 import Colors from "../../../../shared/constants/Colors";
+import { PASTEL_PALETTE } from "../../../../shared/constants/PastelPalette";
+import { PastelHeaderShell } from "../../../../shared/components/PastelHeaderShell";
 import { styles } from "./ReportScreen.styles";
 import { reportService, ReportDistributionResponse, ReportTrendResponse } from "../../../../shared/api/services/reportService";
+import { transactionService } from "../../../../shared/api/services/transactionService";
+import { CategorySelectModal } from "../../../categories/components/CategorySelectModal";
+
+const { width: SCREEN_WIDTH } = Dimensions.get("window");
+const PIE_PAGE_WIDTH = SCREEN_WIDTH - 40;
+
+const renderCategoryIcon = (iconName: string | undefined, color: string, size: number) => (
+  <Ionicons
+    name={(iconName && iconName !== "?" ? iconName : "help-circle-outline") as keyof typeof Ionicons.glyphMap}
+    size={size}
+    color={color}
+  />
+);
 
 export default function ReportScreen() {
   const router = useRouter();
@@ -184,25 +199,110 @@ export default function ReportScreen() {
   };
 
   const [distributionData, setDistributionData] = useState<ReportDistributionResponse[]>([]);
+  const [groupDistributionData, setGroupDistributionData] = useState<ReportDistributionResponse[]>([]);
+  const [distributionPage, setDistributionPage] = useState(0);
+  const distributionPagerRef = useRef<ScrollView>(null);
   const [trendData, setTrendData] = useState<ReportTrendResponse[]>([]);
+  const [unclassified, setUnclassified] = useState<any[]>([]);
+  const [classifyingCode, setClassifyingCode] = useState<string | null>(null);
+  const [isCategoryModalVisible, setIsCategoryModalVisible] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+
+  // Khoảng thời gian khớp với backend (Tuần: T2-CN, Tháng: đầu-cuối tháng, Năm: cả năm).
+  const getRange = useCallback(() => {
+    const d = new Date(selectedDate);
+    let start: Date, end: Date;
+    if (dateFilter === "week") {
+      start = new Date(d);
+      const day = start.getDay() === 0 ? 6 : start.getDay() - 1;
+      start.setDate(start.getDate() - day);
+      start.setHours(0, 0, 0, 0);
+      end = new Date(start);
+      end.setDate(end.getDate() + 6);
+      end.setHours(23, 59, 59, 999);
+    } else if (dateFilter === "year") {
+      start = new Date(d.getFullYear(), 0, 1, 0, 0, 0, 0);
+      end = new Date(d.getFullYear(), 11, 31, 23, 59, 59, 999);
+    } else {
+      start = new Date(d.getFullYear(), d.getMonth(), 1, 0, 0, 0, 0);
+      end = new Date(d.getFullYear(), d.getMonth() + 1, 0, 23, 59, 59, 999);
+    }
+    return { start, end };
+  }, [dateFilter, selectedDate]);
+
+  const loadData = useCallback(async () => {
+    const type = activeTab === "expense" ? "EXPENSE" : "INCOME";
+    const filter = dateFilter.toUpperCase();
+    const dateStr = selectedDate.toISOString().split('T')[0];
+
+    if (viewMode === "pie") {
+      const [data, groupData] = await Promise.all([
+        reportService.getDistributionReport(type as any, filter, dateStr),
+        reportService.getGroupDistributionReport(type as any, filter, dateStr),
+      ]);
+      setDistributionData(data);
+      setGroupDistributionData(groupData);
+    } else {
+      const data = await reportService.getTrendReport(type as any, filter, dateStr);
+      setTrendData(data);
+    }
+
+    // Giao dịch rút tiền chưa phân loại trong kỳ (chỉ tab Chi tiêu).
+    if (activeTab !== "expense") {
+      setUnclassified([]);
+      return;
+    }
+    try {
+      const history = await transactionService.getTransactionHistory();
+      const { start, end } = getRange();
+      const pending = (history || []).filter((t: any) => {
+        if (t?.type !== "WITHDRAW") return false;
+        if (t?.categoryId) return false;
+        if (String(t?.status).toUpperCase() !== "SUCCESS") return false;
+        const created = new Date(t.createdAt);
+        return created >= start && created <= end;
+      });
+      setUnclassified(pending);
+    } catch {
+      setUnclassified([]);
+    }
+  }, [activeTab, dateFilter, selectedDate, viewMode, getRange]);
 
   useEffect(() => {
-    const fetchReport = async () => {
-      const type = activeTab === "expense" ? "EXPENSE" : "INCOME";
-      const filter = dateFilter.toUpperCase();
-      // Format selectedDate to YYYY-MM-DD
-      const dateStr = selectedDate.toISOString().split('T')[0];
-
-      if (viewMode === "pie") {
-        const data = await reportService.getDistributionReport(type, filter, dateStr);
-        setDistributionData(data);
-      } else {
-        const data = await reportService.getTrendReport(type, filter, dateStr);
-        setTrendData(data);
-      }
-    };
-    fetchReport();
+    setDistributionPage(0);
+    distributionPagerRef.current?.scrollTo({ x: 0, animated: false });
   }, [activeTab, dateFilter, selectedDate, viewMode]);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
+
+  useFocusEffect(
+    useCallback(() => {
+      loadData();
+    }, [loadData])
+  );
+
+  const openClassify = (code: string) => {
+    setClassifyingCode(code);
+    setIsCategoryModalVisible(true);
+  };
+
+  const handleSelectCategory = async (category: any) => {
+    const code = classifyingCode;
+    setIsCategoryModalVisible(false);
+    if (!code) return;
+    setIsSaving(true);
+    try {
+      await transactionService.updateTransaction(code, { categoryId: Number(category.id) });
+      await loadData();
+    } catch (e: any) {
+      Alert.alert("Lỗi", e?.message || "Không thể phân loại giao dịch");
+    } finally {
+      setIsSaving(false);
+      setClassifyingCode(null);
+    }
+  };
 
   const pieChartData = React.useMemo(() => {
     if (!distributionData || distributionData.length === 0) return [];
@@ -212,23 +312,98 @@ export default function ReportScreen() {
     }));
   }, [distributionData]);
 
-  const barChartData = React.useMemo(() => {
+  const groupPieChartData = React.useMemo(() => {
+    if (!groupDistributionData || groupDistributionData.length === 0) return [];
+    return groupDistributionData.map(item => ({
+      value: item.percentage,
+      color: item.color || Colors.primary
+    }));
+  }, [groupDistributionData]);
+
+  const activeDistributionData = distributionPage === 0 ? distributionData : groupDistributionData;
+
+  const lineChartData = React.useMemo(() => {
     if (!trendData || trendData.length === 0) return [];
     return trendData.map(item => ({
-      value: item.value,
+      value: Number(item.value),
       label: item.label,
-      frontColor: item.isCurrent ? "#1E90FF" : "#CBE4FA",
-      labelTextStyle: { color: item.isCurrent ? "#1E90FF" : Colors.text, fontSize: 11, width: 65, textAlign: 'center' }
+      labelTextStyle: {
+        color: item.isCurrent ? "#2563EB" : Colors.textMuted,
+        fontSize: 10,
+        width: 36,
+        textAlign: "center" as const,
+      },
     }));
   }, [trendData]);
 
+  const lineTrendColor = React.useMemo(() => {
+    if (lineChartData.length < 2) return "#2563EB";
+    const firstVal = lineChartData.find((d) => d.value > 0)?.value ?? lineChartData[0].value;
+    const lastVal = lineChartData[lineChartData.length - 1]?.value ?? 0;
+    return lastVal >= firstVal ? "#10B981" : "#EF4444";
+  }, [lineChartData]);
+
+  const lineChartWidth = React.useMemo(() => {
+    const pointSpacing = dateFilter === "month" ? 24 : dateFilter === "week" ? 48 : 36;
+    return Math.max(SCREEN_WIDTH - 56, lineChartData.length * pointSpacing + 48);
+  }, [lineChartData.length, dateFilter]);
+
   const totalAmount = React.useMemo(() => {
     if (viewMode === "pie") {
-      return distributionData.reduce((sum, item) => sum + Number(item.totalAmount), 0);
+      return activeDistributionData.reduce((sum, item) => sum + Number(item.totalAmount), 0);
     } else {
       return trendData.reduce((sum, item) => sum + Number(item.value), 0);
     }
-  }, [distributionData, trendData, viewMode]);
+  }, [activeDistributionData, trendData, viewMode]);
+
+  const handleDistributionScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const page = Math.round(event.nativeEvent.contentOffset.x / PIE_PAGE_WIDTH);
+    if (page !== distributionPage) {
+      setDistributionPage(page);
+    }
+  };
+
+  const renderPieDistributionPage = (
+    data: ReportDistributionResponse[],
+    pieData: { value: number; color: string }[],
+    emptyMessage: string
+  ) => (
+    <View style={[styles.pieChartWrapper, { width: PIE_PAGE_WIDTH }]}>
+      <View style={styles.donutContainer}>
+        {pieData.length > 0 ? (
+          <PieChart
+            data={pieData as any}
+            donut
+            radius={100}
+            innerRadius={55}
+            innerCircleColor={Colors.white}
+          />
+        ) : (
+          <Text style={{ color: Colors.textMuted, textAlign: "center", paddingHorizontal: 24 }}>
+            {emptyMessage}
+          </Text>
+        )}
+      </View>
+
+      <View style={styles.legendContainer}>
+        {data.map((item, index) => (
+          <View key={`${item.categoryId}-${index}`} style={styles.legendItem}>
+            <View style={[styles.legendIconBox, { backgroundColor: item.color + '33' }]}>
+              {renderCategoryIcon(item.icon, item.color, 20)}
+            </View>
+            <View style={{ marginLeft: 8, flex: 1 }}>
+              <Text style={[styles.legendValue, { color: item.color, fontSize: 16 }]}>
+                {item.percentage.toFixed(1)}%
+              </Text>
+              <Text style={[styles.legendLabel, { marginTop: 0, fontSize: 12 }]} numberOfLines={1}>
+                {item.categoryName}
+              </Text>
+            </View>
+          </View>
+        ))}
+      </View>
+    </View>
+  );
 
   const formatCurrency = (amount: number) => {
     return amount.toLocaleString("vi-VN") + "đ";
@@ -236,22 +411,22 @@ export default function ReportScreen() {
 
   return (
     <View style={[styles.container, { paddingBottom: insets.bottom }]}>
-      {/* Background filler for iOS safe area */}
-      <View style={{ backgroundColor: Colors.primary, height: insets.top, position: 'absolute', top: 0, left: 0, right: 0 }} />
-
-      <View style={{ flex: 1, paddingTop: insets.top }}>
-        {/* Header */}
-        <View style={styles.header}>
+      <PastelHeaderShell contentStyle={styles.header}>
+        <View style={styles.headerRow}>
           <TouchableOpacity
             style={styles.backButton}
             onPress={() => router.back()}
+            activeOpacity={0.7}
           >
-            <Ionicons name="arrow-back" size={24} color={Colors.white} />
+            <Ionicons name="chevron-back-outline" size={22} color={PASTEL_PALETTE.subtitle} />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Báo cáo</Text>
+          <Text style={styles.headerTitle} numberOfLines={1} ellipsizeMode="tail">
+            Báo cáo
+          </Text>
         </View>
+      </PastelHeaderShell>
 
-        <ScrollView style={styles.content} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+      <ScrollView style={styles.content} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
           
           {/* Section Header */}
           <View style={styles.sectionHeader}>
@@ -321,89 +496,190 @@ export default function ReportScreen() {
           {/* Charts Area */}
           <View style={styles.chartContainer}>
             {viewMode === "pie" ? (
-              <View style={styles.pieChartWrapper}>
-                <View style={styles.donutContainer}>
-                  {pieChartData.length > 0 ? (
-                    <PieChart
-                      data={pieChartData as any}
-                      donut
-                      radius={100}
-                      innerRadius={55}
-                      innerCircleColor={Colors.white}
-                    />
-                  ) : (
-                    <Text style={{ color: Colors.textMuted }}>Không có dữ liệu</Text>
-                  )}
+              <>
+                <View style={styles.distributionTabs}>
+                  <TouchableOpacity
+                    style={[styles.distributionTab, distributionPage === 0 && styles.distributionTabActive]}
+                    onPress={() => {
+                      setDistributionPage(0);
+                      distributionPagerRef.current?.scrollTo({ x: 0, animated: true });
+                    }}
+                  >
+                    <Text style={[styles.distributionTabText, distributionPage === 0 && styles.distributionTabTextActive]}>
+                      Danh mục
+                    </Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.distributionTab, distributionPage === 1 && styles.distributionTabActive]}
+                    onPress={() => {
+                      setDistributionPage(1);
+                      distributionPagerRef.current?.scrollTo({ x: PIE_PAGE_WIDTH, animated: true });
+                    }}
+                  >
+                    <Text style={[styles.distributionTabText, distributionPage === 1 && styles.distributionTabTextActive]}>
+                      Nhóm
+                    </Text>
+                  </TouchableOpacity>
                 </View>
 
-                {/* Dynamic Legend */}
-                <View style={{ width: '100%', paddingHorizontal: 20, marginTop: 20, flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center' }}>
-                  {distributionData.map((item, index) => (
-                    <View key={index} style={{ flexDirection: 'row', alignItems: 'center', width: '45%', marginBottom: 15, marginHorizontal: '2%' }}>
-                      <View style={[styles.legendIconBox, { backgroundColor: item.color + '33', padding: 8, borderRadius: 8 }]}>
-                         {/* Fallback to text if icon name isn't fully compatible with FontAwesome/Feather */}
-                         <Text style={{ fontSize: 14, color: item.color, fontWeight: 'bold' }}>{item.icon ? item.icon.substring(0,2) : "?"}</Text>
-                      </View>
-                      <View style={{ marginLeft: 8 }}>
-                        <Text style={[styles.legendValue, { color: item.color, fontSize: 16 }]}>{item.percentage.toFixed(1)}%</Text>
-                        <Text style={[styles.legendLabel, { marginTop: 0, fontSize: 12 }]} numberOfLines={1}>{item.categoryName}</Text>
-                      </View>
-                    </View>
-                  ))}
+                <ScrollView
+                  ref={distributionPagerRef}
+                  horizontal
+                  pagingEnabled
+                  showsHorizontalScrollIndicator={false}
+                  onMomentumScrollEnd={handleDistributionScroll}
+                  scrollEventThrottle={16}
+                  decelerationRate="fast"
+                >
+                  {renderPieDistributionPage(
+                    distributionData,
+                    pieChartData,
+                    unclassified.length > 0
+                      ? "Phân loại các giao dịch bên dưới để xem biểu đồ nhé!"
+                      : "Chưa có dữ liệu danh mục trong kỳ này"
+                  )}
+                  {renderPieDistributionPage(
+                    groupDistributionData,
+                    groupPieChartData,
+                    "Chưa có dữ liệu nhóm trong kỳ này"
+                  )}
+                </ScrollView>
+
+                <View style={styles.pageDots}>
+                  <View style={[styles.pageDot, distributionPage === 0 && styles.pageDotActive]} />
+                  <View style={[styles.pageDot, distributionPage === 1 && styles.pageDotActive]} />
                 </View>
-              </View>
+                <Text style={styles.swipeHint}>Vuốt sang trái để xem phân tích theo nhóm</Text>
+              </>
             ) : (
-              <View style={styles.barChartWrapper}>
-                <View style={styles.yAxisLabelContainer}>
-                  {/* Label removed since we now use formatYLabel directly on BarChart */}
-                </View>
-                <View style={styles.barChartInner}>
-                  <BarChart
-                    data={barChartData as any}
-                    barWidth={35}
-                    spacing={30}
-                    roundedTop
-                    hideRules={false}
-                    rulesColor="#E5E7EB"
-                    rulesType="solid"
-                    xAxisThickness={1}
-                    xAxisColor="#E5E7EB"
-                    yAxisThickness={0}
-                    yAxisTextStyle={styles.yAxisLabel}
-                    formatYLabel={(label) => {
-                      const val = Number(label);
-                      if (val >= 1000000) return (val / 1000000).toFixed(1) + 'Tr';
-                      if (val >= 1000) return (val / 1000).toFixed(0) + 'K';
-                      return label;
-                    }}
-                  />
-                </View>
+              <View style={styles.lineChartWrapper}>
+                {lineChartData.length > 0 ? (
+                  <>
+                    <View style={styles.lineChartLegend}>
+                      <View style={[styles.lineTrendDot, { backgroundColor: lineTrendColor }]} />
+                      <Text style={styles.lineChartLegendText}>
+                        {lineTrendColor === "#10B981" ? "Xu hướng tăng" : "Xu hướng giảm"}
+                      </Text>
+                      <Text style={styles.lineChartHint}>Chạm vào biểu đồ để xem giá trị</Text>
+                    </View>
+                    <View style={styles.lineChartPanel}>
+                      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.lineChartScroll}>
+                        <LineChart
+                          data={lineChartData as any}
+                          width={lineChartWidth}
+                          height={200}
+                          overflowTop={44}
+                          curved={false}
+                          color={lineTrendColor}
+                          thickness={2.5}
+                          spacing={dateFilter === "month" ? 22 : dateFilter === "week" ? 44 : 34}
+                          initialSpacing={20}
+                          endSpacing={20}
+                          hideDataPoints
+                          noOfSections={5}
+                          hideRules={false}
+                          rulesColor="#E2E8F0"
+                          rulesType="solid"
+                          xAxisThickness={1}
+                          xAxisColor="#CBD5E1"
+                          yAxisThickness={0}
+                          yAxisTextStyle={styles.yAxisLabel}
+                          formatYLabel={(label) => {
+                            const val = Number(label);
+                            if (val >= 1000000) return (val / 1000000).toFixed(1) + "Tr";
+                            if (val >= 1000) return (val / 1000).toFixed(0) + "K";
+                            return label;
+                          }}
+                          pointerConfig={{
+                            pointerStripUptoDataPoint: true,
+                            pointerStripHeight: 160,
+                            pointerStripColor: lineTrendColor + "55",
+                            pointerStripWidth: 1,
+                            pointerColor: lineTrendColor,
+                            radius: 5,
+                            pointerLabelWidth: 120,
+                            pointerLabelHeight: 40,
+                            shiftPointerLabelY: 16,
+                            autoAdjustPointerLabelPosition: true,
+                            activatePointersOnLongPress: false,
+                            activatePointersInstantlyOnTouch: true,
+                            persistPointer: false,
+                            pointerLabelComponent: (items: any) => {
+                              const val = items?.[0]?.value ?? 0;
+                              return (
+                                <View style={[styles.pointerLabel, { borderColor: lineTrendColor }]}>
+                                  <Text style={[styles.pointerLabelText, { color: lineTrendColor }]} numberOfLines={1}>
+                                    {formatCurrency(val)}
+                                  </Text>
+                                </View>
+                              );
+                            },
+                          }}
+                        />
+                      </ScrollView>
+                    </View>
+                  </>
+                ) : (
+                  <Text style={{ color: Colors.textMuted, textAlign: "center", paddingHorizontal: 24 }}>
+                    Chưa có dữ liệu xu hướng trong kỳ này
+                  </Text>
+                )}
               </View>
             )}
           </View>
 
-          {/* Details Section */}
-          <TouchableOpacity style={styles.categoryHeader} activeOpacity={0.7}>
-            <Text style={styles.categoryTitle}>Chi tiết từng danh mục ({distributionData.length})</Text>
-            <Ionicons name="chevron-down" size={20} color={Colors.primary} />
-          </TouchableOpacity>
-
-          {distributionData.map((item, index) => (
-            <View key={index} style={styles.categoryItem}>
-              <View style={[styles.categoryIconContainer, { backgroundColor: item.color + '1A' }]}>
-                {/* Fallback to text if icon is just a fallback question mark */}
-                <Text style={{ fontSize: 18, color: item.color, fontWeight: 'bold' }}>{item.icon ? item.icon.substring(0,2) : "?"}</Text>
+          {/* Giao dịch chưa phân loại — phân loại trực tiếp trong báo cáo (tab Chi tiêu) */}
+          {activeTab === "expense" && unclassified.length > 0 && (
+            <View style={styles.unclassifiedSection}>
+              <View style={styles.unclassifiedHeader}>
+                <Ionicons name="alert-circle" size={18} color="#F59E0B" />
+                <Text style={styles.unclassifiedTitle}>Chưa phân loại ({unclassified.length})</Text>
               </View>
-              <View style={styles.categoryDetails}>
-                <Text style={styles.categoryItemTitle}>{item.categoryName}</Text>
-                <Text style={styles.categoryItemSubtitle}>{item.percentage.toFixed(1)}%</Text>
-              </View>
-              <Text style={styles.categoryAmount}>{formatCurrency(item.totalAmount)}</Text>
+              <Text style={styles.unclassifiedHint}>Gắn danh mục để đưa các giao dịch này vào biểu đồ phân tích nhé!</Text>
+              {unclassified.map((t) => (
+                <View key={t.transactionCode} style={styles.unclassifiedItem}>
+                  <View style={{ flex: 1, marginRight: 10 }}>
+                    <Text style={styles.unclassifiedItemTitle} numberOfLines={1}>
+                      {t.note || "Rút tiền về ngân hàng"}
+                    </Text>
+                    <Text style={styles.unclassifiedItemSub}>{formatCurrency(Number(t.amount))}</Text>
+                  </View>
+                  <TouchableOpacity style={styles.classifyBtn} onPress={() => openClassify(t.transactionCode)} activeOpacity={0.8}>
+                    <Ionicons name="pricetag-outline" size={14} color={Colors.white} />
+                    <Text style={styles.classifyBtnText}>Phân loại</Text>
+                  </TouchableOpacity>
+                </View>
+              ))}
             </View>
-          ))}
+          )}
+
+          {viewMode === "pie" && (
+            <>
+              <TouchableOpacity style={styles.categoryHeader} activeOpacity={0.7}>
+                <Text style={styles.categoryTitle}>
+                  {distributionPage === 0
+                    ? `Chi tiết từng danh mục (${distributionData.length})`
+                    : `Chi tiết từng nhóm (${groupDistributionData.length})`}
+                </Text>
+                <Ionicons name="chevron-down" size={20} color={Colors.primary} />
+              </TouchableOpacity>
+
+              {activeDistributionData.map((item, index) => (
+                <View key={`${distributionPage}-${item.categoryId}-${index}`} style={styles.categoryItem}>
+                  <View style={[styles.categoryIconContainer, { backgroundColor: item.color + '1A' }]}>
+                    {renderCategoryIcon(item.icon, item.color, 22)}
+                  </View>
+                  <View style={styles.categoryDetails}>
+                    <Text style={styles.categoryItemTitle}>{item.categoryName}</Text>
+                    <Text style={styles.categoryItemSubtitle}>{item.percentage.toFixed(1)}%</Text>
+                  </View>
+                  <Text style={styles.categoryAmount}>{formatCurrency(item.totalAmount)}</Text>
+                </View>
+              ))}
+            </>
+          )}
 
         </ScrollView>
-      </View>
 
       {/* Date Filter Modal */}
       <Modal
@@ -465,6 +741,18 @@ export default function ReportScreen() {
         </TouchableWithoutFeedback>
       </Modal>
 
+      {/* Chọn danh mục để phân loại nhanh */}
+      <CategorySelectModal
+        visible={isCategoryModalVisible}
+        onClose={() => { setIsCategoryModalVisible(false); setClassifyingCode(null); }}
+        onSelect={(item) => handleSelectCategory(item)}
+      />
+
+      {isSaving && (
+        <View style={styles.savingOverlay}>
+          <ActivityIndicator size="large" color={Colors.white} />
+        </View>
+      )}
 
     </View>
   );

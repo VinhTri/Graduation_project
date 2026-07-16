@@ -2,45 +2,55 @@ import React from "react";
 import { View, Text, TouchableOpacity } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import Colors from "../../../../shared/constants/Colors";
 import { WalletHeaderProps } from "./WalletHeader.types";
 import { styles } from "./WalletHeader.styles";
 import WalletTotalAsset from "../WalletTotalAsset";
+import { PastelHeaderShell } from "../../../../shared/components/PastelHeaderShell";
 
-export const WalletHeader: React.FC<WalletHeaderProps> = ({ onBackPress }) => {
+export const WalletHeader: React.FC<WalletHeaderProps> = ({ onBackPress, onOpenAccountPress }) => {
   const router = useRouter();
 
   const handleBack = () => {
     if (onBackPress) {
       onBackPress();
     } else {
-      // Navigate back to the home screen tab
       router.replace("/(tabs)");
     }
   };
 
   return (
-    <View style={styles.headerContainer}>
-      {/* Top Bar Row */}
+    <PastelHeaderShell contentStyle={styles.headerContainer}>
       <View style={styles.topBar}>
         <View style={styles.leftSection}>
-          <TouchableOpacity 
-            style={styles.backButton} 
+          <TouchableOpacity
+            style={styles.backButton}
             activeOpacity={0.7}
             onPress={handleBack}
           >
-            <Ionicons name="chevron-back-outline" size={22} color={Colors.white} />
+            <Ionicons name="chevron-back-outline" size={22} color="#7C3AED" />
           </TouchableOpacity>
           <View style={styles.titleContainer}>
-            <Text style={styles.headerTitle}>Ví của tôi</Text>
-            <Text style={styles.headerSubtitle}>Quản lý tài sản thông minh</Text>
+            <Text style={styles.headerTitle} numberOfLines={1} ellipsizeMode="tail">
+              Ví của tôi
+            </Text>
+            <Text style={styles.headerSubtitle} numberOfLines={1} ellipsizeMode="tail">
+              Quản lý tài sản thông minh
+            </Text>
           </View>
         </View>
+
+        <TouchableOpacity
+          style={styles.openAccountBtn}
+          activeOpacity={0.85}
+          onPress={onOpenAccountPress}
+        >
+          <Ionicons name="add-circle" size={18} color="#FFF" />
+          <Text style={styles.openAccountText}>Mở ví</Text>
+        </TouchableOpacity>
       </View>
 
-      {/* Render Decoupled Total Asset Card Component */}
       <WalletTotalAsset />
-    </View>
+    </PastelHeaderShell>
   );
 };
 

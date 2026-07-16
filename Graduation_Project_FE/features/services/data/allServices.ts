@@ -46,7 +46,7 @@ export const ALL_SERVICES_DATA: AppServiceGroup[] = [
     title: "Mua sắm & Giải trí",
     data: [
       { id: "11", label: "Mua vé", icon: "film-outline", color: "#06B6D4", bgColor: "#CFFAFE" },
-      { id: "10", label: "Danh bạ", icon: "book-outline", color: "#8B5CF6", bgColor: "#EDE9FE" },
+      { id: "10", label: "Danh bạ", icon: "people-circle-outline", color: "#EC4899", bgColor: "#FFE4F0" },
     ]
   }
 ];

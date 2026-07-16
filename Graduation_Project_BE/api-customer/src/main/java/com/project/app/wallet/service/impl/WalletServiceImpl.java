@@ -1,5 +1,6 @@
 package com.project.app.wallet.service.impl;
 
+import com.project.app.auth.service.AuthService;
 import com.project.app.common.exception.AppException;
 import com.project.app.common.exception.ErrorCode;
 import com.project.app.wallet.entity.Wallet;
@@ -14,9 +15,11 @@ import java.math.BigDecimal;
 public class WalletServiceImpl implements WalletService {
 
     private final WalletRepository walletRepository;
+    private final AuthService authService;
 
-    public WalletServiceImpl(WalletRepository walletRepository) {
+    public WalletServiceImpl(WalletRepository walletRepository, AuthService authService) {
         this.walletRepository = walletRepository;
+        this.authService = authService;
     }
 
     // ====================== LẤY VÍ MẶC ĐỊNH ======================
@@ -53,6 +56,13 @@ public class WalletServiceImpl implements WalletService {
     @Override
     @Transactional
     public void updateWalletSettings(Long walletId, Long userId, com.project.app.wallet.dto.WalletSettingsDto request) {
+        if (request.getPinCode() == null || request.getPinCode().isBlank()) {
+            throw new AppException(ErrorCode.INVALID_PIN);
+        }
+        if (!authService.verifyPinCode(userId, request.getPinCode())) {
+            throw new AppException(ErrorCode.INVALID_PIN);
+        }
+
         Wallet wallet = getWalletById(walletId, userId);
         
         wallet.setLimitEnabled(request.isLimitEnabled());
@@ -84,5 +94,12 @@ public class WalletServiceImpl implements WalletService {
 
         wallet.setAccountNumber(request.getAccountNumber());
         return walletRepository.save(wallet);
+    }
+
+    @Override
+    public String getAccountNumberForUser(Long userId) {
+        Wallet wallet = getDefaultWallet(userId);
+        String accountNumber = wallet.getAccountNumber();
+        return accountNumber != null && !accountNumber.isBlank() ? accountNumber : null;
     }
 }

@@ -10,18 +10,16 @@ public class TopUpResponse {
     private LocalDateTime expiresAt;
     private BigDecimal amount;
     private LocalDateTime createdAt;
-    private String transactionCode;
 
     public TopUpResponse() {
     }
 
-    public TopUpResponse(String transferContent, String qrUrl, LocalDateTime expiresAt, BigDecimal amount, LocalDateTime createdAt, String transactionCode) {
+    public TopUpResponse(String transferContent, String qrUrl, LocalDateTime expiresAt, BigDecimal amount, LocalDateTime createdAt) {
         this.transferContent = transferContent;
         this.qrUrl = qrUrl;
         this.expiresAt = expiresAt;
         this.amount = amount;
         this.createdAt = createdAt;
-        this.transactionCode = transactionCode;
     }
 
     // Getter và Setter
@@ -64,13 +62,5 @@ public class TopUpResponse {
 
     public void setCreatedAt(LocalDateTime createdAt) {
         this.createdAt = createdAt;
-    }
-
-    public String getTransactionCode() {
-        return transactionCode;
-    }
-
-    public void setTransactionCode(String transactionCode) {
-        this.transactionCode = transactionCode;
     }
 }

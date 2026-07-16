@@ -8,21 +8,9 @@ import { Ionicons } from '@expo/vector-icons';
 import Colors from '../../../shared/constants/Colors';
 import { useCategoryContext } from '../../../shared/contexts/CategoryContext';
 import { IconPicker } from './IconPicker';
-
-const AVAILABLE_COLORS = [
-  { color: '#EF4444', bgColor: '#FEE2E2' },
-  { color: '#F59E0B', bgColor: '#FEF3C7' },
-  { color: '#10B981', bgColor: '#D1FAE5' },
-  { color: '#3B82F6', bgColor: '#DBEAFE' },
-  { color: '#8B5CF6', bgColor: '#EDE9FE' },
-  { color: '#EC4899', bgColor: '#FCE7F3' },
-  { color: '#0EA5E9', bgColor: '#E0F2FE' },
-  { color: '#14B8A6', bgColor: '#CCFBF1' },
-  { color: '#E11D48', bgColor: '#FFE4E6' },
-  { color: '#F97316', bgColor: '#FFEDD5' },
-  { color: '#06B6D4', bgColor: '#CFFAFE' },
-  { color: '#64748B', bgColor: '#F1F5F9' },
-];
+import { AddGroupModal } from './AddGroupModal';
+import { AVAILABLE_COLORS } from '../constants/categoryTheme';
+import { MAX_ITEMS_PER_GROUP } from '../constants/categoryLimits';
 
 interface AlertConfig {
   visible: boolean;
@@ -33,22 +21,21 @@ interface AlertConfig {
   onCancel?: () => void;
 }
 
-import { ServiceItem } from '../../data/mockData';
-
 type AddCategoryModalProps = {
   visible: boolean;
   onClose: () => void;
   onBack?: () => void;
-  initialData?: ServiceItem & { groupId?: string };
+  defaultGroupId?: string;
 };
 
-export const AddCategoryModal: React.FC<AddCategoryModalProps> = ({ visible, onClose, onBack, initialData }) => {
-  const { categories, addService, updateService } = useCategoryContext();
+export const AddCategoryModal: React.FC<AddCategoryModalProps> = ({ visible, onClose, onBack, defaultGroupId }) => {
+  const { categories, addService } = useCategoryContext();
 
   const [label, setLabel] = useState("");
   const [selectedIcon, setSelectedIcon] = useState("apps");
   const [selectedColorIndex, setSelectedColorIndex] = useState(0);
   const [selectedGroup, setSelectedGroup] = useState<string>("");
+  const [isGroupModalVisible, setIsGroupModalVisible] = useState(false);
   const [alertConfig, setAlertConfig] = useState<AlertConfig>({
     visible: false,
     title: "",
@@ -56,95 +43,69 @@ export const AddCategoryModal: React.FC<AddCategoryModalProps> = ({ visible, onC
     type: "error"
   });
 
-  // Mapping keywords to group names and suggested icons/colors
   const KEYWORD_MAP: Record<string, { groupName: string; icon: string; colorIndex: number }> = {
-    'ăn': { groupName: 'Chi tiêu', icon: 'restaurant', colorIndex: 9 }, // Orange
+    'ăn': { groupName: 'Chi tiêu', icon: 'restaurant', colorIndex: 9 },
     'uống': { groupName: 'Chi tiêu', icon: 'cafe', colorIndex: 9 },
     'chợ': { groupName: 'Chi tiêu', icon: 'bag-handle', colorIndex: 9 },
     'siêu thị': { groupName: 'Chi tiêu', icon: 'cart', colorIndex: 9 },
-    
-    'chơi': { groupName: 'phát sinh', icon: 'game-controller', colorIndex: 3 }, // Blue
+    'chơi': { groupName: 'phát sinh', icon: 'game-controller', colorIndex: 3 },
     'phim': { groupName: 'phát sinh', icon: 'film', colorIndex: 3 },
     'du lịch': { groupName: 'phát sinh', icon: 'airplane', colorIndex: 6 },
     'mua sắm': { groupName: 'phát sinh', icon: 'pricetag', colorIndex: 5 },
     'quà': { groupName: 'phát sinh', icon: 'gift', colorIndex: 5 },
     'xe': { groupName: 'phát sinh', icon: 'car', colorIndex: 3 },
-    
-    'điện': { groupName: 'cố định', icon: 'bulb', colorIndex: 0 }, // Red
+    'điện': { groupName: 'cố định', icon: 'bulb', colorIndex: 0 },
     'nước': { groupName: 'cố định', icon: 'water', colorIndex: 6 },
     'nhà': { groupName: 'cố định', icon: 'business', colorIndex: 0 },
     'mạng': { groupName: 'cố định', icon: 'wifi', colorIndex: 0 },
-    
-    'tiết kiệm': { groupName: 'Đầu tư', icon: 'wallet', colorIndex: 2 }, // Green
+    'tiết kiệm': { groupName: 'Đầu tư', icon: 'wallet', colorIndex: 2 },
     'đầu tư': { groupName: 'Đầu tư', icon: 'trending-up', colorIndex: 2 },
     'chứng khoán': { groupName: 'Đầu tư', icon: 'bar-chart', colorIndex: 2 },
-    'vàng': { groupName: 'Đầu tư', icon: 'diamond', colorIndex: 1 }, // Yellow
-
-    'khác': { groupName: 'Khác', icon: 'cube', colorIndex: 11 }, // Slate / Gray
+    'vàng': { groupName: 'Đầu tư', icon: 'diamond', colorIndex: 1 },
+    'khác': { groupName: 'Khác', icon: 'cube', colorIndex: 11 },
     'phí': { groupName: 'Khác', icon: 'receipt', colorIndex: 11 },
     'phạt': { groupName: 'Khác', icon: 'warning', colorIndex: 11 },
     'linh tinh': { groupName: 'Khác', icon: 'apps', colorIndex: 11 },
   };
 
-  // Tự động chọn nhóm đầu tiên khi mở modal hoặc fill data nếu ở chế độ Sửa
   React.useEffect(() => {
     if (visible) {
-      if (initialData) {
-        setLabel(initialData.label || "");
-        setSelectedIcon(initialData.icon || "apps");
-        if (initialData.groupId) {
-          setSelectedGroup(initialData.groupId);
-        }
-        const colorIdx = AVAILABLE_COLORS.findIndex(c => c.color === initialData.color);
-        setSelectedColorIndex(colorIdx >= 0 ? colorIdx : 0);
-      } else {
-        // Reset form
-        setLabel("");
-        setSelectedIcon("apps");
-        setSelectedColorIndex(0);
-        if (categories.length > 0) {
-          setSelectedGroup(categories[0].id);
-        }
+      setLabel("");
+      setSelectedIcon("apps");
+      setSelectedColorIndex(0);
+      if (defaultGroupId) {
+        setSelectedGroup(defaultGroupId);
+      } else if (categories.length > 0) {
+        setSelectedGroup(categories[0].id);
       }
     }
-  }, [visible, initialData, categories]);
+  }, [visible, defaultGroupId, categories]);
 
-  // Auto-suggest based on label (Only run if it's NOT edit mode)
   React.useEffect(() => {
-    if (initialData || !label.trim()) return;
-    
+    if (!label.trim()) return;
+
     const lowerLabel = label.toLowerCase();
     for (const [keyword, suggestion] of Object.entries(KEYWORD_MAP)) {
       if (lowerLabel.includes(keyword)) {
-        // Find matching group by name
         const matchedGroup = categories.find(c => c.title.toLowerCase().includes(suggestion.groupName.toLowerCase()));
         if (matchedGroup) {
           setSelectedGroup(matchedGroup.id);
           setSelectedIcon(suggestion.icon);
           setSelectedColorIndex(suggestion.colorIndex);
         }
-        break; // Stop at first match
+        break;
       }
     }
   }, [label]);
 
   const executeSave = async () => {
     const colorTheme = AVAILABLE_COLORS[selectedColorIndex];
-    if (initialData) {
-      await updateService(initialData.id, selectedGroup, {
-        label: label.trim(),
-        icon: selectedIcon,
-        color: colorTheme.color,
-        bgColor: colorTheme.bgColor,
-      });
-    } else {
-      await addService(selectedGroup, {
-        label: label.trim(),
-        icon: selectedIcon,
-        color: colorTheme.color,
-        bgColor: colorTheme.bgColor,
-      });
-    }
+    await addService(selectedGroup, {
+      label: label.trim(),
+      icon: selectedIcon,
+      color: colorTheme.color,
+      bgColor: colorTheme.bgColor,
+    });
 
     setLabel("");
     onClose();
@@ -161,25 +122,21 @@ export const AddCategoryModal: React.FC<AddCategoryModalProps> = ({ visible, onC
       return;
     }
 
-    // 1. Kiểm tra giới hạn 8 danh mục con (chỉ khi tạo mới)
-    if (!initialData) {
-      const groupToSave = categories.find(c => c.id === selectedGroup);
-      if (groupToSave && groupToSave.items.length >= 8) {
-        setAlertConfig({
-          visible: true,
-          title: "Giới hạn danh mục",
-          message: "Mỗi nhóm danh mục chỉ được tối đa 8 danh mục con!",
-          type: "error",
-        });
-        return;
-      }
+    const groupToSave = categories.find(c => c.id === selectedGroup);
+    if (groupToSave && groupToSave.items.length >= MAX_ITEMS_PER_GROUP) {
+      setAlertConfig({
+        visible: true,
+        title: "Giới hạn danh mục",
+        message: `Mỗi nhóm chỉ được tối đa ${MAX_ITEMS_PER_GROUP} danh mục!`,
+        type: "error",
+      });
+      return;
     }
 
-    // 2. CHUẨN LOGIC: Kiểm tra trùng lặp tên danh mục trên TOÀN BỘ hệ thống (bỏ qua chính nó nếu đang sửa)
     const normalizedLabel = trimmedLabel.toLowerCase();
     let duplicateGroupName = "";
     for (const group of categories) {
-      const found = group.items.find(item => item.label.toLowerCase() === normalizedLabel && item.id !== initialData?.id);
+      const found = group.items.find(item => item.label.toLowerCase() === normalizedLabel);
       if (found) {
         duplicateGroupName = group.title;
         break;
@@ -187,20 +144,18 @@ export const AddCategoryModal: React.FC<AddCategoryModalProps> = ({ visible, onC
     }
 
     if (duplicateGroupName) {
-      const errorMsg = `Tên danh mục "${trimmedLabel}" đã tồn tại trong nhóm "${duplicateGroupName}". Vui lòng đặt tên khác (VD: Du lịch gia đình)!`;
       setAlertConfig({
         visible: true,
         title: "Trùng lặp tên",
-        message: errorMsg,
+        message: `Tên danh mục "${trimmedLabel}" đã tồn tại trong nhóm "${duplicateGroupName}". Vui lòng đặt tên khác hoặc xóa danh mục cũ trước.`,
         type: "error",
       });
-      return; // Chặn không cho lưu
+      return;
     }
 
-    // 2. Kiểm tra logic cảnh báo: Nếu từ khóa thuộc nhóm A nhưng người dùng chọn nhóm B
     const lowerLabel = trimmedLabel.toLowerCase();
     let suggestedGroupName = "";
-    
+
     for (const [keyword, suggestion] of Object.entries(KEYWORD_MAP)) {
       if (lowerLabel.includes(keyword)) {
         suggestedGroupName = suggestion.groupName.toLowerCase();
@@ -220,11 +175,10 @@ export const AddCategoryModal: React.FC<AddCategoryModalProps> = ({ visible, onC
           onConfirm: executeSave,
           onCancel: () => {}
         });
-        return; // Dừng lại chờ user confirm
+        return;
       }
     }
 
-    // Nếu không có cảnh báo gì thì lưu luôn
     executeSave();
   };
 
@@ -247,7 +201,7 @@ export const AddCategoryModal: React.FC<AddCategoryModalProps> = ({ visible, onC
               </TouchableOpacity>
             ) : <View style={{ width: 32 }} />}
             <Text style={[styles.headerTitle, { flex: 1, textAlign: 'center' }]}>
-              {initialData ? "Sửa Danh Mục" : "Thêm Danh Mục Mới"}
+              Thêm Danh Mục Mới
             </Text>
             <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
               <Ionicons name="close" size={24} color={Colors.text} />
@@ -255,7 +209,6 @@ export const AddCategoryModal: React.FC<AddCategoryModalProps> = ({ visible, onC
           </View>
 
           <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-            {/* Input Name */}
             <Text style={styles.label}>Tên danh mục</Text>
             <TextInput
               style={styles.input}
@@ -266,29 +219,52 @@ export const AddCategoryModal: React.FC<AddCategoryModalProps> = ({ visible, onC
               maxLength={30}
             />
 
-            {/* Select Group */}
-            <Text style={styles.label}>Chọn Nhóm</Text>
-            <View style={styles.groupContainer}>
-              {categories.map((group) => (
-                <TouchableOpacity
-                  key={group.id}
-                  style={[
-                    styles.groupChip,
-                    selectedGroup === group.id && { backgroundColor: group.color, borderColor: group.color }
-                  ]}
-                  onPress={() => setSelectedGroup(group.id)}
-                >
-                  <Text style={[
-                    styles.groupChipText,
-                    selectedGroup === group.id && styles.groupChipTextSelected
-                  ]}>
-                    {group.title}
+            {defaultGroupId ? (
+              <>
+                <Text style={styles.label}>Nhóm</Text>
+                <View style={styles.lockedGroupRow}>
+                  <Ionicons
+                    name={(categories.find(c => c.id === defaultGroupId)?.icon as any) || 'layers'}
+                    size={18}
+                    color={categories.find(c => c.id === defaultGroupId)?.color || Colors.primary}
+                  />
+                  <Text style={styles.lockedGroupText}>
+                    {categories.find(c => c.id === defaultGroupId)?.title || 'Nhóm đã chọn'}
                   </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
+                </View>
+              </>
+            ) : (
+              <>
+                <Text style={styles.label}>Chọn Nhóm</Text>
+                <View style={styles.groupContainer}>
+                  {categories.map((group) => (
+                    <TouchableOpacity
+                      key={group.id}
+                      style={[
+                        styles.groupChip,
+                        selectedGroup === group.id && { backgroundColor: group.color, borderColor: group.color }
+                      ]}
+                      onPress={() => setSelectedGroup(group.id)}
+                    >
+                      <Text style={[
+                        styles.groupChipText,
+                        selectedGroup === group.id && styles.groupChipTextSelected
+                      ]}>
+                        {group.title}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                  <TouchableOpacity
+                    style={[styles.groupChip, styles.groupChipAdd]}
+                    onPress={() => setIsGroupModalVisible(true)}
+                  >
+                    <Ionicons name="add" size={16} color={Colors.primary} />
+                    <Text style={styles.groupChipAddText}>Nhóm mới</Text>
+                  </TouchableOpacity>
+                </View>
+              </>
+            )}
 
-            {/* Icon Picker */}
             <Text style={styles.label}>Chọn Biểu Tượng</Text>
             <IconPicker
               selectedIcon={selectedIcon}
@@ -296,7 +272,6 @@ export const AddCategoryModal: React.FC<AddCategoryModalProps> = ({ visible, onC
               color={AVAILABLE_COLORS[selectedColorIndex].color}
             />
 
-            {/* Color Picker */}
             <Text style={styles.label}>Chọn Màu Sắc</Text>
             <View style={styles.colorGrid}>
               {AVAILABLE_COLORS.map((item, index) => (
@@ -316,35 +291,37 @@ export const AddCategoryModal: React.FC<AddCategoryModalProps> = ({ visible, onC
               ))}
             </View>
 
+            <Text style={styles.createHint}>
+              Sau khi tạo, danh mục không thể chỉnh sửa. Muốn đổi tên/icon thì xóa và tạo lại.
+            </Text>
+
             <View style={{ height: 40 }} />
           </ScrollView>
 
-          {/* Footer actions */}
           <View style={styles.footer}>
             <TouchableOpacity style={styles.saveBtn} onPress={handleSave}>
-              <Text style={styles.saveBtnText}>{initialData ? "Cập Nhật" : "Lưu & Thêm"}</Text>
+              <Text style={styles.saveBtnText}>Lưu & Thêm</Text>
             </TouchableOpacity>
           </View>
         </View>
 
-        {/* --- CUSTOM ALERT MODAL --- */}
         <Modal transparent visible={alertConfig.visible} animationType="fade">
           <View style={styles.alertOverlay}>
             <View style={styles.alertBox}>
               <View style={[styles.alertIconBg, { backgroundColor: alertConfig.type === 'error' ? '#FEE2E2' : '#FEF3C7' }]}>
-                <Ionicons 
-                  name={alertConfig.type === 'error' ? "close-circle" : "warning"} 
-                  size={36} 
-                  color={alertConfig.type === 'error' ? "#EF4444" : "#F59E0B"} 
+                <Ionicons
+                  name={alertConfig.type === 'error' ? "close-circle" : "warning"}
+                  size={36}
+                  color={alertConfig.type === 'error' ? "#EF4444" : "#F59E0B"}
                 />
               </View>
               <Text style={styles.alertTitle}>{alertConfig.title}</Text>
               <Text style={styles.alertMessage}>{alertConfig.message}</Text>
-              
+
               <View style={styles.alertActions}>
                 {alertConfig.type === 'warning' && (
-                  <TouchableOpacity 
-                    style={[styles.alertBtn, styles.alertCancelBtn]} 
+                  <TouchableOpacity
+                    style={[styles.alertBtn, styles.alertCancelBtn]}
                     onPress={() => {
                       setAlertConfig(prev => ({...prev, visible: false}));
                       if (alertConfig.onCancel) alertConfig.onCancel();
@@ -354,8 +331,8 @@ export const AddCategoryModal: React.FC<AddCategoryModalProps> = ({ visible, onC
                     <Text style={styles.alertCancelText}>Sửa lại</Text>
                   </TouchableOpacity>
                 )}
-                <TouchableOpacity 
-                  style={[styles.alertBtn, alertConfig.type === 'error' ? styles.alertErrorBtn : styles.alertConfirmBtn]} 
+                <TouchableOpacity
+                  style={[styles.alertBtn, alertConfig.type === 'error' ? styles.alertErrorBtn : styles.alertConfirmBtn]}
                   onPress={() => {
                     setAlertConfig(prev => ({...prev, visible: false}));
                     if (alertConfig.onConfirm) alertConfig.onConfirm();
@@ -372,6 +349,14 @@ export const AddCategoryModal: React.FC<AddCategoryModalProps> = ({ visible, onC
         </Modal>
 
       </KeyboardAvoidingView>
+
+      <AddGroupModal
+        visible={isGroupModalVisible}
+        onClose={() => setIsGroupModalVisible(false)}
+        onCreated={(groupId) => {
+          if (groupId) setSelectedGroup(groupId);
+        }}
+      />
     </Modal>
   );
 };
@@ -454,6 +439,42 @@ const styles = StyleSheet.create({
     color: Colors.white,
     fontWeight: '600',
   },
+  groupChipAdd: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    borderColor: Colors.primary,
+    borderStyle: 'dashed',
+  },
+  groupChipAddText: {
+    color: Colors.primary,
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  lockedGroupRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 12,
+    backgroundColor: Colors.white,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    marginBottom: 20,
+  },
+  lockedGroupText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: Colors.text,
+  },
+  createHint: {
+    fontSize: 13,
+    color: Colors.textMuted,
+    lineHeight: 19,
+    fontStyle: 'italic',
+    marginTop: 4,
+  },
   colorGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -476,7 +497,7 @@ const styles = StyleSheet.create({
     padding: 20,
     borderTopWidth: 1,
     borderTopColor: Colors.border,
-    paddingBottom: Platform.OS === 'ios' ? 30 : 20, // Tăng khoảng trống cho iOS home indicator
+    paddingBottom: Platform.OS === 'ios' ? 30 : 20,
   },
   saveBtn: {
     width: '100%',

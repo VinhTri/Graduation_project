@@ -1,5 +1,6 @@
 package com.project.app.friendship.service.impl;
 
+import com.project.app.friendship.dto.response.FriendshipRelationshipDto;
 import com.project.app.friendship.dto.response.FriendshipResponse;
 import com.project.app.friendship.entity.Friendship;
 import com.project.app.friendship.entity.FriendshipStatus;
@@ -8,6 +9,7 @@ import com.project.app.friendship.service.FriendshipService;
 import com.project.app.notification.service.NotificationService;
 import com.project.app.user.entity.User;
 import com.project.app.user.repository.UserRepository;
+import com.project.app.wallet.service.WalletService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -24,6 +26,7 @@ public class FriendshipServiceImpl implements FriendshipService {
     private final FriendshipRepository friendshipRepository;
     private final UserRepository userRepository;
     private final NotificationService notificationService;
+    private final WalletService walletService;
 
     @Override
     @Transactional
@@ -50,7 +53,7 @@ public class FriendshipServiceImpl implements FriendshipService {
                 currentUser.getUsername() + " đã gửi cho bạn một lời mời kết bạn."
         );
 
-        return new FriendshipResponse(saved, currentUser);
+        return toResponse(saved, currentUser);
     }
 
     @Override
@@ -76,7 +79,7 @@ public class FriendshipServiceImpl implements FriendshipService {
                 currentUser.getUsername() + " đã đồng ý lời mời kết bạn của bạn."
         );
 
-        return new FriendshipResponse(saved, currentUser);
+        return toResponse(saved, currentUser);
     }
 
     @Override
@@ -113,7 +116,7 @@ public class FriendshipServiceImpl implements FriendshipService {
     public List<FriendshipResponse> getFriendsList(User currentUser) {
         List<Friendship> friends = friendshipRepository.findAllFriends(currentUser, FriendshipStatus.ACCEPTED);
         return friends.stream()
-                .map(f -> new FriendshipResponse(f, currentUser))
+                .map(f -> toResponse(f, currentUser))
                 .collect(Collectors.toList());
     }
 
@@ -121,7 +124,45 @@ public class FriendshipServiceImpl implements FriendshipService {
     public List<FriendshipResponse> getPendingRequests(User currentUser) {
         List<Friendship> requests = friendshipRepository.findByReceiverAndStatus(currentUser, FriendshipStatus.PENDING);
         return requests.stream()
-                .map(f -> new FriendshipResponse(f, currentUser))
+                .map(f -> toResponse(f, currentUser))
                 .collect(Collectors.toList());
+    }
+
+    @Override
+    public List<FriendshipResponse> getSentPendingRequests(User currentUser) {
+        List<Friendship> requests = friendshipRepository.findByRequesterAndStatus(currentUser, FriendshipStatus.PENDING);
+        return requests.stream()
+                .map(f -> toResponse(f, currentUser))
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public FriendshipRelationshipDto getRelationshipWithUser(User currentUser, User targetUser) {
+        return friendshipRepository.findFriendshipBetweenUsers(currentUser, targetUser)
+                .map(friendship -> FriendshipRelationshipDto.from(friendship, currentUser))
+                .orElseGet(FriendshipRelationshipDto::none);
+    }
+
+    @Override
+    @Transactional
+    public void cancelSentFriendRequest(User currentUser, Long friendshipId) {
+        Friendship friendship = friendshipRepository.findById(friendshipId)
+                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy lời mời kết bạn."));
+
+        if (!friendship.getRequester().getId().equals(currentUser.getId())) {
+            throw new IllegalArgumentException("Bạn chỉ có thể hủy lời mời do mình gửi.");
+        }
+
+        if (friendship.getStatus() != FriendshipStatus.PENDING) {
+            throw new IllegalArgumentException("Chỉ có thể hủy lời mời đang chờ phản hồi.");
+        }
+
+        friendshipRepository.delete(friendship);
+    }
+
+    private FriendshipResponse toResponse(Friendship friendship, User currentUser) {
+        FriendshipResponse response = new FriendshipResponse(friendship, currentUser);
+        response.setFriendAccountNumber(walletService.getAccountNumberForUser(response.getFriendId()));
+        return response;
     }
 }

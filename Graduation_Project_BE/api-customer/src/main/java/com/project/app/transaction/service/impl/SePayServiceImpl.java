@@ -23,10 +23,18 @@ public class SePayServiceImpl implements SePayService {
      * Generate VietQR URL for top-up transactions.
      * When the user scans this QR and transfers money, SePay will detect the transaction
      * based on the addInfo (transactionCode) and trigger a webhook.
+     *
+     * Nạp bao nhiêu nhận bấy nhiêu: nếu amount trống thì tạo QR "mở"
+     * (không gắn số tiền), khách tự nhập số tiền trong app ngân hàng.
      */
     @Override
     public String generateVietQrUrl(BigDecimal amount, String transactionCode) {
-        return String.format("https://img.vietqr.io/image/%s-%s-compact2.png?amount=%s&addInfo=%s&accountName=%s",
-                bankId, accountNo, amount.toPlainString(), transactionCode, accountName);
+        boolean hasAmount = amount != null && amount.compareTo(BigDecimal.ZERO) > 0;
+        if (hasAmount) {
+            return String.format("https://img.vietqr.io/image/%s-%s-compact2.png?amount=%s&addInfo=%s&accountName=%s",
+                    bankId, accountNo, amount.toPlainString(), transactionCode, accountName);
+        }
+        return String.format("https://img.vietqr.io/image/%s-%s-compact2.png?addInfo=%s&accountName=%s",
+                bankId, accountNo, transactionCode, accountName);
     }
 }

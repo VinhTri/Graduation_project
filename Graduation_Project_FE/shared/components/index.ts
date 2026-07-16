@@ -6,4 +6,5 @@ export { default as SuccessModal } from "./SuccessModal/SuccessModal";
 export { default as PinModal } from "./PinModal/PinModal";
 export { default as ResetPinModal } from "./ResetPinModal/ResetPinModal";
 export { default as OtpModal } from "./OtpModal/OtpModal";
+export { UserAvatar } from "./UserAvatar";
 

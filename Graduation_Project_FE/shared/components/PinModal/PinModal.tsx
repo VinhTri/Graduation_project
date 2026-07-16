@@ -9,9 +9,19 @@ interface PinModalProps {
   onConfirm: (pin: string) => void;
   onForgotPin?: () => void;
   errorMessage?: string;
+  title?: string;
+  subtitle?: string;
 }
 
-export default function PinModal({ visible, onClose, onConfirm, onForgotPin, errorMessage }: PinModalProps) {
+export default function PinModal({
+  visible,
+  onClose,
+  onConfirm,
+  onForgotPin,
+  errorMessage,
+  title = 'Nhập mã PIN',
+  subtitle = 'Vui lòng nhập mã PIN bảo mật để xác nhận giao dịch rút tiền.',
+}: PinModalProps) {
   const [pin, setPin] = useState('');
 
   useEffect(() => {
@@ -103,11 +113,11 @@ export default function PinModal({ visible, onClose, onConfirm, onForgotPin, err
           </View>
 
           <View style={styles.headerRow}>
-            <Text style={styles.title}>Nhập mã PIN</Text>
+            <Text style={styles.title}>{title}</Text>
           </View>
 
           <Text style={styles.subtitle}>
-            Vui lòng nhập mã PIN bảo mật để xác nhận giao dịch rút tiền.
+            {subtitle}
           </Text>
 
           <View style={styles.pinContainer}>

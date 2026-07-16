@@ -37,6 +37,10 @@ public class CategoryGroup {
     @JoinColumn(name = "user_id")
     private User user;
 
+    @Column(name = "is_deleted", nullable = false)
+    @Builder.Default
+    private boolean isDeleted = false;
+
     @OneToMany(mappedBy = "group", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
     private List<CategoryItem> items = new ArrayList<>();

@@ -1,10 +1,12 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { 
   View, Text, TextInput, TouchableOpacity, 
   ScrollView, SafeAreaView, Platform, KeyboardAvoidingView, Alert
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { styles } from './_register.styles';
+import { AUTH_INPUT_ICON, AUTH_INPUT_PLACEHOLDER } from '../../../shared/constants/authInputColors';
+import { AuthBrandHeader } from '../../../shared/components/AuthBrandHeader';
 import FeatureSlider from '../../../shared/components/FeatureSlider/FeatureSlider';
 import { useRouter } from 'expo-router';
 import { authService } from '../../../shared/api/services/auth.service';
@@ -30,8 +32,11 @@ export default function RegisterScreen() {
 
   // Modal OTP & Success
   const [isOtpVisible, setIsOtpVisible] = useState(false);
+  const [isSendingOtp, setIsSendingOtp] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [otpError, setOtpError] = useState('');
   const [isSuccessModalVisible, setIsSuccessModalVisible] = useState(false);
+  const otpRequestInFlightRef = useRef(false);
 
   // Validate định dạng email (chỉ chấp nhận @gmail.com)
   const isValidEmail = (email: string) => {
@@ -43,7 +48,15 @@ export default function RegisterScreen() {
   const isPasswordValid = passwordRegex.test(password);
   const isConfirmPasswordValid = isPasswordValid && password === confirmPassword && confirmPassword.length > 0;
 
+  const resetOtpFlow = () => {
+    otpRequestInFlightRef.current = false;
+    setIsSubmitting(false);
+    setIsSendingOtp(false);
+  };
+
   const handleRegisterClick = async () => {
+    if (otpRequestInFlightRef.current || isOtpVisible || isSubmitting) return;
+
     // Reset lỗi
     setNameError('');
     setEmailError('');
@@ -79,22 +92,37 @@ export default function RegisterScreen() {
 
     if (hasError) return;
 
+    otpRequestInFlightRef.current = true;
+    setIsSubmitting(true);
+    setIsSendingOtp(true);
+    setOtpError('');
+    setIsOtpVisible(true);
+
     try {
-      // Yêu cầu gửi OTP về email (bên trong gọi backend API)
       await authService.sendRegisterOtp({ email });
-      setOtpError('');
-      setIsOtpVisible(true);
     } catch (error: any) {
+      setIsOtpVisible(false);
+      resetOtpFlow();
+
       const errorMessage = error?.message;
       if (errorMessage === 'Email này đã được sử dụng!' || errorMessage === 'Tài khoản email đã tồn tại!') {
         setEmailError('Tài khoản đã được đăng kí');
       } else if (errorMessage === 'Tên đăng nhập này đã tồn tại!') {
-        // Ta đang dùng email làm username luôn
         setEmailError('Tài khoản đã được đăng kí');
       } else {
         Alert.alert('Lỗi', errorMessage || 'Không thể gửi mã OTP');
       }
+      return;
+    } finally {
+      otpRequestInFlightRef.current = false;
+      setIsSubmitting(false);
+      setIsSendingOtp(false);
     }
+  };
+
+  const handleCloseOtpModal = () => {
+    setIsOtpVisible(false);
+    resetOtpFlow();
   };
 
   const handleVerifyOtp = async (otpValue: string) => {
@@ -148,19 +176,18 @@ export default function RegisterScreen() {
           <View style={styles.bottomSection}>
             <View style={styles.dragHandle} />
             
-            <Text style={styles.brandTitle}>SmartSpend</Text>
-            <Text style={styles.brandSubtitle}>Nhập thông tin để đăng ký tài khoản mới</Text>
+            <AuthBrandHeader subtitle="Nhập thông tin để đăng ký tài khoản mới" />
 
             <View style={styles.formContainer}>
               {/* Họ và tên */}
               <View style={styles.inputGroup}>
                 <Text style={styles.label}>Họ và tên</Text>
                 <View style={[styles.inputContainer, nameError ? { borderColor: '#EF4444' } : {}]}>
-                  <Feather name="user" size={18} color="#9CA3AF" style={styles.inputIcon} />
+                  <Feather name="user" size={18} color={AUTH_INPUT_ICON} style={styles.inputIcon} />
                   <TextInput 
                     style={styles.input} 
                     placeholder="Nhập họ và tên của bạn" 
-                    placeholderTextColor="#9CA3AF"
+                    placeholderTextColor={AUTH_INPUT_PLACEHOLDER}
                     value={name}
                     onChangeText={(text) => {
                       setName(text);
@@ -175,11 +202,11 @@ export default function RegisterScreen() {
               <View style={styles.inputGroup}>
                 <Text style={styles.label}>Địa chỉ Email</Text>
                 <View style={[styles.inputContainer, emailError ? { borderColor: '#EF4444' } : {}]}>
-                  <Feather name="mail" size={18} color="#9CA3AF" style={styles.inputIcon} />
+                  <Feather name="mail" size={18} color={AUTH_INPUT_ICON} style={styles.inputIcon} />
                   <TextInput 
                     style={styles.input} 
                     placeholder="Nhập email của bạn" 
-                    placeholderTextColor="#9CA3AF"
+                    placeholderTextColor={AUTH_INPUT_PLACEHOLDER}
                     keyboardType="email-address"
                     autoCapitalize="none"
                     value={email}
@@ -196,11 +223,11 @@ export default function RegisterScreen() {
               <View style={styles.inputGroup}>
                 <Text style={styles.label}>Mật khẩu</Text>
                 <View style={[styles.inputContainer, passwordError ? { borderColor: '#EF4444' } : {}]}>
-                  <Feather name="lock" size={18} color="#9CA3AF" style={styles.inputIcon} />
+                  <Feather name="lock" size={18} color={AUTH_INPUT_ICON} style={styles.inputIcon} />
                   <TextInput 
                     style={styles.input} 
                     placeholder="Nhập mật khẩu (tối thiểu 8 ký tự)" 
-                    placeholderTextColor="#9CA3AF"
+                    placeholderTextColor={AUTH_INPUT_PLACEHOLDER}
                     secureTextEntry={!showPassword}
                     value={password}
                     onChangeText={(text) => {
@@ -212,7 +239,7 @@ export default function RegisterScreen() {
                     <Feather name="check" size={20} color="#10B981" style={{ marginRight: 8 }} />
                   )}
                   <TouchableOpacity onPress={() => setShowPassword(!showPassword)} style={styles.eyeIcon}>
-                    <Feather name={showPassword ? "eye" : "eye-off"} size={18} color="#9CA3AF" />
+                    <Feather name={showPassword ? "eye" : "eye-off"} size={18} color={AUTH_INPUT_ICON} />
                   </TouchableOpacity>
                 </View>
                 {passwordError ? <Text style={styles.errorText}>{passwordError}</Text> : null}
@@ -222,11 +249,11 @@ export default function RegisterScreen() {
               <View style={styles.inputGroup}>
                 <Text style={styles.label}>Xác nhận mật khẩu</Text>
                 <View style={[styles.inputContainer, confirmPasswordError ? { borderColor: '#EF4444' } : {}]}>
-                  <Feather name="check-circle" size={18} color="#9CA3AF" style={styles.inputIcon} />
+                  <Feather name="check-circle" size={18} color={AUTH_INPUT_ICON} style={styles.inputIcon} />
                   <TextInput 
                     style={styles.input} 
                     placeholder="Nhập lại mật khẩu" 
-                    placeholderTextColor="#9CA3AF"
+                    placeholderTextColor={AUTH_INPUT_PLACEHOLDER}
                     secureTextEntry={!showConfirmPassword}
                     value={confirmPassword}
                     onChangeText={(text) => {
@@ -238,22 +265,26 @@ export default function RegisterScreen() {
                     <Feather name="check" size={20} color="#10B981" style={{ marginRight: 8 }} />
                   )}
                   <TouchableOpacity onPress={() => setShowConfirmPassword(!showConfirmPassword)} style={styles.eyeIcon}>
-                    <Feather name={showConfirmPassword ? "eye" : "eye-off"} size={18} color="#9CA3AF" />
+                    <Feather name={showConfirmPassword ? "eye" : "eye-off"} size={18} color={AUTH_INPUT_ICON} />
                   </TouchableOpacity>
                 </View>
                 {confirmPasswordError ? <Text style={styles.errorText}>{confirmPasswordError}</Text> : null}
               </View>
 
               {/* Nút đăng ký */}
-              <TouchableOpacity onPress={handleRegisterClick} style={styles.registerButton} activeOpacity={0.8}>
-                <Text style={styles.registerButtonText}>Đăng ký tài khoản</Text>
+              <TouchableOpacity
+                onPress={handleRegisterClick}
+                style={[styles.primaryButton, (isSubmitting || isOtpVisible) && styles.primaryButtonDisabled]}
+                activeOpacity={0.8}
+                disabled={isSubmitting || isOtpVisible}
+              >
+                <Text style={styles.primaryButtonText}>Đăng ký tài khoản</Text>
               </TouchableOpacity>
 
-              {/* Chuyển hướng đăng nhập */}
-              <View style={styles.loginContainer}>
-                <Text style={styles.loginText}>Bạn đã có tài khoản? </Text>
+              <View style={styles.linkRow}>
+                <Text style={styles.linkText}>Bạn đã có tài khoản? </Text>
                 <TouchableOpacity onPress={() => router.replace("/(auth)/login")}>
-                  <Text style={styles.loginLink}>Đăng nhập ngay</Text>
+                  <Text style={styles.linkAction}>Đăng nhập ngay</Text>
                 </TouchableOpacity>
               </View>
             </View>
@@ -267,7 +298,8 @@ export default function RegisterScreen() {
         visible={isOtpVisible}
         email={email}
         errorMessage={otpError}
-        onClose={() => setIsOtpVisible(false)}
+        isSendingOtp={isSendingOtp}
+        onClose={handleCloseOtpModal}
         onVerify={handleVerifyOtp}
       />
 
@@ -276,6 +308,7 @@ export default function RegisterScreen() {
         visible={isSuccessModalVisible}
         title="Đăng ký thành công!"
         message="Tài khoản của bạn đã được tạo thành công. Vui lòng đăng nhập để bắt đầu."
+        isAutoClose={true}
         onClose={handleSuccessClose}
       />
     </SafeAreaView>

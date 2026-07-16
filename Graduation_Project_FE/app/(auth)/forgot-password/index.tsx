@@ -5,6 +5,8 @@ import {
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { styles } from './_forgot.styles';
+import { AUTH_INPUT_ICON, AUTH_INPUT_PLACEHOLDER } from '../../../shared/constants/authInputColors';
+import { AuthBrandHeader } from '../../../shared/components/AuthBrandHeader';
 import FeatureSlider from '../../../shared/components/FeatureSlider/FeatureSlider';
 import { useRouter } from 'expo-router';
 import { authService } from '../../../shared/api/services/auth.service';
@@ -64,8 +66,8 @@ export default function ForgotPasswordScreen() {
       setIsOtpVisible(true);
     } catch (error: any) {
       const errorMessage = error?.message;
-      if (errorMessage === 'Tài khoản không tồn tại!') {
-        setEmailError('Tài khoản email chưa được đăng ký trong hệ thống.');
+      if (errorMessage === 'Tài khoản chưa có trong hệ thống!') {
+        setEmailError('Tài khoản chưa đăng ký vui lòng đăng ký để sử dụng');
       } else {
         Alert.alert('Lỗi', errorMessage || 'Không thể gửi mã OTP');
       }
@@ -162,10 +164,9 @@ export default function ForgotPasswordScreen() {
           <View style={styles.bottomSection}>
             <View style={styles.dragHandle} />
             
-            <Text style={styles.brandTitle}>SmartSpend</Text>
-            <Text style={styles.brandSubtitle}>
-              {step === 1 ? 'Khôi phục mật khẩu tài khoản' : 'Đặt lại mật khẩu mới an toàn'}
-            </Text>
+            <AuthBrandHeader
+              subtitle={step === 1 ? 'Khôi phục mật khẩu tài khoản' : 'Đặt lại mật khẩu mới an toàn'}
+            />
 
             <View style={styles.formContainer}>
               
@@ -175,11 +176,11 @@ export default function ForgotPasswordScreen() {
                   <View style={styles.inputGroup}>
                     <Text style={styles.label}>Địa chỉ Email</Text>
                     <View style={[styles.inputContainer, emailError ? { borderColor: '#EF4444' } : {}]}>
-                      <Feather name="mail" size={18} color="#9CA3AF" style={styles.inputIcon} />
+                      <Feather name="mail" size={18} color={AUTH_INPUT_ICON} style={styles.inputIcon} />
                       <TextInput 
                         style={styles.input} 
                         placeholder="Nhập email của bạn" 
-                        placeholderTextColor="#9CA3AF"
+                        placeholderTextColor={AUTH_INPUT_PLACEHOLDER}
                         keyboardType="email-address"
                         autoCapitalize="none"
                         value={email}
@@ -204,11 +205,11 @@ export default function ForgotPasswordScreen() {
                   <View style={styles.inputGroup}>
                     <Text style={styles.label}>Mật khẩu mới</Text>
                     <View style={[styles.inputContainer, passwordError ? { borderColor: '#EF4444' } : {}]}>
-                      <Feather name="lock" size={18} color="#9CA3AF" style={styles.inputIcon} />
+                      <Feather name="lock" size={18} color={AUTH_INPUT_ICON} style={styles.inputIcon} />
                       <TextInput 
                         style={styles.input} 
                         placeholder="Nhập mật khẩu (tối thiểu 8 ký tự)" 
-                        placeholderTextColor="#9CA3AF"
+                        placeholderTextColor={AUTH_INPUT_PLACEHOLDER}
                         secureTextEntry={!showPassword}
                         value={password}
                         onChangeText={(text) => {
@@ -220,7 +221,7 @@ export default function ForgotPasswordScreen() {
                         <Feather name="check" size={20} color="#10B981" style={{ marginRight: 8 }} />
                       )}
                       <TouchableOpacity onPress={() => setShowPassword(!showPassword)} style={styles.eyeIcon}>
-                        <Feather name={showPassword ? "eye" : "eye-off"} size={18} color="#9CA3AF" />
+                        <Feather name={showPassword ? "eye" : "eye-off"} size={18} color={AUTH_INPUT_ICON} />
                       </TouchableOpacity>
                     </View>
                     {passwordError ? <Text style={styles.errorText}>{passwordError}</Text> : null}
@@ -229,11 +230,11 @@ export default function ForgotPasswordScreen() {
                   <View style={styles.inputGroup}>
                     <Text style={styles.label}>Xác nhận mật khẩu mới</Text>
                     <View style={[styles.inputContainer, confirmPasswordError ? { borderColor: '#EF4444' } : {}]}>
-                      <Feather name="check-circle" size={18} color="#9CA3AF" style={styles.inputIcon} />
+                      <Feather name="check-circle" size={18} color={AUTH_INPUT_ICON} style={styles.inputIcon} />
                       <TextInput 
                         style={styles.input} 
                         placeholder="Nhập lại mật khẩu" 
-                        placeholderTextColor="#9CA3AF"
+                        placeholderTextColor={AUTH_INPUT_PLACEHOLDER}
                         secureTextEntry={!showConfirmPassword}
                         value={confirmPassword}
                         onChangeText={(text) => {
@@ -245,7 +246,7 @@ export default function ForgotPasswordScreen() {
                         <Feather name="check" size={20} color="#10B981" style={{ marginRight: 8 }} />
                       )}
                       <TouchableOpacity onPress={() => setShowConfirmPassword(!showConfirmPassword)} style={styles.eyeIcon}>
-                        <Feather name={showConfirmPassword ? "eye" : "eye-off"} size={18} color="#9CA3AF" />
+                        <Feather name={showConfirmPassword ? "eye" : "eye-off"} size={18} color={AUTH_INPUT_ICON} />
                       </TouchableOpacity>
                     </View>
                     {confirmPasswordError ? <Text style={styles.errorText}>{confirmPasswordError}</Text> : null}
@@ -258,10 +259,10 @@ export default function ForgotPasswordScreen() {
               )}
 
               {/* Chuyển hướng quay lại đăng nhập */}
-              <View style={styles.backContainer}>
-                <Text style={styles.backText}>Nhớ mật khẩu rồi? </Text>
+              <View style={styles.linkRow}>
+                <Text style={styles.linkText}>Nhớ mật khẩu rồi? </Text>
                 <TouchableOpacity onPress={() => router.replace("/(auth)/login")}>
-                  <Text style={styles.backLink}>Quay lại Đăng nhập</Text>
+                  <Text style={styles.linkAction}>Quay lại Đăng nhập</Text>
                 </TouchableOpacity>
               </View>
             </View>

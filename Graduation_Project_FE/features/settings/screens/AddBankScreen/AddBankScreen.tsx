@@ -29,55 +29,32 @@ export default function AddBankScreen() {
   
   const [selectedBank, setSelectedBank] = useState(COMMON_BANKS[0]);
   const [accountNumber, setAccountNumber] = useState('');
-  const [accountName, setAccountName] = useState('');
+  const [verifiedName, setVerifiedName] = useState('');
   const [isLinking, setIsLinking] = useState(false);
-  const [isLookingUp, setIsLookingUp] = useState(false);
   const [accountError, setAccountError] = useState('');
   const [isConfirmModalVisible, setIsConfirmModalVisible] = useState(false);
   const [isSuccessModalVisible, setIsSuccessModalVisible] = useState(false);
 
-  const handleLookup = async () => {
-    if (!accountNumber.trim()) {
-      setAccountError('Vui lòng nhập số tài khoản');
-      return;
-    }
-    try {
-      setIsLookingUp(true);
-      const res: any = await axiosClient.get('/api/v1/bank-accounts/lookup', {
-        params: {
-          bankCode: selectedBank.code,
-          accountNumber: accountNumber
-        }
-      });
-      if (res.success && res.data) {
-        setAccountName(res.data);
-      }
-    } catch (error: any) {
-      setAccountError('Số tài khoản không tồn tại hoặc sai, vui lòng nhập lại');
-      setAccountName('');
-    } finally {
-      setIsLookingUp(false);
-    }
-  };
-
   const handleLink = async () => {
     try {
       setIsLinking(true);
+      // BE tự chi 2.000đ tới STK để xác minh & lấy tên chủ tài khoản,
+      // nên FE chỉ cần gửi ngân hàng + số tài khoản.
       const res: any = await axiosClient.post('/api/v1/bank-accounts', {
         bankCode: selectedBank.code,
         bankName: selectedBank.name,
         accountNumber: accountNumber,
-        accountName: accountName.toUpperCase() // Ensure upper case
       });
 
       if (res.success) {
+        setVerifiedName(res.data?.accountName || '');
         setIsSuccessModalVisible(true);
       }
     } catch (error: any) {
       if (error?.message?.includes('đã được liên kết')) {
         setAccountError(error.message);
       } else {
-        Alert.alert('Lỗi liên kết', error?.message || 'Không thể liên kết tài khoản');
+        Alert.alert('Lỗi liên kết', error?.message || 'Không thể liên kết tài khoản. Vui lòng kiểm tra lại số tài khoản.');
       }
     } finally {
       setIsLinking(false);
@@ -130,43 +107,27 @@ export default function AddBankScreen() {
             onChangeText={(text) => {
               setAccountNumber(text);
               setAccountError('');
-              setAccountName(''); // Reset name when account number changes
             }}
           />
         </View>
         {!!accountError && <Text style={styles.errorText}>{accountError}</Text>}
 
-        <TouchableOpacity 
-          style={styles.lookupButton}
-          onPress={handleLookup}
-          disabled={isLookingUp}
-        >
-          {isLookingUp ? (
-            <ActivityIndicator color={Colors.primary} />
-          ) : (
-            <Text style={styles.lookupButtonText}>Tra cứu chủ tài khoản</Text>
-          )}
-        </TouchableOpacity>
-
-        <Text style={styles.label}>Tên chủ tài khoản</Text>
-        <View style={[styles.inputContainer, { backgroundColor: Colors.background }]}>
-          <TextInput
-            style={[styles.input, { textTransform: 'uppercase', color: accountName ? Colors.primary : Colors.textMuted, fontWeight: accountName ? '700' : '400' }]}
-            placeholder="Tên chủ tài khoản tự động điền"
-            value={accountName}
-            editable={false}
-          />
+        <View style={styles.feeNotice}>
+          <Ionicons name="shield-checkmark-outline" size={20} color={Colors.primary} />
+          <Text style={styles.feeNoticeText}>
+            Liên kết <Text style={styles.feeHighlight}>miễn phí</Text>! Hệ thống chuyển <Text style={styles.feeHighlight}>2.000đ</Text> vào chính số tài khoản này để xác minh và bạn được nhận luôn. Mỗi người liên kết tối đa <Text style={styles.feeHighlight}>3 tài khoản</Text>.
+          </Text>
         </View>
 
         <TouchableOpacity 
           style={styles.linkButton}
           onPress={() => setIsConfirmModalVisible(true)}
-          disabled={isLinking || !accountName || !accountNumber}
+          disabled={isLinking || !accountNumber.trim()}
         >
           {isLinking ? (
             <ActivityIndicator color={Colors.white} />
           ) : (
-            <Text style={styles.linkButtonText}>Liên kết</Text>
+            <Text style={styles.linkButtonText}>Liên kết & xác minh</Text>
           )}
         </TouchableOpacity>
 
@@ -198,8 +159,8 @@ export default function AddBankScreen() {
             <Text style={styles.modalAccountNumber}>{accountNumber}</Text>
           </View>
           <View style={styles.modalAccountInfo}>
-            <Text style={styles.modalAccountLabel}>Chủ tài khoản</Text>
-            <Text style={styles.modalAccountName}>{accountName}</Text>
+            <Text style={styles.modalAccountLabel}>Phí liên kết</Text>
+            <Text style={styles.modalAccountName}>Miễn phí</Text>
           </View>
         </View>
       </ConfirmModal>
@@ -207,7 +168,9 @@ export default function AddBankScreen() {
       <SuccessModal
         visible={isSuccessModalVisible}
         title="Liên kết thành công"
-        message="Ngân hàng đã được liên kết với ví SmartSpend của bạn."
+        message={verifiedName
+          ? `Đã xác minh chủ tài khoản: ${verifiedName}. Ngân hàng đã được liên kết với ví SmartSpend của bạn.`
+          : "Ngân hàng đã được liên kết với ví SmartSpend của bạn."}
         isAutoClose={true}
         onClose={() => {
           setIsSuccessModalVisible(false);
@@ -311,37 +274,24 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     marginLeft: 4,
   },
-  lookupButton: {
-    backgroundColor: 'rgba(16, 145, 133, 0.1)',
-    paddingVertical: 14,
+  feeNotice: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 10,
+    backgroundColor: 'rgba(16, 145, 133, 0.08)',
     borderRadius: 12,
-    alignItems: 'center',
+    padding: 14,
     marginBottom: 24,
   },
-  lookupButtonText: {
-    color: Colors.primary,
-    fontWeight: '700',
-    fontSize: 15,
-  },
-  resultContainer: {
-    backgroundColor: Colors.white,
-    padding: 20,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    alignItems: 'center',
-  },
-  resultLabel: {
-    fontSize: 12,
-    color: Colors.textMuted,
-    marginBottom: 8,
-  },
-  resultName: {
-    fontSize: 20,
-    fontWeight: '700',
+  feeNoticeText: {
+    flex: 1,
+    fontSize: 13,
+    lineHeight: 19,
     color: Colors.text,
-    marginBottom: 24,
-    textAlign: 'center',
+  },
+  feeHighlight: {
+    fontWeight: '800',
+    color: Colors.primary,
   },
   linkButton: {
     backgroundColor: Colors.primary,

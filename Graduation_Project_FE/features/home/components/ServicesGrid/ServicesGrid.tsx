@@ -7,20 +7,14 @@ import { friendshipService } from "../../../../shared/api/services/friendship.se
 import { useFocusEffect } from '@react-navigation/native';
 
 const HOME_SERVICES = [
-  { id: "1", label: "Chuyển tiền", icon: "paper-plane-outline", color: "#EF4444", bgColor: "#FEE2E2" },
-  { id: "2", label: "Nhận tiền", icon: "business-outline", color: "#3B82F6", bgColor: "#DBEAFE" },
-  { id: "3", label: "Hóa đơn", icon: "receipt-outline", color: "#10B981", bgColor: "#D1FAE5" },
-  { id: "4", label: "Nạp tiền", icon: "phone-portrait-outline", color: "#0EA5E9", bgColor: "#E0F2FE" },
+  { id: "3", label: "Hóa đơn", icon: "receipt-outline", color: "#10B981", bgColor: "#D1FAE5", route: "/invoice" },
+  { id: "10", label: "Danh bạ", icon: "people-circle-outline", color: "#EC4899", bgColor: "#FFE4F0", route: "/contacts" },
+] as const;
 
-  { id: "5", label: "Data 4G/5G", icon: "wifi-outline", color: "#3B82F6", bgColor: "#DBEAFE" },
-  { id: "6", label: "Túi Thần Tài", icon: "cash-outline", color: "#F59E0B", bgColor: "#FEF3C7" },
-  { id: "7", label: "Ví Trả Sau", icon: "time-outline", color: "#EC4899", bgColor: "#FCE7F3" },
-  { id: "8", label: "Quét mã QR", icon: "qr-code-outline", color: "#F97316", bgColor: "#FFEDD5" },
-
-  { id: "9", label: "Tiết kiệm", icon: "save-outline", color: "#E11D48", bgColor: "#FFE4E6" },
-  { id: "10", label: "Danh bạ", icon: "book-outline", color: "#8B5CF6", bgColor: "#EDE9FE" },
-  { id: "11", label: "Mua vé", icon: "film-outline", color: "#06B6D4", bgColor: "#CFFAFE" },
-];
+const FIXED_SERVICES = [
+  { id: "danh_muc", label: "Danh mục", icon: "layers-outline", color: "#7C3AED", bgColor: "#EDE9FE", route: "/categories" },
+  { id: "tat_ca", label: "Tất cả", icon: "grid-outline", color: "#64748B", bgColor: "#F1F5F9", route: "/all-services" },
+] as const;
 
 export const ServicesGrid = () => {
   const router = useRouter();
@@ -43,42 +37,11 @@ export const ServicesGrid = () => {
     }
   };
 
-  const handlePress = (id: string, label: string) => {
-    if (id === "danh_muc") {
-      router.push('/categories');
-    } else if (id === "tat_ca") {
-      router.push('/all-services');
-    } else if (id === "10") {
-      router.push('/contacts');
-    } else if (label === "Nạp tiền") {
-      router.push("/wallet/action?initialTab=topup");
-    } else if (id === "3") {
-      router.push("/invoice");
-    } else {
-      // Handle normal service press
-      console.log("Pressed service:", id);
-    }
+  const handlePress = (route: string) => {
+    router.push(route as any);
   };
 
-  const displayServices = [...HOME_SERVICES];
-
-  // Add the fixed "Danh mục" button
-  displayServices.push({
-    id: "danh_muc",
-    label: "Danh mục",
-    icon: "layers-outline" as any,
-    color: "#3B82F6",
-    bgColor: "#DBEAFE"
-  });
-
-  // Add the fixed "Tất cả" button at the end
-  displayServices.push({
-    id: "tat_ca",
-    label: "Tất cả",
-    icon: "grid-outline" as any,
-    color: "#64748B",
-    bgColor: "#F1F5F9"
-  });
+  const displayServices = [...HOME_SERVICES, ...FIXED_SERVICES];
 
   return (
     <View style={styles.container}>
@@ -88,7 +51,7 @@ export const ServicesGrid = () => {
             key={service.id}
             style={styles.serviceItem}
             activeOpacity={0.7}
-            onPress={() => handlePress(service.id, service.label)}
+            onPress={() => handlePress(service.route)}
           >
             <View style={[styles.iconContainer, { backgroundColor: service.bgColor }]}>
               <Ionicons name={service.icon as any} size={24} color={service.color} />

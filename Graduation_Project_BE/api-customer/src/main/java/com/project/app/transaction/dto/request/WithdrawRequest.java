@@ -18,4 +18,8 @@ public class WithdrawRequest {
 
     @NotNull(message = "Mã PIN không được để trống")
     private String pinCode;
+
+    private String note;
+
+    private Long categoryId;
 }

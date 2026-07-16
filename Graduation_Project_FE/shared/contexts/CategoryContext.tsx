@@ -1,14 +1,14 @@
 import React, { createContext, useState, useEffect, useContext } from 'react';
-import { CATEGORIES_DATA, CategoryGroup, ServiceItem } from '../../features/categories/data/mockData';
+import { CategoryGroup, ServiceItem } from '../../features/categories/data/mockData';
 import { axiosClient } from '../api/axiosClient';
 
 type CategoryContextType = {
   categories: CategoryGroup[];
   loadCategories: () => Promise<void>;
   addService: (categoryId: string, newService: Omit<ServiceItem, 'id'>) => Promise<void>;
-  updateService: (serviceId: string, categoryId: string, updatedService: Omit<ServiceItem, 'id'>) => Promise<void>;
   removeService: (serviceId: string) => Promise<void>;
-  addGroup: (title: string) => Promise<void>;
+  addGroup: (group: { title: string; icon: string; color: string; bgColor: string }) => Promise<string>;
+  removeGroup: (groupId: string) => Promise<void>;
   isLoading: boolean;
 };
 
@@ -29,11 +29,11 @@ export const CategoryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       if (response && response.data) {
         setCategories(response.data);
       } else {
-        setCategories(CATEGORIES_DATA);
+        setCategories([]);
       }
     } catch (error) {
-      console.log("Failed to load categories from API (Fallback to mock data)", error);
-      setCategories(CATEGORIES_DATA); // Fallback
+      console.log("Failed to load categories from API", error);
+      setCategories([]);
     } finally {
       setIsLoading(false);
     }
@@ -56,32 +56,16 @@ export const CategoryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     }
   };
 
-  const updateService = async (serviceId: string, categoryId: string, updatedService: Omit<ServiceItem, 'id'>) => {
-    try {
-      await axiosClient.put(`/api/v1/categories/items/${serviceId}`, {
-        groupId: categoryId,
-        label: updatedService.label,
-        icon: updatedService.icon,
-        color: updatedService.color,
-        bgColor: updatedService.bgColor
-      });
-      await loadCategories();
-    } catch (error) {
-      console.error("Failed to update service", error);
-      throw error;
-    }
-  };
-
-  const addGroup = async (title: string) => {
+  const addGroup = async (group: { title: string; icon: string; color: string; bgColor: string }): Promise<string> => {
     try {
       const response = await axiosClient.post('/api/v1/categories/groups', {
-        title: title,
-        icon: "apps",
-        color: "#64748B",
-        bgColor: "#F1F5F9"
+        title: group.title,
+        icon: group.icon,
+        color: group.color,
+        bgColor: group.bgColor,
       });
-      // Refresh categories after adding
       await loadCategories();
+      return response.data?.id || '';
     } catch (error) {
       console.error("Failed to add group", error);
       throw error;
@@ -99,8 +83,18 @@ export const CategoryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     }
   };
 
+  const removeGroup = async (groupId: string) => {
+    try {
+      await axiosClient.delete(`/api/v1/categories/groups/${groupId}`);
+      await loadCategories();
+    } catch (error) {
+      console.error("Failed to remove group", error);
+      throw error;
+    }
+  };
+
   return (
-    <CategoryContext.Provider value={{ categories, loadCategories, addService, updateService, removeService, addGroup, isLoading }}>
+    <CategoryContext.Provider value={{ categories, loadCategories, addService, removeService, addGroup, removeGroup, isLoading }}>
       {children}
     </CategoryContext.Provider>
   );

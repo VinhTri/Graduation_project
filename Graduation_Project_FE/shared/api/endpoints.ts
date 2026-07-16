@@ -14,14 +14,11 @@ export const ENDPOINTS = {
   },
   USER: {
     PROFILE: '/api/v1/user/me',                                 // Lấy thông tin tài khoản đang đăng nhập
-    SEARCH: (email: string) => `/api/v1/user/search?email=${encodeURIComponent(email)}`, // Tra cứu user
+    SEARCH: (query: string) => `/api/v1/user/search?query=${encodeURIComponent(query)}`, // Tra cứu user theo email hoặc tài khoản
   },
   TRANSACTION: {
     TOP_UP: '/api/v1/transactions/top-up',
     WITHDRAW: '/api/v1/transactions/withdraw',
-    PENDING_TOPUP: '/api/v1/transactions/pending-topup',
-    GET_STATUS: (code: string) => `/api/v1/transactions/${code}`,
-    CANCEL: (code: string) => `/api/v1/transactions/${code}/cancel`,
   },
   WALLET: {
     MY_WALLET: '/api/v1/wallets/me',
@@ -49,9 +46,11 @@ export const ENDPOINTS = {
     REQUEST: (email: string) => `/api/v1/friends/request?email=${encodeURIComponent(email)}`,
     ACCEPT: (id: number) => `/api/v1/friends/accept/${id}`,
     REJECT: (id: number) => `/api/v1/friends/reject/${id}`,
+    CANCEL: (id: number) => `/api/v1/friends/cancel/${id}`,
     REMOVE: (id: number) => `/api/v1/friends/remove/${id}`,
     LIST_FRIENDS: '/api/v1/friends',
     LIST_REQUESTS: '/api/v1/friends/requests',
+    LIST_SENT_REQUESTS: '/api/v1/friends/sent-requests',
   },
   POSTS: {
     PUBLIC_ALL: '/api/v1/public/posts',

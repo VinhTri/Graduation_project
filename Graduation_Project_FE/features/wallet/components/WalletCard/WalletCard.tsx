@@ -1,191 +1,267 @@
-import React from "react";
-import { View, Text, TouchableOpacity } from "react-native";
+import React, { useEffect, useRef, useState } from "react";
+import { View, Text, TouchableOpacity, Animated, Easing } from "react-native";
+import { SmartSpendIcon } from "../../../../shared/components/SmartSpendIcon";
 import { Ionicons } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import { WalletCardProps } from "./WalletCard.types";
 import { styles } from "./WalletCard.styles";
-import Colors from "../../../../shared/constants/Colors";
+import { PASTEL_PALETTE, PASTEL_HEADER_GRADIENT } from "../../../../shared/constants/PastelPalette";
+
+type WalletAction = {
+  id: string;
+  label: string;
+  icon: keyof typeof Ionicons.glyphMap;
+  color: string;
+  route?: string;
+  kind?: "settings";
+};
+
+const WALLET_ACTIONS: WalletAction[] = [
+  {
+    id: "topup",
+    label: "Nạp tiền",
+    icon: "add-circle-outline",
+    color: "#059669",
+    route: "/wallet/checkout",
+  },
+  {
+    id: "withdraw",
+    label: "Rút tiền",
+    icon: "arrow-up-circle-outline",
+    color: "#EA580C",
+    route: "/wallet/withdraw",
+  },
+  {
+    id: "history",
+    label: "Lịch sử",
+    icon: "time-outline",
+    color: "#7C3AED",
+    route: "/wallet/history",
+  },
+  {
+    id: "report",
+    label: "Báo cáo",
+    icon: "pie-chart-outline",
+    color: "#DB2777",
+    route: "/wallet/report",
+  },
+  {
+    id: "settings",
+    label: "Cài đặt",
+    icon: "settings-outline",
+    color: "#4F46E5",
+    kind: "settings",
+  },
+];
 
 export const WalletCard: React.FC<WalletCardProps> = ({
   wallet,
   isExpanded,
   onPress,
-  stackIndex,
 }) => {
   const router = useRouter();
+  const expandAnim = useRef(new Animated.Value(isExpanded ? 1 : 0)).current;
+  const heightAnim = useRef(new Animated.Value(isExpanded ? 68 : 0)).current;
+  const [actionsHeight, setActionsHeight] = useState(68);
 
-  const formatCurrency = (val: number) => {
-    return val.toLocaleString("vi-VN") + " ₫";
+  useEffect(() => {
+    Animated.parallel([
+      Animated.timing(expandAnim, {
+        toValue: isExpanded ? 1 : 0,
+        duration: 320,
+        easing: Easing.bezier(0.4, 0, 0.2, 1),
+        useNativeDriver: true,
+      }),
+      Animated.timing(heightAnim, {
+        toValue: isExpanded ? actionsHeight : 0,
+        duration: 320,
+        easing: Easing.bezier(0.4, 0, 0.2, 1),
+        useNativeDriver: false,
+      }),
+    ]).start();
+  }, [actionsHeight, expandAnim, heightAnim, isExpanded]);
+
+  const formatCurrency = (val: number) => `${val.toLocaleString("vi-VN")} ₫`;
+
+  const handleActionPress = (action: WalletAction) => {
+    if (action.kind === "settings") {
+      const targetWalletId = wallet.numericId ?? Number(wallet.id);
+      if (!targetWalletId || Number.isNaN(targetWalletId)) return;
+      router.push({ pathname: "/wallet/settings", params: { walletId: String(targetWalletId) } });
+      return;
+    }
+    if (action.route) {
+      router.push(action.route as any);
+    }
   };
 
-  // Determine snap button color
-  const getSnapButtonStyles = () => {
-    switch (wallet.buttonType) {
-      case "gold":
-        return {
-          backgroundColor: "#F59E0B",
-          borderColor: "#D97706",
-          borderWidth: 2,
-        };
-      case "silver":
-        return {
-          backgroundColor: "#CBD5E1",
-          borderColor: "#94A3B8",
-          borderWidth: 2,
-        };
-      case "coin":
-        return {
-          backgroundColor: "#FBBF24",
-          borderColor: "#F59E0B",
-          borderWidth: 2,
-        };
-      default:
-        return {
-          backgroundColor: "#CBD5E1",
-          borderColor: "#94A3B8",
-          borderWidth: 2,
-        };
+  const actionsOpacity = expandAnim.interpolate({
+    inputRange: [0, 0.4, 1],
+    outputRange: [0, 0.6, 1],
+  });
+
+  const actionsTranslateY = expandAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [-6, 0],
+  });
+
+  const chevronRotate = expandAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: ["0deg", "180deg"],
+  });
+
+  const dividerScale = expandAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, 1],
+  });
+
+  const renderActionItem = (action: WalletAction, interactive = true) => {
+    const content = (
+      <>
+        <Ionicons name={action.icon} size={22} color={action.color} />
+        <Text style={styles.actionLabel} numberOfLines={2} ellipsizeMode="tail">
+          {action.label}
+        </Text>
+      </>
+    );
+
+    if (!interactive) {
+      return (
+        <View key={action.id} style={styles.actionItem}>
+          {content}
+        </View>
+      );
     }
+
+    return (
+      <TouchableOpacity
+        key={action.id}
+        style={styles.actionItem}
+        activeOpacity={0.7}
+        accessibilityLabel={action.label}
+        onPress={() => handleActionPress(action)}
+      >
+        {content}
+      </TouchableOpacity>
+    );
   };
 
   return (
     <View style={styles.cardContainer}>
-      {/* Main Leather Wallet Body */}
-      <TouchableOpacity
-        activeOpacity={1}
-        onPress={onPress}
-        style={[
-          styles.walletBody,
-          { 
-            backgroundColor: wallet.color,
-          }
-        ]}
+      <LinearGradient
+        colors={[...PASTEL_HEADER_GRADIENT]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.walletBody}
       >
-        {/* Dashed Stitching Border */}
-        <View style={styles.walletStitchBorder} />
+        <View style={styles.decorCircle} />
 
-        {/* Pocket slit representing physical opening */}
-        <View style={styles.walletSlit} />
+        <TouchableOpacity activeOpacity={0.95} onPress={onPress}>
+          <View style={styles.headerRow}>
+            <View style={styles.headerLeft}>
+              <View style={styles.brandRow}>
+                <SmartSpendIcon size={44} style={styles.brandLogo} borderRadius={12} />
+                <View style={styles.brandTextWrap}>
+                  <Text style={styles.brandTitle}>
+                    <Text style={styles.brandSmart}>Smart</Text>
+                    <Text style={styles.brandSpend}>Spend</Text>
+                  </Text>
+                  {wallet.cardNumber ? (
+                    <Text style={styles.cardNumber}>{wallet.cardNumber}</Text>
+                  ) : null}
+                </View>
+              </View>
+            </View>
 
-        {/* Physical Wallet Folding Flap */}
-        <View style={[styles.walletFlap, { backgroundColor: wallet.flapColor }]}>
-          <View style={styles.walletFlapStitch} />
-          
-          {/* Metallic Snap Button */}
-          <View style={[styles.snapButton, getSnapButtonStyles()]}>
-            <View style={styles.snapButtonInner}>
-              <View style={styles.snapDot} />
+            <View style={styles.limitBox}>
+              {wallet.isLimitEnabled && (wallet.dailyLimit || wallet.transactionLimit) ? (
+                <>
+                  {wallet.transactionLimit ? (
+                    <View style={styles.limitRow}>
+                      <Text style={styles.limitLabel}>Mỗi GD</Text>
+                      <Text style={styles.limitValue} numberOfLines={1}>
+                        {formatCurrency(wallet.transactionLimit)}
+                      </Text>
+                    </View>
+                  ) : null}
+                  {wallet.dailyLimit ? (
+                    <View style={[styles.limitRow, wallet.transactionLimit ? styles.limitRowSpacing : null]}>
+                      <Text style={styles.limitLabel}>Hạn mức ngày</Text>
+                      <Text style={styles.limitValue} numberOfLines={1}>
+                        {formatCurrency(wallet.dailyLimit)}
+                      </Text>
+                    </View>
+                  ) : null}
+                </>
+              ) : (
+                <Text style={styles.limitPlaceholder} numberOfLines={2}>
+                  Chưa thiết lập hạn mức
+                </Text>
+              )}
+            </View>
+          </View>
+
+          <View style={styles.balanceSection}>
+            <Text style={styles.balanceLabel}>Số dư khả dụng</Text>
+            <Text style={styles.balanceValue}>{formatCurrency(wallet.balance)}</Text>
+            {wallet.subValue ? <Text style={styles.subValue}>{wallet.subValue}</Text> : null}
+          </View>
+
+          <View style={styles.expandHint}>
+            <Animated.View style={{ transform: [{ rotate: chevronRotate }] }}>
+              <Ionicons name="chevron-down" size={16} color={PASTEL_PALETTE.subtitle} />
+            </Animated.View>
+            <Text style={styles.expandHintText}>
+              {isExpanded ? "Thu gọn" : "Chạm để mở thao tác"}
+            </Text>
+          </View>
+        </TouchableOpacity>
+
+        <Animated.View
+          style={{
+            height: heightAnim,
+            overflow: "hidden",
+          }}
+        >
+          <Animated.View
+            style={{
+              opacity: actionsOpacity,
+              transform: [{ translateY: actionsTranslateY }],
+            }}
+          >
+            <Animated.View
+              style={[
+                styles.actionsDivider,
+                { transform: [{ scaleX: dividerScale }] },
+              ]}
+            />
+            <View style={styles.actionsSection}>
+              <View style={styles.actionsRow}>
+                {WALLET_ACTIONS.map((action) => renderActionItem(action))}
+              </View>
+            </View>
+          </Animated.View>
+        </Animated.View>
+
+        <View
+          pointerEvents="none"
+          style={styles.measureWrap}
+          onLayout={(event) => {
+            const nextHeight = event.nativeEvent.layout.height;
+            if (nextHeight > 0 && Math.abs(nextHeight - actionsHeight) > 1) {
+              setActionsHeight(nextHeight);
+            }
+          }}
+        >
+          <View style={styles.actionsDivider} />
+          <View style={styles.actionsSection}>
+            <View style={styles.actionsRow}>
+              {WALLET_ACTIONS.map((action) => renderActionItem(action, false))}
             </View>
           </View>
         </View>
-
-        {/* Wallet Information */}
-        <View style={styles.headerRow}>
-          <View>
-            <Text style={styles.walletName}>{wallet.name}</Text>
-            {wallet.cardNumber && (
-              <Text style={styles.cardNumber}>{wallet.cardNumber}</Text>
-            )}
-            {wallet.type === "smartspend" && (
-              <View style={styles.goldFoilBadge}>
-                <Text style={styles.goldFoilText}>PLATINUM MEMBER</Text>
-              </View>
-            )}
-            {wallet.type === "quy" && (
-              <View style={[styles.goldFoilBadge, { backgroundColor: "rgba(255, 255, 255, 0.15)", borderColor: "rgba(255, 255, 255, 0.3)" }]}>
-                <Text style={[styles.goldFoilText, { color: Colors.white }]}>FUND ACCOUNT</Text>
-              </View>
-            )}
-            {wallet.type === "thantai" && (
-              <View style={[styles.goldFoilBadge, { backgroundColor: "rgba(255, 215, 0, 0.15)", borderColor: "rgba(255, 215, 0, 0.5)" }]}>
-                <Text style={[styles.goldFoilText, { color: "#FBBF24" }]}>DOUBLE INTEREST</Text>
-              </View>
-            )}
-          </View>
-          <Ionicons 
-            name={
-              wallet.type === "thantai" 
-                ? "gift-outline" 
-                : wallet.type === "quy" 
-                ? "save-outline" 
-                : "wallet-outline"
-            } 
-            size={22} 
-            color="rgba(255,255,255,0.7)" 
-          />
-        </View>
-
-        {/* Balance details */}
-        <View style={styles.balanceSection}>
-          <Text style={styles.balanceLabel}>Số dư khả dụng</Text>
-          <Text style={styles.balanceValue}>
-            {formatCurrency(wallet.balance)}
-          </Text>
-          {wallet.subValue && (
-            <Text style={styles.subValue}>{wallet.subValue}</Text>
-          )}
-        </View>
-
-        {/* Expanded Actions Tray (Nạp, Rút, Lịch sử, Cài đặt) */}
-        {isExpanded && (
-          <View style={styles.actionsTray}>
-            <TouchableOpacity 
-              style={styles.actionButton} 
-              activeOpacity={0.7}
-              onPress={() => router.push("/wallet/topup")}
-            >
-              <View style={styles.actionIconBg}>
-                <Ionicons name="arrow-down-outline" size={18} color={wallet.color} />
-              </View>
-              <Text style={styles.actionLabel}>Nạp tiền</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity 
-              style={styles.actionButton} 
-              activeOpacity={0.7}
-              onPress={() => router.push("/wallet/withdraw")}
-            >
-              <View style={styles.actionIconBg}>
-                <Ionicons name="arrow-up-outline" size={18} color={wallet.color} />
-              </View>
-              <Text style={styles.actionLabel}>Rút tiền</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity 
-              style={styles.actionButton} 
-              activeOpacity={0.7}
-              onPress={() => router.push("/wallet/history")}
-            >
-              <View style={styles.actionIconBg}>
-                <Ionicons name="time-outline" size={18} color={wallet.color} />
-              </View>
-              <Text style={styles.actionLabel}>Lịch sử</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity 
-              style={styles.actionButton} 
-              activeOpacity={0.7}
-              onPress={() => router.push("/wallet/report" as any)}
-            >
-              <View style={styles.actionIconBg}>
-                <Ionicons name="pie-chart-outline" size={18} color={wallet.color} />
-              </View>
-              <Text style={styles.actionLabel}>Báo cáo</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity 
-              style={styles.actionButton} 
-              activeOpacity={0.7}
-              onPress={() => router.push({ pathname: "/wallet/settings", params: { walletId: (wallet as any).numericId || wallet.id } })}
-            >
-              <View style={styles.actionIconBg}>
-                <Ionicons name="settings-outline" size={18} color={wallet.color} />
-              </View>
-              <Text style={styles.actionLabel}>Cài đặt</Text>
-            </TouchableOpacity>
-          </View>
-        )}
-      </TouchableOpacity>
+      </LinearGradient>
     </View>
   );
 };

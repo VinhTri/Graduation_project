@@ -53,31 +53,35 @@ public class PayOsPayoutServiceImpl implements PayOsPayoutService {
     }
 
     @Override
-    public String lookupAccountName(String bankCode, String accountNumber) {
+    public String verifyAndPayout(String bankCode, String accountNumber, int amount, String description, String reference) {
         try {
-            log.info("Sử dụng mẹo tạo lệnh Chi Hộ mồi qua PayOS để lấy tên STK: {}", accountNumber);
-            String baitReference = "CHECK_" + System.currentTimeMillis();
-            
+            log.info("Chi {}đ qua PayOS để xác minh & liên kết STK: {} (ref {})", amount, accountNumber, reference);
+
             PayoutRequests request = PayoutRequests.builder()
-                    .referenceId(baitReference)
-                    .amount(2000L) // Giới hạn tối thiểu 2.000 VND của hệ thống Napas
-                    .description("KIEM TRA TEN")
+                    .referenceId(reference)
+                    .amount((long) amount)
+                    .description(description)
                     .toBin(bankCode)
                     .toAccountNumber(accountNumber)
                     .build();
 
+            // Chi thật: tiền 2.000đ được chuyển vào STK khách (đã trừ 2.000đ phí trong ví),
+            // đồng thời PayOS trả về tên chủ tài khoản để lưu lại.
             Payout response = payOS.payouts().create(request);
-            
+
+            // Log toàn bộ phản hồi để chẩn đoán (id, trạng thái, transactions).
+            log.info("PayOS payout response: {}", response);
+
             if (response != null && response.getTransactions() != null && !response.getTransactions().isEmpty()) {
                 String accountName = response.getTransactions().get(0).getToAccountName();
-                log.info("Lấy tên thành công từ PayOS Payout: {}", accountName);
-                
-                // Mẹo: PayOS Kênh Chi mặc định yêu cầu duyệt thủ công qua OTP/Dashboard
-                // Lệnh mồi này sẽ nằm ở trạng thái PENDING và tự hủy, không bị mất tiền!
+                log.info("PayOS trả tên chủ tài khoản: {}", accountName);
                 return accountName;
             }
+
+            log.warn("PayOS tạo lệnh chi nhưng chưa có toAccountName (payout xử lý bất đồng bộ?). Response: {}", response);
         } catch (Exception e) {
-            log.warn("Mẹo PayOS lấy tên thất bại (có thể STK sai hoặc số dư < 2000đ): {}", e.getMessage());
+            // Log đầy đủ stacktrace + message thật của PayOS để biết nguyên nhân (số dư payout, quyền, key...).
+            log.error("PayOS chi xác minh THẤT BẠI cho STK {} (ref {}): {}", accountNumber, reference, e.getMessage(), e);
         }
         return null;
     }

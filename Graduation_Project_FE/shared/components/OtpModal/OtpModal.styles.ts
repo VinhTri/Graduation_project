@@ -52,6 +52,22 @@ export const styles = StyleSheet.create({
     width: '100%',
     marginBottom: 20,
   },
+  sendingContainer: {
+    height: 60,
+    borderWidth: 1.5,
+    borderColor: '#D1D5DB',
+    borderRadius: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+    backgroundColor: '#F9FAFB',
+  },
+  sendingText: {
+    fontSize: 15,
+    color: '#6B7280',
+    fontWeight: '500',
+  },
   otpInput: {
     height: 60,
     borderWidth: 1.5,

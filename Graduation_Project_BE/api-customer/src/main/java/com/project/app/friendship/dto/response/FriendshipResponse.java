@@ -9,6 +9,7 @@ public class FriendshipResponse {
     private Long friendId;
     private String friendUsername;
     private String friendEmail;
+    private String friendAccountNumber;
     private String status;
     private LocalDateTime createdAt;
     // To identify if the current user is the requester or receiver
@@ -45,6 +46,9 @@ public class FriendshipResponse {
 
     public String getFriendEmail() { return friendEmail; }
     public void setFriendEmail(String friendEmail) { this.friendEmail = friendEmail; }
+
+    public String getFriendAccountNumber() { return friendAccountNumber; }
+    public void setFriendAccountNumber(String friendAccountNumber) { this.friendAccountNumber = friendAccountNumber; }
 
     public String getStatus() { return status; }
     public void setStatus(String status) { this.status = status; }

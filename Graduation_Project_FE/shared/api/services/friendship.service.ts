@@ -6,14 +6,25 @@ export interface FriendshipResponse {
   friendId: number;
   friendUsername: string;
   friendEmail: string;
+  friendAccountNumber?: string | null;
   status: string;
   createdAt: string;
   requester: boolean;
 }
 
+export interface SearchUserResult {
+  id: number;
+  username: string;
+  email: string;
+  accountNumber?: string | null;
+  friendshipStatus: 'NONE' | 'PENDING' | 'ACCEPTED' | 'REJECTED';
+  friendshipId?: number;
+  requester?: boolean;
+}
+
 export const friendshipService = {
-  searchUser: async (email: string) => {
-    const response = await axiosClient.get(ENDPOINTS.USER.SEARCH(email));
+  searchUser: async (query: string) => {
+    const response = await axiosClient.get(ENDPOINTS.USER.SEARCH(query));
     return response;
   },
 
@@ -32,6 +43,11 @@ export const friendshipService = {
     return response;
   },
 
+  cancelRequest: async (id: number) => {
+    const response = await axiosClient.delete(ENDPOINTS.FRIENDSHIP.CANCEL(id));
+    return response;
+  },
+
   removeFriend: async (id: number) => {
     const response = await axiosClient.delete(ENDPOINTS.FRIENDSHIP.REMOVE(id));
     return response;
@@ -45,5 +61,10 @@ export const friendshipService = {
   getRequests: async () => {
     const response = await axiosClient.get(ENDPOINTS.FRIENDSHIP.LIST_REQUESTS);
     return response;
-  }
+  },
+
+  getSentRequests: async () => {
+    const response = await axiosClient.get(ENDPOINTS.FRIENDSHIP.LIST_SENT_REQUESTS);
+    return response;
+  },
 };

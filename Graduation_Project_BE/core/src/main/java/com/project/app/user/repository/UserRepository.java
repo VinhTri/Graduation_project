@@ -14,6 +14,9 @@ public interface UserRepository extends JpaRepository<User, Long> {
     @Query("SELECT u FROM User u WHERE LOWER(TRIM(u.email)) = LOWER(TRIM(:email))")
     Optional<User> searchByEmail(@org.springframework.data.repository.query.Param("email") String email);
 
+    @Query("SELECT u FROM User u WHERE LOWER(TRIM(u.username)) = LOWER(TRIM(:username))")
+    Optional<User> searchByUsername(@org.springframework.data.repository.query.Param("username") String username);
+
     Optional<User> findByUsername(String username);
     boolean existsByEmail(String email);
     boolean existsByUsername(String username);

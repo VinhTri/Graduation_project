@@ -1,6 +1,8 @@
 package com.project.app.report.service.impl;
 
+import com.project.app.category.entity.CategoryGroup;
 import com.project.app.category.entity.CategoryItem;
+import com.project.app.category.repository.CategoryGroupRepository;
 import com.project.app.category.repository.CategoryItemRepository;
 import com.project.app.report.dto.response.ReportDistributionResponse;
 import com.project.app.report.dto.response.ReportTrendResponse;
@@ -12,6 +14,7 @@ import com.project.app.transaction.repository.TransactionRepository;
 import com.project.app.user.entity.User;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -30,30 +33,48 @@ public class ReportServiceImpl implements ReportService {
 
     private final TransactionRepository transactionRepository;
     private final CategoryItemRepository categoryItemRepository;
+    private final CategoryGroupRepository categoryGroupRepository;
+
+    /**
+     * Giao dịch thực tế trong hệ thống chỉ có TOP_UP (nạp) và WITHDRAW (rút).
+     * Tab báo cáo gửi lên EXPENSE/INCOME nên cần quy đổi:
+     * - Chi tiêu (EXPENSE)  -> tiền RÚT (WITHDRAW).
+     * - Thu nhập (INCOME)   -> tiền NẠP (TOP_UP).
+     */
+    private TransactionType resolveType(TransactionType requested) {
+        if (requested == TransactionType.EXPENSE) return TransactionType.WITHDRAW;
+        if (requested == TransactionType.INCOME) return TransactionType.TOP_UP;
+        return requested;
+    }
 
     @Override
+    @Transactional(readOnly = true)
     public List<ReportDistributionResponse> getDistributionReport(User user, TransactionType type, String filter, LocalDate date) {
         LocalDateTime[] dateRange = getDateRange(filter, date);
         List<Transaction> transactions = transactionRepository.findByUserAndTypeAndStatusAndCreatedAtBetween(
-                user, type, TransactionStatus.SUCCESS, dateRange[0], dateRange[1]
+                user, resolveType(type), TransactionStatus.SUCCESS, dateRange[0], dateRange[1]
         );
 
-        if (transactions.isEmpty()) {
+        // Chỉ phân tích giao dịch đã gắn danh mục; chưa phân loại hiển thị riêng trên FE.
+        List<Transaction> classified = transactions.stream()
+                .filter(t -> t.getCategoryId() != null)
+                .toList();
+
+        if (classified.isEmpty()) {
             return Collections.emptyList();
         }
 
-        BigDecimal grandTotal = transactions.stream()
+        BigDecimal grandTotal = classified.stream()
                 .map(Transaction::getAmount)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-        Map<Long, BigDecimal> categoryTotals = transactions.stream()
+        Map<Long, BigDecimal> categoryTotals = classified.stream()
                 .collect(Collectors.groupingBy(
-                        t -> t.getCategoryId() != null ? t.getCategoryId() : 0L,
+                        Transaction::getCategoryId,
                         Collectors.mapping(Transaction::getAmount, Collectors.reducing(BigDecimal.ZERO, BigDecimal::add))
                 ));
 
         List<Long> categoryIds = new ArrayList<>(categoryTotals.keySet());
-        categoryIds.remove(0L);
         Map<Long, CategoryItem> categoryMap = categoryItemRepository.findAllById(categoryIds).stream()
                 .collect(Collectors.toMap(CategoryItem::getId, c -> c));
 
@@ -63,19 +84,22 @@ public class ReportServiceImpl implements ReportService {
             BigDecimal totalAmount = entry.getValue();
             Double percentage = totalAmount.divide(grandTotal, 4, RoundingMode.HALF_UP).multiply(new BigDecimal(100)).doubleValue();
 
-            String name = "Chưa phân loại";
-            String color = "#A0AEC0"; // Default
+            String name = "Khác";
+            String color = "#A0AEC0";
             String icon = "?";
 
-            if (catId != 0L && categoryMap.containsKey(catId)) {
+            if (categoryMap.containsKey(catId)) {
                 CategoryItem cat = categoryMap.get(catId);
-                name = cat.getLabel();
+                name = cat.isDeleted() ? cat.getLabel() + " (đã xóa)" : cat.getLabel();
                 color = cat.getColor();
                 icon = cat.getIcon();
+            } else {
+                name = "Danh mục đã xóa";
+                icon = "archive-outline";
             }
 
             response.add(ReportDistributionResponse.builder()
-                    .categoryId(catId == 0L ? null : catId)
+                    .categoryId(catId)
                     .categoryName(name)
                     .color(color)
                     .icon(icon)
@@ -91,18 +115,120 @@ public class ReportServiceImpl implements ReportService {
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public List<ReportDistributionResponse> getGroupDistributionReport(User user, TransactionType type, String filter, LocalDate date) {
+        LocalDateTime[] dateRange = getDateRange(filter, date);
+        List<Transaction> transactions = transactionRepository.findByUserAndTypeAndStatusAndCreatedAtBetween(
+                user, resolveType(type), TransactionStatus.SUCCESS, dateRange[0], dateRange[1]
+        );
+
+        List<Transaction> classified = transactions.stream()
+                .filter(t -> t.getCategoryId() != null)
+                .toList();
+
+        if (classified.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        List<Long> categoryIds = classified.stream()
+                .map(Transaction::getCategoryId)
+                .distinct()
+                .toList();
+
+        Map<Long, CategoryItem> categoryMap = categoryItemRepository.findAllById(categoryIds).stream()
+                .collect(Collectors.toMap(CategoryItem::getId, c -> c));
+
+        Map<Long, BigDecimal> groupTotals = new HashMap<>();
+        Map<Long, BigDecimal> orphanTotals = new HashMap<>();
+        for (Transaction transaction : classified) {
+            CategoryItem categoryItem = categoryMap.get(transaction.getCategoryId());
+            if (categoryItem == null || categoryItem.getGroup() == null) {
+                orphanTotals.merge(transaction.getCategoryId(), transaction.getAmount(), BigDecimal::add);
+                continue;
+            }
+            Long groupId = categoryItem.getGroup().getId();
+            groupTotals.merge(groupId, transaction.getAmount(), BigDecimal::add);
+        }
+
+        if (groupTotals.isEmpty() && orphanTotals.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        BigDecimal grandTotal = groupTotals.values().stream()
+                .reduce(BigDecimal.ZERO, BigDecimal::add)
+                .add(orphanTotals.values().stream().reduce(BigDecimal.ZERO, BigDecimal::add));
+
+        Map<Long, CategoryGroup> groupMap = categoryGroupRepository.findAllById(groupTotals.keySet()).stream()
+                .collect(Collectors.toMap(CategoryGroup::getId, g -> g));
+
+        List<ReportDistributionResponse> response = new ArrayList<>();
+        for (Map.Entry<Long, BigDecimal> entry : groupTotals.entrySet()) {
+            Long groupId = entry.getKey();
+            BigDecimal totalAmount = entry.getValue();
+            Double percentage = totalAmount.divide(grandTotal, 4, RoundingMode.HALF_UP)
+                    .multiply(new BigDecimal(100)).doubleValue();
+
+            String name = "Khác";
+            String color = "#A0AEC0";
+            String icon = "layers";
+
+            if (groupMap.containsKey(groupId)) {
+                CategoryGroup group = groupMap.get(groupId);
+                name = group.getTitle();
+                color = group.getColor();
+                icon = group.getIcon();
+            }
+
+            response.add(ReportDistributionResponse.builder()
+                    .categoryId(groupId)
+                    .categoryName(name)
+                    .color(color)
+                    .icon(icon)
+                    .totalAmount(totalAmount)
+                    .percentage(percentage)
+                    .build());
+        }
+
+        response.sort((a, b) -> b.getTotalAmount().compareTo(a.getTotalAmount()));
+
+        if (!orphanTotals.isEmpty()) {
+            BigDecimal orphanAmount = orphanTotals.values().stream()
+                    .reduce(BigDecimal.ZERO, BigDecimal::add);
+            Double orphanPercentage = orphanAmount.divide(grandTotal, 4, RoundingMode.HALF_UP)
+                    .multiply(new BigDecimal(100)).doubleValue();
+            response.add(ReportDistributionResponse.builder()
+                    .categoryId(null)
+                    .categoryName("Danh mục đã xóa")
+                    .color("#9CA3AF")
+                    .icon("archive-outline")
+                    .totalAmount(orphanAmount)
+                    .percentage(orphanPercentage)
+                    .build());
+            response.sort((a, b) -> b.getTotalAmount().compareTo(a.getTotalAmount()));
+        }
+
+        return response;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public List<ReportTrendResponse> getTrendReport(User user, TransactionType type, String filter, LocalDate date) {
         LocalDateTime[] dateRange = getDateRange(filter, date);
         List<Transaction> transactions = transactionRepository.findByUserAndTypeAndStatusAndCreatedAtBetween(
-                user, type, TransactionStatus.SUCCESS, dateRange[0], dateRange[1]
+                user, resolveType(type), TransactionStatus.SUCCESS, dateRange[0], dateRange[1]
         );
+
+        // Tab chi tiêu: xu hướng chỉ tính giao dịch rút đã phân loại.
+        List<Transaction> forTrend = type == TransactionType.EXPENSE
+                ? transactions.stream().filter(t -> t.getCategoryId() != null).toList()
+                : transactions;
 
         List<ReportTrendResponse> trendResponses = new ArrayList<>();
         LocalDate today = LocalDate.now();
 
         if ("YEAR".equalsIgnoreCase(filter)) {
             // Group by month
-            Map<Integer, BigDecimal> monthlyTotals = transactions.stream()
+            Map<Integer, BigDecimal> monthlyTotals = forTrend.stream()
                     .collect(Collectors.groupingBy(
                             t -> t.getCreatedAt().getMonthValue(),
                             Collectors.mapping(Transaction::getAmount, Collectors.reducing(BigDecimal.ZERO, BigDecimal::add))
@@ -119,7 +245,7 @@ public class ReportServiceImpl implements ReportService {
         } else if ("MONTH".equalsIgnoreCase(filter)) {
             // Group by day of month
             int daysInMonth = YearMonth.from(date).lengthOfMonth();
-            Map<Integer, BigDecimal> dailyTotals = transactions.stream()
+            Map<Integer, BigDecimal> dailyTotals = forTrend.stream()
                     .collect(Collectors.groupingBy(
                             t -> t.getCreatedAt().getDayOfMonth(),
                             Collectors.mapping(Transaction::getAmount, Collectors.reducing(BigDecimal.ZERO, BigDecimal::add))
@@ -135,7 +261,7 @@ public class ReportServiceImpl implements ReportService {
             }
         } else if ("WEEK".equalsIgnoreCase(filter)) {
             // Group by day of week
-            Map<DayOfWeek, BigDecimal> dayOfWeekTotals = transactions.stream()
+            Map<DayOfWeek, BigDecimal> dayOfWeekTotals = forTrend.stream()
                     .collect(Collectors.groupingBy(
                             t -> t.getCreatedAt().getDayOfWeek(),
                             Collectors.mapping(Transaction::getAmount, Collectors.reducing(BigDecimal.ZERO, BigDecimal::add))
