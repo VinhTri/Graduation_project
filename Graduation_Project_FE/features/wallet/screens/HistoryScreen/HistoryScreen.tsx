@@ -51,6 +51,8 @@ export default function HistoryScreen() {
         const typeLower = t.type.toLowerCase().replace('_', ''); // TOP_UP -> topup, WITHDRAW -> withdraw, others -> payment
         const isTopUp = t.type === 'TOP_UP';
         const isWithdraw = t.type === 'WITHDRAW';
+        const isFundDeposit = t.categoryLabel === 'Nạp quỹ';
+        const isFundWithdraw = t.categoryLabel === 'Rút quỹ';
         
         // Find category details
         let catLabel = isTopUp ? 'Nạp tiền' : (isWithdraw ? 'Rút tiền' : 'Giao dịch');
@@ -65,10 +67,14 @@ export default function HistoryScreen() {
             icon = 'archive-outline';
           }
         }
+
+        let title = t.note || (isTopUp ? "Nạp tiền vào ví" : (isWithdraw ? "Rút tiền về ngân hàng" : "Thanh toán dịch vụ"));
+        if (isFundDeposit) title = t.note || "Nạp tiền vào quỹ";
+        if (isFundWithdraw) title = t.note || "Rút tiền từ quỹ về ví";
         
         return {
           id: t.transactionCode,
-          title: isTopUp ? "Nạp tiền vào ví" : (isWithdraw ? "Rút tiền về ngân hàng" : t.note || "Thanh toán dịch vụ"),
+          title,
           type: typeLower,
           typeOriginal: t.type,
           amount: isTopUp ? t.amount : -t.amount,
@@ -82,7 +88,8 @@ export default function HistoryScreen() {
           categoryLabel: t.categoryLabel,
           categoryIcon: t.categoryIcon,
           notes: t.note,
-          // Giao dịch nạp/rút chưa gắn danh mục -> cần phân loại.
+          // Giao dịch nạp/rút ngân hàng chưa gắn danh mục -> cần phân loại.
+          // Nạp/rút quỹ đã gắn danh mục hệ thống nên không unclassified.
           unclassified: (isTopUp || isWithdraw) && !t.categoryId,
         };
       });

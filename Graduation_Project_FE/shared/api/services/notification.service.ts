@@ -5,6 +5,8 @@ export interface NotificationResponse {
   id: number;
   title: string;
   message: string;
+  type?: string;
+  relatedId?: number | null;
   isRead: boolean;
   createdAt: string;
 }

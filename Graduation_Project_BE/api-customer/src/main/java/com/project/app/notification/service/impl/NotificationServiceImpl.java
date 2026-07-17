@@ -2,6 +2,7 @@ package com.project.app.notification.service.impl;
 
 import com.project.app.notification.dto.response.NotificationResponse;
 import com.project.app.notification.entity.Notification;
+import com.project.app.notification.enums.NotificationType;
 import com.project.app.notification.repository.NotificationRepository;
 import com.project.app.notification.service.NotificationService;
 import com.project.app.user.entity.User;
@@ -21,12 +22,20 @@ public class NotificationServiceImpl implements NotificationService {
     @Override
     @Transactional
     public void createNotification(User user, String title, String message) {
+        createNotification(user, title, message, NotificationType.GENERAL, null);
+    }
+
+    @Override
+    @Transactional
+    public void createNotification(User user, String title, String message, NotificationType type, Long relatedId) {
         Notification notification = Notification.builder()
                 .user(user)
                 .title(title)
                 .message(message)
+                .type(type != null ? type : NotificationType.GENERAL)
+                .relatedId(relatedId)
                 .build();
-        Notification saved = notificationRepository.save(notification);
+        notificationRepository.save(notification);
     }
 
     @Override
@@ -37,6 +46,8 @@ public class NotificationServiceImpl implements NotificationService {
                 .id(n.getId())
                 .title(n.getTitle())
                 .message(n.getMessage())
+                .type(n.getType() != null ? n.getType().name() : NotificationType.GENERAL.name())
+                .relatedId(n.getRelatedId())
                 .isRead(n.isRead())
                 .createdAt(n.getCreatedAt())
                 .build()).collect(Collectors.toList());
@@ -65,11 +76,11 @@ public class NotificationServiceImpl implements NotificationService {
     public void deleteNotification(User user, Long notificationId) {
         Notification notification = notificationRepository.findById(notificationId)
                 .orElseThrow(() -> new RuntimeException("Notification not found"));
-        
+
         if (!notification.getUser().getId().equals(user.getId())) {
             throw new RuntimeException("You do not have permission to delete this notification");
         }
-        
+
         notificationRepository.delete(notification);
     }
 }

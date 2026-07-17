@@ -257,6 +257,19 @@ export const styles = StyleSheet.create({
     borderColor: '#D1D5DB',
     opacity: 0.75,
   },
+  defaultBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: 'rgba(255,255,255,0.7)',
+    borderRadius: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+  },
+  defaultBadgeText: {
+    fontSize: 11,
+    fontWeight: '700',
+  },
   groupAddCategoryText: {
     fontSize: 12,
     fontWeight: '700',

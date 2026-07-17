@@ -1,10 +1,23 @@
 import React, { useState, useEffect } from "react";
-import { View, Text, FlatList, TouchableOpacity, StyleSheet, ActivityIndicator } from "react-native";
+import {
+  View,
+  Text,
+  FlatList,
+  TouchableOpacity,
+  StyleSheet,
+  ActivityIndicator,
+  Alert,
+} from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import Colors from "../../../shared/constants/Colors";
-import { notificationService, NotificationResponse } from "../../../shared/api/services/notification.service";
+import {
+  notificationService,
+  NotificationResponse,
+} from "../../../shared/api/services/notification.service";
+import { fundService } from "../../../shared/api/services/fundService";
+import { fundStore } from "../../funds/store/fundStore";
 
 import { Swipeable } from "react-native-gesture-handler";
 
@@ -12,21 +25,21 @@ const timeAgo = (dateInput: string) => {
   const date = new Date(dateInput);
   const now = new Date();
   const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
-  
+
   if (diffInSeconds < 60) return "Vài giây trước";
-  
+
   const diffInMinutes = Math.floor(diffInSeconds / 60);
   if (diffInMinutes < 60) return `${diffInMinutes} phút trước`;
-  
+
   const diffInHours = Math.floor(diffInMinutes / 60);
   if (diffInHours < 24) return `${diffInHours} giờ trước`;
-  
+
   const diffInDays = Math.floor(diffInHours / 24);
   if (diffInDays < 30) return `${diffInDays} ngày trước`;
-  
+
   const diffInMonths = Math.floor(diffInDays / 30);
   if (diffInMonths < 12) return `${diffInMonths} tháng trước`;
-  
+
   const diffInYears = Math.floor(diffInMonths / 12);
   return `${diffInYears} năm trước`;
 };
@@ -36,6 +49,7 @@ export default function NotificationScreen() {
   const insets = useSafeAreaInsets();
   const [notifications, setNotifications] = useState<NotificationResponse[]>([]);
   const [loading, setLoading] = useState(true);
+  const [actingId, setActingId] = useState<number | null>(null);
 
   useEffect(() => {
     loadNotifications();
@@ -49,7 +63,6 @@ export default function NotificationScreen() {
       } else {
         setNotifications([]);
       }
-      // Khi vừa vào màn hình, gọi API mark all as read
       await notificationService.readAll();
     } catch (error) {
       console.log("Error loading notifications:", error);
@@ -60,20 +73,49 @@ export default function NotificationScreen() {
 
   const handleDelete = async (id: number) => {
     try {
-      // Optimistic update
-      setNotifications(prev => prev.filter(n => n.id !== id));
+      setNotifications((prev) => prev.filter((n) => n.id !== id));
       await notificationService.delete(id);
     } catch (error) {
       console.log("Error deleting notification:", error);
-      // Rollback nếu cần (hiện tại đơn giản hóa)
       loadNotifications();
+    }
+  };
+
+  const handleAcceptFundInvite = async (item: NotificationResponse) => {
+    if (!item.relatedId) return;
+    setActingId(item.id);
+    try {
+      await fundService.acceptInvite(item.relatedId);
+      await fundStore.refreshFunds().catch(() => {});
+      setNotifications((prev) => prev.filter((n) => n.id !== item.id));
+      await notificationService.delete(item.id).catch(() => {});
+      Alert.alert("Thành công", "Bạn đã tham gia quỹ.");
+      router.push(`/funds/${item.relatedId}`);
+    } catch (err: any) {
+      Alert.alert("Không thể tham gia", err?.message || "Vui lòng thử lại");
+    } finally {
+      setActingId(null);
+    }
+  };
+
+  const handleRejectFundInvite = async (item: NotificationResponse) => {
+    if (!item.relatedId) return;
+    setActingId(item.id);
+    try {
+      await fundService.rejectInvite(item.relatedId);
+      setNotifications((prev) => prev.filter((n) => n.id !== item.id));
+      await notificationService.delete(item.id).catch(() => {});
+    } catch (err: any) {
+      Alert.alert("Lỗi", err?.message || "Không thể từ chối lời mời");
+    } finally {
+      setActingId(null);
     }
   };
 
   const renderRightActions = (id: number) => {
     return (
-      <TouchableOpacity 
-        style={styles.deleteButton} 
+      <TouchableOpacity
+        style={styles.deleteButton}
         onPress={() => handleDelete(id)}
       >
         <Ionicons name="trash-outline" size={24} color={Colors.white} />
@@ -82,26 +124,69 @@ export default function NotificationScreen() {
     );
   };
 
-  const renderItem = ({ item }: { item: NotificationResponse }) => (
-    <Swipeable renderRightActions={() => renderRightActions(item.id)}>
-      <View style={[styles.notificationCard, !item.isRead && styles.unreadCard]}>
-        <View style={styles.iconContainer}>
-          <Ionicons name="notifications" size={24} color={Colors.primary} />
+  const renderItem = ({ item }: { item: NotificationResponse }) => {
+    const isFundInvite = item.type === "FUND_INVITE" && !!item.relatedId;
+    const busy = actingId === item.id;
+
+    return (
+      <Swipeable renderRightActions={() => renderRightActions(item.id)}>
+        <View style={[styles.notificationCard, !item.isRead && styles.unreadCard]}>
+          <View style={styles.iconContainer}>
+            <Ionicons
+              name={isFundInvite ? "people" : "notifications"}
+              size={24}
+              color={Colors.primary}
+            />
+          </View>
+          <View style={styles.contentContainer}>
+            <Text style={styles.title}>{item.title}</Text>
+            <Text style={styles.message}>{item.message}</Text>
+            <Text style={styles.time}>{timeAgo(item.createdAt)}</Text>
+
+            {isFundInvite && (
+              <View style={styles.actionRow}>
+                <TouchableOpacity
+                  style={[styles.rejectBtn, busy && styles.btnDisabled]}
+                  disabled={busy}
+                  onPress={() => handleRejectFundInvite(item)}
+                  activeOpacity={0.85}
+                >
+                  <Text style={styles.rejectText}>Từ chối</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.acceptBtn, busy && styles.btnDisabled]}
+                  disabled={busy}
+                  onPress={() => handleAcceptFundInvite(item)}
+                  activeOpacity={0.85}
+                >
+                  {busy ? (
+                    <ActivityIndicator size="small" color={Colors.white} />
+                  ) : (
+                    <Text style={styles.acceptText}>Chấp nhận</Text>
+                  )}
+                </TouchableOpacity>
+              </View>
+            )}
+          </View>
+          {!item.isRead && <View style={styles.unreadDot} />}
         </View>
-        <View style={styles.contentContainer}>
-          <Text style={styles.title}>{item.title}</Text>
-          <Text style={styles.message}>{item.message}</Text>
-          <Text style={styles.time}>{timeAgo(item.createdAt)}</Text>
-        </View>
-        {!item.isRead && <View style={styles.unreadDot} />}
-      </View>
-    </Swipeable>
-  );
+      </Swipeable>
+    );
+  };
 
   return (
     <View style={styles.container}>
-      <View style={{ backgroundColor: Colors.primary, height: insets.top, position: 'absolute', top: 0, left: 0, right: 0 }} />
-      
+      <View
+        style={{
+          backgroundColor: Colors.primary,
+          height: insets.top,
+          position: "absolute",
+          top: 0,
+          left: 0,
+          right: 0,
+        }}
+      />
+
       <View style={{ flex: 1, paddingTop: insets.top }}>
         <View style={styles.header}>
           <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
@@ -110,25 +195,28 @@ export default function NotificationScreen() {
           <Text style={styles.headerTitle}>Thông báo</Text>
         </View>
         <View style={styles.content}>
-
-      {loading ? (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={Colors.primary} />
-        </View>
-      ) : (
-        <FlatList
-          data={notifications}
-          keyExtractor={(item) => item.id.toString()}
-          renderItem={renderItem}
-          contentContainerStyle={styles.listContainer}
-          ListEmptyComponent={
-            <View style={styles.emptyContainer}>
-              <Ionicons name="notifications-off-outline" size={48} color={Colors.textMuted} />
-              <Text style={styles.emptyText}>Bạn chưa có thông báo nào.</Text>
+          {loading ? (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="large" color={Colors.primary} />
             </View>
-          }
-        />
-      )}
+          ) : (
+            <FlatList
+              data={notifications}
+              keyExtractor={(item) => item.id.toString()}
+              renderItem={renderItem}
+              contentContainerStyle={styles.listContainer}
+              ListEmptyComponent={
+                <View style={styles.emptyContainer}>
+                  <Ionicons
+                    name="notifications-off-outline"
+                    size={48}
+                    color={Colors.textMuted}
+                  />
+                  <Text style={styles.emptyText}>Bạn chưa có thông báo nào.</Text>
+                </View>
+              }
+            />
+          )}
         </View>
       </View>
     </View>
@@ -144,8 +232,8 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     paddingHorizontal: 16,
-    paddingTop: 16, 
-    paddingBottom: 40, 
+    paddingTop: 16,
+    paddingBottom: 40,
     backgroundColor: Colors.primary,
   },
   content: {
@@ -153,7 +241,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.background,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
-    marginTop: -24, 
+    marginTop: -24,
     overflow: "hidden",
   },
   backButton: {
@@ -174,7 +262,7 @@ const styles = StyleSheet.create({
     padding: 16,
     borderRadius: 12,
     marginBottom: 12,
-    alignItems: "center",
+    alignItems: "flex-start",
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
@@ -182,7 +270,7 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   unreadCard: {
-    backgroundColor: "#F0F9FF", // Màu xanh dương thật nhạt cho thông báo chưa đọc
+    backgroundColor: "#F0F9FF",
   },
   iconContainer: {
     width: 48,
@@ -212,12 +300,45 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: Colors.textMuted,
   },
+  actionRow: {
+    flexDirection: "row",
+    gap: 8,
+    marginTop: 12,
+  },
+  acceptBtn: {
+    flex: 1,
+    backgroundColor: Colors.primary,
+    paddingVertical: 10,
+    borderRadius: 10,
+    alignItems: "center",
+  },
+  acceptText: {
+    color: Colors.white,
+    fontWeight: "700",
+    fontSize: 14,
+  },
+  rejectBtn: {
+    flex: 1,
+    backgroundColor: "#FEE2E2",
+    paddingVertical: 10,
+    borderRadius: 10,
+    alignItems: "center",
+  },
+  rejectText: {
+    color: "#DC2626",
+    fontWeight: "700",
+    fontSize: 14,
+  },
+  btnDisabled: {
+    opacity: 0.7,
+  },
   unreadDot: {
     width: 10,
     height: 10,
     borderRadius: 5,
     backgroundColor: Colors.primary,
     marginLeft: 8,
+    marginTop: 6,
   },
   loadingContainer: {
     flex: 1,
@@ -247,5 +368,5 @@ const styles = StyleSheet.create({
     color: Colors.white,
     fontWeight: "600",
     marginTop: 4,
-  }
+  },
 });

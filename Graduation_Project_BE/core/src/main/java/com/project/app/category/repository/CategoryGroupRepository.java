@@ -6,6 +6,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface CategoryGroupRepository extends JpaRepository<CategoryGroup, Long> {
@@ -13,6 +14,8 @@ public interface CategoryGroupRepository extends JpaRepository<CategoryGroup, Lo
     List<CategoryGroup> findByUserAndIsDeletedFalseOrderByIdAsc(User user);
 
     List<CategoryGroup> findByUserIsNull();
+
+    Optional<CategoryGroup> findFirstByTitleAndUserIsNullAndIsDeletedFalse(String title);
 
     long countByUserAndIsDeletedFalse(User user);
 }

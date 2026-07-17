@@ -52,6 +52,19 @@ export const ENDPOINTS = {
     LIST_REQUESTS: '/api/v1/friends/requests',
     LIST_SENT_REQUESTS: '/api/v1/friends/sent-requests',
   },
+  FUND: {
+    LIST: '/api/v1/funds',
+    CREATE: '/api/v1/funds',
+    DETAIL: (id: number) => `/api/v1/funds/${id}`,
+    DELETE: (id: number) => `/api/v1/funds/${id}`,
+    DEPOSIT: (id: number) => `/api/v1/funds/${id}/deposit`,
+    WITHDRAW: (id: number) => `/api/v1/funds/${id}/withdraw`,
+    UPDATE_NOTE: (id: number, txId: number) => `/api/v1/funds/${id}/transactions/${txId}/note`,
+    INVITE: (id: number) => `/api/v1/funds/${id}/invite`,
+    ACCEPT_INVITE: (id: number) => `/api/v1/funds/${id}/accept-invite`,
+    REJECT_INVITE: (id: number) => `/api/v1/funds/${id}/reject-invite`,
+    LEAVE: (id: number) => `/api/v1/funds/${id}/leave`,
+  },
   POSTS: {
     PUBLIC_ALL: '/api/v1/public/posts',
   }
