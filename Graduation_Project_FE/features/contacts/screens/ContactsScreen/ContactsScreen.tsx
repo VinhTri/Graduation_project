@@ -284,7 +284,12 @@ export const ContactsScreen = () => {
 
   const renderUserInfo = (item: FriendshipResponse, extra?: React.ReactNode) => (
     <View style={styles.userInfo}>
-      <UserAvatar name={item.friendUsername} email={item.friendEmail} size={52} />
+      <UserAvatar
+        name={item.friendUsername}
+        email={item.friendEmail}
+        avatarUrl={item.friendAvatarUrl}
+        size={52}
+      />
       <View style={styles.userTextWrap}>
         <Text style={styles.userName} numberOfLines={1} ellipsizeMode="tail">{item.friendUsername}</Text>
         <Text style={styles.userEmail} numberOfLines={1} ellipsizeMode="tail">{item.friendEmail}</Text>
@@ -459,6 +464,7 @@ export const ContactsScreen = () => {
               <UserAvatar
                 name={searchResult.username}
                 email={searchResult.email}
+                avatarUrl={searchResult.avatarUrl}
                 size={76}
                 borderWidth={3}
               />

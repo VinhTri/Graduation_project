@@ -39,7 +39,14 @@
           }
         }
       ],
-      "@react-native-community/datetimepicker"
+      "@react-native-community/datetimepicker",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Cho phép SmartSpend truy cập thư viện ảnh để đổi ảnh đại diện.",
+          "cameraPermission": "Cho phép SmartSpend dùng máy ảnh để chụp ảnh đại diện."
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,

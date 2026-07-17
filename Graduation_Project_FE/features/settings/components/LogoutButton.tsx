@@ -1,35 +1,29 @@
 import React from 'react';
 import { View, Text, TouchableOpacity } from 'react-native';
 import { Feather } from '@expo/vector-icons';
-import { styles } from '../SettingsScreen.styles';
-import Colors from '../../../shared/constants/Colors';
 import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { styles } from '../SettingsScreen.styles';
 
 export const LogoutButton = () => {
   const router = useRouter();
 
   const handleLogout = async () => {
     try {
-      await AsyncStorage.removeItem('token');
-      // Chúng ta không xóa hasSeenOnboarding để lần sau đăng nhập không hiện lại onboarding
+      await AsyncStorage.multiRemove(['token', 'userAvatarUrl']);
       router.replace('/(auth)/login');
-    } catch (error) {
-      console.log('Error logging out:', error);
+    } catch {
       router.replace('/(auth)/login');
     }
   };
 
   return (
     <View style={styles.logoutContainer}>
-      <TouchableOpacity 
-        style={styles.logoutButton} 
-        activeOpacity={0.7}
-        onPress={handleLogout}
-      >
-        <Feather name="log-out" size={20} color={Colors.error} />
+      <TouchableOpacity style={styles.logoutButton} activeOpacity={0.75} onPress={handleLogout}>
+        <Feather name="log-out" size={18} color="#DC2626" />
         <Text style={styles.logoutText}>Đăng xuất</Text>
       </TouchableOpacity>
+      <Text style={styles.versionText}>SmartSpend · v1.0.0</Text>
     </View>
   );
 };

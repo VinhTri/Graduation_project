@@ -25,6 +25,7 @@ import { FundMember } from '../../types';
 import { FUND_PALETTE } from '../../theme';
 import { MAX_FUND_MEMBERS } from '../../constants';
 import { fundStore } from '../../store/fundStore';
+import FundAvatar from '../FundAvatar/FundAvatar';
 
 type InviteFriendsModalProps = {
   visible: boolean;
@@ -39,6 +40,7 @@ type InviteRow = {
   username: string;
   email: string;
   accountNumber?: string | null;
+  avatarUrl?: string | null;
   friendshipStatus: 'NONE' | 'PENDING' | 'ACCEPTED' | 'REJECTED' | string;
 };
 
@@ -106,6 +108,7 @@ export function InviteFriendsModal({
           username: f.friendUsername,
           email: f.friendEmail,
           accountNumber: f.friendAccountNumber,
+          avatarUrl: f.friendAvatarUrl,
           friendshipStatus: 'ACCEPTED',
         }))
       );
@@ -137,6 +140,7 @@ export function InviteFriendsModal({
           username: data.username,
           email: data.email,
           accountNumber: data.accountNumber,
+          avatarUrl: data.avatarUrl,
           friendshipStatus: data.friendshipStatus || 'NONE',
         });
         setSearchError(null);
@@ -254,10 +258,13 @@ export function InviteFriendsModal({
 
     return (
       <View style={styles.row}>
-        <View style={styles.avatar}>
-          <Text style={styles.avatarText}>
-            {(item.username || '?').charAt(0).toUpperCase()}
-          </Text>
+        <View style={styles.avatarWrap}>
+          <FundAvatar
+            name={item.username}
+            avatarUrl={item.avatarUrl || undefined}
+            size={44}
+            seed={item.userId}
+          />
         </View>
         <View style={styles.info}>
           <View style={styles.nameRow}>
@@ -520,19 +527,8 @@ const styles = StyleSheet.create({
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: FUND_PALETTE.border,
   },
-  avatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: FUND_PALETTE.primarySoft,
-    alignItems: 'center',
-    justifyContent: 'center',
+  avatarWrap: {
     marginRight: 12,
-  },
-  avatarText: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: FUND_PALETTE.primaryDeep,
   },
   info: {
     flex: 1,

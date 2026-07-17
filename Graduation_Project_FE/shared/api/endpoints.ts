@@ -8,12 +8,15 @@ export const ENDPOINTS = {
     SEND_OTP: '/api/v1/auth/register/send-otp',                 // Gửi mã OTP đăng ký
     FORGOT_PASSWORD: '/api/v1/auth/forgot-password',            // Quên mật khẩu
     RESET_PASSWORD: '/api/v1/auth/reset-password',              // Đặt lại mật khẩu
+    CHANGE_PASSWORD: '/api/v1/auth/change-password',            // Đổi mật khẩu (đã đăng nhập)
     VERIFY_OTP: '/api/v1/auth/verify-otp',                      // Kiểm tra OTP
     FORGOT_PIN: '/api/v1/auth/forgot-pin',                      // Quên mã PIN
     RESET_PIN: '/api/v1/auth/reset-pin',                        // Đặt lại mã PIN
+    CHANGE_PIN: '/api/v1/auth/change-pin',                      // Đổi mã PIN (đã đăng nhập)
   },
   USER: {
     PROFILE: '/api/v1/user/me',                                 // Lấy thông tin tài khoản đang đăng nhập
+    AVATAR: '/api/v1/user/avatar',                              // Upload ảnh đại diện
     SEARCH: (query: string) => `/api/v1/user/search?query=${encodeURIComponent(query)}`, // Tra cứu user theo email hoặc tài khoản
   },
   TRANSACTION: {
