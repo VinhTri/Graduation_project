@@ -34,10 +34,48 @@ public class CategoryServiceImpl implements CategoryService {
     @PostConstruct
     @Transactional
     public void seedDefaultCategories() {
-        List<CategoryGroup> defaultGroups = groupRepository.findByUserIsNull();
-        if (!defaultGroups.isEmpty()) {
-            groupRepository.deleteAll(defaultGroups);
-        }
+        // Danh mục hệ thống (user = null) dùng cho nạp/rút quỹ → lịch sử ví & báo cáo.
+        // Không hiển thị trong màn Danh mục của user (getCategoriesForUser chỉ lấy theo user).
+        CategoryGroup expenseGroup = ensureSystemGroup(
+                "Chi tiêu hệ thống",
+                "trending-down-outline",
+                "#DC2626",
+                "#FEE2E2"
+        );
+        CategoryGroup incomeGroup = ensureSystemGroup(
+                "Thu nhập hệ thống",
+                "trending-up-outline",
+                "#059669",
+                "#D1FAE5"
+        );
+        ensureSystemItem(expenseGroup, "Nạp quỹ", "briefcase-outline", "#DC2626", "#FEE2E2");
+        ensureSystemItem(incomeGroup, "Rút quỹ", "wallet-outline", "#059669", "#D1FAE5");
+    }
+
+    private CategoryGroup ensureSystemGroup(String title, String icon, String color, String bgColor) {
+        return groupRepository.findFirstByTitleAndUserIsNullAndIsDeletedFalse(title)
+                .orElseGet(() -> groupRepository.save(CategoryGroup.builder()
+                        .title(title)
+                        .icon(icon)
+                        .color(color)
+                        .bgColor(bgColor)
+                        .user(null)
+                        .isDeleted(false)
+                        .build()));
+    }
+
+    private void ensureSystemItem(
+            CategoryGroup group, String label, String icon, String color, String bgColor) {
+        itemRepository.findFirstByLabelAndUserIsNullAndIsDeletedFalse(label)
+                .orElseGet(() -> itemRepository.save(CategoryItem.builder()
+                        .label(label)
+                        .icon(icon)
+                        .color(color)
+                        .bgColor(bgColor)
+                        .group(group)
+                        .user(null)
+                        .isDeleted(false)
+                        .build()));
     }
 
     @Override

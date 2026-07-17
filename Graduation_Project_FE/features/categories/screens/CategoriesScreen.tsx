@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { 
   View, 
   Text, 
@@ -10,7 +10,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
+import { useRouter, useFocusEffect } from "expo-router";
 import { Swipeable, RectButton } from 'react-native-gesture-handler';
 import { LinearGradient } from 'expo-linear-gradient';
 import Colors from '../../../shared/constants/Colors';
@@ -45,7 +45,13 @@ const SETUP_STEPS = [
 export default function CategoriesScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { categories, removeService, removeGroup } = useCategoryContext();
+  const { categories, removeService, removeGroup, loadCategories } = useCategoryContext();
+
+  useFocusEffect(
+    useCallback(() => {
+      loadCategories();
+    }, [])
+  );
   const [searchQuery, setSearchQuery] = useState("");
   const [isModalVisible, setModalVisible] = useState(false);
   const [isGroupModalVisible, setGroupModalVisible] = useState(false);
@@ -57,8 +63,10 @@ export default function CategoriesScreen() {
     setItemToDelete({ id: service.id, label: service.label });
   };
 
+  const customGroupCount = categories.filter((g) => !g.isDefault).length;
+
   const handleCreateGroup = () => {
-    if (categories.length >= MAX_CATEGORY_GROUPS) {
+    if (customGroupCount >= MAX_CATEGORY_GROUPS) {
       Alert.alert(
         'Giới hạn nhóm',
         `Bạn chỉ có thể tạo tối đa ${MAX_CATEGORY_GROUPS} nhóm danh mục.`
@@ -80,7 +88,7 @@ export default function CategoriesScreen() {
     setModalVisible(true);
   };
 
-  const canCreateGroup = categories.length < MAX_CATEGORY_GROUPS;
+  const canCreateGroup = customGroupCount < MAX_CATEGORY_GROUPS;
 
   const confirmDelete = async () => {
     if (itemToDelete) {
@@ -153,14 +161,10 @@ export default function CategoriesScreen() {
     );
   };
 
-  const renderGroupCard = (group: typeof filteredCategories[number]) => (
-    <View key={group.id} style={styles.groupSwipeContainer}>
-      <Swipeable
-        renderRightActions={(progress, dragX) => renderGroupDeleteAction(progress, dragX, group)}
-        overshootRight={false}
-        friction={2}
-        rightThreshold={36}
-      >
+  const renderGroupCard = (group: typeof filteredCategories[number]) => {
+    const isDefault = !!group.isDefault;
+
+    const cardInner = (
       <View style={styles.groupCard}>
         <View style={[styles.groupHeader, { backgroundColor: group.bgColor }]}>
           <View style={styles.groupHeaderLeft}>
@@ -170,34 +174,43 @@ export default function CategoriesScreen() {
             </Text>
           </View>
           <View style={styles.groupHeaderActions}>
-            <TouchableOpacity
-              style={[
-                styles.groupAddCategoryBtn,
-                { borderColor: group.color + '55' },
-                group.items.length >= MAX_ITEMS_PER_GROUP && styles.groupAddCategoryBtnDisabled,
-              ]}
-              onPress={() => handleAddCategoryToGroup(group.id, group.items.length)}
-              activeOpacity={group.items.length >= MAX_ITEMS_PER_GROUP ? 1 : 0.7}
-              disabled={group.items.length >= MAX_ITEMS_PER_GROUP}
-            >
-              <Ionicons
-                name="add"
-                size={16}
-                color={group.items.length >= MAX_ITEMS_PER_GROUP ? '#9CA3AF' : group.color}
-              />
-              <Text
-                style={[
-                  styles.groupAddCategoryText,
-                  { color: group.items.length >= MAX_ITEMS_PER_GROUP ? '#9CA3AF' : group.color },
-                ]}
-              >
-                Tạo danh mục
-              </Text>
-            </TouchableOpacity>
-            {group.items.length >= MAX_ITEMS_PER_GROUP && (
-              <Text style={styles.groupLimitHint}>
-                Danh mục của nhóm đã đạt tối đa
-              </Text>
+            {isDefault ? (
+              <View style={styles.defaultBadge}>
+                <Ionicons name="lock-closed" size={11} color={group.color} />
+                <Text style={[styles.defaultBadgeText, { color: group.color }]}>Mặc định</Text>
+              </View>
+            ) : (
+              <>
+                <TouchableOpacity
+                  style={[
+                    styles.groupAddCategoryBtn,
+                    { borderColor: group.color + '55' },
+                    group.items.length >= MAX_ITEMS_PER_GROUP && styles.groupAddCategoryBtnDisabled,
+                  ]}
+                  onPress={() => handleAddCategoryToGroup(group.id, group.items.length)}
+                  activeOpacity={group.items.length >= MAX_ITEMS_PER_GROUP ? 1 : 0.7}
+                  disabled={group.items.length >= MAX_ITEMS_PER_GROUP}
+                >
+                  <Ionicons
+                    name="add"
+                    size={16}
+                    color={group.items.length >= MAX_ITEMS_PER_GROUP ? '#9CA3AF' : group.color}
+                  />
+                  <Text
+                    style={[
+                      styles.groupAddCategoryText,
+                      { color: group.items.length >= MAX_ITEMS_PER_GROUP ? '#9CA3AF' : group.color },
+                    ]}
+                  >
+                    Tạo danh mục
+                  </Text>
+                </TouchableOpacity>
+                {group.items.length >= MAX_ITEMS_PER_GROUP && (
+                  <Text style={styles.groupLimitHint}>
+                    Danh mục của nhóm đã đạt tối đa
+                  </Text>
+                )}
+              </>
             )}
           </View>
         </View>
@@ -212,9 +225,9 @@ export default function CategoriesScreen() {
               <TouchableOpacity
                 key={service.id}
                 style={styles.gridItem}
-                onLongPress={() => handleLongPress(service)}
+                onLongPress={isDefault ? undefined : () => handleLongPress(service)}
                 delayLongPress={300}
-                activeOpacity={0.7}
+                activeOpacity={isDefault ? 1 : 0.7}
               >
                 <View style={styles.iconWrapper}>
                   <Ionicons name={service.icon as any} size={28} color={service.color} />
@@ -227,9 +240,29 @@ export default function CategoriesScreen() {
           </View>
         )}
       </View>
-    </Swipeable>
-    </View>
-  );
+    );
+
+    if (isDefault) {
+      return (
+        <View key={group.id} style={styles.groupSwipeContainer}>
+          {cardInner}
+        </View>
+      );
+    }
+
+    return (
+      <View key={group.id} style={styles.groupSwipeContainer}>
+        <Swipeable
+          renderRightActions={(progress, dragX) => renderGroupDeleteAction(progress, dragX, group)}
+          overshootRight={false}
+          friction={2}
+          rightThreshold={36}
+        >
+          {cardInner}
+        </Swipeable>
+      </View>
+    );
+  };
 
   const filteredCategories = categories.map(group => ({
     ...group,

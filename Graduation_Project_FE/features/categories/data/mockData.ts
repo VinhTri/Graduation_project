@@ -5,6 +5,7 @@ export type ServiceItem = {
   color: string;
   bgColor: string;
   isCustom?: boolean;
+  isDefault?: boolean;
 };
 
 export type CategoryGroup = {
@@ -13,6 +14,7 @@ export type CategoryGroup = {
   icon: string;
   color: string;
   bgColor: string;
+  isDefault?: boolean;
   items: ServiceItem[];
 };
 

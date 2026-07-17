@@ -43,6 +43,24 @@ public enum ErrorCode {
     // ---- LỖI BÀI VIẾT ----
     POST_NOT_FOUND("POST_7001", "Không tìm thấy bài viết!", HttpStatus.NOT_FOUND),
 
+    // ---- LỖI QUỸ NHÓM ----
+    FUND_NOT_FOUND("FUND_8001", "Không tìm thấy quỹ!", HttpStatus.NOT_FOUND),
+    FUND_OWNER_LIMIT_EXCEEDED("FUND_8002", "Bạn chỉ có thể tạo tối đa 6 quỹ!", HttpStatus.BAD_REQUEST),
+    FUND_JOINED_LIMIT_EXCEEDED("FUND_8003", "Bạn chỉ có thể tham gia tối đa 6 quỹ!", HttpStatus.BAD_REQUEST),
+    FUND_COLOR_TAKEN("FUND_8004", "Màu quỹ này đã được sử dụng!", HttpStatus.BAD_REQUEST),
+    FUND_NOT_OWNER("FUND_8005", "Chỉ chủ quỹ mới được thực hiện thao tác này!", HttpStatus.FORBIDDEN),
+    FUND_HAS_BALANCE("FUND_8006", "Phải rút hết tiền về ví trước khi xóa quỹ!", HttpStatus.BAD_REQUEST),
+    FUND_INSUFFICIENT_BALANCE("FUND_8007", "Số dư quỹ không đủ!", HttpStatus.BAD_REQUEST),
+    FUND_NOT_MEMBER("FUND_8008", "Bạn không phải thành viên của quỹ này!", HttpStatus.FORBIDDEN),
+    FUND_INVALID_AMOUNT("FUND_8009", "Số tiền không hợp lệ (tối thiểu 10.000đ)!", HttpStatus.BAD_REQUEST),
+    FUND_TARGET_REQUIRED("FUND_8010", "Mục tiêu quỹ là bắt buộc (tối thiểu 10.000đ)!", HttpStatus.BAD_REQUEST),
+    FUND_ALREADY_MEMBER("FUND_8011", "Người này đã là thành viên của quỹ!", HttpStatus.CONFLICT),
+    FUND_INVITE_EXISTS("FUND_8012", "Đã gửi lời mời cho người này rồi!", HttpStatus.CONFLICT),
+    FUND_INVITE_NOT_FOUND("FUND_8013", "Không tìm thấy lời mời tham gia quỹ!", HttpStatus.NOT_FOUND),
+    FUND_CANNOT_INVITE_SELF("FUND_8014", "Không thể tự mời chính mình!", HttpStatus.BAD_REQUEST),
+    FUND_OWNER_CANNOT_LEAVE("FUND_8016", "Chủ quỹ không thể rời quỹ. Hãy xóa quỹ thay vì rời!", HttpStatus.BAD_REQUEST),
+    FUND_MEMBER_LIMIT_EXCEEDED("FUND_8017", "Quỹ đã đạt tối đa 10 thành viên!", HttpStatus.BAD_REQUEST),
+
     // ---- LỖI HỆ THỐNG CHUNG ----
     UNCATEGORIZED_EXCEPTION("SYS_9999", "Đã xảy ra lỗi hệ thống, vui lòng thử lại sau!", HttpStatus.INTERNAL_SERVER_ERROR);
 

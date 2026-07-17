@@ -1,5 +1,6 @@
 package com.project.app.notification.entity;
 
+import com.project.app.notification.enums.NotificationType;
 import com.project.app.user.entity.User;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
@@ -30,6 +31,14 @@ public class Notification {
 
     @Column(nullable = false, length = 500)
     private String message;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "type", length = 40)
+    @Builder.Default
+    private NotificationType type = NotificationType.GENERAL;
+
+    @Column(name = "related_id")
+    private Long relatedId;
 
     @Column(name = "is_read", nullable = false)
     @Builder.Default
