@@ -10,6 +10,7 @@ public class FriendshipResponse {
     private String friendUsername;
     private String friendEmail;
     private String friendAccountNumber;
+    private String friendAvatarUrl;
     private String status;
     private LocalDateTime createdAt;
     // To identify if the current user is the requester or receiver
@@ -24,14 +25,18 @@ public class FriendshipResponse {
         
         if (friendship.getRequester().getId().equals(currentUser.getId())) {
             this.isRequester = true;
-            this.friendId = friendship.getReceiver().getId();
-            this.friendUsername = friendship.getReceiver().getUsername();
-            this.friendEmail = friendship.getReceiver().getEmail();
+            User friend = friendship.getReceiver();
+            this.friendId = friend.getId();
+            this.friendUsername = friend.getUsername();
+            this.friendEmail = friend.getEmail();
+            this.friendAvatarUrl = friend.getAvatarUrl();
         } else {
             this.isRequester = false;
-            this.friendId = friendship.getRequester().getId();
-            this.friendUsername = friendship.getRequester().getUsername();
-            this.friendEmail = friendship.getRequester().getEmail();
+            User friend = friendship.getRequester();
+            this.friendId = friend.getId();
+            this.friendUsername = friend.getUsername();
+            this.friendEmail = friend.getEmail();
+            this.friendAvatarUrl = friend.getAvatarUrl();
         }
     }
 
@@ -49,6 +54,9 @@ public class FriendshipResponse {
 
     public String getFriendAccountNumber() { return friendAccountNumber; }
     public void setFriendAccountNumber(String friendAccountNumber) { this.friendAccountNumber = friendAccountNumber; }
+
+    public String getFriendAvatarUrl() { return friendAvatarUrl; }
+    public void setFriendAvatarUrl(String friendAvatarUrl) { this.friendAvatarUrl = friendAvatarUrl; }
 
     public String getStatus() { return status; }
     public void setStatus(String status) { this.status = status; }

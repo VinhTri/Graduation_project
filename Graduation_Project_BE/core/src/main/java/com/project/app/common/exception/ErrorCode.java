@@ -13,6 +13,9 @@ public enum ErrorCode {
     INVALID_OTP("AUTH_1007", "Mã OTP không hợp lệ hoặc đã được sử dụng!", HttpStatus.BAD_REQUEST),
     EXPIRED_OTP("AUTH_1008", "Mã OTP đã hết hạn!", HttpStatus.BAD_REQUEST),
     UNAUTHORIZED_ACCESS("AUTH_1009", "Bạn không có quyền thực hiện hành động này!", HttpStatus.FORBIDDEN),
+    SAME_PASSWORD("AUTH_1011", "Mật khẩu mới phải khác mật khẩu hiện tại!", HttpStatus.BAD_REQUEST),
+    SAME_PIN("AUTH_1012", "Mã PIN mới phải khác mã PIN hiện tại!", HttpStatus.BAD_REQUEST),
+    PIN_NOT_SET("AUTH_1013", "Bạn chưa thiết lập mã PIN!", HttpStatus.BAD_REQUEST),
 
     // ---- LỖI VÍ & GIAO DỊCH ----
     INVALID_PIN("WALL_2001", "Mã PIN không chính xác!", HttpStatus.BAD_REQUEST),

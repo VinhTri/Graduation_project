@@ -46,6 +46,13 @@ export const authService = {
   },
 
   /**
+   * Đổi mật khẩu khi đã đăng nhập (cần mật khẩu cũ)
+   */
+  changePassword: async (data: { currentPassword: string; newPassword: string }) => {
+    return axiosClient.post(ENDPOINTS.AUTH.CHANGE_PASSWORD, data);
+  },
+
+  /**
    * Gọi API Kiểm tra mã OTP
    * @param data Chứa email, otp và purpose
    */
@@ -81,5 +88,12 @@ export const authService = {
    */
   resetPin: async (data: { otp: string; newPinCode: string }) => {
     return axiosClient.post(ENDPOINTS.AUTH.RESET_PIN, data);
-  }
+  },
+
+  /**
+   * Đổi mã PIN khi đã đăng nhập (cần PIN cũ)
+   */
+  changePin: async (data: { currentPin: string; newPinCode: string }) => {
+    return axiosClient.post(ENDPOINTS.AUTH.CHANGE_PIN, data);
+  },
 };

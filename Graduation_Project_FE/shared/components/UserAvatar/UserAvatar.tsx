@@ -1,7 +1,8 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { Image } from 'expo-image';
 import { getUserAvatarUrl } from '../../utils/userAvatar';
+import { resolveMediaUrl } from '../../utils/resolveMediaUrl';
 
 const AVATAR_PALETTES = [
   { bg: '#FFE4EC', text: '#DB2777', border: '#FBCFE8' },
@@ -19,6 +20,7 @@ const getFallbackPalette = (name: string) => {
 interface UserAvatarProps {
   name: string;
   email?: string;
+  avatarUrl?: string | null;
   size?: number;
   borderWidth?: number;
 }
@@ -26,15 +28,22 @@ interface UserAvatarProps {
 export default function UserAvatar({
   name,
   email,
+  avatarUrl,
   size = 52,
   borderWidth = 2,
 }: UserAvatarProps) {
   const [hasError, setHasError] = useState(false);
   const seed = email || name || 'user';
-  const uri = useMemo(() => getUserAvatarUrl(seed, size * 2), [seed, size]);
+  const customUri = useMemo(() => resolveMediaUrl(avatarUrl), [avatarUrl]);
+  const diceUri = useMemo(() => getUserAvatarUrl(seed, size * 2), [seed, size]);
+  const uri = customUri || diceUri;
   const palette = getFallbackPalette(name);
   const initial = name ? name.charAt(0).toUpperCase() : '?';
   const radius = size >= 64 ? size * 0.28 : size * 0.34;
+
+  useEffect(() => {
+    setHasError(false);
+  }, [uri]);
 
   if (hasError) {
     return (

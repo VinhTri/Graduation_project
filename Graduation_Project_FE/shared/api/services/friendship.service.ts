@@ -7,6 +7,7 @@ export interface FriendshipResponse {
   friendUsername: string;
   friendEmail: string;
   friendAccountNumber?: string | null;
+  friendAvatarUrl?: string | null;
   status: string;
   createdAt: string;
   requester: boolean;
@@ -17,6 +18,7 @@ export interface SearchUserResult {
   username: string;
   email: string;
   accountNumber?: string | null;
+  avatarUrl?: string | null;
   friendshipStatus: 'NONE' | 'PENDING' | 'ACCEPTED' | 'REJECTED';
   friendshipId?: number;
   requester?: boolean;

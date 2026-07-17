@@ -39,6 +39,9 @@ public class User {
     @Column(name = "created_at", updatable = false)
     private java.time.LocalDateTime createdAt;
 
+    @Column(name = "avatar_url", length = 500)
+    private String avatarUrl;
+
     public User() {
     }
 
@@ -96,6 +99,14 @@ public class User {
 
     public java.time.LocalDateTime getCreatedAt() {
         return createdAt;
+    }
+
+    public String getAvatarUrl() {
+        return avatarUrl;
+    }
+
+    public void setAvatarUrl(String avatarUrl) {
+        this.avatarUrl = avatarUrl;
     }
 
     public int getFailedPinAttempts() {

@@ -1,113 +1,85 @@
 import React from 'react';
 import { ScrollView, View } from 'react-native';
-import { Ionicons, Feather, MaterialCommunityIcons } from '@expo/vector-icons';
-import Colors from '../../shared/constants/Colors';
+import { Ionicons, Feather } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { PASTEL_PALETTE } from '../../shared/constants/PastelPalette';
 import { styles } from './SettingsScreen.styles';
 
 import { ProfileHeader } from './components/ProfileHeader';
 import { QuickActionCard } from './components/QuickActionCard';
 import { SettingsSection } from './components/SettingsSection';
 import { SettingsItem } from './components/SettingsItem';
+import { SecuritySection } from './components/SecuritySection';
 import { LogoutButton } from './components/LogoutButton';
-import { useRouter } from 'expo-router';
+
+const ICON = PASTEL_PALETTE.accentDeep;
 
 export function SettingsScreen() {
   const router = useRouter();
-  
+  const insets = useSafeAreaInsets();
+  const bottomPad = Math.max(insets.bottom, 10) + 90;
+
   return (
     <View style={styles.container}>
-      <ScrollView 
-        contentContainerStyle={styles.scrollContent}
+      <ScrollView
+        contentContainerStyle={[styles.scrollContent, { paddingBottom: bottomPad }]}
         showsVerticalScrollIndicator={false}
       >
         <ProfileHeader />
-        
+
         <QuickActionCard />
 
-        <SettingsSection title="Ưu đãi">
-          <SettingsItem 
-            icon={<MaterialCommunityIcons name="ticket-confirmation-outline" size={22} color="#60A5FA" />}
-            title="Quà của tôi"
-            subtitle="10 ưu đãi"
-          />
-          <SettingsItem 
-            icon={<MaterialCommunityIcons name="cat" size={22} color="#F59E0B" />}
-            title="Xu tích lũy"
-            subtitle="1223 xu"
-            isLast
-          />
-        </SettingsSection>
-
-        <SettingsSection title="Quản lý tài chính" rightLink="Xem thêm">
-          <SettingsItem 
-            icon={<Ionicons name="card-outline" size={22} color={Colors.textMuted} />}
-            title="Liên kết tài khoản ngân hàng"
+        <SettingsSection title="Tài chính">
+          <SettingsItem
+            icon={<Ionicons name="card-outline" size={20} color={ICON} />}
+            title="Liên kết ngân hàng"
+            subtitle="Quản lý tài khoản ngân hàng"
             onPress={() => router.push('/settings/bank-binding')}
           />
-          <SettingsItem 
-            title="Số dư hiện có"
-            showEye
-            hideChevron
-          />
-          <SettingsItem 
-            icon={<Ionicons name="wallet-outline" size={22} color={Colors.primary} />}
+          <SettingsItem
+            icon={<Ionicons name="wallet-outline" size={20} color={ICON} />}
             title="Ví SmartSpend"
-            value="0đ"
-            hideChevron
+            subtitle="Số dư và cài đặt ví"
+            onPress={() => router.push('/(tabs)/wallet')}
           />
-          <SettingsItem 
-            icon={<Ionicons name="card-outline" size={22} color="#3B82F6" />}
-            title="Tài khoản trả sau"
-            value="0đ"
-            hideChevron
-          />
-          <SettingsItem 
-            icon={<Ionicons name="leaf-outline" size={22} color={Colors.success} />}
-            title="Số dư sinh lời"
-            value="894đ"
-            hideChevron
-          />
-          <SettingsItem 
-            icon={<Ionicons name="settings-outline" size={22} color={Colors.textMuted} />}
-            title="Cài đặt thanh toán tự động"
-            subtitle="Sắp xếp nguồn tiền, cài đặt dịch vụ"
-          />
-          <SettingsItem 
-            icon={<MaterialCommunityIcons name="speedometer" size={22} color={Colors.textMuted} />}
-            title="Điểm tin cậy SmartSpend"
+          <SettingsItem
+            icon={<Feather name="pie-chart" size={19} color={ICON} />}
+            title="Sổ tay chi tiêu"
+            subtitle="Ghi chép thu chi hàng ngày"
+            onPress={() => router.push('/(tabs)/notebook')}
             isLast
           />
         </SettingsSection>
 
         <SettingsSection title="Tiện ích">
-          <SettingsItem 
-            icon={<Ionicons name="receipt-outline" size={22} color={Colors.textMuted} />}
+          <SettingsItem
+            icon={<Ionicons name="receipt-outline" size={20} color={ICON} />}
             title="Quản lý hóa đơn"
-            subtitle="Thêm hóa đơn để thanh toán bạn nhé"
+            subtitle="Theo dõi và thanh toán hóa đơn"
+            onPress={() => router.push('/invoice')}
           />
-          <SettingsItem 
-            icon={<Ionicons name="document-text-outline" size={22} color={Colors.textMuted} />}
-            title="Quản lý hợp đồng"
-          />
-          <SettingsItem 
-            icon={<Ionicons name="ticket-outline" size={22} color={Colors.textMuted} />}
-            title="Quản lý vé"
+          <SettingsItem
+            icon={<Ionicons name="people-outline" size={20} color={ICON} />}
+            title="Quỹ nhóm"
+            subtitle="Quỹ chung cùng bạn bè"
+            onPress={() => router.push('/(tabs)/funds')}
             isLast
           />
         </SettingsSection>
 
-        <SettingsSection title="Hỗ trợ và Cài đặt">
-          <SettingsItem 
-            icon={<Feather name="headphones" size={22} color={Colors.textMuted} />}
+        <SecuritySection />
+
+        <SettingsSection title="Hỗ trợ & Cài đặt">
+          <SettingsItem
+            icon={<Feather name="headphones" size={19} color={ICON} />}
             title="Trung tâm hỗ trợ"
+            subtitle="Câu hỏi thường gặp"
           />
-          <SettingsItem 
-            icon={<Feather name="shield" size={22} color={Colors.textMuted} />}
-            title="Trung tâm bảo mật"
-          />
-          <SettingsItem 
-            icon={<Ionicons name="settings-outline" size={22} color={Colors.textMuted} />}
+          <SettingsItem
+            icon={<Ionicons name="settings-outline" size={20} color={ICON} />}
             title="Cài đặt ứng dụng"
+            subtitle="Thông báo, giao diện"
             isLast
           />
         </SettingsSection>

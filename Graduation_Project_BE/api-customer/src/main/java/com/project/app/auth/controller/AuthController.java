@@ -68,6 +68,17 @@ public class AuthController {
                 .build());
     }
 
+    @PostMapping("/change-password")
+    public ResponseEntity<ApiResponse<Void>> changePassword(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @Valid @RequestBody ChangePasswordRequest request) {
+        authService.changePassword(userDetails.getUser().getId(), request);
+        return ResponseEntity.ok(ApiResponse.<Void>builder()
+                .success(true)
+                .message("Đổi mật khẩu thành công!")
+                .build());
+    }
+
     // ====================== MÃ PIN ======================
     @GetMapping("/pin-status")
     public ResponseEntity<ApiResponse<Boolean>> getPinStatus(@AuthenticationPrincipal CustomUserDetails userDetails) {
@@ -124,6 +135,17 @@ public class AuthController {
         return ResponseEntity.ok(ApiResponse.<Void>builder()
                 .success(true)
                 .message("Đặt lại mã PIN thành công")
+                .build());
+    }
+
+    @PostMapping("/change-pin")
+    public ResponseEntity<ApiResponse<Void>> changePin(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @Valid @RequestBody ChangePinRequest request) {
+        authService.changePinCode(userDetails.getUser().getId(), request);
+        return ResponseEntity.ok(ApiResponse.<Void>builder()
+                .success(true)
+                .message("Đổi mã PIN thành công")
                 .build());
     }
 

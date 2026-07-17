@@ -175,6 +175,24 @@ public class AuthServiceImpl implements AuthService {
         otpService.markOtpAsUsed(otpToken);
     }
 
+    @Override
+    @Transactional
+    public void changePassword(Long userId, ChangePasswordRequest request) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+
+        if (!passwordEncoder.matches(request.getCurrentPassword(), user.getPassword())) {
+            throw new AppException(ErrorCode.INVALID_CREDENTIALS);
+        }
+
+        if (passwordEncoder.matches(request.getNewPassword(), user.getPassword())) {
+            throw new AppException(ErrorCode.SAME_PASSWORD);
+        }
+
+        user.setPassword(passwordEncoder.encode(request.getNewPassword()));
+        userRepository.save(user);
+    }
+
     // ====================== MÃ PIN ======================
     @Override
     public boolean hasPinCode(Long userId) {
@@ -229,6 +247,28 @@ public class AuthServiceImpl implements AuthService {
             return false;
         }
         return passwordEncoder.matches(pinCode, user.getPinCode());
+    }
+
+    @Override
+    @Transactional
+    public void changePinCode(Long userId, ChangePinRequest request) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+
+        if (user.getPinCode() == null || user.getPinCode().isEmpty()) {
+            throw new AppException(ErrorCode.PIN_NOT_SET);
+        }
+
+        if (!passwordEncoder.matches(request.getCurrentPin(), user.getPinCode())) {
+            throw new AppException(ErrorCode.INVALID_PIN);
+        }
+
+        if (passwordEncoder.matches(request.getNewPinCode(), user.getPinCode())) {
+            throw new AppException(ErrorCode.SAME_PIN);
+        }
+
+        user.setPinCode(passwordEncoder.encode(request.getNewPinCode()));
+        userRepository.save(user);
     }
 
     // ====================== DÙNG CHUNG ======================
