@@ -27,6 +27,21 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
 
     java.util.List<Transaction> findByUserIdOrderByCreatedAtDesc(Long userId);
 
+    java.util.List<Transaction> findByUserIdAndWallet_WalletTypeOrderByCreatedAtDesc(
+            Long userId,
+            com.project.app.wallet.enums.WalletType walletType
+    );
+
+    java.util.List<Transaction> findByUserIdAndWallet_IsDefaultTrueOrderByCreatedAtDesc(Long userId);
+
+    java.util.List<Transaction> findByUserAndTypeAndStatusAndWallet_IsDefaultTrueAndCreatedAtBetween(
+            com.project.app.user.entity.User user,
+            com.project.app.transaction.enums.TransactionType type,
+            com.project.app.transaction.enums.TransactionStatus status,
+            java.time.LocalDateTime startDate,
+            java.time.LocalDateTime endDate
+    );
+
     @org.springframework.data.jpa.repository.Query("SELECT COALESCE(SUM(t.amount), 0) FROM Transaction t WHERE t.wallet.id = :walletId " +
            "AND t.type IN :types AND t.status = :status AND t.createdAt >= :startOfDay")
     java.math.BigDecimal sumDailyTransactedAmount(

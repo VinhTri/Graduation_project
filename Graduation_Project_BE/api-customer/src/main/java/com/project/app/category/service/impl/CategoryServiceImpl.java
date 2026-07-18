@@ -24,8 +24,10 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class CategoryServiceImpl implements CategoryService {
 
-    private static final int MAX_GROUPS_PER_USER = 5;
+    private static final int MAX_GROUPS_PER_USER = 6;
     private static final int MAX_ITEMS_PER_GROUP = 4;
+    private static final int MAX_GROUP_TITLE_LENGTH = 24;
+    private static final int MAX_ITEM_LABEL_LENGTH = 20;
 
     private final CategoryGroupRepository groupRepository;
     private final CategoryItemRepository itemRepository;
@@ -90,8 +92,21 @@ public class CategoryServiceImpl implements CategoryService {
             throw new AppException(ErrorCode.CATEGORY_GROUP_LIMIT_EXCEEDED);
         }
 
+        String title = request.getTitle() != null ? request.getTitle().trim() : "";
+        if (title.isEmpty()) {
+            throw new AppException(ErrorCode.CATEGORY_GROUP_NOT_FOUND); // fallback - better add INVALID
+        }
+        if (title.length() > MAX_GROUP_TITLE_LENGTH) {
+            throw new AppException(ErrorCode.CATEGORY_GROUP_NAME_TOO_LONG);
+        }
+
+        if (request.getColor() != null
+                && groupRepository.existsByUserAndColorIgnoreCaseAndIsDeletedFalse(user, request.getColor())) {
+            throw new AppException(ErrorCode.CATEGORY_GROUP_COLOR_TAKEN);
+        }
+
         CategoryGroup group = CategoryGroup.builder()
-                .title(request.getTitle())
+                .title(title)
                 .icon(request.getIcon())
                 .color(request.getColor())
                 .bgColor(request.getBgColor())
@@ -102,6 +117,7 @@ public class CategoryServiceImpl implements CategoryService {
     }
 
     @Override
+    @Transactional
     public CategoryItemResponse createItem(User user, CategoryItemRequest request) {
         CategoryGroup group = groupRepository.findById(request.getGroupId())
                 .orElseThrow(() -> new AppException(ErrorCode.CATEGORY_GROUP_NOT_FOUND));
@@ -119,8 +135,21 @@ public class CategoryServiceImpl implements CategoryService {
             throw new AppException(ErrorCode.CATEGORY_ITEM_LIMIT_EXCEEDED);
         }
 
+        String label = request.getLabel() != null ? request.getLabel().trim() : "";
+        if (label.isEmpty()) {
+            throw new AppException(ErrorCode.CATEGORY_ITEM_NOT_FOUND);
+        }
+        if (label.length() > MAX_ITEM_LABEL_LENGTH) {
+            throw new AppException(ErrorCode.CATEGORY_ITEM_NAME_TOO_LONG);
+        }
+
+        if (request.getColor() != null
+                && itemRepository.existsByUserAndColorIgnoreCaseAndIsDeletedFalse(user, request.getColor())) {
+            throw new AppException(ErrorCode.CATEGORY_ITEM_COLOR_TAKEN);
+        }
+
         CategoryItem item = CategoryItem.builder()
-                .label(request.getLabel())
+                .label(label)
                 .icon(request.getIcon())
                 .color(request.getColor())
                 .bgColor(request.getBgColor())

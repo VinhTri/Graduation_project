@@ -13,6 +13,7 @@ import java.util.Optional;
 public interface WalletRepository extends JpaRepository<Wallet, Long> {
     List<Wallet> findByUserId(Long userId);
     Optional<Wallet> findByUserIdAndIsDefaultTrue(Long userId);
+    Optional<Wallet> findByUserIdAndWalletType(Long userId, com.project.app.wallet.enums.WalletType walletType);
     Optional<Wallet> findByAccountNumber(String accountNumber);
 
     @Query("SELECT w.user FROM Wallet w WHERE UPPER(TRIM(w.accountNumber)) = UPPER(TRIM(:accountNumber))")

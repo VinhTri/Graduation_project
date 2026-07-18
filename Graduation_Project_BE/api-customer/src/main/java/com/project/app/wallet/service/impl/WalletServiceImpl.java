@@ -3,7 +3,10 @@ package com.project.app.wallet.service.impl;
 import com.project.app.auth.service.AuthService;
 import com.project.app.common.exception.AppException;
 import com.project.app.common.exception.ErrorCode;
+import com.project.app.user.entity.User;
+import com.project.app.user.repository.UserRepository;
 import com.project.app.wallet.entity.Wallet;
+import com.project.app.wallet.enums.WalletType;
 import com.project.app.wallet.repository.WalletRepository;
 import com.project.app.wallet.service.WalletService;
 import org.springframework.stereotype.Service;
@@ -16,17 +19,44 @@ public class WalletServiceImpl implements WalletService {
 
     private final WalletRepository walletRepository;
     private final AuthService authService;
+    private final UserRepository userRepository;
 
-    public WalletServiceImpl(WalletRepository walletRepository, AuthService authService) {
+    public WalletServiceImpl(WalletRepository walletRepository, AuthService authService, UserRepository userRepository) {
         this.walletRepository = walletRepository;
         this.authService = authService;
+        this.userRepository = userRepository;
     }
 
     // ====================== LẤY VÍ MẶC ĐỊNH ======================
     @Override
     public Wallet getDefaultWallet(Long userId) {
-        return walletRepository.findByUserIdAndIsDefaultTrue(userId)
+        Wallet wallet = walletRepository.findByUserIdAndIsDefaultTrue(userId)
                 .orElseThrow(() -> new AppException(ErrorCode.WALLET_NOT_FOUND));
+        if (wallet.getWalletType() == null || wallet.getWalletType() != WalletType.MAIN) {
+            wallet.setWalletType(WalletType.MAIN);
+            walletRepository.save(wallet);
+        }
+        return wallet;
+    }
+
+    // ====================== LẤY / TẠO VÍ TIỀN MẶT ======================
+    @Override
+    @Transactional
+    public Wallet getOrCreateCashWallet(Long userId) {
+        return walletRepository.findByUserIdAndWalletType(userId, WalletType.CASH)
+                .orElseGet(() -> {
+                    User user = userRepository.findById(userId)
+                            .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+                    Wallet cashWallet = new Wallet(
+                            user,
+                            "Tiền mặt",
+                            BigDecimal.ZERO,
+                            false,
+                            false,
+                            WalletType.CASH
+                    );
+                    return walletRepository.save(cashWallet);
+                });
     }
 
     // ====================== LẤY VÍ THEO ID ======================

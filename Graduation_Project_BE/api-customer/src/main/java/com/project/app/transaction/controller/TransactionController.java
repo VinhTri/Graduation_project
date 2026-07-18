@@ -87,4 +87,18 @@ public class TransactionController {
                 .data(response)
                 .build());
     }
+
+    // ====================== GIAO DỊCH THỦ CÔNG TIỀN MẶT ======================
+    @PostMapping("/manual")
+    public ResponseEntity<ApiResponse<com.project.app.transaction.dto.response.ManualTransactionResponse>> createManualTransaction(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @Valid @RequestBody com.project.app.transaction.dto.request.ManualTransactionRequest request) {
+
+        var response = transactionService.createManualTransaction(userDetails.getUser(), request);
+        return ResponseEntity.ok(ApiResponse.<com.project.app.transaction.dto.response.ManualTransactionResponse>builder()
+                .success(true)
+                .message("Ghi giao dịch tiền mặt thành công")
+                .data(response)
+                .build());
+    }
 }

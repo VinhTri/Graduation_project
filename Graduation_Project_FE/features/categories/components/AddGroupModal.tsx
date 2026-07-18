@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   View,
   Text,
@@ -15,8 +15,8 @@ import { Ionicons } from '@expo/vector-icons';
 import Colors from '../../../shared/constants/Colors';
 import { useCategoryContext } from '../../../shared/contexts/CategoryContext';
 import { IconPicker } from './IconPicker';
-import { AVAILABLE_COLORS } from '../constants/categoryTheme';
-import { MAX_CATEGORY_GROUPS } from '../constants/categoryLimits';
+import { ColorTheme, getAvailableGroupColors, GROUP_COLORS } from '../constants/categoryTheme';
+import { MAX_CATEGORY_GROUPS, MAX_GROUP_NAME_LENGTH } from '../constants/categoryLimits';
 
 type AddGroupModalProps = {
   visible: boolean;
@@ -28,16 +28,26 @@ export const AddGroupModal: React.FC<AddGroupModalProps> = ({ visible, onClose, 
   const { categories, addGroup } = useCategoryContext();
   const [title, setTitle] = useState('');
   const [selectedIcon, setSelectedIcon] = useState('layers');
-  const [selectedColorIndex, setSelectedColorIndex] = useState(0);
+  const [selectedColor, setSelectedColor] = useState<ColorTheme | null>(null);
   const [saving, setSaving] = useState(false);
+
+  const customGroups = useMemo(
+    () => categories.filter((g) => !g.isDefault),
+    [categories]
+  );
+
+  const availableColors = useMemo(() => {
+    const used = customGroups.map((g) => g.color);
+    return getAvailableGroupColors(used);
+  }, [customGroups]);
 
   useEffect(() => {
     if (visible) {
       setTitle('');
       setSelectedIcon('layers');
-      setSelectedColorIndex(0);
+      setSelectedColor(availableColors[0] ?? null);
     }
-  }, [visible]);
+  }, [visible, availableColors]);
 
   const handleSave = async () => {
     const trimmedTitle = title.trim();
@@ -46,7 +56,7 @@ export const AddGroupModal: React.FC<AddGroupModalProps> = ({ visible, onClose, 
       return;
     }
 
-    if (categories.length >= MAX_CATEGORY_GROUPS) {
+    if (customGroups.length >= MAX_CATEGORY_GROUPS) {
       Alert.alert(
         'Giới hạn nhóm',
         `Bạn chỉ có thể tạo tối đa ${MAX_CATEGORY_GROUPS} nhóm danh mục.`
@@ -54,21 +64,25 @@ export const AddGroupModal: React.FC<AddGroupModalProps> = ({ visible, onClose, 
       return;
     }
 
+    if (!selectedColor) {
+      Alert.alert('Hết màu', 'Tất cả màu nhóm đã được sử dụng. Hãy xóa nhóm cũ để lấy lại màu.');
+      return;
+    }
+
     const normalized = trimmedTitle.toLowerCase();
-    const duplicate = categories.some((g) => g.title.toLowerCase() === normalized);
+    const duplicate = customGroups.some((g) => g.title.toLowerCase() === normalized);
     if (duplicate) {
       Alert.alert('Trùng tên nhóm', `Nhóm "${trimmedTitle}" đã tồn tại. Vui lòng đặt tên khác.`);
       return;
     }
 
-    const theme = AVAILABLE_COLORS[selectedColorIndex];
     setSaving(true);
     try {
       const newGroupId = await addGroup({
         title: trimmedTitle,
         icon: selectedIcon,
-        color: theme.color,
-        bgColor: theme.bgColor,
+        color: selectedColor.color,
+        bgColor: selectedColor.bgColor,
       });
       onCreated?.(newGroupId);
       onClose();
@@ -78,6 +92,9 @@ export const AddGroupModal: React.FC<AddGroupModalProps> = ({ visible, onClose, 
       setSaving(false);
     }
   };
+
+  const previewColor = selectedColor?.color || Colors.primary;
+  const previewBg = selectedColor?.bgColor || Colors.primaryLight;
 
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
@@ -95,55 +112,69 @@ export const AddGroupModal: React.FC<AddGroupModalProps> = ({ visible, onClose, 
           </View>
 
           <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-            <Text style={styles.label}>Tên nhóm</Text>
+            <View style={styles.labelRow}>
+              <Text style={[styles.label, { marginTop: 0, marginBottom: 0 }]}>Tên nhóm</Text>
+              <Text
+                style={[
+                  styles.charCount,
+                  title.length >= MAX_GROUP_NAME_LENGTH && styles.charCountLimit,
+                ]}
+              >
+                {title.length}/{MAX_GROUP_NAME_LENGTH}
+              </Text>
+            </View>
             <TextInput
               style={styles.input}
-              placeholder="VD: Du lịch, Gia đình, Công việc..."
+              placeholder={`VD: Du lịch, Gia đình... (tối đa ${MAX_GROUP_NAME_LENGTH} ký tự)`}
               placeholderTextColor={Colors.textMuted}
               value={title}
-              onChangeText={setTitle}
-              maxLength={40}
+              onChangeText={(text) => setTitle(text.slice(0, MAX_GROUP_NAME_LENGTH))}
+              maxLength={MAX_GROUP_NAME_LENGTH}
             />
 
             <Text style={styles.label}>Chọn biểu tượng</Text>
             <IconPicker
               selectedIcon={selectedIcon}
               onSelect={setSelectedIcon}
-              color={AVAILABLE_COLORS[selectedColorIndex].color}
+              color={previewColor}
             />
 
             <Text style={styles.label}>Chọn màu sắc</Text>
-            <View style={styles.colorGrid}>
-              {AVAILABLE_COLORS.map((item, index) => (
-                <TouchableOpacity
-                  key={index}
-                  style={[
-                    styles.colorCircle,
-                    { backgroundColor: item.color },
-                    selectedColorIndex === index && styles.colorCircleSelected,
-                  ]}
-                  onPress={() => setSelectedColorIndex(index)}
-                >
-                  {selectedColorIndex === index && (
-                    <Ionicons name="checkmark" size={20} color="#FFF" />
-                  )}
-                </TouchableOpacity>
-              ))}
-            </View>
+            <Text style={styles.colorHint}>
+              Tối đa {MAX_CATEGORY_GROUPS} nhóm ({customGroups.length}/{MAX_CATEGORY_GROUPS}). Mỗi nhóm một màu riêng
+              ({availableColors.length}/{GROUP_COLORS.length} màu còn trống).
+            </Text>
+            {availableColors.length === 0 ? (
+              <Text style={styles.emptyColors}>Không còn màu nhóm trống</Text>
+            ) : (
+              <View style={styles.colorGrid}>
+                {availableColors.map((item) => {
+                  const active = selectedColor?.color === item.color;
+                  return (
+                    <TouchableOpacity
+                      key={item.color}
+                      style={[
+                        styles.colorCircle,
+                        { backgroundColor: item.color },
+                        active && styles.colorCircleSelected,
+                      ]}
+                      onPress={() => setSelectedColor(item)}
+                    >
+                      {active && <Ionicons name="checkmark" size={20} color="#FFF" />}
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            )}
 
             <View style={styles.previewBox}>
-              <View
-                style={[
-                  styles.previewHeader,
-                  { backgroundColor: AVAILABLE_COLORS[selectedColorIndex].bgColor },
-                ]}
-              >
+              <View style={[styles.previewHeader, { backgroundColor: previewBg }]}>
                 <Ionicons
                   name={selectedIcon as keyof typeof Ionicons.glyphMap}
                   size={20}
-                  color={AVAILABLE_COLORS[selectedColorIndex].color}
+                  color={previewColor}
                 />
-                <Text style={[styles.previewTitle, { color: AVAILABLE_COLORS[selectedColorIndex].color }]}>
+                <Text style={[styles.previewTitle, { color: previewColor }]}>
                   {title.trim() || 'Tên nhóm'}
                 </Text>
               </View>
@@ -153,9 +184,9 @@ export const AddGroupModal: React.FC<AddGroupModalProps> = ({ visible, onClose, 
 
           <View style={styles.footer}>
             <TouchableOpacity
-              style={[styles.saveBtn, saving && styles.saveBtnDisabled]}
+              style={[styles.saveBtn, (saving || !selectedColor) && styles.saveBtnDisabled]}
               onPress={handleSave}
-              disabled={saving}
+              disabled={saving || !selectedColor}
             >
               <Text style={styles.saveBtnText}>{saving ? 'Đang lưu...' : 'Tạo nhóm'}</Text>
             </TouchableOpacity>
@@ -206,6 +237,34 @@ const styles = StyleSheet.create({
     color: Colors.text,
     marginBottom: 12,
     marginTop: 8,
+  },
+  labelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 12,
+    marginTop: 8,
+  },
+  charCount: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: Colors.textMuted,
+  },
+  charCountLimit: {
+    color: Colors.error,
+  },
+  colorHint: {
+    fontSize: 12,
+    color: Colors.textMuted,
+    marginTop: -6,
+    marginBottom: 12,
+    lineHeight: 18,
+  },
+  emptyColors: {
+    fontSize: 13,
+    color: Colors.error,
+    fontWeight: '600',
+    marginBottom: 20,
   },
   input: {
     backgroundColor: Colors.white,

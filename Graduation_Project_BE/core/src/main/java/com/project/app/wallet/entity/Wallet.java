@@ -1,6 +1,7 @@
 package com.project.app.wallet.entity;
 
 import com.project.app.user.entity.User;
+import com.project.app.wallet.enums.WalletType;
 import jakarta.persistence.*;
 
 import java.math.BigDecimal;
@@ -32,6 +33,10 @@ public class Wallet {
     @Column(name = "is_deletable", nullable = false)
     private boolean isDeletable = true;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "wallet_type", length = 20)
+    private WalletType walletType = WalletType.MAIN;
+
     @Column(name = "is_limit_enabled", nullable = false)
     private boolean isLimitEnabled = false;
 
@@ -54,6 +59,16 @@ public class Wallet {
         this.balance = balance != null ? balance : BigDecimal.ZERO;
         this.isDefault = isDefault;
         this.isDeletable = isDeletable;
+        this.walletType = isDefault ? WalletType.MAIN : WalletType.CASH;
+    }
+
+    public Wallet(User user, String name, BigDecimal balance, boolean isDefault, boolean isDeletable, WalletType walletType) {
+        this.user = user;
+        this.name = name;
+        this.balance = balance != null ? balance : BigDecimal.ZERO;
+        this.isDefault = isDefault;
+        this.isDeletable = isDeletable;
+        this.walletType = walletType != null ? walletType : WalletType.MAIN;
     }
 
     // Getter và Setter
@@ -106,6 +121,14 @@ public class Wallet {
 
     public void setDeletable(boolean isDeletable) {
         this.isDeletable = isDeletable;
+    }
+
+    public WalletType getWalletType() {
+        return walletType != null ? walletType : WalletType.MAIN;
+    }
+
+    public void setWalletType(WalletType walletType) {
+        this.walletType = walletType;
     }
 
     public boolean isLimitEnabled() {

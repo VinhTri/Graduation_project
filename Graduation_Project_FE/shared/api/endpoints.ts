@@ -22,10 +22,15 @@ export const ENDPOINTS = {
   TRANSACTION: {
     TOP_UP: '/api/v1/transactions/top-up',
     WITHDRAW: '/api/v1/transactions/withdraw',
+    MANUAL: '/api/v1/transactions/manual',
   },
   WALLET: {
     MY_WALLET: '/api/v1/wallets/me',
+    CASH_WALLET: '/api/v1/wallets/cash',
     UPDATE_SETTINGS: (id: number) => `/api/v1/wallets/${id}/settings`,
+  },
+  HISTORY: {
+    TRANSACTIONS: '/api/v1/history/transactions',
   },
   BANK_ACCOUNT: {
     GET_ALL: '/api/v1/bank-accounts',

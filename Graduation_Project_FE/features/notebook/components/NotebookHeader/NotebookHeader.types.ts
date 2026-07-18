@@ -1,5 +1,5 @@
 export interface NotebookHeaderProps {
   totalBalance: number;
-  monthlyIncome?: number;
-  monthlyExpense?: number;
+  onAddCashBalance?: () => void;
+  onSpendCashBalance?: () => void;
 }

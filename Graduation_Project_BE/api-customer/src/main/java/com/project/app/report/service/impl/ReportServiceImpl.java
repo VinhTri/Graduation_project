@@ -51,7 +51,7 @@ public class ReportServiceImpl implements ReportService {
     @Transactional(readOnly = true)
     public List<ReportDistributionResponse> getDistributionReport(User user, TransactionType type, String filter, LocalDate date) {
         LocalDateTime[] dateRange = getDateRange(filter, date);
-        List<Transaction> transactions = transactionRepository.findByUserAndTypeAndStatusAndCreatedAtBetween(
+        List<Transaction> transactions = transactionRepository.findByUserAndTypeAndStatusAndWallet_IsDefaultTrueAndCreatedAtBetween(
                 user, resolveType(type), TransactionStatus.SUCCESS, dateRange[0], dateRange[1]
         );
 
@@ -118,7 +118,7 @@ public class ReportServiceImpl implements ReportService {
     @Transactional(readOnly = true)
     public List<ReportDistributionResponse> getGroupDistributionReport(User user, TransactionType type, String filter, LocalDate date) {
         LocalDateTime[] dateRange = getDateRange(filter, date);
-        List<Transaction> transactions = transactionRepository.findByUserAndTypeAndStatusAndCreatedAtBetween(
+        List<Transaction> transactions = transactionRepository.findByUserAndTypeAndStatusAndWallet_IsDefaultTrueAndCreatedAtBetween(
                 user, resolveType(type), TransactionStatus.SUCCESS, dateRange[0], dateRange[1]
         );
 
@@ -214,7 +214,7 @@ public class ReportServiceImpl implements ReportService {
     @Transactional(readOnly = true)
     public List<ReportTrendResponse> getTrendReport(User user, TransactionType type, String filter, LocalDate date) {
         LocalDateTime[] dateRange = getDateRange(filter, date);
-        List<Transaction> transactions = transactionRepository.findByUserAndTypeAndStatusAndCreatedAtBetween(
+        List<Transaction> transactions = transactionRepository.findByUserAndTypeAndStatusAndWallet_IsDefaultTrueAndCreatedAtBetween(
                 user, resolveType(type), TransactionStatus.SUCCESS, dateRange[0], dateRange[1]
         );
 

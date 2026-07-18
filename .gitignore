@@ -12,3 +12,6 @@ out/
 # Build output
 target/
 build/
+
+# Local runtime uploads (avatars, etc.)
+uploads/

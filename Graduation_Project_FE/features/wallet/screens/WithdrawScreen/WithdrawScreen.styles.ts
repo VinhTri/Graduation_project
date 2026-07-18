@@ -41,6 +41,11 @@ export const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
   },
+  sourceFundsLogo: {
+    marginRight: 14,
+    borderWidth: 1,
+    borderColor: "rgba(255, 255, 255, 0.75)",
+  },
   sourceFundsIcon: {
     width: 44,
     height: 44,
@@ -52,6 +57,7 @@ export const styles = StyleSheet.create({
   },
   sourceFundsInfo: {
     flex: 1,
+    minWidth: 0,
   },
   sourceFundsBalanceWrap: {
     alignItems: "flex-end",
@@ -61,6 +67,17 @@ export const styles = StyleSheet.create({
     fontSize: 13,
     marginBottom: 4,
     fontWeight: "600",
+  },
+  sourceFundsBrand: {
+    fontSize: 17,
+    fontWeight: "900",
+    letterSpacing: 0.2,
+  },
+  brandSmart: {
+    color: PASTEL_PALETTE.title,
+  },
+  brandSpend: {
+    color: PASTEL_PALETTE.accent,
   },
   sourceFundsValue: {
     color: PASTEL_PALETTE.title,
@@ -337,18 +354,25 @@ export const styles = StyleSheet.create({
     backgroundColor: "transparent",
   },
   confirmButton: {
-    backgroundColor: Colors.primary,
+    backgroundColor: PASTEL_PALETTE.accent,
     paddingVertical: 16,
     borderRadius: 16, 
     alignItems: "center",
+    shadowColor: PASTEL_PALETTE.accentDeep,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 3,
   },
   confirmButtonDisabled: {
-    backgroundColor: Colors.border,
+    backgroundColor: PASTEL_PALETTE.border,
+    shadowOpacity: 0,
+    elevation: 0,
   },
   confirmButtonText: {
     fontSize: 16,
-    fontWeight: "700",
-    color: Colors.white,
+    fontWeight: "800",
+    color: PASTEL_PALETTE.white,
   },
   limitSection: {
     marginTop: 0,

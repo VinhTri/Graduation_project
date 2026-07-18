@@ -143,9 +143,33 @@ export default function TransactionActionScreen() {
     return parseInt(val, 10).toLocaleString("vi-VN");
   };
 
-  // Nạp bao nhiêu nhận bấy nhiêu: không nhập số tiền, vào thẳng màn QR tĩnh.
-  const handleTopUpConfirm = () => {
-    router.push("/wallet/checkout");
+  // Nạp demo: nhập số tiền → cộng ngay vào ví (mock BE).
+  const handleTopUpConfirm = async () => {
+    const parsedAmount = parseInt(amount, 10);
+    if (!parsedAmount || parsedAmount < 1000) {
+      Alert.alert("Lỗi", "Số tiền nạp tối thiểu là 1,000đ");
+      return;
+    }
+    setIsLoading(true);
+    try {
+      await transactionService.initiateTopUp({ amount: parsedAmount });
+      setWalletBalance((prev) => prev + parsedAmount);
+      setAmount("");
+      setSuccessModalConfig({
+        visible: true,
+        title: "Nạp thành công",
+        message: `Đã cộng ${parsedAmount.toLocaleString("vi-VN")}đ vào ví (chế độ demo).`,
+        isAutoClose: true,
+        onClose: () => {
+          setSuccessModalConfig((prev) => ({ ...prev, visible: false }));
+          router.back();
+        },
+      });
+    } catch (error: any) {
+      Alert.alert("Lỗi", error?.message || "Không nạp được tiền");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleWithdrawConfirm = async () => {
@@ -171,7 +195,7 @@ export default function TransactionActionScreen() {
     setIsLoading(true);
     setPinError("");
     try {
-      await transactionService.processWithdrawal({
+      const response = await transactionService.processWithdrawal({
         amount: parsedAmount,
         bankAccountId: selectedBankId!,
         pinCode: pin,
@@ -180,11 +204,13 @@ export default function TransactionActionScreen() {
       setIsPinModalVisible(false);
       
       const selectedBank = bankAccounts.find(b => b.id === selectedBankId);
-      router.push({
+      router.replace({
         pathname: "/wallet/withdraw-bill",
         params: {
           amount: parsedAmount.toString(),
+          transactionCode: response?.transactionCode || "",
           bankName: selectedBank?.bankName || "",
+          bankCode: selectedBank?.bankCode || "",
           accountNumber: selectedBank?.accountNumber || "",
           accountName: selectedBank?.accountName || "",
           note: "Rút tiền về ngân hàng liên kết",
@@ -296,8 +322,36 @@ export default function TransactionActionScreen() {
 
       <View style={styles.bannerContainer}>
         <Image source={{uri: "https://cdn-icons-png.flaticon.com/512/3135/3135673.png"}} style={{width: 40, height: 40, marginRight: 12}} />
-        <Text style={styles.bannerText}>Nạp bao nhiêu nhận bấy nhiêu. Bấm "Nạp tiền" để lấy mã QR, quét bằng app ngân hàng và tự nhập số tiền muốn nạp.</Text>
+        <Text style={styles.bannerText}>Chế độ demo: nhập số tiền rồi bấm Nạp — hệ thống cộng ngay vào ví (không cần QR ngân hàng).</Text>
       </View>
+
+      <View style={styles.amountContainer}>
+        <Text style={styles.amountLabel}>Số tiền nạp</Text>
+        <View style={styles.amountInputRow}>
+          <TextInput
+            style={styles.amountInput}
+            placeholder="0"
+            placeholderTextColor="#D1D5DB"
+            keyboardType="number-pad"
+            value={formatDisplayAmount(amount)}
+            onChangeText={handleAmountChange}
+            maxLength={14}
+          />
+          <Text style={styles.currencySymbol}>₫</Text>
+        </View>
+      </View>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginHorizontal: -16 }} contentContainerStyle={styles.suggestionContainer}>
+        {SUGGESTED_AMOUNTS.map((v) => (
+          <TouchableOpacity
+            key={v}
+            style={styles.suggestionChip}
+            onPress={() => setAmount(String(v))}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.suggestionText}>{v.toLocaleString("vi-VN")} ₫</Text>
+          </TouchableOpacity>
+        ))}
+      </ScrollView>
 
       <Text style={[styles.sectionTitle, { marginTop: 24 }]}>Chọn cách nạp tiền</Text>
       <View style={styles.sourceContainer}>
@@ -306,8 +360,8 @@ export default function TransactionActionScreen() {
             <Ionicons name="qr-code" size={24} color={PASTEL_PALETTE.lavender} />
           </View>
           <View style={styles.sourceInfo}>
-            <Text style={styles.sourceTitle}>Chuyển khoản bằng VietQR</Text>
-            <Text style={styles.sourceSubtitle}>Không giới hạn số tiền nạp</Text>
+            <Text style={styles.sourceTitle}>Nạp demo (cộng ngay)</Text>
+            <Text style={styles.sourceSubtitle}>Tạm thời không dùng VietQR / SePay</Text>
           </View>
           <View style={[styles.radioOuter, styles.radioOuterActive]}>
             <View style={styles.radioInner} />
