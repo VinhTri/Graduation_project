@@ -38,6 +38,7 @@ public class WalletController {
         private BigDecimal transactionLimit;
         private BigDecimal dailyLimit;
         private BigDecimal dailyTransactedAmount;
+        private String walletType;
     }
 
     // ====================== LẤY THÔNG TIN V�? ======================
@@ -70,6 +71,7 @@ public class WalletController {
                 .transactionLimit(wallet.getTransactionLimit())
                 .dailyLimit(wallet.getDailyLimit())
                 .dailyTransactedAmount(dailyTransactedAmount)
+                .walletType(wallet.getWalletType() != null ? wallet.getWalletType().name() : "MAIN")
                 .build();
 
         return ResponseEntity.ok(ApiResponse.<WalletDto>builder()
@@ -79,7 +81,29 @@ public class WalletController {
                 .build());
     }
 
-    // ====================== CẬP NHẬT THIẾT LẬP V�? ======================
+    // ====================== LẤY VÍ TIỀN MẶT (SỔ TAY) ======================
+    @GetMapping("/cash")
+    public ResponseEntity<ApiResponse<WalletDto>> getMyCashWallet(@AuthenticationPrincipal CustomUserDetails userDetails) {
+        Wallet wallet = walletService.getOrCreateCashWallet(userDetails.getUser().getId());
+
+        WalletDto dto = WalletDto.builder()
+                .id(wallet.getId())
+                .name(wallet.getName())
+                .balance(wallet.getBalance())
+                .accountNumber(null)
+                .isDefault(wallet.isDefault())
+                .isLimitEnabled(false)
+                .walletType(wallet.getWalletType() != null ? wallet.getWalletType().name() : "CASH")
+                .build();
+
+        return ResponseEntity.ok(ApiResponse.<WalletDto>builder()
+                .success(true)
+                .message("Lấy thông tin ví tiền mặt thành công")
+                .data(dto)
+                .build());
+    }
+
+    // ====================== CẬP NHẬT THIẾT LẬP VÍ ======================
     @org.springframework.web.bind.annotation.PutMapping("/{id}/settings")
     public ResponseEntity<ApiResponse<Void>> updateWalletSettings(
             @org.springframework.web.bind.annotation.PathVariable Long id,

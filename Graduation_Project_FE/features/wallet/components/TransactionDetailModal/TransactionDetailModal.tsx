@@ -455,14 +455,17 @@ export default function TransactionDetailModal({
       </KeyboardAvoidingView>
 
       <CategorySelectModal 
-        visible={isCategoryModalVisible}
+        visible={isCategoryModalVisible && !isAddCategoryModalVisible}
         onClose={() => setIsCategoryModalVisible(false)}
         onSelect={(category, groupName) => {
           // Lưu đầy đủ icon/màu kèm tên nhóm để hiển thị trực quan.
           setSelectedCategory({ ...category, groupName });
           setIsCategoryModalVisible(false);
         }}
-        onAddCategory={() => setIsAddCategoryModalVisible(true)}
+        onAddCategory={() => {
+          setIsCategoryModalVisible(false);
+          setTimeout(() => setIsAddCategoryModalVisible(true), 350);
+        }}
       />
 
       <AddCategoryModal 
@@ -470,7 +473,7 @@ export default function TransactionDetailModal({
         onClose={() => setIsAddCategoryModalVisible(false)}
         onBack={() => {
           setIsAddCategoryModalVisible(false);
-          setTimeout(() => setIsCategoryModalVisible(true), 300);
+          setTimeout(() => setIsCategoryModalVisible(true), 350);
         }}
       />
     </Modal>

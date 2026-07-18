@@ -25,13 +25,13 @@ const SETUP_STEPS = [
   {
     step: '1',
     title: 'Tạo nhóm',
-    description: 'Nhấn "Tạo nhóm" ở góc trên để tạo nhóm cha (VD: Sinh hoạt, Du lịch...). Tối đa 5 nhóm.',
+    description: 'Nhấn "Tạo nhóm" ở góc trên để tạo nhóm cha (VD: Sinh hoạt, Du lịch...). Tối đa 6 nhóm, mỗi nhóm một màu riêng.',
     icon: 'layers-outline' as const,
   },
   {
     step: '2',
     title: 'Thêm danh mục',
-    description: 'Trong mỗi nhóm, nhấn "Tạo danh mục" để thêm danh mục con (tối đa 4). Danh mục không thể sửa — muốn đổi thì xóa và tạo lại.',
+    description: 'Trong mỗi nhóm, nhấn "Tạo danh mục" để thêm danh mục con (tối đa 4, màu không trùng). Danh mục không thể sửa — muốn đổi thì xóa và tạo lại.',
     icon: 'grid-outline' as const,
   },
   {
@@ -78,9 +78,11 @@ export default function CategoriesScreen() {
 
   const handleAddCategoryToGroup = (groupId: string, itemCount: number) => {
     if (itemCount >= MAX_ITEMS_PER_GROUP) {
+      const group = categories.find((g) => g.id === groupId);
+      const names = group?.items?.map((i) => i.label).join(', ') || '';
       Alert.alert(
         'Giới hạn danh mục',
-        `Mỗi nhóm chỉ được tối đa ${MAX_ITEMS_PER_GROUP} danh mục.`
+        `Nhóm "${group?.title || ''}" đã đủ ${MAX_ITEMS_PER_GROUP} danh mục${names ? `: ${names}` : ''}.\n\nHãy xóa bớt danh mục trong nhóm này, hoặc thêm vào nhóm khác / tạo nhóm mới.`
       );
       return;
     }
@@ -202,12 +204,12 @@ export default function CategoriesScreen() {
                       { color: group.items.length >= MAX_ITEMS_PER_GROUP ? '#9CA3AF' : group.color },
                     ]}
                   >
-                    Tạo danh mục
+                    Tạo danh mục ({group.items.length}/{MAX_ITEMS_PER_GROUP})
                   </Text>
                 </TouchableOpacity>
                 {group.items.length >= MAX_ITEMS_PER_GROUP && (
                   <Text style={styles.groupLimitHint}>
-                    Danh mục của nhóm đã đạt tối đa
+                    Nhóm đã đủ {MAX_ITEMS_PER_GROUP} danh mục — xóa bớt hoặc tạo nhóm mới
                   </Text>
                 )}
               </>
@@ -317,7 +319,11 @@ export default function CategoriesScreen() {
             disabled={!canCreateGroup}
           >
             <Ionicons name="layers-outline" size={18} color="#FFF" />
-            <Text style={styles.addButtonText}>Tạo nhóm</Text>
+            <Text style={styles.addButtonText}>
+              {canCreateGroup
+                ? `Tạo nhóm (${customGroupCount}/${MAX_CATEGORY_GROUPS})`
+                : `Đủ ${MAX_CATEGORY_GROUPS}/${MAX_CATEGORY_GROUPS} nhóm`}
+            </Text>
           </TouchableOpacity>
         </View>
 

@@ -30,6 +30,38 @@ export interface WithdrawResponse {
   createdAt: string;
 }
 
+export interface ManualTransactionRequest {
+  amount: number;
+  type: 'EXPENSE' | 'INCOME';
+  categoryId: number;
+  note?: string;
+}
+
+export interface ManualTransactionResponse {
+  transactionCode: string;
+  type: 'EXPENSE' | 'INCOME';
+  status: string;
+  amount: number;
+  categoryId: number;
+  note?: string;
+  cashBalance: number;
+  createdAt: string;
+}
+
+export interface TransactionHistoryItem {
+  transactionCode: string;
+  type: string;
+  status: string;
+  amount: number;
+  note?: string;
+  categoryId?: number;
+  categoryLabel?: string;
+  categoryIcon?: string;
+  categoryColor?: string;
+  categoryDeleted?: boolean;
+  createdAt: string;
+}
+
 export const transactionService = {
   initiateTopUp: async (data: TopUpRequest): Promise<TopUpResponse> => {
     const response = await axiosClient.post(ENDPOINTS.TRANSACTION.TOP_UP, data);
@@ -41,13 +73,22 @@ export const transactionService = {
     return response.data;
   },
 
-  getTransactionHistory: async (): Promise<any[]> => {
-    const response = await axiosClient.get('/api/v1/history/transactions');
+  createManualTransaction: async (
+    data: ManualTransactionRequest
+  ): Promise<ManualTransactionResponse> => {
+    const response = await axiosClient.post(ENDPOINTS.TRANSACTION.MANUAL, data);
     return response.data;
+  },
+
+  getTransactionHistory: async (wallet: 'main' | 'cash' = 'main'): Promise<TransactionHistoryItem[]> => {
+    const response = await axiosClient.get(ENDPOINTS.HISTORY.TRANSACTIONS, {
+      params: { wallet },
+    });
+    return response.data || [];
   },
 
   updateTransaction: async (code: string, data: { categoryId?: number; note?: string }): Promise<any> => {
     const response = await axiosClient.put(`/api/v1/transactions/${code}`, data);
     return response.data;
-  }
+  },
 };

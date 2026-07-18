@@ -27,6 +27,7 @@ import { axiosClient } from "../../../../shared/api/axiosClient";
 import { authService } from "../../../../shared/api/services/auth.service";
 import { ENDPOINTS } from "../../../../shared/api/endpoints";
 import { PinModal, OtpModal, ResetPinModal, SuccessModal } from "../../../../shared/components";
+import { SmartSpendIcon } from "../../../../shared/components/SmartSpendIcon";
 import { CategorySelectModal } from "../../../categories/components/CategorySelectModal";
 import { AddCategoryModal } from "../../../categories/components/AddCategoryModal";
 
@@ -204,11 +205,13 @@ export default function WithdrawScreen() {
       setIsPinModalVisible(false);
       
       const selectedBank = bankAccounts.find(b => b.id === selectedBankId);
-      router.push({
+      router.replace({
         pathname: "/wallet/withdraw-bill",
         params: {
           amount: parsedAmount.toString(),
+          transactionCode: response?.transactionCode || "",
           bankName: selectedBank?.bankName || "",
+          bankCode: selectedBank?.bankCode || "",
           accountNumber: selectedBank?.accountNumber || "",
           accountName: selectedBank?.accountName || "",
           note: note,
@@ -480,12 +483,13 @@ export default function WithdrawScreen() {
 
           <View style={styles.sourceFundsCard}>
             <View style={styles.sourceFundsRow}>
-              <View style={styles.sourceFundsIcon}>
-                <Ionicons name="wallet" size={24} color={PASTEL_PALETTE.accent} />
-              </View>
+              <SmartSpendIcon size={44} style={styles.sourceFundsLogo} borderRadius={12} />
               <View style={styles.sourceFundsInfo}>
                 <Text style={styles.sourceFundsLabel}>Nguồn tiền</Text>
-                <Text style={styles.sourceFundsValue}>Ví SmartSpend</Text>
+                <Text style={styles.sourceFundsBrand} numberOfLines={1}>
+                  <Text style={styles.brandSmart}>Smart</Text>
+                  <Text style={styles.brandSpend}>Spend</Text>
+                </Text>
               </View>
               <View style={styles.sourceFundsBalanceWrap}>
                 <Text style={styles.sourceFundsLabel}>Số dư</Text>
@@ -651,7 +655,7 @@ export default function WithdrawScreen() {
                         style={[
                           styles.paymentMethodCard,
                           { width: 280, marginBottom: 0, marginRight: 12 },
-                          selectedBankId === bank.id && { borderColor: Colors.primary, borderWidth: 1 }
+                          selectedBankId === bank.id && { borderColor: PASTEL_PALETTE.accent, borderWidth: 1.5 }
                         ]} 
                         onPress={() => setSelectedBankId(bank.id)}
                         activeOpacity={0.8}
@@ -666,7 +670,7 @@ export default function WithdrawScreen() {
                           <Text style={styles.paymentSubtitle}>**** {bank.accountNumber.slice(-4)}</Text>
                         </View>
                         {selectedBankId === bank.id && (
-                          <Ionicons name="checkmark-circle" size={24} color={Colors.primary} />
+                          <Ionicons name="checkmark-circle" size={24} color={PASTEL_PALETTE.accentDeep} />
                         )}
                       </TouchableOpacity>
                     ))}
@@ -800,13 +804,16 @@ export default function WithdrawScreen() {
       />
 
       <CategorySelectModal 
-        visible={isCategoryModalVisible}
+        visible={isCategoryModalVisible && !isAddCategoryModalVisible}
         onClose={() => setIsCategoryModalVisible(false)}
         onSelect={(category, groupName) => {
           setSelectedCategory({ ...category, groupName });
           setIsCategoryModalVisible(false);
         }}
-        onAddCategory={() => setIsAddCategoryModalVisible(true)}
+        onAddCategory={() => {
+          setIsCategoryModalVisible(false);
+          setTimeout(() => setIsAddCategoryModalVisible(true), 350);
+        }}
       />
 
       <AddCategoryModal 
@@ -814,7 +821,7 @@ export default function WithdrawScreen() {
         onClose={() => setIsAddCategoryModalVisible(false)}
         onBack={() => {
           setIsAddCategoryModalVisible(false);
-          setTimeout(() => setIsCategoryModalVisible(true), 300);
+          setTimeout(() => setIsCategoryModalVisible(true), 350);
         }}
       />
     </View>

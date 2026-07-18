@@ -2,6 +2,7 @@ package com.project.app.category.dto.request;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -14,6 +15,7 @@ public class CategoryItemRequest {
     private Long groupId;
 
     @NotBlank(message = "Label is required")
+    @Size(max = 20, message = "Tên danh mục tối đa 20 ký tự")
     private String label;
 
     private String icon = "ellipse-outline";

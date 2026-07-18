@@ -1,11 +1,45 @@
-import React from 'react';
-import { View, Text, TouchableOpacity, ScrollView, StatusBar } from 'react-native';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { View, Text, TouchableOpacity, StatusBar, Image, BackHandler } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter, useLocalSearchParams } from 'expo-router';
-import Colors from '../../../../shared/constants/Colors';
+import { useRouter, useLocalSearchParams, useNavigation } from 'expo-router';
+import { PASTEL_PALETTE, PASTEL_HEADER_GRADIENT } from '../../../../shared/constants/PastelPalette';
+import { SmartSpendIcon } from '../../../../shared/components/SmartSpendIcon';
 import { styles } from './WithdrawBillScreen.styles';
+
+const COMMON_BANKS = [
+  { code: '970422', name: 'MBBank', shortName: 'MB', logo: 'https://api.vietqr.io/img/MB.png' },
+  { code: '970436', name: 'Vietcombank', shortName: 'VCB', logo: 'https://api.vietqr.io/img/VCB.png' },
+  { code: '970407', name: 'Techcombank', shortName: 'TCB', logo: 'https://api.vietqr.io/img/TCB.png' },
+  { code: '970418', name: 'BIDV', shortName: 'BIDV', logo: 'https://api.vietqr.io/img/BIDV.png' },
+  { code: '970432', name: 'VPBank', shortName: 'VPB', logo: 'https://api.vietqr.io/img/VPB.png' },
+  { code: '970423', name: 'TPBank', shortName: 'TPB', logo: 'https://api.vietqr.io/img/TPB.png' },
+  { code: '970415', name: 'VietinBank', shortName: 'ICB', logo: 'https://api.vietqr.io/img/ICB.png' },
+  { code: '970405', name: 'Agribank', shortName: 'VBA', logo: 'https://api.vietqr.io/img/VBA.png' },
+  { code: '970403', name: 'Sacombank', shortName: 'STB', logo: 'https://api.vietqr.io/img/STB.png' },
+  { code: '970416', name: 'ACB', shortName: 'ACB', logo: 'https://api.vietqr.io/img/ACB.png' },
+  { code: '970441', name: 'VIB', shortName: 'VIB', logo: 'https://api.vietqr.io/img/VIB.png' },
+  { code: '970443', name: 'SHB', shortName: 'SHB', logo: 'https://api.vietqr.io/img/SHB.png' },
+];
+
+const resolveBankLogo = (bankCode?: string, bankName?: string) => {
+  if (bankCode) {
+    const byCode = COMMON_BANKS.find((b) => b.code === bankCode);
+    if (byCode) return byCode.logo;
+  }
+  if (bankName) {
+    const key = bankName.toLowerCase();
+    const byName = COMMON_BANKS.find(
+      (b) =>
+        key.includes(b.name.toLowerCase()) ||
+        key.includes(b.shortName.toLowerCase()) ||
+        b.name.toLowerCase().includes(key)
+    );
+    if (byName) return byName.logo;
+  }
+  return 'https://api.vietqr.io/img/VNPAY.png';
+};
 
 const maskAccountNumber = (accountNumber: string) => {
   if (!accountNumber) return '';
@@ -16,8 +50,34 @@ const maskAccountNumber = (accountNumber: string) => {
 
 export default function WithdrawBillScreen() {
   const router = useRouter();
+  const navigation = useNavigation();
   const insets = useSafeAreaInsets();
   const params = useLocalSearchParams();
+  const [logoFailed, setLogoFailed] = useState(false);
+  const allowingLeaveRef = useRef(false);
+
+  const goToWallet = useCallback(() => {
+    allowingLeaveRef.current = true;
+    router.replace('/wallet');
+  }, [router]);
+
+  // Vuốt back / nút back Android → luôn về trang ví, không về form rút/nạp
+  useEffect(() => {
+    const unsub = navigation.addListener('beforeRemove', (e) => {
+      if (allowingLeaveRef.current) return;
+      e.preventDefault();
+      goToWallet();
+    });
+    return unsub;
+  }, [navigation, goToWallet]);
+
+  useEffect(() => {
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+      goToWallet();
+      return true;
+    });
+    return () => sub.remove();
+  }, [goToWallet]);
 
   const getCurrentFormattedDate = () => {
     const now = new Date();
@@ -25,180 +85,154 @@ export default function WithdrawBillScreen() {
     return `${pad(now.getDate())}/${pad(now.getMonth() + 1)}/${now.getFullYear()} · ${pad(now.getHours())}:${pad(now.getMinutes())}`;
   };
 
-  const amountStr = (params.amount as string) || '0';
-  const amount = parseInt(amountStr, 10) || 0;
+  const amount = parseInt((params.amount as string) || '0', 10) || 0;
+  const transactionCode = ((params.transactionCode as string) || '').trim();
   const bankName = (params.bankName as string) || 'Ngân hàng';
+  const bankCode = (params.bankCode as string) || '';
   const accountNumber = (params.accountNumber as string) || '';
   const accountName = (params.accountName as string) || '';
-  const note = (params.note as string) || '';
-  const category = (params.category as string) || '';
+  const note = ((params.note as string) || '').trim();
+  const category = ((params.category as string) || '').trim();
   const categoryIcon = (params.categoryIcon as string) || 'pricetag-outline';
-  const categoryColor = (params.categoryColor as string) || Colors.textMuted;
-  const categoryBgColor = (params.categoryBgColor as string) || Colors.border + '55';
-  const hasCategory = Boolean(category.trim());
+  const categoryColor = (params.categoryColor as string) || PASTEL_PALETTE.subtitle;
+  const categoryBgColor = (params.categoryBgColor as string) || PASTEL_PALETTE.lavenderSoft;
   const transactionDate = (params.transactionDate as string) || getCurrentFormattedDate();
 
-  const formatDisplayAmount = (val: number) => val.toLocaleString('vi-VN');
-
-  const handleGoHome = () => {
-    router.replace('/wallet');
-  };
-
-  const handleGoHistory = () => {
-    router.replace('/wallet/history');
-  };
+  const bankLogoUri = useMemo(
+    () => resolveBankLogo(bankCode, bankName),
+    [bankCode, bankName]
+  );
 
   return (
-    <View style={styles.container}>
-      <StatusBar barStyle="light-content" />
+    <View style={[styles.container, { paddingTop: insets.top, paddingBottom: Math.max(insets.bottom, 16) }]}>
+      <StatusBar barStyle="dark-content" />
 
-      <ScrollView
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: insets.bottom + 8 }}
-      >
+      <View style={styles.centerWrap}>
         <LinearGradient
-          colors={['#0D9488', '#047857', '#065F46']}
+          colors={[...PASTEL_HEADER_GRADIENT]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
-          style={[styles.hero, { paddingTop: insets.top + 28 }]}
+          style={styles.card}
         >
-          <View style={styles.decorCircleLg} />
-          <View style={styles.decorCircleSm} />
-
-          <View style={styles.successRingOuter}>
-            <View style={styles.successRingInner}>
-              <Ionicons name="checkmark" size={36} color={Colors.success} />
+          <View style={styles.cardInner}>
+            <View style={styles.headerRow}>
+              <View style={styles.checkWrap}>
+                <Ionicons name="checkmark" size={22} color={PASTEL_PALETTE.accentDeep} />
+              </View>
+              <View style={styles.headerTextWrap}>
+                <Text style={styles.headerTitle}>Rút tiền thành công</Text>
+                <Text style={styles.headerSub}>{transactionDate}</Text>
+              </View>
             </View>
-          </View>
 
-          <Text style={styles.heroTitle}>Rút tiền thành công</Text>
-          <Text style={styles.heroSubtitle}>
-            Giao dịch đã được xử lý. Tiền sẽ về tài khoản ngân hàng trong vài phút.
-          </Text>
-        </LinearGradient>
-
-        <View style={styles.scrollContent}>
-          <View style={styles.receiptCard}>
-            <View style={styles.amountSection}>
+            <View style={styles.amountBlock}>
               <Text style={styles.amountLabel}>Số tiền đã rút</Text>
-              <Text style={styles.amountText}>
-                −{formatDisplayAmount(amount)}
+              <Text style={styles.amountValue}>
+                −{amount.toLocaleString('vi-VN')}
                 <Text style={styles.amountCurrency}> ₫</Text>
               </Text>
-              <View style={styles.dateChip}>
-                <Ionicons name="time-outline" size={14} color={Colors.textMuted} />
-                <Text style={styles.dateText}>{transactionDate}</Text>
-              </View>
             </View>
 
-            <View style={styles.ticketDivider}>
-              <View style={styles.ticketNotchLeft} />
-              <View style={styles.ticketLine} />
-              <View style={styles.ticketNotchRight} />
-            </View>
-
-            <View style={styles.transferSection}>
-              <Text style={styles.transferTitle}>Luồng chuyển tiền</Text>
-
-              <View style={styles.transferNode}>
-                <View style={[styles.transferIconBox, { backgroundColor: Colors.primaryLight }]}>
-                  <Ionicons name="wallet" size={24} color={Colors.primary} />
-                </View>
-                <View style={styles.transferInfo}>
-                  <Text style={styles.transferName}>Ví SmartSpend</Text>
-                  <Text style={styles.transferMeta}>Nguồn rút tiền</Text>
-                </View>
+            <View style={styles.flowRow}>
+              <View style={styles.flowParty}>
+                <SmartSpendIcon size={40} style={styles.flowLogo} borderRadius={12} />
+                <Text style={styles.flowName} numberOfLines={1}>
+                  <Text style={styles.brandSmart}>Smart</Text>
+                  <Text style={styles.brandSpend}>Spend</Text>
+                </Text>
               </View>
 
-              <View style={styles.transferArrow}>
-                <View style={styles.transferArrowLine} />
-                <Ionicons name="arrow-down" size={16} color={Colors.textMuted} />
+              <View style={styles.flowArrowWrap}>
+                <View style={styles.flowDash} />
+                <View style={styles.flowArrowBadge}>
+                  <Ionicons name="arrow-forward" size={12} color={PASTEL_PALETTE.accentDeep} />
+                </View>
+                <View style={styles.flowDash} />
               </View>
 
-              <View style={styles.transferNode}>
-                <View style={[styles.transferIconBox, { backgroundColor: '#EFF6FF' }]}>
-                  <Ionicons name="business" size={24} color="#2563EB" />
-                </View>
-                <View style={styles.transferInfo}>
-                  <Text style={styles.transferName}>{bankName}</Text>
-                  <Text style={styles.transferMeta}>
-                    {maskAccountNumber(accountNumber)}
-                    {accountName ? ` · ${accountName.toUpperCase()}` : ''}
-                  </Text>
-                </View>
-              </View>
-            </View>
-
-            <View style={styles.detailsSection}>
-              <View style={styles.detailRow}>
-                <View style={styles.detailIconWrap}>
-                  <Ionicons name="pricetag-outline" size={18} color={Colors.textMuted} />
-                </View>
-                <View style={styles.detailContent}>
-                  <Text style={styles.detailLabel}>Danh mục</Text>
-                  {hasCategory ? (
-                    <View style={[styles.categoryChip, { backgroundColor: categoryBgColor }]}>
-                      <Ionicons
-                        name={categoryIcon as keyof typeof Ionicons.glyphMap}
-                        size={16}
-                        color={categoryColor}
-                      />
-                      <Text style={[styles.categoryChipText, { color: categoryColor }]}>
-                        {category}
-                      </Text>
-                    </View>
+              <View style={styles.flowParty}>
+                <View style={styles.bankLogoBox}>
+                  {!logoFailed ? (
+                    <Image
+                      source={{ uri: bankLogoUri }}
+                      style={styles.bankLogo}
+                      resizeMode="contain"
+                      onError={() => setLogoFailed(true)}
+                    />
                   ) : (
-                    <Text style={styles.detailValue}>Chưa phân loại</Text>
+                    <Ionicons name="business-outline" size={18} color={PASTEL_PALETTE.subtitle} />
                   )}
                 </View>
+                <Text style={styles.flowBankName} numberOfLines={1}>
+                  {bankName}
+                </Text>
               </View>
+            </View>
 
-              <View style={styles.detailRow}>
-                <View style={styles.detailIconWrap}>
-                  <Ionicons name="document-text-outline" size={18} color={Colors.textMuted} />
-                </View>
-                <View style={styles.detailContent}>
-                  <Text style={styles.detailLabel}>Ghi chú</Text>
-                  <Text style={styles.detailValue}>
-                    {note.trim() ? note : 'Không có ghi chú'}
-                  </Text>
-                </View>
-              </View>
+            <Text style={styles.bankMeta} numberOfLines={1}>
+              {maskAccountNumber(accountNumber)}
+              {accountName ? ` · ${accountName.toUpperCase()}` : ''}
+            </Text>
 
-              <View style={styles.detailRow}>
-                <View style={styles.detailIconWrap}>
-                  <Ionicons name="cash-outline" size={18} color={Colors.textMuted} />
-                </View>
-                <View style={styles.detailContent}>
-                  <Text style={styles.detailLabel}>Phí giao dịch</Text>
-                  <View style={styles.feeBadge}>
-                    <Text style={styles.feeBadgeText}>Miễn phí</Text>
+            <View style={styles.metaBox}>
+              {!!transactionCode && (
+                <>
+                  <View style={styles.metaRow}>
+                    <Text style={styles.metaLabel}>Mã GD</Text>
+                    <Text style={styles.metaCode} numberOfLines={1} selectable>
+                      {transactionCode}
+                    </Text>
                   </View>
+                  <View style={styles.metaDivider} />
+                </>
+              )}
+
+              <View style={styles.metaRow}>
+                <Text style={styles.metaLabel}>Danh mục</Text>
+                {category ? (
+                  <View style={[styles.categoryChip, { backgroundColor: categoryBgColor }]}>
+                    <Ionicons
+                      name={categoryIcon as keyof typeof Ionicons.glyphMap}
+                      size={14}
+                      color={categoryColor}
+                    />
+                    <Text style={[styles.categoryChipText, { color: categoryColor }]} numberOfLines={1}>
+                      {category}
+                    </Text>
+                  </View>
+                ) : (
+                  <Text style={styles.metaValue}>Chưa phân loại</Text>
+                )}
+              </View>
+
+              <View style={styles.metaDivider} />
+
+              <View style={styles.metaRow}>
+                <Text style={styles.metaLabel}>Ghi chú</Text>
+                <Text style={styles.metaValue} numberOfLines={1}>
+                  {note || '—'}
+                </Text>
+              </View>
+
+              <View style={styles.metaDivider} />
+
+              <View style={styles.metaRow}>
+                <Text style={styles.metaLabel}>Phí</Text>
+                <View style={styles.feeBadge}>
+                  <Text style={styles.feeBadgeText}>Miễn phí</Text>
                 </View>
               </View>
             </View>
-          </View>
 
-          <View style={styles.infoBanner}>
-            <Ionicons name="shield-checkmark" size={22} color={Colors.primaryDark} />
-            <Text style={styles.infoBannerText}>
-              Bạn có thể theo dõi trạng thái giao dịch trong mục Lịch sử ví bất cứ lúc nào.
+            <Text style={styles.hintText}>
+              Theo dõi trạng thái trong Lịch sử ví khi cần.
             </Text>
           </View>
-        </View>
-      </ScrollView>
+        </LinearGradient>
 
-      <View style={[styles.footer, { paddingBottom: insets.bottom + 12 }]}>
-        <TouchableOpacity
-          style={styles.secondaryButton}
-          onPress={handleGoHistory}
-          activeOpacity={0.85}
-        >
-          <Text style={styles.secondaryButtonText}>Xem lịch sử</Text>
-        </TouchableOpacity>
         <TouchableOpacity
           style={styles.primaryButton}
-          onPress={handleGoHome}
+          onPress={goToWallet}
           activeOpacity={0.85}
         >
           <Text style={styles.primaryButtonText}>Hoàn tất</Text>

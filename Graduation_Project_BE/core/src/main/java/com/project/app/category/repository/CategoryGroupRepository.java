@@ -18,4 +18,6 @@ public interface CategoryGroupRepository extends JpaRepository<CategoryGroup, Lo
     Optional<CategoryGroup> findFirstByTitleAndUserIsNullAndIsDeletedFalse(String title);
 
     long countByUserAndIsDeletedFalse(User user);
+
+    boolean existsByUserAndColorIgnoreCaseAndIsDeletedFalse(User user, String color);
 }

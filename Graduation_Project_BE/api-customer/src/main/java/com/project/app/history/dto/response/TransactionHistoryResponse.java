@@ -15,6 +15,7 @@ public class TransactionHistoryResponse {
     private Long categoryId;
     private String categoryLabel;
     private String categoryIcon;
+    private String categoryColor;
     private Boolean categoryDeleted;
     private LocalDateTime createdAt;
 
@@ -25,6 +26,13 @@ public class TransactionHistoryResponse {
                                       BigDecimal amount, String note, Long categoryId,
                                       String categoryLabel, String categoryIcon, Boolean categoryDeleted,
                                       LocalDateTime createdAt) {
+        this(transactionCode, type, status, amount, note, categoryId, categoryLabel, categoryIcon, null, categoryDeleted, createdAt);
+    }
+
+    public TransactionHistoryResponse(String transactionCode, TransactionType type, TransactionStatus status,
+                                      BigDecimal amount, String note, Long categoryId,
+                                      String categoryLabel, String categoryIcon, String categoryColor,
+                                      Boolean categoryDeleted, LocalDateTime createdAt) {
         this.transactionCode = transactionCode;
         this.type = type;
         this.status = status;
@@ -33,6 +41,7 @@ public class TransactionHistoryResponse {
         this.categoryId = categoryId;
         this.categoryLabel = categoryLabel;
         this.categoryIcon = categoryIcon;
+        this.categoryColor = categoryColor;
         this.categoryDeleted = categoryDeleted;
         this.createdAt = createdAt;
     }
@@ -99,6 +108,14 @@ public class TransactionHistoryResponse {
 
     public void setCategoryIcon(String categoryIcon) {
         this.categoryIcon = categoryIcon;
+    }
+
+    public String getCategoryColor() {
+        return categoryColor;
+    }
+
+    public void setCategoryColor(String categoryColor) {
+        this.categoryColor = categoryColor;
     }
 
     public Boolean getCategoryDeleted() {

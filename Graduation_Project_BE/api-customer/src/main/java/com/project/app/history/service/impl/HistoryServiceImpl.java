@@ -7,6 +7,7 @@ import com.project.app.history.service.HistoryService;
 import com.project.app.transaction.entity.Transaction;
 import com.project.app.transaction.repository.TransactionRepository;
 import com.project.app.user.entity.User;
+import com.project.app.wallet.enums.WalletType;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -29,7 +30,19 @@ public class HistoryServiceImpl implements HistoryService {
 
     @Override
     public List<TransactionHistoryResponse> getTransactionHistory(User user) {
-        List<Transaction> transactions = transactionRepository.findByUserIdOrderByCreatedAtDesc(user.getId());
+        return getTransactionHistory(user, "main");
+    }
+
+    @Override
+    public List<TransactionHistoryResponse> getTransactionHistory(User user, String wallet) {
+        List<Transaction> transactions;
+        if (wallet != null && wallet.equalsIgnoreCase("cash")) {
+            transactions = transactionRepository.findByUserIdAndWallet_WalletTypeOrderByCreatedAtDesc(
+                    user.getId(), WalletType.CASH);
+        } else {
+            transactions = transactionRepository.findByUserIdAndWallet_IsDefaultTrueOrderByCreatedAtDesc(
+                    user.getId());
+        }
 
         Set<Long> categoryIds = transactions.stream()
                 .map(Transaction::getCategoryId)
@@ -48,12 +61,14 @@ public class HistoryServiceImpl implements HistoryService {
         Long categoryId = transaction.getCategoryId();
         String categoryLabel = null;
         String categoryIcon = null;
+        String categoryColor = null;
         Boolean categoryDeleted = null;
 
         if (categoryId != null) {
             if (category != null) {
                 categoryLabel = category.getLabel();
                 categoryIcon = category.getIcon();
+                categoryColor = category.getColor();
                 categoryDeleted = category.isDeleted();
             } else {
                 categoryDeleted = true;
@@ -69,6 +84,7 @@ public class HistoryServiceImpl implements HistoryService {
                 categoryId,
                 categoryLabel,
                 categoryIcon,
+                categoryColor,
                 categoryDeleted,
                 transaction.getCreatedAt()
         );

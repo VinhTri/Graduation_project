@@ -7,4 +7,7 @@ import java.util.List;
 
 public interface HistoryService {
     List<TransactionHistoryResponse> getTransactionHistory(User user);
+
+    /** wallet=cash → sổ tay; còn lại → ví SmartSpend (MAIN) */
+    List<TransactionHistoryResponse> getTransactionHistory(User user, String wallet);
 }

@@ -109,9 +109,21 @@ public class AuthServiceImpl implements AuthService {
                 "Ví SmartSpend",
                 BigDecimal.ZERO,
                 true, // isDefault
-                false // isDeletable
+                false, // isDeletable
+                com.project.app.wallet.enums.WalletType.MAIN
         );
         walletRepository.save(defaultWallet);
+
+        // Tạo ví tiền mặt (sổ tay) — không default, không liên quan ngân hàng
+        Wallet cashWallet = new Wallet(
+                user,
+                "Tiền mặt",
+                BigDecimal.ZERO,
+                false,
+                false,
+                com.project.app.wallet.enums.WalletType.CASH
+        );
+        walletRepository.save(cashWallet);
 
         String jwt = jwtUtil.generateToken(new CustomUserDetails(user));
 

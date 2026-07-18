@@ -13,7 +13,9 @@ import com.project.app.transaction.service.TransactionService;
 import com.project.app.user.entity.User;
 import com.project.app.user.repository.UserRepository;
 import com.project.app.transaction.dto.request.WithdrawRequest;
+import com.project.app.transaction.dto.request.ManualTransactionRequest;
 import com.project.app.transaction.dto.response.WithdrawResponse;
+import com.project.app.transaction.dto.response.ManualTransactionResponse;
 import com.project.app.transaction.service.PayOsPayoutService;
 import com.project.app.transaction.service.SePayService;
 import com.project.app.bankaccount.entity.BankAccount;
@@ -23,11 +25,14 @@ import com.project.app.wallet.service.WalletService;
 import com.project.app.wallet.repository.WalletRepository;
 import com.project.app.transaction.repository.SePayTransactionRepository;
 import com.project.app.transaction.entity.SePayTransaction;
+import com.project.app.category.entity.CategoryItem;
+import com.project.app.category.repository.CategoryItemRepository;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
@@ -36,6 +41,9 @@ public class TransactionServiceImpl implements TransactionService {
 
     @Value("${sepay.api-key}")
     private String sepayApiKey;
+
+    @Value("${app.payment.mock-mode:false}")
+    private boolean paymentMockMode;
 
     private final TransactionRepository transactionRepository;
     private final WalletService walletService;
@@ -46,12 +54,14 @@ public class TransactionServiceImpl implements TransactionService {
     private final PasswordEncoder passwordEncoder;
     private final SePayTransactionRepository sePayTransactionRepository;
     private final UserRepository userRepository;
+    private final CategoryItemRepository categoryItemRepository;
 
     public TransactionServiceImpl(TransactionRepository transactionRepository, WalletService walletService,
                                   WalletRepository walletRepository,
                                   BankAccountRepository bankAccountRepository, PayOsPayoutService payOsPayoutService,
                                   SePayService sePayService, PasswordEncoder passwordEncoder,
-                                  SePayTransactionRepository sePayTransactionRepository, UserRepository userRepository) {
+                                  SePayTransactionRepository sePayTransactionRepository, UserRepository userRepository,
+                                  CategoryItemRepository categoryItemRepository) {
         this.transactionRepository = transactionRepository;
         this.walletService = walletService;
         this.walletRepository = walletRepository;
@@ -61,6 +71,7 @@ public class TransactionServiceImpl implements TransactionService {
         this.passwordEncoder = passwordEncoder;
         this.sePayTransactionRepository = sePayTransactionRepository;
         this.userRepository = userRepository;
+        this.categoryItemRepository = categoryItemRepository;
     }
 
     // ====================== NẠP TIỀN ======================
@@ -73,11 +84,45 @@ public class TransactionServiceImpl implements TransactionService {
             throw new AppException(ErrorCode.ACCOUNT_NUMBER_NOT_FOUND);
         }
 
+        // DEMO: nạp = cộng tiền ngay (không qua SePay)
+        if (paymentMockMode) {
+            if (request.amount() == null || request.amount().compareTo(BigDecimal.ZERO) <= 0) {
+                throw new AppException(ErrorCode.INVALID_AMOUNT);
+            }
+
+            String transactionCode = "TX" + System.currentTimeMillis()
+                    + UUID.randomUUID().toString().substring(0, 4).toUpperCase();
+            Transaction transaction = new Transaction();
+            transaction.setUser(user);
+            transaction.setWallet(wallet);
+            transaction.setAmount(request.amount());
+            transaction.setType(TransactionType.TOP_UP);
+            transaction.setStatus(TransactionStatus.SUCCESS);
+            transaction.setTransactionCode(transactionCode);
+            transaction.setNote(request.note() != null && !request.note().isBlank()
+                    ? request.note().trim()
+                    : "Nạp tiền demo (mock)");
+            if (request.categoryId() != null) {
+                transaction.setCategoryId(request.categoryId());
+            }
+            transactionRepository.save(transaction);
+
+            wallet.addBalance(request.amount());
+            walletRepository.save(wallet);
+
+            return new TopUpResponse(
+                    "MOCK NAP " + wallet.getAccountNumber(),
+                    null,
+                    LocalDateTime.now().plusMinutes(1),
+                    request.amount(),
+                    LocalDateTime.now()
+            );
+        }
+
         // Mô hình QR tĩnh: nội dung chuyển khoản cố định theo số tài khoản của ví.
-        // Không tạo giao dịch PENDING - tiền về bao nhiêu cộng bấy nhiêu (xử lý ở webhook).
         String transferContent = "NAP " + wallet.getAccountNumber();
         String qrUrl = sePayService.generateVietQrUrl(request.amount(), transferContent);
-        LocalDateTime expiresAt = LocalDateTime.now().plusYears(100); // QR tĩnh không hết hạn
+        LocalDateTime expiresAt = LocalDateTime.now().plusYears(100);
 
         return new TopUpResponse(
                 transferContent,
@@ -250,6 +295,23 @@ public class TransactionServiceImpl implements TransactionService {
         
         transaction = transactionRepository.save(transaction);
 
+        // DEMO: rút = trừ tiền ngay (không qua PayOS)
+        if (paymentMockMode) {
+            wallet.setBalance(wallet.getBalance().subtract(request.getAmount()));
+            walletRepository.save(wallet);
+            transaction.setStatus(TransactionStatus.SUCCESS);
+            if (transaction.getNote() == null || !transaction.getNote().contains("mock")) {
+                transaction.setNote((transaction.getNote() != null ? transaction.getNote() + " " : "") + "(mock)");
+            }
+            transactionRepository.save(transaction);
+            return new WithdrawResponse(
+                    transactionCode,
+                    transaction.getStatus(),
+                    transaction.getAmount(),
+                    transaction.getCreatedAt()
+            );
+        }
+
         try {
             payOsPayoutService.createPayout(
                     bankAccount.getBankCode(),
@@ -277,6 +339,62 @@ public class TransactionServiceImpl implements TransactionService {
                 transactionCode,
                 transaction.getStatus(),
                 transaction.getAmount(),
+                transaction.getCreatedAt()
+        );
+    }
+
+    // ====================== GIAO DỊCH THỦ CÔNG TIỀN MẶT (SỔ TAY) ======================
+    @Override
+    @Transactional
+    public ManualTransactionResponse createManualTransaction(User user, ManualTransactionRequest request) {
+        TransactionType type = request.type();
+        if (type != TransactionType.EXPENSE && type != TransactionType.INCOME) {
+            throw new AppException(ErrorCode.INVALID_MANUAL_TRANSACTION_TYPE);
+        }
+
+        CategoryItem category = categoryItemRepository.findById(request.categoryId())
+                .orElseThrow(() -> new AppException(ErrorCode.CATEGORY_ITEM_NOT_FOUND));
+
+        // Chỉ chấp nhận danh mục của user (không dùng danh mục hệ thống quỹ)
+        if (category.getUser() == null || !category.getUser().getId().equals(user.getId()) || category.isDeleted()) {
+            throw new AppException(ErrorCode.CATEGORY_INVALID_FOR_CASH);
+        }
+
+        Wallet cashWallet = walletService.getOrCreateCashWallet(user.getId());
+        BigDecimal amount = request.amount();
+
+        if (type == TransactionType.EXPENSE) {
+            if (cashWallet.getBalance().compareTo(amount) < 0) {
+                throw new AppException(ErrorCode.INSUFFICIENT_BALANCE);
+            }
+            cashWallet.setBalance(cashWallet.getBalance().subtract(amount));
+        } else {
+            cashWallet.setBalance(cashWallet.getBalance().add(amount));
+        }
+        walletRepository.save(cashWallet);
+
+        String transactionCode = "CASH" + System.currentTimeMillis()
+                + UUID.randomUUID().toString().substring(0, 4).toUpperCase();
+
+        Transaction transaction = new Transaction();
+        transaction.setUser(user);
+        transaction.setWallet(cashWallet);
+        transaction.setAmount(amount);
+        transaction.setType(type);
+        transaction.setStatus(TransactionStatus.SUCCESS);
+        transaction.setTransactionCode(transactionCode);
+        transaction.setNote(request.note());
+        transaction.setCategoryId(category.getId());
+        transaction = transactionRepository.save(transaction);
+
+        return new ManualTransactionResponse(
+                transaction.getTransactionCode(),
+                transaction.getType(),
+                transaction.getStatus(),
+                transaction.getAmount(),
+                transaction.getCategoryId(),
+                transaction.getNote(),
+                cashWallet.getBalance(),
                 transaction.getCreatedAt()
         );
     }
