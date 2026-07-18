@@ -42,8 +42,6 @@ public class TransactionServiceImpl implements TransactionService {
     @Value("${sepay.api-key}")
     private String sepayApiKey;
 
-    @Value("${app.payment.mock-mode:false}")
-    private boolean paymentMockMode;
 
     private final TransactionRepository transactionRepository;
     private final WalletService walletService;
@@ -82,41 +80,6 @@ public class TransactionServiceImpl implements TransactionService {
 
         if (wallet.getAccountNumber() == null || wallet.getAccountNumber().isEmpty()) {
             throw new AppException(ErrorCode.ACCOUNT_NUMBER_NOT_FOUND);
-        }
-
-        // DEMO: nạp = cộng tiền ngay (không qua SePay)
-        if (paymentMockMode) {
-            if (request.amount() == null || request.amount().compareTo(BigDecimal.ZERO) <= 0) {
-                throw new AppException(ErrorCode.INVALID_AMOUNT);
-            }
-
-            String transactionCode = "TX" + System.currentTimeMillis()
-                    + UUID.randomUUID().toString().substring(0, 4).toUpperCase();
-            Transaction transaction = new Transaction();
-            transaction.setUser(user);
-            transaction.setWallet(wallet);
-            transaction.setAmount(request.amount());
-            transaction.setType(TransactionType.TOP_UP);
-            transaction.setStatus(TransactionStatus.SUCCESS);
-            transaction.setTransactionCode(transactionCode);
-            transaction.setNote(request.note() != null && !request.note().isBlank()
-                    ? request.note().trim()
-                    : "Nạp tiền demo (mock)");
-            if (request.categoryId() != null) {
-                transaction.setCategoryId(request.categoryId());
-            }
-            transactionRepository.save(transaction);
-
-            wallet.addBalance(request.amount());
-            walletRepository.save(wallet);
-
-            return new TopUpResponse(
-                    "MOCK NAP " + wallet.getAccountNumber(),
-                    null,
-                    LocalDateTime.now().plusMinutes(1),
-                    request.amount(),
-                    LocalDateTime.now()
-            );
         }
 
         // Mô hình QR tĩnh: nội dung chuyển khoản cố định theo số tài khoản của ví.
@@ -294,23 +257,6 @@ public class TransactionServiceImpl implements TransactionService {
         }
         
         transaction = transactionRepository.save(transaction);
-
-        // DEMO: rút = trừ tiền ngay (không qua PayOS)
-        if (paymentMockMode) {
-            wallet.setBalance(wallet.getBalance().subtract(request.getAmount()));
-            walletRepository.save(wallet);
-            transaction.setStatus(TransactionStatus.SUCCESS);
-            if (transaction.getNote() == null || !transaction.getNote().contains("mock")) {
-                transaction.setNote((transaction.getNote() != null ? transaction.getNote() + " " : "") + "(mock)");
-            }
-            transactionRepository.save(transaction);
-            return new WithdrawResponse(
-                    transactionCode,
-                    transaction.getStatus(),
-                    transaction.getAmount(),
-                    transaction.getCreatedAt()
-            );
-        }
 
         try {
             payOsPayoutService.createPayout(
