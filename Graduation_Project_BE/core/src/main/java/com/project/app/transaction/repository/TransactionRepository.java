@@ -27,6 +27,11 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
 
     java.util.List<Transaction> findByUserIdOrderByCreatedAtDesc(Long userId);
 
+    java.util.List<Transaction> findByTypeAndNoteContainingIgnoreCaseOrderByCreatedAtDesc(
+            com.project.app.transaction.enums.TransactionType type,
+            String note
+    );
+
     java.util.List<Transaction> findByUserIdAndWallet_WalletTypeOrderByCreatedAtDesc(
             Long userId,
             com.project.app.wallet.enums.WalletType walletType
