@@ -1,7 +1,8 @@
 import axios from 'axios';
 
-// Get base URL from environment variable or default to localhost:9090
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:9090';
+// Dev: để trống để Vite proxy tách auth(:9090) và admin(:8081).
+// Prod/override: set VITE_API_URL nếu cần.
+const API_URL = import.meta.env.VITE_API_URL ?? '';
 
 export const apiClient = axios.create({
   baseURL: API_URL,
@@ -25,7 +26,9 @@ apiClient.interceptors.response.use(
   (error) => {
     if (error.response?.status === 401) {
       localStorage.removeItem('admin_token');
-      // Redirect to login handled at router level or App level
+      if (window.location.pathname !== '/login') {
+        window.location.replace('/login');
+      }
     }
     return Promise.reject(error);
   }

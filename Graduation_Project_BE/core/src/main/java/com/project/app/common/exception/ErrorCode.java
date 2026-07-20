@@ -21,6 +21,8 @@ public enum ErrorCode {
     INVALID_PIN("WALL_2001", "Mã PIN không chính xác!", HttpStatus.BAD_REQUEST),
     WALLET_NOT_FOUND("WALL_2002", "Không tìm thấy ví khả dụng!", HttpStatus.NOT_FOUND),
     INVALID_TRANSACTION("TX_3001", "Giao dịch không hợp lệ hoặc đã xử lý!", HttpStatus.BAD_REQUEST),
+    SEPAY_TRANSACTION_NOT_FOUND("TX_3005", "Không tìm thấy bản ghi giao dịch SePay!", HttpStatus.NOT_FOUND),
+    SEPAY_ALREADY_MATCHED("TX_3006", "Giao dịch SePay đã được khớp/cộng ví!", HttpStatus.BAD_REQUEST),
     BANK_ACCOUNT_NOT_FOUND("BANK_4001", "Không tìm thấy thông tin tài khoản ngân hàng!", HttpStatus.BAD_REQUEST),
     BANK_ACCOUNT_ALREADY_EXISTS("BANK_4002", "Tài khoản ngân hàng này đã được liên kết với ví của bạn!", HttpStatus.CONFLICT),
     INSUFFICIENT_BALANCE("WALL_2003", "Số dư trong ví không đủ để thực hiện giao dịch!", HttpStatus.BAD_REQUEST),

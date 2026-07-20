@@ -25,6 +25,7 @@ import com.project.app.wallet.service.WalletService;
 import com.project.app.wallet.repository.WalletRepository;
 import com.project.app.transaction.repository.SePayTransactionRepository;
 import com.project.app.transaction.entity.SePayTransaction;
+import com.project.app.transaction.enums.SePayMatchStatus;
 import com.project.app.category.entity.CategoryItem;
 import com.project.app.category.repository.CategoryItemRepository;
 import org.springframework.beans.factory.annotation.Value;
@@ -112,13 +113,22 @@ public class TransactionServiceImpl implements TransactionService {
             throw new AppException(ErrorCode.UNAUTHORIZED_ACCESS);
         }
 
+        if (request.getId() == null) {
+            return;
+        }
+
         // Kiểm tra trùng lặp SePay Webhook (tránh cộng đúp do lag mạng)
         if (sePayTransactionRepository.existsBySepayId(request.getId())) {
             throw new AppException(ErrorCode.DUPLICATE_WEBHOOK);
         }
 
+        SePayTransaction sePayLog = buildSePayLog(request);
+
         String content = request.getContent();
-        if (content == null || content.isEmpty()) {
+        if (content == null || content.isBlank()) {
+            sePayLog.setMatchStatus(SePayMatchStatus.UNMATCHED);
+            sePayLog.setMatchNote("Webhook thiếu nội dung chuyển khoản");
+            sePayTransactionRepository.save(sePayLog);
             return;
         }
 
@@ -132,42 +142,74 @@ public class TransactionServiceImpl implements TransactionService {
             }
         }
 
+        sePayLog.setParsedWalletAccount(accountNumber);
+
         if (accountNumber == null) {
+            sePayLog.setMatchStatus(SePayMatchStatus.UNMATCHED);
+            sePayLog.setMatchNote("Không parse được cú pháp NAP [STK] từ nội dung");
+            sePayTransactionRepository.save(sePayLog);
+            return;
+        }
+
+        if (!"in".equalsIgnoreCase(request.getTransferType())) {
+            sePayLog.setMatchStatus(SePayMatchStatus.IGNORED);
+            sePayLog.setMatchNote("Bỏ qua vì không phải giao dịch nhận tiền (transferType != in)");
+            sePayTransactionRepository.save(sePayLog);
             return;
         }
 
         Wallet wallet = walletRepository.findByAccountNumber(accountNumber).orElse(null);
         if (wallet == null) {
-            return; // Tiền vào nhưng nội dung ghi sai STK, không tìm thấy ví
+            // Tiền vào ngân hàng nhưng hệ thống chưa cộng ví — ghi UNMATCHED để Admin đối soát
+            sePayLog.setMatchStatus(SePayMatchStatus.UNMATCHED);
+            sePayLog.setMatchNote("Không tìm thấy ví với STK: " + accountNumber);
+            sePayTransactionRepository.save(sePayLog);
+            return;
         }
 
-        if (!"in".equalsIgnoreCase(request.getTransferType())) {
-            return; // Chỉ xử lý giao dịch nhận tiền (cộng tiền vào ví)
+        if (request.getTransferAmount() == null || request.getTransferAmount().compareTo(BigDecimal.ZERO) <= 0) {
+            sePayLog.setMatchStatus(SePayMatchStatus.IGNORED);
+            sePayLog.setMatchNote("Số tiền không hợp lệ");
+            sePayTransactionRepository.save(sePayLog);
+            return;
         }
 
-        if (request.getTransferAmount() != null && request.getTransferAmount().compareTo(java.math.BigDecimal.ZERO) > 0) {
+        // 1. Tạo mới một giao dịch SUCCESS để lưu lịch sử
+        String transactionCode = "TX" + System.currentTimeMillis() + UUID.randomUUID().toString().substring(0, 4).toUpperCase();
+        Transaction transaction = new Transaction();
+        transaction.setUser(wallet.getUser());
+        transaction.setWallet(wallet);
+        transaction.setAmount(request.getTransferAmount());
+        transaction.setType(TransactionType.TOP_UP);
+        transaction.setStatus(TransactionStatus.SUCCESS);
+        transaction.setTransactionCode(transactionCode);
+        transaction.setNote("Nạp tiền vào ví qua SePay");
 
-            // 1. Tạo mới một giao dịch SUCCESS để lưu lịch sử
-            String transactionCode = "TX" + System.currentTimeMillis() + UUID.randomUUID().toString().substring(0, 4).toUpperCase();
-            Transaction transaction = new Transaction();
-            transaction.setUser(wallet.getUser());
-            transaction.setWallet(wallet);
-            transaction.setAmount(request.getTransferAmount());
-            transaction.setType(TransactionType.TOP_UP);
-            transaction.setStatus(TransactionStatus.SUCCESS);
-            transaction.setTransactionCode(transactionCode);
-            transaction.setNote("Nạp tiền vào ví qua SePay");
+        transactionRepository.save(transaction);
 
-            transactionRepository.save(transaction);
+        // 2. Cộng đúng số tiền thực tế khách đã chuyển vào ví
+        wallet.addBalance(request.getTransferAmount());
+        walletRepository.save(wallet);
 
-            // 2. Cộng đúng số tiền thực tế khách đã chuyển vào ví
-            wallet.addBalance(request.getTransferAmount());
-            walletRepository.save(wallet);
+        // 3. Lưu log SePay đã khớp với Transaction nội bộ
+        sePayLog.setTransaction(transaction);
+        sePayLog.setMatchStatus(SePayMatchStatus.MATCHED);
+        sePayLog.setMatchNote("Đã cộng tiền vào ví và tạo Transaction nội bộ");
+        sePayTransactionRepository.save(sePayLog);
+    }
 
-            // 3. Lưu lại sepay_id để đánh dấu là đã xử lý
-            SePayTransaction sePayTransaction = new SePayTransaction(request.getId(), transaction);
-            sePayTransactionRepository.save(sePayTransaction);
-        }
+    private SePayTransaction buildSePayLog(SePayWebhookRequest request) {
+        SePayTransaction log = new SePayTransaction();
+        log.setSepayId(request.getId());
+        log.setGateway(request.getGateway());
+        log.setTransactionDate(request.getTransactionDate());
+        log.setAccountNumber(request.getAccountNumber());
+        log.setContent(request.getContent());
+        log.setTransferType(request.getTransferType());
+        log.setTransferAmount(request.getTransferAmount());
+        log.setReferenceCode(request.getReferenceCode());
+        log.setMatchStatus(SePayMatchStatus.UNMATCHED);
+        return log;
     }
 
     // ====================== TRA CỨU GIAO DỊCH ======================

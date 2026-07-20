@@ -1,5 +1,5 @@
-import React from 'react';
-import { Layout, Menu, theme, ConfigProvider, Avatar, Dropdown, Space, Typography } from 'antd';
+import React, { useEffect, useMemo, useState } from 'react';
+import { Layout, Menu, Avatar, Dropdown, ConfigProvider, Tooltip, Breadcrumb, Input, Badge } from 'antd';
 import {
   DashboardOutlined,
   UserOutlined,
@@ -7,22 +7,50 @@ import {
   LogoutOutlined,
   BarChartOutlined,
   FileTextOutlined,
-  SecurityScanOutlined,
   BellOutlined,
   SettingOutlined,
+  DoubleLeftOutlined,
+  DoubleRightOutlined,
+  SearchOutlined,
+  QuestionCircleOutlined,
 } from '@ant-design/icons';
-import { Outlet, useNavigate, useLocation } from 'react-router-dom';
+import { Outlet, useNavigate, useLocation, Link } from 'react-router-dom';
+import './AdminLayout.css';
 
-const { Header, Content, Footer, Sider } = Layout;
-const { Text } = Typography;
+const { Header, Content, Sider } = Layout;
+
+const SIDEBAR_COLLAPSED_KEY = 'admin_sidebar_collapsed';
+
+const PAGE_META: Record<string, { title: string; parent?: string }> = {
+  '/': { title: 'Tổng quan' },
+  '/users': { title: 'Người dùng', parent: 'Quản lý' },
+  '/transactions': { title: 'Đối soát SePay', parent: 'Quản lý' },
+  '/reports': { title: 'Báo cáo', parent: 'Phân tích' },
+  '/posts': { title: 'Bài viết', parent: 'Nội dung' },
+};
 
 export const AdminLayout: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  
-  const {
-    token: { colorBgContainer },
-  } = theme.useToken();
+  const [collapsed, setCollapsed] = useState(() => {
+    try {
+      return localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === '1';
+    } catch {
+      return false;
+    }
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(SIDEBAR_COLLAPSED_KEY, collapsed ? '1' : '0');
+    } catch {
+      // ignore
+    }
+  }, [collapsed]);
+
+  const pageMeta = useMemo(() => {
+    return PAGE_META[location.pathname] ?? { title: 'SmartSpend Admin' };
+  }, [location.pathname]);
 
   const handleMenuClick = (key: string) => {
     if (key === 'logout') {
@@ -38,34 +66,23 @@ export const AdminLayout: React.FC = () => {
       {
         key: 'user-info',
         label: (
-          <div style={{ padding: '8px 12px', display: 'flex', flexDirection: 'column' }}>
-            <span style={{ fontWeight: 700, color: '#0F172A', fontSize: '0.95rem' }}>Quản trị viên</span>
-            <span style={{ color: '#64748B', fontSize: '0.8rem' }}>admin@smartspend.com</span>
+          <div className="admin-dropdown-user">
+            <strong>Quản trị viên</strong>
+            <span>admin@smartspend.com</span>
           </div>
         ),
         disabled: true,
-        style: { cursor: 'default' }
       },
-      {
-        type: 'divider' as const,
-      },
-      {
-        key: 'profile',
-        icon: <UserOutlined />,
-        label: <span style={{ fontWeight: 500 }}>Hồ sơ cá nhân</span>,
-      },
+      { type: 'divider' as const },
       {
         key: 'settings',
         icon: <SettingOutlined />,
-        label: <span style={{ fontWeight: 500 }}>Cài đặt hệ thống</span>,
-      },
-      {
-        type: 'divider' as const,
+        label: 'Cài đặt',
       },
       {
         key: 'logout',
         icon: <LogoutOutlined />,
-        label: <span style={{ fontWeight: 600 }}>Đăng xuất</span>,
+        label: 'Đăng xuất',
         danger: true,
         onClick: () => handleMenuClick('logout'),
       },
@@ -75,137 +92,170 @@ export const AdminLayout: React.FC = () => {
   return (
     <ConfigProvider
       theme={{
+        token: {
+          colorPrimary: '#EC4899',
+          colorInfo: '#7C3AED',
+          colorBgLayout: '#F8FAFC',
+          colorBgContainer: '#FFFFFF',
+          colorBorderSecondary: '#E2E8F0',
+          borderRadius: 10,
+          fontFamily: "'Segoe UI', system-ui, -apple-system, BlinkMacSystemFont, sans-serif",
+        },
         components: {
           Menu: {
-            itemSelectedBg: 'rgba(13, 148, 136, 0.4)',
-            itemSelectedColor: '#fff',
-            itemHoverBg: 'rgba(255, 255, 255, 0.08)',
-            itemHoverColor: '#5EEAD4',
-            itemColor: 'rgba(255, 255, 255, 0.65)',
             itemBorderRadius: 8,
-            itemMarginInline: 12,
+            itemHeight: 42,
+            itemMarginInline: 8,
+          },
+          Table: {
+            headerBg: '#F8FAFC',
           },
         },
       }}
     >
-      <Layout style={{ height: '100vh', overflow: 'hidden' }}>
-        <Sider 
-          breakpoint="lg" 
-          collapsedWidth="0" 
-          theme="dark"
-          width={260}
-          style={{ 
-            height: '100vh', 
-            overflow: 'auto',
-            background: '#042f2e',
-            backgroundImage: 'linear-gradient(rgba(13, 148, 136, 0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(13, 148, 136, 0.05) 1px, transparent 1px)',
-            backgroundSize: '20px 20px',
-            borderRight: '1px solid rgba(13, 148, 136, 0.2)',
-            zIndex: 10
-          }}
+      <Layout className="admin-shell">
+        <Sider
+          className={`admin-sider${collapsed ? ' is-collapsed' : ''}`}
+          collapsible
+          collapsed={collapsed}
+          onCollapse={setCollapsed}
+          trigger={null}
+          collapsedWidth={72}
+          width={240}
+          theme="light"
         >
-          <div style={{ 
-            height: 80, 
-            display: 'flex', 
-            alignItems: 'center', 
-            padding: '0 24px',
-            gap: 12,
-            borderBottom: '1px solid rgba(255, 255, 255, 0.05)'
-          }}>
-            <div style={{ width: 36, height: 36, borderRadius: 10, background: '#0D9488', display: 'flex', justifyContent: 'center', alignItems: 'center', boxShadow: '0 4px 12px rgba(13, 148, 136, 0.3)' }}>
-              <SecurityScanOutlined style={{ fontSize: 20, color: 'white' }} />
+          <div className="admin-brand">
+            <div className="admin-brand-row">
+              <img src="/brand/smartspend-icon.png" alt="SmartSpend" />
+              {!collapsed && (
+                <div className="admin-brand-text">
+                  <strong>
+                    <span className="smart">Smart</span>
+                    <span className="spend">Spend</span>
+                  </strong>
+                  <small>Hệ thống quản trị viên</small>
+                </div>
+              )}
             </div>
-            <div>
-              <div style={{ color: 'white', fontWeight: 800, fontSize: '1.25rem', lineHeight: 1, letterSpacing: '-0.5px' }}>SmartSpend</div>
-              <div style={{ color: '#5EEAD4', fontSize: '0.65rem', fontWeight: 700, letterSpacing: 1.5, marginTop: 4 }}>ADMIN PORTAL</div>
-            </div>
+            <svg
+              className="admin-brand-curve"
+              viewBox="0 0 240 14"
+              preserveAspectRatio="none"
+              aria-hidden
+            >
+              <path d="M0 2 C60 14, 180 14, 240 2" />
+            </svg>
           </div>
-          <div style={{ padding: '24px 0' }}>
+
+          <div className="admin-menu-wrap">
+            <Tooltip title={collapsed ? 'Mở rộng menu' : 'Thu gọn menu'} placement="right">
+              <button
+                type="button"
+                className={`admin-sider-toggle${collapsed ? ' is-collapsed' : ''}`}
+                onClick={() => setCollapsed((v) => !v)}
+                aria-label={collapsed ? 'Mở rộng sidebar' : 'Thu gọn sidebar'}
+              >
+                <span className="admin-sider-toggle-icon">
+                  {collapsed ? <DoubleRightOutlined /> : <DoubleLeftOutlined />}
+                </span>
+                <span className="admin-sider-toggle-label">
+                  {collapsed ? 'Mở rộng' : 'Thu gọn'}
+                </span>
+              </button>
+            </Tooltip>
+
             <Menu
-              theme="dark"
+              className="admin-menu"
               mode="inline"
               selectedKeys={[location.pathname]}
               onClick={({ key }) => handleMenuClick(key)}
-              style={{ background: 'transparent', borderRight: 'none' }}
               items={[
                 {
-                  key: '/',
-                  icon: <DashboardOutlined style={{ fontSize: 18 }} />,
-                  label: <span style={{ fontWeight: 600, fontSize: '0.95rem' }}>Tổng quan</span>,
+                  key: 'group-main',
+                  type: 'group',
+                  label: collapsed ? '' : 'Chính',
+                  children: [
+                    { key: '/', icon: <DashboardOutlined />, label: 'Tổng quan' },
+                  ],
                 },
                 {
-                  key: '/users',
-                  icon: <UserOutlined style={{ fontSize: 18 }} />,
-                  label: <span style={{ fontWeight: 600, fontSize: '0.95rem' }}>Người dùng</span>,
+                  key: 'group-manage',
+                  type: 'group',
+                  label: collapsed ? '' : 'Quản lý',
+                  children: [
+                    { key: '/users', icon: <UserOutlined />, label: 'Người dùng' },
+                    { key: '/transactions', icon: <TransactionOutlined />, label: 'Đối soát SePay' },
+                    { key: '/posts', icon: <FileTextOutlined />, label: 'Bài viết' },
+                  ],
                 },
                 {
-                  key: '/transactions',
-                  icon: <TransactionOutlined style={{ fontSize: 18 }} />,
-                  label: <span style={{ fontWeight: 600, fontSize: '0.95rem' }}>Giao dịch</span>,
-                },
-                {
-                  key: '/reports',
-                  icon: <BarChartOutlined style={{ fontSize: 18 }} />,
-                  label: <span style={{ fontWeight: 600, fontSize: '0.95rem' }}>Báo cáo</span>,
-                },
-                {
-                  key: '/posts',
-                  icon: <FileTextOutlined style={{ fontSize: 18 }} />,
-                  label: <span style={{ fontWeight: 600, fontSize: '0.95rem' }}>Bài viết</span>,
+                  key: 'group-analytics',
+                  type: 'group',
+                  label: collapsed ? '' : 'Phân tích',
+                  children: [
+                    { key: '/reports', icon: <BarChartOutlined />, label: 'Báo cáo' },
+                  ],
                 },
               ]}
             />
           </div>
         </Sider>
-        
-        <Layout style={{ background: '#F8FAFC' }}>
-          <Header style={{ 
-            padding: '0 32px', 
-            background: colorBgContainer, 
-            display: 'flex', 
-            alignItems: 'center', 
-            justifyContent: 'space-between',
-            borderBottom: '1px solid #E2E8F0',
-            height: 80,
-            zIndex: 5
-          }}>
-            <div>
-              {/* Optional: Add Breadcrumbs or Page Title here in the future */}
-            </div>
-            
-            <div style={{ display: 'flex', alignItems: 'center', gap: 24 }}>
-              <div style={{ 
-                width: 40, 
-                height: 40, 
-                borderRadius: '50%', 
-                background: '#F1F5F9', 
-                display: 'flex', 
-                justifyContent: 'center', 
-                alignItems: 'center',
-                cursor: 'pointer',
-                color: '#64748B',
-                transition: 'all 0.2s'
-              }}>
-                <BellOutlined style={{ fontSize: 18 }} />
-              </div>
-              
-              <Dropdown menu={userMenu} placement="bottomRight" arrow={{ pointAtCenter: true }} trigger={['click']}>
-                <div style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', padding: '4px', borderRadius: '50%', transition: 'box-shadow 0.2s', border: '2px solid transparent' }} 
-                     onMouseEnter={(e) => e.currentTarget.style.boxShadow = '0 0 0 4px rgba(13, 148, 136, 0.1)'}
-                     onMouseLeave={(e) => e.currentTarget.style.boxShadow = 'none'}>
-                  <Avatar style={{ backgroundColor: '#0D9488', border: '1px solid #fff' }} size={42} icon={<UserOutlined />} />
+
+        <Layout className="admin-main">
+          <Header className="admin-header">
+            <div className="admin-header-left">
+              <div className="admin-header-meta">
+                <Breadcrumb
+                  className="admin-breadcrumb"
+                  items={[
+                    { title: <Link to="/">Admin</Link> },
+                    ...(pageMeta.parent ? [{ title: pageMeta.parent }] : []),
+                    { title: pageMeta.title },
+                  ]}
+                />
+                <div className="admin-header-title-row">
+                  <span className="admin-header-accent" />
+                  <h1>{pageMeta.title}</h1>
                 </div>
+              </div>
+            </div>
+
+            <div className="admin-header-search">
+              <Input
+                allowClear
+                placeholder="Tìm người dùng, giao dịch, bài viết..."
+                prefix={<SearchOutlined />}
+              />
+            </div>
+
+            <div className="admin-header-right">
+              <Tooltip title="Trợ giúp">
+                <button type="button" className="admin-icon-btn" aria-label="Trợ giúp">
+                  <QuestionCircleOutlined />
+                </button>
+              </Tooltip>
+              <Tooltip title="Thông báo">
+                <button type="button" className="admin-icon-btn" aria-label="Thông báo">
+                  <Badge count={3} size="small" offset={[-2, 2]}>
+                    <BellOutlined />
+                  </Badge>
+                </button>
+              </Tooltip>
+              <Dropdown menu={userMenu} placement="bottomRight" trigger={['click']}>
+                <button type="button" className="admin-user-btn">
+                  <Avatar size={36} icon={<UserOutlined />} className="admin-avatar" />
+                  <span className="admin-user-text">
+                    <strong>Admin</strong>
+                    <small>Quản trị viên</small>
+                  </span>
+                </button>
               </Dropdown>
             </div>
           </Header>
-          
-          <Content style={{ padding: '32px', minHeight: 360, overflow: 'auto' }}>
+
+          <Content className="admin-content">
             <Outlet />
           </Content>
-          
-          <Footer style={{ textAlign: 'center', color: '#94A3B8', fontSize: '0.85rem' }}>
-            SmartSpend Admin Portal ©{new Date().getFullYear()}
-          </Footer>
         </Layout>
       </Layout>
     </ConfigProvider>
