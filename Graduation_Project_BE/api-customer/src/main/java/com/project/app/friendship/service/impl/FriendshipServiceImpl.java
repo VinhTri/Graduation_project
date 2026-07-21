@@ -10,6 +10,7 @@ import com.project.app.notification.service.NotificationService;
 import com.project.app.user.entity.User;
 import com.project.app.user.repository.UserRepository;
 import com.project.app.wallet.service.WalletService;
+import com.project.app.common.service.EmailService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -27,6 +28,7 @@ public class FriendshipServiceImpl implements FriendshipService {
     private final UserRepository userRepository;
     private final NotificationService notificationService;
     private final WalletService walletService;
+    private final EmailService emailService;
 
     @Override
     @Transactional
@@ -52,6 +54,18 @@ public class FriendshipServiceImpl implements FriendshipService {
                 "Lời mời kết bạn",
                 currentUser.getUsername() + " đã gửi cho bạn một lời mời kết bạn."
         );
+
+        try {
+            String subject = "Bạn có một lời mời kết bạn mới!";
+            String text = "Xin chào " + receiver.getUsername() + ",\n\n"
+                    + "Người dùng " + currentUser.getUsername() + " (" + currentUser.getEmail() + ") vừa gửi cho bạn một lời mời kết bạn trên ứng dụng.\n"
+                    + "Vui lòng mở ứng dụng để kiểm tra và phản hồi nhé.\n\n"
+                    + "Trân trọng,\nĐội ngũ quản trị.";
+            emailService.sendEmail(receiver.getEmail(), subject, text);
+        } catch (Exception e) {
+            // Ignore email sending error so it doesn't break the main flow
+            System.err.println("Gửi email kết bạn thất bại: " + e.getMessage());
+        }
 
         return toResponse(saved, currentUser);
     }
