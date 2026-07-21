@@ -93,7 +93,7 @@ export default function TransferBillScreen() {
             <View style={styles.amountBlock}>
               <Text style={styles.amountLabel}>Số tiền đã chuyển</Text>
               <Text style={styles.amountValue}>
-                −{amount.toLocaleString('vi-VN')}
+                {amount.toLocaleString('vi-VN')}
                 <Text style={styles.amountCurrency}> ₫</Text>
               </Text>
             </View>

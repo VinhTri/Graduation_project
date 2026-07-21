@@ -9,6 +9,7 @@ import { useFocusEffect } from '@react-navigation/native';
 const HOME_SERVICES = [
   { id: "3", label: "Hóa đơn", icon: "receipt-outline", color: "#10B981", bgColor: "#D1FAE5", route: "/invoice" },
   { id: "10", label: "Danh bạ", icon: "people-circle-outline", color: "#EC4899", bgColor: "#FFE4F0", route: "/contacts" },
+  { id: "budget", label: "Ngân sách", icon: "pie-chart-outline", color: "#F59E0B", bgColor: "#FEF3C7", route: "/budget" },
 ] as const;
 
 const FIXED_SERVICES = [
