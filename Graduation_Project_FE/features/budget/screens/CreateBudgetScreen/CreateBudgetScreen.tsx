@@ -42,6 +42,11 @@ export const CreateBudgetScreen = () => {
   const [isCategoryModalVisible, setIsCategoryModalVisible] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [toast, setToast] = useState<{ visible: boolean; message: string }>({ visible: false, message: '' });
+  const [duplicateModal, setDuplicateModal] = useState<{ visible: boolean; title: string; message: string }>({
+    visible: false,
+    title: '',
+    message: '',
+  });
 
   const showToast = (msg: string) => {
     setToast({ visible: true, message: msg });
@@ -99,11 +104,13 @@ export const CreateBudgetScreen = () => {
         errMsg.includes('already exists') || 
         errMsg.includes('đã tồn tại')
       ) {
-        const cycleText = selectedCycle === 'WEEKLY' ? 'tuần' : selectedCycle === 'MONTHLY' ? 'tháng' : 'năm';
+        const cycleText = selectedCycle === 'WEEKLY' ? 'hàng tuần' : selectedCycle === 'MONTHLY' ? 'hàng tháng' : 'hàng năm';
         const categoryLabel = selectedCategory?.label || 'này';
-        showToast(
-          `Ngân sách cho danh mục "${categoryLabel}" trong ${cycleText} này đã tồn tại.`
-        );
+        setDuplicateModal({
+          visible: true,
+          title: 'Trùng lặp ngân sách',
+          message: `Ngân sách cho danh mục "${categoryLabel}" trong chu kỳ "${cycleText}" đã tồn tại. Vui lòng đặt tên khác hoặc xóa ngân sách cũ trước.`,
+        });
       } else {
         showToast(errMsg || 'Đã có lỗi xảy ra khi tạo ngân sách.');
       }
@@ -157,6 +164,35 @@ export const CreateBudgetScreen = () => {
       </Modal>
     );
   };
+
+  const renderDuplicateModal = () => (
+    <Modal
+      transparent
+      visible={duplicateModal.visible}
+      animationType="fade"
+      onRequestClose={() => setDuplicateModal(prev => ({ ...prev, visible: false }))}
+    >
+      <View style={styles.alertOverlay}>
+        <View style={styles.alertBox}>
+          <View style={styles.alertIconBg}>
+            <Ionicons name="close-circle" size={36} color="#EF4444" />
+          </View>
+          <Text style={styles.alertTitle}>{duplicateModal.title}</Text>
+          <Text style={styles.alertMessage}>{duplicateModal.message}</Text>
+
+          <View style={styles.alertActions}>
+            <TouchableOpacity
+              style={styles.alertErrorBtn}
+              onPress={() => setDuplicateModal(prev => ({ ...prev, visible: false }))}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.alertConfirmText}>Đã hiểu</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </View>
+    </Modal>
+  );
 
   return (
     <KeyboardAvoidingView 
@@ -272,6 +308,7 @@ export const CreateBudgetScreen = () => {
       </ScrollView>
 
       {renderCategoryModal()}
+      {renderDuplicateModal()}
 
       <Toast 
         visible={toast.visible} 
@@ -522,5 +559,64 @@ const styles = StyleSheet.create({
   },
   separator: {
     height: 0,
+  },
+  alertOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+  },
+  alertBox: {
+    width: '100%',
+    maxWidth: 400,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: 24,
+    alignItems: 'center',
+    elevation: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+  },
+  alertIconBg: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: '#FEE2E2',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  alertTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: PASTEL_PALETTE.title || '#1F2937',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  alertMessage: {
+    fontSize: 14,
+    color: PASTEL_PALETTE.textGray || '#6B7280',
+    textAlign: 'center',
+    marginBottom: 24,
+    lineHeight: 22,
+  },
+  alertActions: {
+    width: '100%',
+  },
+  alertErrorBtn: {
+    width: '100%',
+    paddingVertical: 14,
+    borderRadius: 12,
+    backgroundColor: '#FEE2E2',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  alertConfirmText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#EF4444',
   },
 });
