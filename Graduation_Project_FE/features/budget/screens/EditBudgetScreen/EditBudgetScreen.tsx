@@ -115,8 +115,22 @@ export const EditBudgetScreen = () => {
       });
       router.back();
     } catch (error: any) {
-      console.error(error);
-      const errMsg = error?.response?.data?.message || error?.message || '';
+      console.log('Lỗi khi cập nhật ngân sách:', error);
+      let errMsg = error?.message || error?.response?.data?.message;
+
+      if (!errMsg && typeof error === 'string') {
+        try {
+          const parsed = JSON.parse(error);
+          errMsg = parsed?.message || errMsg;
+        } catch (e) {
+          errMsg = error;
+        }
+      }
+
+      if (typeof errMsg === 'object') {
+        errMsg = (errMsg as any)?.message || JSON.stringify(errMsg);
+      }
+
       showToast(errMsg || 'Đã có lỗi xảy ra khi cập nhật ngân sách.');
     } finally {
       setIsSubmitting(false);

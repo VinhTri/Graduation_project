@@ -47,7 +47,7 @@ export const BudgetScreen = () => {
       setBudgets(fetchedBudgets);
       setSummary(fetchedSummary);
     } catch (error) {
-      console.error('Lỗi khi tải ngân sách:', error);
+      console.log('Lỗi khi tải ngân sách:', error);
     } finally {
       setIsDeleting(false);
       setLoading(false);
@@ -78,7 +78,7 @@ export const BudgetScreen = () => {
       setDeleteTarget(null);
       fetchBudgetsAndSummary();
     } catch (error: any) {
-      console.error('Lỗi khi xóa ngân sách:', error);
+      console.log('Lỗi khi xóa ngân sách:', error);
       Alert.alert('Lỗi', error?.response?.data?.message || error?.message || 'Không thể xóa ngân sách');
     } finally {
       setIsDeleting(false);
@@ -225,26 +225,20 @@ const removeVietnameseTones = (str: string): string => {
     });
 
   const renderSearch = () => (
-    <View style={{ marginBottom: 12 }}>
-      <View style={styles.searchContainer}>
-        <Ionicons name="search-outline" size={20} color={PASTEL_PALETTE.textGray} />
-        <TextInput
-          style={styles.searchInput}
-          placeholder="Tìm kiếm ngân sách..."
-          value={searchQuery}
-          onChangeText={setSearchQuery}
-          placeholderTextColor={PASTEL_PALETTE.textGray}
-        />
-        {searchQuery.length > 0 && (
-          <TouchableOpacity onPress={() => setSearchQuery('')}>
-            <Ionicons name="close-circle" size={18} color={PASTEL_PALETTE.textGray} />
-          </TouchableOpacity>
-        )}
-      </View>
-      <View style={styles.swipeHintRow}>
-        <Ionicons name="arrow-back-outline" size={13} color={PASTEL_PALETTE.accentDeep} />
-        <Text style={styles.swipeHintText}>Vuốt từ phải sang trái để xóa ngân sách</Text>
-      </View>
+    <View style={styles.searchContainer}>
+      <Ionicons name="search-outline" size={20} color={PASTEL_PALETTE.textGray} />
+      <TextInput
+        style={styles.searchInput}
+        placeholder="Tìm kiếm ngân sách..."
+        value={searchQuery}
+        onChangeText={setSearchQuery}
+        placeholderTextColor={PASTEL_PALETTE.textGray}
+      />
+      {searchQuery.length > 0 && (
+        <TouchableOpacity onPress={() => setSearchQuery('')}>
+          <Ionicons name="close-circle" size={18} color={PASTEL_PALETTE.textGray} />
+        </TouchableOpacity>
+      )}
     </View>
   );
 
@@ -747,17 +741,5 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     fontSize: 12,
     letterSpacing: 0.2,
-  },
-  swipeHintRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    marginTop: 6,
-    paddingHorizontal: 4,
-  },
-  swipeHintText: {
-    fontSize: 12,
-    color: PASTEL_PALETTE.accentDeep,
-    fontWeight: '600',
   },
 });

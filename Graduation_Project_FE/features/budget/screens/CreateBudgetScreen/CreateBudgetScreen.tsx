@@ -95,15 +95,29 @@ export const CreateBudgetScreen = () => {
       // Tự động chuyển thẳng sang màn hình ngân sách khi tạo thành công
       router.replace('/budget');
     } catch (error: any) {
-      console.error(error);
-      const errMsg = error?.response?.data?.message || error?.message || '';
-      const errCode = error?.response?.data?.code;
-      if (
+      let errCode = error?.code || error?.response?.data?.code;
+      let errMsg = error?.message || error?.response?.data?.message;
+
+      if (!errMsg && typeof error === 'string') {
+        try {
+          const parsed = JSON.parse(error);
+          errCode = parsed?.code || errCode;
+          errMsg = parsed?.message || errMsg;
+        } catch (e) {
+          errMsg = error;
+        }
+      }
+
+      if (typeof errMsg === 'object') {
+        errMsg = (errMsg as any)?.message || JSON.stringify(errMsg);
+      }
+
+      const isDuplicate = 
         errCode === 'BUDGET_ALREADY_EXISTS' || 
         errCode === 'BUDGET_9002' || 
-        errMsg.includes('already exists') || 
-        errMsg.includes('đã tồn tại')
-      ) {
+        (typeof errMsg === 'string' && (errMsg.includes('already exists') || errMsg.includes('đã tồn tại')));
+
+      if (isDuplicate) {
         const cycleText = selectedCycle === 'WEEKLY' ? 'hàng tuần' : selectedCycle === 'MONTHLY' ? 'hàng tháng' : 'hàng năm';
         const categoryLabel = selectedCategory?.label || 'này';
         setDuplicateModal({
@@ -112,6 +126,7 @@ export const CreateBudgetScreen = () => {
           message: `Ngân sách cho danh mục "${categoryLabel}" trong chu kỳ "${cycleText}" đã tồn tại. Vui lòng đặt tên khác hoặc xóa ngân sách cũ trước.`,
         });
       } else {
+        console.log('Lỗi khi tạo ngân sách:', error);
         showToast(errMsg || 'Đã có lỗi xảy ra khi tạo ngân sách.');
       }
     } finally {
