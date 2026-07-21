@@ -12,6 +12,8 @@ import org.springframework.web.bind.annotation.*;
 
 import com.project.app.transaction.dto.request.SePayWebhookRequest;
 import com.project.app.transaction.dto.request.WithdrawRequest;
+import com.project.app.transaction.dto.request.TransferRequest;
+import com.project.app.transaction.dto.response.TransferResponse;
 import com.project.app.transaction.dto.response.TransactionStatusResponse;
 import com.project.app.transaction.dto.response.WithdrawResponse;
 import com.project.app.transaction.entity.Transaction;
@@ -101,4 +103,18 @@ public class TransactionController {
                 .data(response)
                 .build());
     }
+
+    @PostMapping("/transfer")
+    public ResponseEntity<ApiResponse<TransferResponse>> processTransfer(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @Valid @RequestBody TransferRequest request) {
+
+        TransferResponse response = transactionService.processTransfer(userDetails.getUser(), request);
+        return ResponseEntity.ok(ApiResponse.<TransferResponse>builder()
+                .success(true)
+                .message("Chuyển tiền thành công")
+                .data(response)
+                .build());
+    }
+
 }

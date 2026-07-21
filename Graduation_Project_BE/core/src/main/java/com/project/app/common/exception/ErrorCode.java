@@ -35,6 +35,8 @@ public enum ErrorCode {
     WITHDRAW_FAILED("TX_3003", "Xảy ra lỗi trong quá trình rút tiền. Vui lòng thử lại sau!", HttpStatus.INTERNAL_SERVER_ERROR),
     ACCOUNT_ALREADY_SETUP("WALL_2005", "Ví này đã được thiết lập số tài khoản!", HttpStatus.CONFLICT),
     ACCOUNT_NUMBER_ALREADY_EXISTS("WALL_2006", "Số tài khoản này đã được người khác sử dụng!", HttpStatus.CONFLICT),
+    RECEIVER_NOT_FOUND("WALL_2008", "Không tìm thấy người nhận với số tài khoản này!", HttpStatus.NOT_FOUND),
+    CANNOT_TRANSFER_SELF("WALL_2009", "Không thể chuyển tiền cho chính mình!", HttpStatus.BAD_REQUEST),
 
     // ---- LỖI DANH MỤC ----
     CATEGORY_GROUP_NOT_FOUND("CAT_5001", "Không tìm thấy nhóm danh mục!", HttpStatus.NOT_FOUND),
