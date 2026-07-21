@@ -15,6 +15,22 @@ export interface TopUpResponse {
   createdAt: string;
 }
 
+
+export interface TransferRequest {
+  receiverAccountNumber: string;
+  amount: number;
+  pinCode: string;
+  note?: string;
+}
+
+export interface TransferResponse {
+  transactionCode: string;
+  status: string;
+  amount: number;
+  receiverName: string;
+  createdAt: string;
+}
+
 export interface WithdrawRequest {
   amount: number;
   bankAccountId: number;
@@ -65,6 +81,12 @@ export interface TransactionHistoryItem {
 export const transactionService = {
   initiateTopUp: async (data: TopUpRequest): Promise<TopUpResponse> => {
     const response = await axiosClient.post(ENDPOINTS.TRANSACTION.TOP_UP, data);
+    return response.data;
+  },
+
+  
+  internalTransfer: async (data: TransferRequest): Promise<TransferResponse> => {
+    const response = await axiosClient.post(ENDPOINTS.TRANSACTION.TRANSFER, data);
     return response.data;
   },
 

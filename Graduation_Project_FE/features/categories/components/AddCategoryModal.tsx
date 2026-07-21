@@ -49,9 +49,12 @@ export const AddCategoryModal: React.FC<AddCategoryModalProps> = ({ visible, onC
   );
 
   const availableColors = useMemo(() => {
-    const used = customGroups.flatMap((g) => g.items.map((item) => item.color));
+    // Quét toàn bộ các nhóm (kể cả nhóm mặc định), lấy màu của các danh mục do user tự tạo (isCustom = true)
+    const used = categories.flatMap((g) => 
+      g.items.filter((item: any) => item.isCustom || item.custom).map((item) => item.color)
+    );
     return getAvailableCategoryColors(used);
-  }, [customGroups]);
+  }, [categories]);
 
   const KEYWORD_MAP: Record<string, { groupName: string; icon: string }> = {
     'ăn': { groupName: 'Chi tiêu', icon: 'restaurant' },
@@ -86,9 +89,9 @@ export const AddCategoryModal: React.FC<AddCategoryModalProps> = ({ visible, onC
     setLabel('');
     setSelectedIcon('apps');
     const colors = getAvailableCategoryColors(
-      categories
-        .filter((g) => !g.isDefault)
-        .flatMap((g) => g.items.map((item) => item.color))
+      categories.flatMap((g) => 
+        g.items.filter((item: any) => item.isCustom || item.custom).map((item) => item.color)
+      )
     );
     setSelectedColor(colors[0] ?? null);
     if (defaultGroupId) {
@@ -189,31 +192,6 @@ export const AddCategoryModal: React.FC<AddCategoryModalProps> = ({ visible, onC
       return;
     }
 
-    const lowerLabel = trimmedLabel.toLowerCase();
-    let suggestedGroupName = "";
-
-    for (const [keyword, suggestion] of Object.entries(KEYWORD_MAP)) {
-      if (lowerLabel.includes(keyword)) {
-        suggestedGroupName = suggestion.groupName.toLowerCase();
-        break;
-      }
-    }
-
-    if (suggestedGroupName) {
-      const selectedGroupObj = customGroups.find(c => c.id === selectedGroup);
-      if (selectedGroupObj && !selectedGroupObj.title.toLowerCase().includes(suggestedGroupName)) {
-        const msg = `Bạn đang lưu khoản "${trimmedLabel}" vào nhóm "${selectedGroupObj.title}". Bạn có chắc chắn không?`;
-        setAlertConfig({
-          visible: true,
-          title: "Nhắc nhở logic",
-          message: msg,
-          type: "warning",
-          onConfirm: executeSave,
-          onCancel: () => {}
-        });
-        return;
-      }
-    }
 
     executeSave();
   };
@@ -666,7 +644,7 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     alignItems: 'center',
     borderRadius: 12,
-    backgroundColor: Colors.primary,
+    backgroundColor: '#EC4899', // Pink PASTEL_PALETTE.accentDeep
   },
   saveBtnText: {
     fontSize: 16,

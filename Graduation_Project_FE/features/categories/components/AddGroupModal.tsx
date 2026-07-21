@@ -320,7 +320,7 @@ const styles = StyleSheet.create({
     paddingBottom: Platform.OS === 'ios' ? 30 : 20,
   },
   saveBtn: {
-    backgroundColor: Colors.primary,
+    backgroundColor: '#EC4899', // Pink PASTEL_PALETTE.accentDeep
     paddingVertical: 14,
     borderRadius: 12,
     alignItems: 'center',

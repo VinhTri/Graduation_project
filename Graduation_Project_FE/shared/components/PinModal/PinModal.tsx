@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, Modal, SafeAreaView, Alert } from 'react-native';
+import { View, Text, TouchableOpacity, Modal, SafeAreaView, Alert, TouchableWithoutFeedback } from 'react-native';
 import { Feather, Ionicons } from '@expo/vector-icons';
 import { styles } from './PinModal.styles';
 
@@ -103,47 +103,51 @@ export default function PinModal({
   };
 
   return (
-    <Modal visible={visible} transparent animationType="slide">
-      <View style={styles.overlay}>
-        <SafeAreaView style={styles.modalContainer}>
-          <View style={styles.dragIndicator} />
-          
-          <View style={styles.headerIconContainer}>
-            <Ionicons name="lock-closed" size={28} color="#109185" />
-          </View>
+    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+      <TouchableWithoutFeedback onPress={onClose}>
+        <View style={styles.overlay}>
+          <TouchableWithoutFeedback onPress={() => {}}>
+            <SafeAreaView style={styles.modalContainer}>
+              <View style={styles.dragIndicator} />
+              
+              <View style={styles.headerIconContainer}>
+                <Ionicons name="lock-closed" size={28} color="#109185" />
+              </View>
 
-          <View style={styles.headerRow}>
-            <Text style={styles.title}>{title}</Text>
-          </View>
+              <View style={styles.headerRow}>
+                <Text style={styles.title}>{title}</Text>
+              </View>
 
-          <Text style={styles.subtitle}>
-            {subtitle}
-          </Text>
+              <Text style={styles.subtitle}>
+                {subtitle}
+              </Text>
 
-          <View style={styles.pinContainer}>
-            {[...Array(6)].map((_, i) => (
-              <View 
-                key={i} 
-                style={[styles.pinDot, i < pin.length ? styles.pinDotActive : null]} 
-              />
-            ))}
-          </View>
+              <View style={styles.pinContainer}>
+                {[...Array(6)].map((_, i) => (
+                  <View 
+                    key={i} 
+                    style={[styles.pinDot, i < pin.length ? styles.pinDotActive : null]} 
+                  />
+                ))}
+              </View>
 
-          {errorMessage ? <Text style={styles.errorText}>{errorMessage}</Text> : null}
-          
-          <TouchableOpacity onPress={() => {
-            if (onForgotPin) {
-              onForgotPin();
-            } else {
-              Alert.alert("Quên mã PIN", "Vui lòng liên hệ bộ phận CSKH để được hỗ trợ cấp lại mã PIN.");
-            }
-          }}>
-            <Text style={styles.forgotPinText}>Quên mã PIN?</Text>
-          </TouchableOpacity>
+              {errorMessage ? <Text style={styles.errorText}>{errorMessage}</Text> : null}
+              
+              <TouchableOpacity onPress={() => {
+                if (onForgotPin) {
+                  onForgotPin();
+                } else {
+                  Alert.alert("Quên mã PIN", "Vui lòng liên hệ bộ phận CSKH để được hỗ trợ cấp lại mã PIN.");
+                }
+              }}>
+                <Text style={styles.forgotPinText}>Quên mã PIN?</Text>
+              </TouchableOpacity>
 
-          {renderKeypad()}
-        </SafeAreaView>
-      </View>
+              {renderKeypad()}
+            </SafeAreaView>
+          </TouchableWithoutFeedback>
+        </View>
+      </TouchableWithoutFeedback>
     </Modal>
   );
 }
