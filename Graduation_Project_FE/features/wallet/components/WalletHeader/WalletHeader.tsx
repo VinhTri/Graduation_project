@@ -6,9 +6,12 @@ import { WalletHeaderProps } from "./WalletHeader.types";
 import { styles } from "./WalletHeader.styles";
 import WalletTotalAsset from "../WalletTotalAsset";
 import { PastelHeaderShell } from "../../../../shared/components/PastelHeaderShell";
+import { useLanguage, useTheme } from "../../../../shared/contexts/ThemeLanguageContext";
 
 export const WalletHeader: React.FC<WalletHeaderProps> = ({ onBackPress, onOpenAccountPress }) => {
   const router = useRouter();
+  const { t } = useLanguage();
+  const { theme } = useTheme();
 
   const handleBack = () => {
     if (onBackPress) {
@@ -27,25 +30,25 @@ export const WalletHeader: React.FC<WalletHeaderProps> = ({ onBackPress, onOpenA
             activeOpacity={0.7}
             onPress={handleBack}
           >
-            <Ionicons name="chevron-back-outline" size={22} color="#7C3AED" />
+            <Ionicons name="chevron-back-outline" size={22} color={theme.primary} />
           </TouchableOpacity>
           <View style={styles.titleContainer}>
-            <Text style={styles.headerTitle} numberOfLines={1} ellipsizeMode="tail">
-              Ví của tôi
+            <Text style={[styles.headerTitle, { color: theme.textPrimary }]} numberOfLines={1} ellipsizeMode="tail">
+              {t('smartSpendWallet')}
             </Text>
-            <Text style={styles.headerSubtitle} numberOfLines={1} ellipsizeMode="tail">
-              Quản lý tài sản thông minh
+            <Text style={[styles.headerSubtitle, { color: theme.textSecondary }]} numberOfLines={1} ellipsizeMode="tail">
+              {t('walletSub')}
             </Text>
           </View>
         </View>
 
         <TouchableOpacity
-          style={styles.openAccountBtn}
+          style={[styles.openAccountBtn, { backgroundColor: theme.primary }]}
           activeOpacity={0.85}
           onPress={onOpenAccountPress}
         >
           <Ionicons name="add-circle" size={18} color="#FFF" />
-          <Text style={styles.openAccountText}>Mở ví</Text>
+          <Text style={styles.openAccountText}>{t('deposit')}</Text>
         </TouchableOpacity>
       </View>
 
@@ -55,3 +58,4 @@ export const WalletHeader: React.FC<WalletHeaderProps> = ({ onBackPress, onOpenA
 };
 
 export default WalletHeader;
+

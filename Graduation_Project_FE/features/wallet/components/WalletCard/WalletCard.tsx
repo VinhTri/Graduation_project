@@ -8,6 +8,8 @@ import { WalletCardProps } from "./WalletCard.types";
 import { styles } from "./WalletCard.styles";
 import { PASTEL_PALETTE, PASTEL_HEADER_GRADIENT } from "../../../../shared/constants/PastelPalette";
 
+import { useLanguage } from "../../../../shared/contexts/ThemeLanguageContext";
+
 type WalletAction = {
   id: string;
   label: string;
@@ -17,38 +19,38 @@ type WalletAction = {
   kind?: "settings";
 };
 
-const WALLET_ACTIONS: WalletAction[] = [
+const getWalletActions = (isEn: boolean): WalletAction[] => [
   {
     id: "topup",
-    label: "Nạp tiền",
+    label: isEn ? "Top Up" : "Nạp tiền",
     icon: "add-circle-outline",
     color: "#059669",
     route: "/wallet/checkout",
   },
   {
     id: "withdraw",
-    label: "Rút tiền",
+    label: isEn ? "Withdraw" : "Rút tiền",
     icon: "arrow-up-circle-outline",
     color: "#EA580C",
     route: "/wallet/withdraw",
   },
   {
     id: "history",
-    label: "Lịch sử",
+    label: isEn ? "History" : "Lịch sử",
     icon: "time-outline",
     color: "#7C3AED",
     route: "/wallet/history",
   },
   {
     id: "report",
-    label: "Báo cáo",
+    label: isEn ? "Report" : "Báo cáo",
     icon: "pie-chart-outline",
     color: "#DB2777",
     route: "/wallet/report",
   },
   {
     id: "settings",
-    label: "Cài đặt",
+    label: isEn ? "Settings" : "Cài đặt",
     icon: "settings-outline",
     color: "#4F46E5",
     kind: "settings",
@@ -61,6 +63,10 @@ export const WalletCard: React.FC<WalletCardProps> = ({
   onPress,
 }) => {
   const router = useRouter();
+  const { t, language } = useLanguage();
+  const isEn = language === 'en';
+  const walletActions = getWalletActions(isEn);
+
   const expandAnim = useRef(new Animated.Value(isExpanded ? 1 : 0)).current;
   const heightAnim = useRef(new Animated.Value(isExpanded ? 68 : 0)).current;
   const [actionsHeight, setActionsHeight] = useState(68);
@@ -179,7 +185,7 @@ export const WalletCard: React.FC<WalletCardProps> = ({
                 <>
                   {wallet.transactionLimit ? (
                     <View style={styles.limitRow}>
-                      <Text style={styles.limitLabel}>Mỗi GD</Text>
+                      <Text style={styles.limitLabel}>{isEn ? 'Per TX' : 'Mỗi GD'}</Text>
                       <Text style={styles.limitValue} numberOfLines={1}>
                         {formatCurrency(wallet.transactionLimit)}
                       </Text>
@@ -187,7 +193,7 @@ export const WalletCard: React.FC<WalletCardProps> = ({
                   ) : null}
                   {wallet.dailyLimit ? (
                     <View style={[styles.limitRow, wallet.transactionLimit ? styles.limitRowSpacing : null]}>
-                      <Text style={styles.limitLabel}>Hạn mức ngày</Text>
+                      <Text style={styles.limitLabel}>{isEn ? 'Daily Limit' : 'Hạn mức ngày'}</Text>
                       <Text style={styles.limitValue} numberOfLines={1}>
                         {formatCurrency(wallet.dailyLimit)}
                       </Text>
@@ -196,14 +202,14 @@ export const WalletCard: React.FC<WalletCardProps> = ({
                 </>
               ) : (
                 <Text style={styles.limitPlaceholder} numberOfLines={2}>
-                  Chưa thiết lập hạn mức
+                  {isEn ? 'No limit set' : 'Chưa thiết lập hạn mức'}
                 </Text>
               )}
             </View>
           </View>
 
           <View style={styles.balanceSection}>
-            <Text style={styles.balanceLabel}>Số dư khả dụng</Text>
+            <Text style={styles.balanceLabel}>{t('availableBalance')}</Text>
             <Text style={styles.balanceValue}>{formatCurrency(wallet.balance)}</Text>
             {wallet.subValue ? <Text style={styles.subValue}>{wallet.subValue}</Text> : null}
           </View>
@@ -213,7 +219,7 @@ export const WalletCard: React.FC<WalletCardProps> = ({
               <Ionicons name="chevron-down" size={16} color={PASTEL_PALETTE.subtitle} />
             </Animated.View>
             <Text style={styles.expandHintText}>
-              {isExpanded ? "Thu gọn" : "Chạm để mở thao tác"}
+              {isExpanded ? (isEn ? "Collapse" : "Thu gọn") : (isEn ? "Tap to open actions" : "Chạm để mở thao tác")}
             </Text>
           </View>
         </TouchableOpacity>
@@ -238,7 +244,7 @@ export const WalletCard: React.FC<WalletCardProps> = ({
             />
             <View style={styles.actionsSection}>
               <View style={styles.actionsRow}>
-                {WALLET_ACTIONS.map((action) => renderActionItem(action))}
+                {walletActions.map((action) => renderActionItem(action))}
               </View>
             </View>
           </Animated.View>
@@ -257,7 +263,7 @@ export const WalletCard: React.FC<WalletCardProps> = ({
           <View style={styles.actionsDivider} />
           <View style={styles.actionsSection}>
             <View style={styles.actionsRow}>
-              {WALLET_ACTIONS.map((action) => renderActionItem(action, false))}
+              {walletActions.map((action) => renderActionItem(action, false))}
             </View>
           </View>
         </View>

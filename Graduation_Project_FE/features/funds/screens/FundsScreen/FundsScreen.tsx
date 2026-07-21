@@ -49,10 +49,15 @@ const FUND_GOAL_BANNERS = [
   },
 ] as const;
 
+import { useLanguage, useTheme } from '../../../../shared/contexts/ThemeLanguageContext';
+
 export function FundsScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const funds = useFunds();
+  const { t, language } = useLanguage();
+  const { theme } = useTheme();
+  const isEn = language === 'en';
   const [tab, setTab] = useState<'mine' | 'joined'>('mine');
   const [totalExpanded, setTotalExpanded] = useState(false);
   const [contentHeight, setContentHeight] = useState(110);
@@ -129,10 +134,17 @@ export function FundsScreen() {
     setTotalExpanded((v) => !v);
   };
 
+  const canCreateMore = !createDisabled;
+
   const handleCreate = () => {
     if (createDisabled) return;
     router.push('/funds/create');
   };
+
+  const toggleCollapse = toggleTotalExpanded;
+  const isCollapsed = !totalExpanded;
+
+  const handleJoin = () => router.push('/funds/join');
 
   const onBannerScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
     const x = e.nativeEvent.contentOffset.x;
@@ -143,64 +155,74 @@ export function FundsScreen() {
   };
 
   return (
-    <View style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor="#FFD6EC" />
+    <View style={[styles.container, { backgroundColor: theme.bg }]}>
+      <StatusBar barStyle={theme.statusBarStyle} />
 
-      <FundHeaderShell contentStyle={styles.header}>
+      <FundHeaderShell>
         <View style={styles.headerTopRow}>
-          <TouchableOpacity style={styles.backButton} onPress={handleBack} activeOpacity={0.7}>
-            <Ionicons name="chevron-back-outline" size={24} color={FUND_PALETTE.subtitle} />
+          <TouchableOpacity
+            onPress={() => {
+              if (router.canGoBack()) {
+                router.back();
+              } else {
+                router.replace('/(tabs)/home');
+              }
+            }}
+            style={styles.backButton}
+            activeOpacity={0.7}
+          >
+            <Feather name="chevron-left" size={24} color={theme.isDark ? '#FFFFFF' : '#1E1B4B'} />
           </TouchableOpacity>
-
-          <Text style={styles.headerTitle} numberOfLines={1}>Quỹ nhóm</Text>
+          <Text style={[styles.headerTitle, { color: theme.isDark ? '#FFFFFF' : '#1E1B4B' }]}>{t('groupFunds')}</Text>
 
           <View style={styles.headerActions}>
             <TouchableOpacity
-              style={[styles.createBtn, createDisabled && styles.createBtnDisabled]}
-              activeOpacity={createDisabled ? 1 : 0.85}
+              style={[styles.createBtn, !canCreateMore && styles.createBtnDisabled]}
               onPress={handleCreate}
-              disabled={createDisabled}
+              activeOpacity={0.85}
+              disabled={!canCreateMore}
             >
-              <Feather
-                name={createDisabled ? 'slash' : 'plus'}
-                size={14}
-                color={createDisabled ? FUND_PALETTE.textMuted : FUND_PALETTE.white}
-              />
-              <Text style={[styles.createBtnText, createDisabled && styles.createBtnTextDisabled]}>
-                {createDisabled ? 'Đã đạt tối đa' : 'Tạo quỹ'}
+              <Feather name="plus" size={15} color={canCreateMore ? FUND_PALETTE.white : '#9CA3AF'} />
+              <Text style={[styles.createBtnText, !canCreateMore && styles.createBtnTextDisabled]}>
+                {canCreateMore ? (isEn ? 'Create' : 'Tạo quỹ') : (isEn ? 'Limit' : 'Đạt Hạn')}
               </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={[styles.joinBtn, { backgroundColor: theme.card, borderColor: theme.cardBorder }]} onPress={handleJoin} activeOpacity={0.85}>
+              <Feather name="user-plus" size={15} color={theme.primary} />
+              <Text style={[styles.joinBtnText, { color: theme.primary }]}>{isEn ? 'Join' : 'Tham gia'}</Text>
             </TouchableOpacity>
           </View>
         </View>
 
         <TouchableOpacity
-          activeOpacity={0.95}
-          onPress={toggleTotalExpanded}
+          activeOpacity={0.92}
+          onPress={toggleCollapse}
+          style={{ marginTop: 16 }}
         >
           <LinearGradient
             colors={FUND_TOTAL_GRADIENT}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
-            style={[styles.totalCard, !totalExpanded && styles.totalCardCollapsed]}
+            style={[styles.totalCard, isCollapsed && styles.totalCardCollapsed]}
           >
             <View style={styles.totalDecorCircle1} />
             <View style={styles.totalDecorCircle2} />
 
             <View style={styles.totalTopRow}>
-              <FundIcon size={40} borderRadius={11} style={styles.totalLogo} />
-              <Text style={styles.totalLabel} numberOfLines={1}>Tổng số dư các quỹ</Text>
-              <Animated.View style={{ transform: [{ rotate: chevronRotate }] }}>
-                <Ionicons name="chevron-down" size={18} color="rgba(255,255,255,0.9)" />
-              </Animated.View>
+              <FundIcon size={24} color="#FFFFFF" style={styles.totalLogo} />
+              <Text style={styles.totalLabel}>
+                {isEn ? 'Total Funds Balance' : 'Tổng số dư tất cả các quỹ'}
+              </Text>
+              <Feather
+                name={isCollapsed ? 'chevron-down' : 'chevron-up'}
+                size={18}
+                color="rgba(255,255,255,0.9)"
+              />
             </View>
 
             <Animated.View style={{ height: heightAnim, overflow: 'hidden' }}>
-              <Animated.View
-                style={{
-                  opacity: contentOpacity,
-                  transform: [{ translateY: contentTranslateY }],
-                }}
-              >
+              <Animated.View>
                 <View style={styles.totalValueRow}>
                   <Text style={styles.totalValue}>{formatCurrency(totalBalance)}</Text>
                   <Text style={styles.totalCurrency}>₫</Text>
@@ -209,54 +231,25 @@ export function FundsScreen() {
                 <View style={styles.totalStatsRow}>
                   <View style={styles.totalStat}>
                     <Feather name="briefcase" size={13} color="rgba(255,255,255,0.85)" />
-                    <Text style={styles.totalStatText}>{funds.length} quỹ</Text>
+                    <Text style={styles.totalStatText}>{funds.length} {isEn ? 'funds' : 'quỹ'}</Text>
                   </View>
                   <View style={styles.totalStatDivider} />
                   <View style={styles.totalStat}>
                     <Feather name="users" size={13} color="rgba(255,255,255,0.85)" />
-                    <Text style={styles.totalStatText}>{totalMembers} thành viên</Text>
+                    <Text style={styles.totalStatText}>{totalMembers} {isEn ? 'members' : 'thành viên'}</Text>
                   </View>
                 </View>
               </Animated.View>
             </Animated.View>
-
-            {/* Đo chiều cao thật của nội dung mở rộng */}
-            <View
-              pointerEvents="none"
-              style={styles.totalMeasureWrap}
-              onLayout={(e) => {
-                const h = e.nativeEvent.layout.height;
-                if (h > 0 && Math.abs(h - contentHeight) > 1) {
-                  setContentHeight(h);
-                }
-              }}
-            >
-              <View style={styles.totalValueRow}>
-                <Text style={styles.totalValue}>{formatCurrency(totalBalance)}</Text>
-                <Text style={styles.totalCurrency}>₫</Text>
-              </View>
-              <View style={styles.totalStatsRow}>
-                <View style={styles.totalStat}>
-                  <Feather name="briefcase" size={13} color="rgba(255,255,255,0.85)" />
-                  <Text style={styles.totalStatText}>{funds.length} quỹ</Text>
-                </View>
-                <View style={styles.totalStatDivider} />
-                <View style={styles.totalStat}>
-                  <Feather name="users" size={13} color="rgba(255,255,255,0.85)" />
-                  <Text style={styles.totalStatText}>{totalMembers} thành viên</Text>
-                </View>
-              </View>
-            </View>
           </LinearGradient>
         </TouchableOpacity>
       </FundHeaderShell>
 
       <ScrollView
-        style={styles.content}
+        style={[styles.content, { backgroundColor: theme.bg }]}
         contentContainerStyle={[styles.contentContainer, { paddingBottom: bottomPad }]}
         showsVerticalScrollIndicator={false}
       >
-        {/* Banner mục tiêu — trượt ngang */}
         <View style={styles.bannerSection}>
           <FlatList
             data={FUND_GOAL_BANNERS}
@@ -298,49 +291,49 @@ export function FundsScreen() {
           </View>
         </View>
 
-        {/* Section title + giới hạn số quỹ */}
         <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Danh sách quỹ</Text>
-          <View style={styles.limitBadge}>
-            <Feather name="layers" size={13} color={FUND_PALETTE.primaryDeep} />
-            <Text style={styles.limitText}>{visibleFunds.length}/{currentLimit} quỹ</Text>
+          <Text style={[styles.sectionTitle, { color: theme.textPrimary }]}>{isEn ? 'Fund List' : 'Danh sách quỹ'}</Text>
+          <View style={[styles.limitBadge, { backgroundColor: theme.bgSoft, borderColor: theme.cardBorder }]}>
+            <Feather name="layers" size={13} color={theme.primary} />
+            <Text style={[styles.limitText, { color: theme.primary }]}>{visibleFunds.length}/{currentLimit} {isEn ? 'funds' : 'quỹ'}</Text>
           </View>
         </View>
 
-        {/* Tabs phân loại */}
-        <View style={styles.tabBar}>
+        <View style={[styles.tabBar, { backgroundColor: theme.card, borderColor: theme.cardBorder, borderWidth: 1 }]}>
           <TouchableOpacity
-            style={[styles.tab, tab === 'mine' && styles.tabActive]}
+            style={[styles.tab, tab === 'mine' && [styles.tabActive, { backgroundColor: theme.isDark ? theme.bgSoft : FUND_PALETTE.white }]]}
             onPress={() => setTab('mine')}
             activeOpacity={0.8}
           >
-            <Text style={[styles.tabText, tab === 'mine' && styles.tabTextActive]}>
-              Quỹ của tôi ({myFunds.length})
+            <Text style={[styles.tabText, { color: tab === 'mine' ? theme.primary : theme.textMuted }]}>
+              {isEn ? `My Funds (${myFunds.length})` : `Quỹ của tôi (${myFunds.length})`}
             </Text>
           </TouchableOpacity>
           <TouchableOpacity
-            style={[styles.tab, tab === 'joined' && styles.tabActive]}
+            style={[styles.tab, tab === 'joined' && [styles.tabActive, { backgroundColor: theme.isDark ? theme.bgSoft : FUND_PALETTE.white }]]}
             onPress={() => setTab('joined')}
             activeOpacity={0.8}
           >
-            <Text style={[styles.tabText, tab === 'joined' && styles.tabTextActive]}>
-              Quỹ tham gia ({joinedFunds.length})
+            <Text style={[styles.tabText, { color: tab === 'joined' ? theme.primary : theme.textMuted }]}>
+              {isEn ? `Joined Funds (${joinedFunds.length})` : `Quỹ tham gia (${joinedFunds.length})`}
             </Text>
           </TouchableOpacity>
         </View>
 
         {visibleFunds.length === 0 ? (
           <View style={styles.emptyState}>
-            <View style={styles.emptyIcon}>
-              <Feather name="inbox" size={32} color={FUND_PALETTE.primary} />
+            <View style={[styles.emptyIcon, { backgroundColor: theme.bgSoft }]}>
+              <Feather name="inbox" size={32} color={theme.primary} />
             </View>
-            <Text style={styles.emptyTitle}>
-              {tab === 'mine' ? 'Chưa có quỹ nào' : 'Chưa tham gia quỹ nào'}
-            </Text>
-            <Text style={styles.emptySubtitle}>
+            <Text style={[styles.emptyTitle, { color: theme.textPrimary }]}>
               {tab === 'mine'
-                ? 'Tạo quỹ đầu tiên để bắt đầu góp tiền cùng bạn bè'
-                : 'Nhấn "Tham gia" và nhập mã mời để vào quỹ của bạn bè'}
+                ? (isEn ? 'No funds created yet' : 'Chưa có quỹ nào')
+                : (isEn ? 'No joined funds yet' : 'Chưa tham gia quỹ nào')}
+            </Text>
+            <Text style={[styles.emptySubtitle, { color: theme.textSecondary }]}>
+              {tab === 'mine'
+                ? (isEn ? 'Create your first fund to start saving with friends' : 'Tạo quỹ đầu tiên để bắt đầu góp tiền cùng bạn bè')
+                : (isEn ? 'Click Join and enter invite code to join a fund' : 'Nhấn "Tham gia" và nhập mã mời để vào quỹ của bạn bè')}
             </Text>
           </View>
         ) : (

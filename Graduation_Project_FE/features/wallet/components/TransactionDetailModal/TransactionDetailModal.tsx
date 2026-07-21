@@ -45,6 +45,8 @@ interface TransactionDetailModalProps {
   onRefresh?: () => void;
 }
 
+import { useLanguage } from "../../../../shared/contexts/ThemeLanguageContext";
+
 export default function TransactionDetailModal({
   visible,
   transaction,
@@ -52,6 +54,8 @@ export default function TransactionDetailModal({
   onRefresh,
 }: TransactionDetailModalProps) {
   const { categories } = useCategoryContext();
+  const { t, language } = useLanguage();
+  const isEn = language === 'en';
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<any>(null);
   const [editedNote, setEditedNote] = useState<string>("");
@@ -124,28 +128,28 @@ export default function TransactionDetailModal({
     switch (status) {
       case "success":
         return {
-          text: "Giao dịch thành công",
+          text: isEn ? "Transaction Successful" : "Giao dịch thành công",
           color: Colors.success,
           icon: "checkmark-circle" as const,
           bgColor: Colors.success + "15", // 8% opacity
         };
       case "pending":
         return {
-          text: "Đang xử lý",
+          text: isEn ? "Processing" : "Đang xử lý",
           color: Colors.warning,
           icon: "time" as const,
           bgColor: Colors.warning + "15",
         };
       case "failed":
         return {
-          text: "Giao dịch thất bại",
+          text: isEn ? "Transaction Failed" : "Giao dịch thất bại",
           color: Colors.error,
           icon: "close-circle" as const,
           bgColor: Colors.error + "15",
         };
       default:
         return {
-          text: "Không xác định",
+          text: isEn ? "Unknown" : "Không xác định",
           color: Colors.textMuted,
           icon: "help-circle" as const,
           bgColor: Colors.border + "15",
@@ -156,18 +160,18 @@ export default function TransactionDetailModal({
   const getTransactionTypeName = (type: string) => {
     switch (type) {
       case "topup":
-        return "Nạp tiền vào ví";
+        return isEn ? "Top Up to Wallet" : "Nạp tiền vào ví";
       case "withdraw":
-        return "Rút tiền về ngân hàng";
+        return isEn ? "Withdraw to Bank" : "Rút tiền về ngân hàng";
       case "payment":
-        return "Thanh toán dịch vụ";
+        return isEn ? "Service Payment" : "Thanh toán dịch vụ";
       default:
-        return "Giao dịch khác";
+        return isEn ? "Other Transaction" : "Giao dịch khác";
     }
   };
 
   const getSourceOfFund = (type: string) => {
-    return "Ví";
+    return isEn ? "SmartSpend Wallet" : "Ví SmartSpend";
   };
 
   const statusInfo = getStatusDetails(transaction.status);
@@ -298,7 +302,7 @@ export default function TransactionDetailModal({
           <View style={styles.detailsContainer}>
             {/* Loại giao dịch */}
             <View style={styles.detailRow}>
-              <Text style={styles.detailLabel}>Loại giao dịch</Text>
+              <Text style={styles.detailLabel}>{isEn ? "Transaction Type" : "Loại giao dịch"}</Text>
               <View style={styles.detailValueContainer}>
                 <Text style={styles.detailValue}>
                   {getTransactionTypeName(transaction.type)}
@@ -308,7 +312,7 @@ export default function TransactionDetailModal({
 
             {/* Mã giao dịch */}
             <View style={styles.detailRow}>
-              <Text style={styles.detailLabel}>Mã giao dịch</Text>
+              <Text style={styles.detailLabel}>{isEn ? "Transaction ID" : "Mã giao dịch"}</Text>
               <View style={styles.detailValueContainer}>
                 <Text style={styles.detailValue}>{transaction.id}</Text>
                 <TouchableOpacity
@@ -323,7 +327,7 @@ export default function TransactionDetailModal({
 
             {/* Thời gian */}
             <View style={styles.detailRow}>
-              <Text style={styles.detailLabel}>Thời gian</Text>
+              <Text style={styles.detailLabel}>{isEn ? "Time" : "Thời gian"}</Text>
               <View style={styles.detailValueContainer}>
                 <Text style={styles.detailValue}>{transaction.date}</Text>
               </View>
@@ -331,7 +335,7 @@ export default function TransactionDetailModal({
 
             {/* Nguồn tiền */}
             <View style={styles.detailRow}>
-              <Text style={styles.detailLabel}>Nguồn tiền</Text>
+              <Text style={styles.detailLabel}>{isEn ? "Source of Fund" : "Nguồn tiền"}</Text>
               <View style={styles.detailValueContainer}>
                 <Text style={styles.detailValue}>
                   {getSourceOfFund(transaction.type)}
@@ -339,14 +343,12 @@ export default function TransactionDetailModal({
               </View>
             </View>
 
-
-
             {/* Danh mục & Ghi chú — nạp tiền và rút tiền */}
             {canEditClassification && (
               <>
                 {/* Danh mục */}
                 <View style={styles.classifyBlock}>
-                  <Text style={styles.detailLabel}>Danh mục</Text>
+                  <Text style={styles.detailLabel}>{t('categories')}</Text>
                   <TouchableOpacity
                     style={styles.categorySelector}
                     onPress={() => setIsCategoryModalVisible(true)}
@@ -373,7 +375,7 @@ export default function TransactionDetailModal({
                           ]}
                           numberOfLines={1}
                         >
-                          {selectedCategory ? selectedCategory.label : "Chọn danh mục"}
+                          {selectedCategory ? selectedCategory.label : (isEn ? "Select Category" : "Chọn danh mục")}
                         </Text>
                         {selectedCategory?.groupName ? (
                           <Text style={styles.categoryGroup} numberOfLines={1}>
@@ -389,7 +391,7 @@ export default function TransactionDetailModal({
                 {/* Ghi chú */}
                 <View style={styles.classifyBlock}>
                   <View style={styles.noteHeaderRow}>
-                    <Text style={styles.detailLabel}>Ghi chú</Text>
+                    <Text style={styles.detailLabel}>{isEn ? "Note" : "Ghi chú"}</Text>
                     <Text style={styles.noteCounter}>
                       {editedNote.length}/{NOTE_MAX_LENGTH}
                     </Text>
@@ -400,8 +402,8 @@ export default function TransactionDetailModal({
                     onChangeText={setEditedNote}
                     placeholder={
                       isWithdraw
-                        ? "Nhập ghi chú cho giao dịch rút tiền..."
-                        : "Nhập ghi chú để phân loại chi tiêu..."
+                        ? (isEn ? "Enter note for withdrawal..." : "Nhập ghi chú cho giao dịch rút tiền...")
+                        : (isEn ? "Enter note to classify expense..." : "Nhập ghi chú để phân loại chi tiêu...")
                     }
                     placeholderTextColor={Colors.textMuted}
                     multiline
@@ -421,7 +423,7 @@ export default function TransactionDetailModal({
               activeOpacity={0.8}
             >
               <Ionicons name="share-social-outline" size={18} color={Colors.white} />
-              <Text style={styles.primaryButtonText}>Chia sẻ</Text>
+              <Text style={styles.primaryButtonText}>{isEn ? "Share" : "Chia sẻ"}</Text>
             </TouchableOpacity>
 
             {/* Nút Lưu — phân loại danh mục/ghi chú cho nạp tiền và rút tiền */}

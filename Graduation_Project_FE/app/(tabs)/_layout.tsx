@@ -1,8 +1,10 @@
 import { Tabs } from "expo-router";
 import { CustomTabBar } from "../../shared/components";
-import { PASTEL_PALETTE } from "../../shared/constants/PastelPalette";
+import { useTheme } from "../../shared/contexts/ThemeLanguageContext";
 
 export default function TabsLayout() {
+  const { theme } = useTheme();
+
   return (
     <Tabs
       detachInactiveScreens={false}
@@ -11,7 +13,7 @@ export default function TabsLayout() {
         headerShown: false,
         animation: "fade",
         sceneStyle: {
-          backgroundColor: PASTEL_PALETTE.bg,
+          backgroundColor: theme.bg,
         },
       }}
     >

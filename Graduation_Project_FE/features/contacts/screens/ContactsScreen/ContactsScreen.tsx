@@ -11,9 +11,14 @@ import SuccessModal from '../../../../shared/components/SuccessModal/SuccessModa
 import ConfirmModal from '../../../../shared/components/ConfirmModal/ConfirmModal';
 import { UserAvatar } from '../../../../shared/components/UserAvatar';
 
+import { useLanguage, useTheme } from '../../../../shared/contexts/ThemeLanguageContext';
+
 export const ContactsScreen = () => {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { t, language } = useLanguage();
+  const { theme } = useTheme();
+  const isEn = language === 'en';
   const [activeTab, setActiveTab] = useState<'FRIENDS' | 'REQUESTS' | 'SENT'>('FRIENDS');
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResult, setSearchResult] = useState<SearchUserResult | null>(null);
@@ -269,53 +274,39 @@ export const ContactsScreen = () => {
           onPress={() => handleRemoveFriend(item.id, item.friendUsername)}
         >
           <LinearGradient
-            colors={['#F87171', '#EF4444']}
-            start={{ x: 0, y: 0.5 }}
-            end={{ x: 1, y: 0.5 }}
+            colors={['#F43F5E', '#E11D48']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
             style={styles.swipeDeleteGradient}
           >
-            <Ionicons name="trash" size={22} color="#FFFFFF" />
-            <Text style={styles.swipeDeleteText}>Xóa</Text>
+            <Ionicons name="trash-outline" size={20} color="#FFFFFF" />
+            <Text style={styles.swipeDeleteText}>{isEn ? 'Remove' : 'Hủy bạn'}</Text>
           </LinearGradient>
         </RectButton>
       </Animated.View>
     );
   };
 
-  const renderUserInfo = (item: FriendshipResponse, extra?: React.ReactNode) => (
-    <View style={styles.userInfo}>
-      <UserAvatar
-        name={item.friendUsername}
-        email={item.friendEmail}
-        avatarUrl={item.friendAvatarUrl}
-        size={52}
-      />
-      <View style={styles.userTextWrap}>
-        <Text style={styles.userName} numberOfLines={1} ellipsizeMode="tail">{item.friendUsername}</Text>
-        <Text style={styles.userEmail} numberOfLines={1} ellipsizeMode="tail">{item.friendEmail}</Text>
-        <Text style={styles.userStk} numberOfLines={1} ellipsizeMode="tail">
-          STK: {item.friendAccountNumber ?? '—'}
-        </Text>
-        {extra}
-      </View>
-    </View>
-  );
-
   const renderItem = ({ item }: { item: FriendshipResponse }) => {
     if (activeTab === 'REQUESTS') {
       return (
-        <View style={styles.listItemSpaced}>
-          <View style={styles.listItem}>
+        <View style={[styles.listItem, styles.listItemSpaced, { backgroundColor: theme.card, borderColor: theme.cardBorder }]}>
           {renderUserInfo(item)}
-          
           <View style={styles.actionButtons}>
-            <TouchableOpacity style={styles.acceptButton} onPress={() => handleAccept(item.id)}>
-              <Text style={styles.acceptText}>Đồng ý</Text>
+            <TouchableOpacity
+              style={styles.acceptButton}
+              onPress={() => confirmAcceptRequest(item)}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.acceptText}>{isEn ? 'Accept' : 'Đồng ý'}</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.rejectButton} onPress={() => handleReject(item.id)}>
-              <Text style={styles.rejectText}>Từ chối</Text>
+            <TouchableOpacity
+              style={styles.rejectButton}
+              onPress={() => confirmRejectRequest(item)}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.rejectText}>{isEn ? 'Reject' : 'Từ chối'}</Text>
             </TouchableOpacity>
-          </View>
           </View>
         </View>
       );
@@ -323,18 +314,9 @@ export const ContactsScreen = () => {
 
     if (activeTab === 'SENT') {
       return (
-        <View style={styles.listItemSpaced}>
-          <View style={styles.listItem}>
-          {renderUserInfo(item, <Text style={styles.sentStatusText}>Đang chờ chấp nhận</Text>)}
-
-          <TouchableOpacity
-            style={styles.pendingFriendButton}
-            onPress={() => handleCancelSentRequest(item.id, item.friendEmail)}
-            activeOpacity={0.85}
-          >
-            <Text style={styles.pendingFriendText}>Hủy</Text>
-          </TouchableOpacity>
-          </View>
+        <View style={[styles.listItem, styles.listItemSpaced, { backgroundColor: theme.card, borderColor: theme.cardBorder }]}>
+          {renderUserInfo(item)}
+          <Text style={styles.sentStatusText}>{isEn ? 'Waiting' : 'Đang chờ'}</Text>
         </View>
       );
     }
@@ -347,9 +329,9 @@ export const ContactsScreen = () => {
           friction={2}
           rightThreshold={40}
         >
-          <View style={styles.listItem}>
+          <View style={[styles.listItem, { backgroundColor: theme.card, borderColor: theme.cardBorder }]}>
             {renderUserInfo(item)}
-            <Ionicons name="chevron-back" size={18} color="#D1D5DB" />
+            <Ionicons name="chevron-back" size={18} color={theme.textMuted} />
           </View>
         </Swipeable>
       </View>
@@ -360,28 +342,28 @@ export const ContactsScreen = () => {
     const emptyConfig = {
       FRIENDS: {
         icon: 'people-outline' as const,
-        title: 'Chưa có bạn bè nào',
-        text: 'Tìm bạn bè bằng email hoặc tài khoản ở trên để bắt đầu kết nối nhé.',
+        title: isEn ? 'No friends yet' : 'Chưa có bạn bè nào',
+        text: isEn ? 'Search for friends using email or username above.' : 'Tìm bạn bè bằng email hoặc tài khoản ở trên để bắt đầu kết nối nhé.',
       },
       REQUESTS: {
         icon: 'mail-unread-outline' as const,
-        title: 'Không có lời mời mới',
-        text: 'Khi có lời mời kết bạn, chúng sẽ hiện ở đây.',
+        title: isEn ? 'No new requests' : 'Không có lời mời mới',
+        text: isEn ? 'Friend requests will appear here.' : 'Khi có lời mời kết bạn, chúng sẽ hiện ở đây.',
       },
       SENT: {
         icon: 'time-outline' as const,
-        title: 'Chưa có lời mời đang chờ',
-        text: 'Các lời mời bạn gửi và đang chờ phản hồi sẽ hiện ở đây.',
+        title: isEn ? 'No pending requests' : 'Chưa có lời mời đang chờ',
+        text: isEn ? 'Sent requests waiting for response will appear here.' : 'Các lời mời bạn gửi và đang chờ phản hồi sẽ hiện ở đây.',
       },
     }[activeTab];
 
     return (
       <View style={styles.emptyWrap}>
-        <View style={styles.emptyIconWrap}>
-          <Ionicons name={emptyConfig.icon} size={34} color={PALETTE.lavender} />
+        <View style={[styles.emptyIconWrap, { backgroundColor: theme.isDark ? theme.bgSoft : PALETTE.lavenderSoft }]}>
+          <Ionicons name={emptyConfig.icon} size={34} color={theme.primary} />
         </View>
-        <Text style={styles.emptyTitle}>{emptyConfig.title}</Text>
-        <Text style={styles.emptyText}>{emptyConfig.text}</Text>
+        <Text style={[styles.emptyTitle, { color: theme.textPrimary }]}>{emptyConfig.title}</Text>
+        <Text style={[styles.emptyText, { color: theme.textSecondary }]}>{emptyConfig.text}</Text>
       </View>
     );
   };
@@ -390,11 +372,11 @@ export const ContactsScreen = () => {
     activeTab === 'FRIENDS' ? friends : activeTab === 'REQUESTS' ? requests : sentRequests;
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: theme.bg }]}>
       <View style={{ flex: 1 }}>
         <View style={styles.headerWrap}>
           <LinearGradient
-            colors={[PALETTE.headerStart, PALETTE.headerMid, PALETTE.headerEnd]}
+            colors={[...theme.headerGradient]}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
             style={[styles.header, { paddingTop: insets.top + 12 }]}
@@ -414,30 +396,30 @@ export const ContactsScreen = () => {
                   }
                 }}
               >
-                <Ionicons name="chevron-back-outline" size={22} color="#7C3AED" />
+                <Ionicons name="chevron-back-outline" size={22} color={theme.isDark ? '#FFFFFF' : '#7C3AED'} />
               </TouchableOpacity>
               <View style={styles.titleContainer}>
                 <View style={styles.headerTitleRow}>
-                  <Text style={styles.headerTitle}>Danh bạ</Text>
+                  <Text style={[styles.headerTitle, { color: theme.isDark ? '#FFFFFF' : '#5B21B6' }]}>{t('contacts')}</Text>
                   <Text style={{ fontSize: 20 }}>💌</Text>
                 </View>
-                <Text style={styles.headerSubtitle}>Kết bạn & quản lý lời mời</Text>
+                <Text style={[styles.headerSubtitle, { color: theme.isDark ? theme.textSecondary : '#7C3AED' }]}>{isEn ? 'Add friends & manage requests' : 'Kết bạn & quản lý lời mời'}</Text>
               </View>
             </View>
           </LinearGradient>
         </View>
 
-        <View style={styles.content}>
+        <View style={[styles.content, { backgroundColor: theme.bg }]}>
           <View style={styles.searchSection}>
-            <Text style={styles.searchHint}>Tìm bạn bè bằng email, tên tài khoản hoặc STK ví</Text>
-            <View style={styles.searchContainer}>
-              <View style={styles.searchIconWrap}>
-                <Ionicons name="search" size={18} color={PALETTE.accentDeep} />
+            <Text style={[styles.searchHint, { color: theme.textSecondary }]}>{isEn ? 'Search friends by email, username or account number' : 'Tìm bạn bè bằng email, tên tài khoản hoặc STK ví'}</Text>
+            <View style={[styles.searchContainer, { backgroundColor: theme.card, borderColor: theme.cardBorder }]}>
+              <View style={[styles.searchIconWrap, { backgroundColor: theme.isDark ? theme.bgSoft : PALETTE.accentSoft }]}>
+                <Ionicons name="search" size={18} color={theme.primary} />
               </View>
               <TextInput
-                style={styles.searchInput}
-                placeholder="vd: email, tên hoặc STK ví"
-                placeholderTextColor="#9CA3AF"
+                style={[styles.searchInput, { color: theme.textPrimary }]}
+                placeholder={isEn ? 'e.g. email, name or account no.' : 'vd: email, tên hoặc STK ví'}
+                placeholderTextColor={theme.textMuted}
                 value={searchQuery}
                 onChangeText={setSearchQuery}
                 autoCapitalize="none"
@@ -454,7 +436,7 @@ export const ContactsScreen = () => {
                 </TouchableOpacity>
               )}
               <TouchableOpacity style={styles.searchButton} onPress={handleSearch} activeOpacity={0.85}>
-                <Text style={styles.searchButtonText}>Tìm</Text>
+                <Text style={styles.searchButtonText}>{isEn ? 'Search' : 'Tìm'}</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -468,46 +450,55 @@ export const ContactsScreen = () => {
                 size={76}
                 borderWidth={3}
               />
-              <Text style={styles.searchResultName} numberOfLines={1} ellipsizeMode="tail">
-                {searchResult.username}
-              </Text>
-              <Text style={styles.searchResultEmail} numberOfLines={1} ellipsizeMode="tail">
-                {searchResult.email}
-              </Text>
-              <Text style={styles.searchResultStk} numberOfLines={1} ellipsizeMode="tail">
-                STK: {searchResult.accountNumber ?? '—'}
-              </Text>
-              <View style={styles.searchResultAction}>{renderSearchAction()}</View>
-            </View>
-          )}
+              <Text style={styles.searchResultName}>{searchResult.username}</Text>
+              <Text style={styles.searchResultEmail}>{searchResult.email}</Text>
 
-          {searchError && (
-            <View style={styles.errorCard}>
-              <Text style={styles.errorEmoji}>🥺</Text>
-              <Text style={styles.errorText}>{searchError}</Text>
-              {searchError !== "Không thể tìm kiếm chính mình" && (
-                <TouchableOpacity style={styles.inviteButton} activeOpacity={0.85}>
-                  <Ionicons name="share-social-outline" size={16} color="#FFF" style={{ marginRight: 6 }} />
-                  <Text style={styles.inviteText}>Mời dùng App</Text>
+              {searchResult.friendshipStatus === 'ACCEPTED' ? (
+                <View style={styles.statusBadgeAccepted}>
+                  <Ionicons name="checkmark-circle" size={16} color="#059669" />
+                  <Text style={styles.statusBadgeAcceptedText}>{isEn ? 'Friends' : 'Bạn bè'}</Text>
+                </View>
+              ) : searchResult.friendshipStatus === 'PENDING' ? (
+                <View style={styles.statusBadgePending}>
+                  <Ionicons name="time" size={16} color="#D97706" />
+                  <Text style={styles.statusBadgePendingText}>
+                    {searchResult.requester ? (isEn ? 'Request Sent' : 'Đã gửi lời mời') : (isEn ? 'Pending Response' : 'Chờ bạn phản hồi')}
+                  </Text>
+                </View>
+              ) : (
+                <TouchableOpacity
+                  style={styles.addFriendButton}
+                  onPress={handleSendRequest}
+                  activeOpacity={0.85}
+                >
+                  <Ionicons name="person-add" size={16} color="#FFFFFF" />
+                  <Text style={styles.addFriendButtonText}>{isEn ? 'Add Friend' : 'Thêm bạn'}</Text>
                 </TouchableOpacity>
               )}
             </View>
           )}
 
-          <View style={styles.tabsContainer}>
+          {searchError && (
+            <View style={styles.searchErrorCard}>
+              <Ionicons name="alert-circle-outline" size={20} color="#EF4444" />
+              <Text style={styles.searchErrorText}>{searchError}</Text>
+            </View>
+          )}
+
+          <View style={styles.tabBar}>
             <TouchableOpacity 
               style={[styles.tabButton, activeTab === 'FRIENDS' && styles.activeTab]}
               onPress={() => setActiveTab('FRIENDS')}
               activeOpacity={0.85}
             >
-              <Text style={[styles.tabText, activeTab === 'FRIENDS' && styles.activeTabText]}>Bạn bè</Text>
+              <Text style={[styles.tabText, activeTab === 'FRIENDS' && styles.activeTabText]}>{isEn ? 'Friends' : 'Bạn bè'}</Text>
             </TouchableOpacity>
             <TouchableOpacity 
               style={[styles.tabButton, activeTab === 'REQUESTS' && styles.activeTab]}
               onPress={() => setActiveTab('REQUESTS')}
               activeOpacity={0.85}
             >
-              <Text style={[styles.tabText, activeTab === 'REQUESTS' && styles.activeTabText]}>Lời mời</Text>
+              <Text style={[styles.tabText, activeTab === 'REQUESTS' && styles.activeTabText]}>{isEn ? 'Requests' : 'Lời mời'}</Text>
               {pendingCount > 0 && (
                 <View style={styles.badgeContainer}>
                   <Text style={styles.badgeText}>{pendingCount > 99 ? '99+' : pendingCount}</Text>
@@ -519,7 +510,7 @@ export const ContactsScreen = () => {
               onPress={() => setActiveTab('SENT')}
               activeOpacity={0.85}
             >
-              <Text style={[styles.tabText, activeTab === 'SENT' && styles.activeTabText]}>Đang chờ</Text>
+              <Text style={[styles.tabText, activeTab === 'SENT' && styles.activeTabText]}>{isEn ? 'Sent' : 'Đang chờ'}</Text>
               {sentCount > 0 && (
                 <View style={[styles.badgeContainer, styles.sentBadgeContainer]}>
                   <Text style={styles.badgeText}>{sentCount > 99 ? '99+' : sentCount}</Text>

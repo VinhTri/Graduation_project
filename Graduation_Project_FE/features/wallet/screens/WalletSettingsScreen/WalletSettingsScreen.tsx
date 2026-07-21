@@ -25,6 +25,8 @@ import { axiosClient } from "../../../../shared/api/axiosClient";
 import { ENDPOINTS } from "../../../../shared/api/endpoints";
 import { SuccessModal, ConfirmModal, PinModal, OtpModal, ResetPinModal } from "../../../../shared/components";
 
+import { useLanguage } from "../../../../shared/contexts/ThemeLanguageContext";
+
 interface WalletSettingsScreenProps {
   walletId: number;
 }
@@ -32,6 +34,8 @@ interface WalletSettingsScreenProps {
 export default function WalletSettingsScreen({ walletId }: WalletSettingsScreenProps) {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { t, language } = useLanguage();
+  const isEn = language === 'en';
 
   // State for limits
   const [isLimitEnabled, setIsLimitEnabled] = useState(false);
@@ -316,7 +320,7 @@ export default function WalletSettingsScreen({ walletId }: WalletSettingsScreenP
                   <Ionicons name="chevron-back-outline" size={22} color={PASTEL_PALETTE.subtitle} />
                 </TouchableOpacity>
                 <Text style={styles.headerTitle} numberOfLines={1} ellipsizeMode="tail">
-                  Cài đặt ví
+                  {isEn ? "Wallet Settings" : "Cài đặt ví"}
                 </Text>
               </View>
             </PastelHeaderShell>
@@ -327,14 +331,16 @@ export default function WalletSettingsScreen({ walletId }: WalletSettingsScreenP
               showsVerticalScrollIndicator={false}
             >
               <View style={styles.section}>
-                <Text style={styles.sectionTitle}>Quản lý hạn mức</Text>
+                <Text style={styles.sectionTitle}>{isEn ? "Limit Management" : "Quản lý hạn mức"}</Text>
 
                 <View style={styles.card}>
                   <View style={styles.row}>
                     <View style={styles.rowLabelContainer}>
-                      <Text style={styles.rowTitle}>Thiết lập hạn mức giao dịch</Text>
+                      <Text style={styles.rowTitle}>{isEn ? "Transaction Limits Setup" : "Thiết lập hạn mức giao dịch"}</Text>
                       <Text style={styles.rowSubtitle}>
-                        Giới hạn số tiền tối đa cho mỗi giao dịch và tổng giao dịch trong ngày
+                        {isEn
+                          ? "Set maximum amount per transaction and total daily limit"
+                          : "Giới hạn số tiền tối đa cho mỗi giao dịch và tổng giao dịch trong ngày"}
                       </Text>
                     </View>
                     <Switch
@@ -350,7 +356,7 @@ export default function WalletSettingsScreen({ walletId }: WalletSettingsScreenP
                     <View>
                       <View style={styles.divider} />
 
-                      <Text style={styles.rowTitle}>Tối đa mỗi lần giao dịch</Text>
+                      <Text style={styles.rowTitle}>{isEn ? "Max per transaction" : "Tối đa mỗi lần giao dịch"}</Text>
                       <View style={styles.inputContainer}>
                         <Text style={styles.currencySymbol}>₫</Text>
                         <TextInput
@@ -358,7 +364,7 @@ export default function WalletSettingsScreen({ walletId }: WalletSettingsScreenP
                           keyboardType="numeric"
                           value={formatDisplayAmount(transactionLimit)}
                           onChangeText={(text) => handleAmountChange(text, setTransactionLimit)}
-                          placeholder="VD: 5,000,000"
+                          placeholder={isEn ? "e.g. 5,000,000" : "VD: 5,000,000"}
                           placeholderTextColor={PASTEL_PALETTE.textMuted}
                           maxLength={14}
                         />
@@ -366,7 +372,7 @@ export default function WalletSettingsScreen({ walletId }: WalletSettingsScreenP
 
                       <View style={{ height: 16 }} />
 
-                      <Text style={styles.rowTitle}>Tối đa tổng cả ngày</Text>
+                      <Text style={styles.rowTitle}>{isEn ? "Max per day" : "Tối đa tổng cả ngày"}</Text>
                       <View style={styles.inputContainer}>
                         <Text style={styles.currencySymbol}>₫</Text>
                         <TextInput
@@ -374,7 +380,7 @@ export default function WalletSettingsScreen({ walletId }: WalletSettingsScreenP
                           keyboardType="numeric"
                           value={formatDisplayAmount(dailyLimit)}
                           onChangeText={(text) => handleAmountChange(text, setDailyLimit)}
-                          placeholder="VD: 20,000,000"
+                          placeholder={isEn ? "e.g. 20,000,000" : "VD: 20,000,000"}
                           placeholderTextColor={PASTEL_PALETTE.textMuted}
                           maxLength={14}
                         />
@@ -384,12 +390,12 @@ export default function WalletSettingsScreen({ walletId }: WalletSettingsScreenP
 
                       <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 8 }}>
                         <View style={{ flex: 1 }}>
-                          <Text style={styles.statLabel}>Đã giao dịch trong ngày</Text>
+                          <Text style={styles.statLabel}>{isEn ? "Transacted today" : "Đã giao dịch trong ngày"}</Text>
                           <Text style={styles.statValue}>{dailyTransactedAmount.toLocaleString("vi-VN")} ₫</Text>
                         </View>
                         
                         <View style={{ flex: 1, alignItems: 'flex-end' }}>
-                          <Text style={styles.statLabel}>Hạn mức còn lại</Text>
+                          <Text style={styles.statLabel}>{isEn ? "Remaining limit" : "Hạn mức còn lại"}</Text>
                           <Text style={styles.statValue}>
                             {dailyLimit ? Math.max(0, parseInt(dailyLimit, 10) - dailyTransactedAmount).toLocaleString("vi-VN") : "0"} ₫
                           </Text>
@@ -426,7 +432,9 @@ export default function WalletSettingsScreen({ walletId }: WalletSettingsScreenP
               <View style={styles.infoSection}>
                 <Ionicons name="information-circle" size={24} color={PASTEL_PALETTE.accentDeep} />
                 <Text style={styles.infoText}>
-                  Tính năng thiết lập hạn mức giúp bạn kiểm soát chi tiêu tốt hơn.
+                  {isEn
+                    ? "Transaction limit feature helps you control your spending better."
+                    : "Tính năng thiết lập hạn mức giúp bạn kiểm soát chi tiêu tốt hơn."}
                 </Text>
               </View>
 
@@ -444,7 +452,7 @@ export default function WalletSettingsScreen({ walletId }: WalletSettingsScreenP
                 activeOpacity={0.8}
               >
                 <Text style={[styles.saveButtonText, isSaveDisabled && styles.saveButtonTextDisabled]}>
-                  {isLoading ? "Đang lưu..." : "Lưu thay đổi"}
+                  {isLoading ? (isEn ? "Saving..." : "Đang lưu...") : (isEn ? "Save Changes" : "Lưu thay đổi")}
                 </Text>
               </TouchableOpacity>
             </View>
