@@ -23,6 +23,7 @@ export const ENDPOINTS = {
     TOP_UP: '/api/v1/transactions/top-up',
     WITHDRAW: '/api/v1/transactions/withdraw',
     MANUAL: '/api/v1/transactions/manual',
+    TRANSFER: '/api/v1/transactions/transfer',
   },
   WALLET: {
     MY_WALLET: '/api/v1/wallets/me',

@@ -24,6 +24,7 @@ const QUICK_ACTIONS = [
     icon: "paper-plane-outline" as const,
     color: PASTEL_PALETTE.lavender,
     bgColor: PASTEL_PALETTE.lavenderSoft,
+    route: "/transfer",
   },
   {
     id: "qr",

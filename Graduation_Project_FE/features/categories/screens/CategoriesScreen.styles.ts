@@ -97,7 +97,7 @@ export const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 9,
     borderRadius: 18,
-    backgroundColor: PALETTE.accent,
+    backgroundColor: PALETTE.accentDeep,
     shadowColor: PALETTE.accentDeep,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.25,
