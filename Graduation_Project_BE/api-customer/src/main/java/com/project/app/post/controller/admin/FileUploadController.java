@@ -1,4 +1,4 @@
-package com.project.app.admin.controller;
+package com.project.app.post.controller.admin;
 
 import com.project.app.common.dto.ApiResponse;
 import org.springframework.http.HttpStatus;

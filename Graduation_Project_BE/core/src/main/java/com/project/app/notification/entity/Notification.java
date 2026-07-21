@@ -33,7 +33,7 @@ public class Notification {
     private String message;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "type", length = 40)
+    @Column(name = "type", length = 50)
     @Builder.Default
     private NotificationType type = NotificationType.GENERAL;
 
