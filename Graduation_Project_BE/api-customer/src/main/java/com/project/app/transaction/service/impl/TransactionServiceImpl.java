@@ -13,6 +13,8 @@ import com.project.app.transaction.service.TransactionService;
 import com.project.app.user.entity.User;
 import com.project.app.user.repository.UserRepository;
 import com.project.app.transaction.dto.request.WithdrawRequest;
+import com.project.app.transaction.dto.request.TransferRequest;
+import com.project.app.transaction.dto.response.TransferResponse;
 import com.project.app.transaction.dto.request.ManualTransactionRequest;
 import com.project.app.transaction.dto.response.WithdrawResponse;
 import com.project.app.transaction.dto.response.ManualTransactionResponse;
@@ -239,6 +241,91 @@ public class TransactionServiceImpl implements TransactionService {
         }
         
         return transactionRepository.save(transaction);
+    }
+
+    
+    // ====================== CHUYỂN TIỀN NỘI BỘ ======================
+    @Override
+    @Transactional
+    public TransferResponse processTransfer(User user, TransferRequest request) {
+        if (user.isLocked()) {
+            throw new AppException(ErrorCode.ACCOUNT_LOCKED);
+        }
+
+        if (user.getPinCode() == null || user.getPinCode().isEmpty()) {
+            throw new AppException(ErrorCode.INVALID_PIN);
+        }
+
+        if (!passwordEncoder.matches(request.getPinCode(), user.getPinCode())) {
+            user.incrementFailedPin();
+            if (user.getFailedPinAttempts() >= 5) {
+                user.setLockoutTime(LocalDateTime.now().plusMinutes(15));
+            }
+            userRepository.save(user);
+
+            if (user.isLocked()) {
+                throw new AppException(ErrorCode.ACCOUNT_LOCKED);
+            }
+            throw new AppException(ErrorCode.INVALID_PIN);
+        }
+
+        user.resetFailedPin();
+        userRepository.save(user);
+
+        Wallet senderWallet = walletService.getDefaultWallet(user.getId());
+
+        Wallet receiverWallet = walletRepository.findByAccountNumber(request.getReceiverAccountNumber())
+                .orElseThrow(() -> new AppException(ErrorCode.RECEIVER_NOT_FOUND));
+
+        if (senderWallet.getId().equals(receiverWallet.getId())) {
+            throw new AppException(ErrorCode.CANNOT_TRANSFER_SELF);
+        }
+
+        if (senderWallet.getBalance().compareTo(request.getAmount()) < 0) {
+            throw new AppException(ErrorCode.INSUFFICIENT_BALANCE);
+        }
+
+        String transactionCode = "TF" + System.currentTimeMillis() + UUID.randomUUID().toString().substring(0, 4).toUpperCase();
+
+        // 1. Trừ tiền người gửi
+        senderWallet.setBalance(senderWallet.getBalance().subtract(request.getAmount()));
+        walletRepository.save(senderWallet);
+
+        Transaction senderTx = new Transaction();
+        senderTx.setUser(user);
+        senderTx.setWallet(senderWallet);
+        senderTx.setAmount(request.getAmount());
+        senderTx.setType(TransactionType.TRANSFER);
+        senderTx.setStatus(TransactionStatus.SUCCESS);
+        senderTx.setTransactionCode(transactionCode);
+        senderTx.setNote(request.getNote() != null && !request.getNote().trim().isEmpty() 
+            ? request.getNote().trim() 
+            : "Chuyển tiền đến " + receiverWallet.getUser().getUsername());
+        transactionRepository.save(senderTx);
+
+        // 2. Cộng tiền người nhận
+        receiverWallet.setBalance(receiverWallet.getBalance().add(request.getAmount()));
+        walletRepository.save(receiverWallet);
+
+        Transaction receiverTx = new Transaction();
+        receiverTx.setUser(receiverWallet.getUser());
+        receiverTx.setWallet(receiverWallet);
+        receiverTx.setAmount(request.getAmount());
+        receiverTx.setType(TransactionType.RECEIVE_TRANSFER);
+        receiverTx.setStatus(TransactionStatus.SUCCESS);
+        receiverTx.setTransactionCode(transactionCode); // Có thể dùng chung transactionCode hoặc tạo riêng. Dùng chung dễ đối soát.
+        receiverTx.setNote(request.getNote() != null && !request.getNote().trim().isEmpty() 
+            ? request.getNote().trim() 
+            : "Nhận tiền từ " + user.getUsername());
+        transactionRepository.save(receiverTx);
+
+        return new TransferResponse(
+                transactionCode,
+                senderTx.getStatus(),
+                senderTx.getAmount(),
+                receiverWallet.getUser().getUsername(),
+                senderTx.getCreatedAt()
+        );
     }
 
     // ====================== RÚT TIỀN ======================
