@@ -7,11 +7,9 @@ import { PASTEL_PALETTE } from '../../../shared/constants/PastelPalette';
 interface BudgetCardProps {
   budget: BudgetResponse;
   onPress: () => void;
-  onEdit?: () => void;
-  onDelete?: () => void;
 }
 
-export const BudgetCard: React.FC<BudgetCardProps> = ({ budget, onPress, onEdit, onDelete }) => {
+export const BudgetCard: React.FC<BudgetCardProps> = ({ budget, onPress }) => {
   const percentage = Math.min(100, Math.max(0, (budget.spentAmount / budget.amount) * 100));
   
   let progressColor = '#10B981'; // Green < 50%
@@ -55,42 +53,16 @@ export const BudgetCard: React.FC<BudgetCardProps> = ({ budget, onPress, onEdit,
             <Text style={styles.categoryName}>{budget.categoryName}</Text>
           </View>
         </View>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-          <View style={{ alignItems: 'flex-end' }}>
-            <View style={styles.statusBadge}>
-              <Text style={styles.cycleText}>
-                {budget.cycle === 'WEEKLY' ? 'Tuần' : budget.cycle === 'MONTHLY' ? 'Tháng' : 'Năm'}
-              </Text>
-            </View>
-            {(budget.startDate && budget.endDate) && (
-              <Text style={styles.dateRangeText}>
-                {formatDate(budget.startDate)} - {formatDate(budget.endDate)}
-              </Text>
-            )}
+        <View style={{ alignItems: 'flex-end' }}>
+          <View style={styles.statusBadge}>
+            <Text style={styles.cycleText}>
+              {budget.cycle === 'WEEKLY' ? 'Tuần' : budget.cycle === 'MONTHLY' ? 'Tháng' : 'Năm'}
+            </Text>
           </View>
-          {onEdit && (
-            <TouchableOpacity 
-              onPress={(e) => {
-                e?.stopPropagation?.();
-                onEdit();
-              }} 
-              style={styles.editButton}
-              activeOpacity={0.6}
-            >
-              <Ionicons name="pencil-outline" size={16} color="#3B82F6" />
-            </TouchableOpacity>
-          )}
-          {onDelete && (
-            <TouchableOpacity 
-              onPress={(e) => {
-                e?.stopPropagation?.();
-                onDelete();
-              }} 
-              style={styles.deleteButton}
-              activeOpacity={0.6}
-            >
-              <Ionicons name="trash-outline" size={18} color="#EF4444" />
-            </TouchableOpacity>
+          {(budget.startDate && budget.endDate) && (
+            <Text style={styles.dateRangeText}>
+              {formatDate(budget.startDate)} - {formatDate(budget.endDate)}
+            </Text>
           )}
         </View>
       </View>

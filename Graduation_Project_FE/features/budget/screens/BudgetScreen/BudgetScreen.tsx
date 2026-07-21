@@ -1,8 +1,10 @@
 import React, { useState, useCallback, useEffect } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, Alert, StatusBar, Modal, TextInput } from 'react-native';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, Alert, StatusBar, Modal, TextInput, Animated } from 'react-native';
 import { useRouter, usePathname } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
+import { Swipeable, RectButton } from 'react-native-gesture-handler';
+import { LinearGradient } from 'expo-linear-gradient';
 import { budgetApi, BudgetResponse, BudgetSummaryResponse } from '../../../../shared/api/budgetApi';
 import { BudgetCard } from '../../components/BudgetCard';
 import { PASTEL_PALETTE } from '../../../../shared/constants/PastelPalette';
@@ -81,6 +83,49 @@ export const BudgetScreen = () => {
     } finally {
       setIsDeleting(false);
     }
+  };
+
+  const renderDeleteAction = (
+    progress: Animated.AnimatedInterpolation<number>,
+    _dragX: Animated.AnimatedInterpolation<number>,
+    budget: BudgetResponse
+  ) => {
+    const scale = progress.interpolate({
+      inputRange: [0, 1],
+      outputRange: [0.88, 1],
+      extrapolate: 'clamp',
+    });
+    const translateX = progress.interpolate({
+      inputRange: [0, 1],
+      outputRange: [20, 0],
+      extrapolate: 'clamp',
+    });
+
+    return (
+      <Animated.View
+        style={[
+          styles.swipeDeleteActionWrap,
+          { transform: [{ scale }, { translateX }] },
+        ]}
+      >
+        <RectButton
+          style={styles.swipeDeleteButton}
+          onPress={() => handleDeleteBudget(budget.id, budget.name)}
+        >
+          <LinearGradient
+            colors={['#FCA5A5', '#EF4444', '#DC2626']}
+            start={{ x: 0, y: 0.5 }}
+            end={{ x: 1, y: 0.5 }}
+            style={styles.swipeDeleteGradient}
+          >
+            <View style={styles.swipeDeleteIconCircle}>
+              <Ionicons name="trash" size={20} color="#FFFFFF" />
+            </View>
+            <Text style={styles.swipeDeleteText}>Xóa</Text>
+          </LinearGradient>
+        </RectButton>
+      </Animated.View>
+    );
   };
 
   const renderDeleteModal = () => (
@@ -180,20 +225,26 @@ const removeVietnameseTones = (str: string): string => {
     });
 
   const renderSearch = () => (
-    <View style={styles.searchContainer}>
-      <Ionicons name="search-outline" size={20} color={PASTEL_PALETTE.textGray} />
-      <TextInput
-        style={styles.searchInput}
-        placeholder="Tìm kiếm ngân sách..."
-        value={searchQuery}
-        onChangeText={setSearchQuery}
-        placeholderTextColor={PASTEL_PALETTE.textGray}
-      />
-      {searchQuery.length > 0 && (
-        <TouchableOpacity onPress={() => setSearchQuery('')}>
-          <Ionicons name="close-circle" size={18} color={PASTEL_PALETTE.textGray} />
-        </TouchableOpacity>
-      )}
+    <View style={{ marginBottom: 12 }}>
+      <View style={styles.searchContainer}>
+        <Ionicons name="search-outline" size={20} color={PASTEL_PALETTE.textGray} />
+        <TextInput
+          style={styles.searchInput}
+          placeholder="Tìm kiếm ngân sách..."
+          value={searchQuery}
+          onChangeText={setSearchQuery}
+          placeholderTextColor={PASTEL_PALETTE.textGray}
+        />
+        {searchQuery.length > 0 && (
+          <TouchableOpacity onPress={() => setSearchQuery('')}>
+            <Ionicons name="close-circle" size={18} color={PASTEL_PALETTE.textGray} />
+          </TouchableOpacity>
+        )}
+      </View>
+      <View style={styles.swipeHintRow}>
+        <Ionicons name="arrow-back-outline" size={13} color={PASTEL_PALETTE.accentDeep} />
+        <Text style={styles.swipeHintText}>Vuốt từ phải sang trái để xóa ngân sách</Text>
+      </View>
     </View>
   );
 
@@ -282,16 +333,21 @@ const removeVietnameseTones = (str: string): string => {
             </View>
           }
           renderItem={({ item }) => (
-            <BudgetCard 
-              budget={item} 
-              onPress={() => {
-                // Detail view if needed
-              }}
-              onEdit={() => {
-                router.push(`/budget/edit/${item.id}`);
-              }}
-              onDelete={() => handleDeleteBudget(item.id, item.name)}
-            />
+            <View style={styles.budgetSwipeContainer}>
+              <Swipeable
+                renderRightActions={(progress, dragX) => renderDeleteAction(progress, dragX, item)}
+                overshootRight={false}
+                friction={2}
+                rightThreshold={36}
+              >
+                <BudgetCard 
+                  budget={item} 
+                  onPress={() => {
+                    // Detail view if needed
+                  }}
+                />
+              </Swipeable>
+            </View>
           )}
           contentContainerStyle={styles.listContainer}
           ListEmptyComponent={renderEmpty}
@@ -648,5 +704,60 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
     color: '#475569',
+  },
+  budgetSwipeContainer: {
+    marginBottom: 12,
+  },
+  swipeDeleteActionWrap: {
+    width: 90,
+    marginLeft: 8,
+  },
+  swipeDeleteButton: {
+    flex: 1,
+    borderRadius: 16,
+    overflow: 'hidden',
+    shadowColor: '#DC2626',
+    shadowOffset: { width: -2, height: 2 },
+    shadowOpacity: 0.22,
+    shadowRadius: 6,
+    elevation: 4,
+  },
+  swipeDeleteGradient: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 14,
+    borderRadius: 16,
+    minHeight: '100%',
+  },
+  swipeDeleteIconCircle: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: 'rgba(255, 255, 255, 0.22)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 6,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.35)',
+  },
+  swipeDeleteText: {
+    color: '#FFFFFF',
+    fontWeight: '800',
+    fontSize: 12,
+    letterSpacing: 0.2,
+  },
+  swipeHintRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 6,
+    paddingHorizontal: 4,
+  },
+  swipeHintText: {
+    fontSize: 12,
+    color: PASTEL_PALETTE.accentDeep,
+    fontWeight: '600',
   },
 });
