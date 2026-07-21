@@ -73,7 +73,12 @@ public enum ErrorCode {
     FUND_OWNER_CANNOT_LEAVE("FUND_8016", "Chủ quỹ không thể rời quỹ. Hãy xóa quỹ thay vì rời!", HttpStatus.BAD_REQUEST),
     FUND_MEMBER_LIMIT_EXCEEDED("FUND_8017", "Quỹ đã đạt tối đa 10 thành viên!", HttpStatus.BAD_REQUEST),
 
+    // ---- LỖI NGÂN SÁCH ----
+    BUDGET_NOT_FOUND("BUDGET_9001", "Không tìm thấy ngân sách!", HttpStatus.NOT_FOUND),
+    BUDGET_ALREADY_EXISTS("BUDGET_9002", "Ngân sách cho danh mục và chu kỳ này đã tồn tại!", HttpStatus.CONFLICT),
+
     // ---- LỖI HỆ THỐNG CHUNG ----
+    INVALID_REQUEST("SYS_4000", "Yêu cầu không hợp lệ!", HttpStatus.BAD_REQUEST),
     UNCATEGORIZED_EXCEPTION("SYS_9999", "Đã xảy ra lỗi hệ thống, vui lòng thử lại sau!", HttpStatus.INTERNAL_SERVER_ERROR);
 
     private final String code;

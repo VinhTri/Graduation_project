@@ -75,5 +75,10 @@ export const ENDPOINTS = {
   },
   POSTS: {
     PUBLIC_ALL: '/api/v1/public/posts',
+  },
+  BUDGET: {
+    BASE: '/api/budgets',
+    DETAIL: (id: number) => `/api/budgets/${id}`,
+    SUMMARY: '/api/budgets/summary',
   }
 };
