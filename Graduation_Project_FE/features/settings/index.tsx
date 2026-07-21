@@ -11,6 +11,7 @@ import { QuickActionCard } from './components/QuickActionCard';
 import { SettingsSection } from './components/SettingsSection';
 import { SettingsItem } from './components/SettingsItem';
 import { SecuritySection } from './components/SecuritySection';
+import { AppSettingsSection } from './components/AppSettingsSection';
 import { LogoutButton } from './components/LogoutButton';
 
 export function SettingsScreen() {
@@ -72,20 +73,7 @@ export function SettingsScreen() {
 
         <SecuritySection />
 
-        <SettingsSection title={t('supportAndSettings')}>
-          <SettingsItem
-            icon={<Feather name="headphones" size={19} color={ICON} />}
-            title={t('supportCenter')}
-            subtitle={t('supportSub')}
-          />
-          <SettingsItem
-            icon={<Ionicons name="settings-outline" size={20} color={ICON} />}
-            title={t('appSettings')}
-            subtitle={t('appSettingsSubtitle')}
-            onPress={() => router.push('/settings/app-settings' as any)}
-            isLast
-          />
-        </SettingsSection>
+        <AppSettingsSection />
 
         <LogoutButton />
       </ScrollView>
