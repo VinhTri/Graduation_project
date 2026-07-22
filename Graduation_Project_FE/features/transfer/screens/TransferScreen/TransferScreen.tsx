@@ -7,13 +7,17 @@ import {
   ScrollView,
   KeyboardAvoidingView,
   Platform,
-  ActivityIndicator
+  ActivityIndicator,
+  Modal,
+  FlatList,
+  TouchableWithoutFeedback
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { ConfirmModal } from '@/shared/components';
+import { useCategoryContext } from '@/shared/contexts/CategoryContext';
 import { PASTEL_PALETTE } from '@/shared/constants/PastelPalette';
 import { friendshipService } from '@/shared/api/services/friendship.service';
 import { userService } from '@/shared/api/services/userService';
@@ -33,6 +37,10 @@ export const TransferScreen = () => {
   const [receiverName, setReceiverName] = useState('');
   const [amount, setAmount] = useState('');
   const [note, setNote] = useState('');
+
+  const { categories, isLoading: isLoadingCategories } = useCategoryContext();
+  const [selectedCategory, setSelectedCategory] = useState<any>(null);
+  const [isCategoryModalVisible, setIsCategoryModalVisible] = useState(false);
 
   // Hàm phụ trợ: cắt đuôi @gmail.com nếu là email
   const extractDisplayName = (nameOrEmail: string) => {
@@ -86,7 +94,8 @@ export const TransferScreen = () => {
   };
 
   const handleAmountChange = (text: string) => {
-    const numericValue = text.replace(/[^0-9]/g, '');
+    let numericValue = text.replace(/[^0-9]/g, '');
+    numericValue = numericValue.replace(/^0+/, '');
     if (!numericValue) {
       setAmount('');
       return;
@@ -121,7 +130,12 @@ export const TransferScreen = () => {
         accountNumber: accountNumber.trim(),
         receiverName,
         amount: numericAmount,
-        note: note.trim()
+        note: note.trim(),
+        categoryId: selectedCategory?.id,
+        categoryLabel: selectedCategory?.label,
+        categoryIcon: selectedCategory?.icon,
+        categoryColor: selectedCategory?.color,
+        categoryBgColor: selectedCategory?.bgColor
       }
     });
   };
@@ -172,6 +186,66 @@ export const TransferScreen = () => {
     </View>
   );
 
+  const renderCategoryModal = () => {
+    return (
+      <Modal visible={isCategoryModalVisible} transparent animationType="fade" onRequestClose={() => setIsCategoryModalVisible(false)}>
+        <TouchableWithoutFeedback onPress={() => setIsCategoryModalVisible(false)}>
+          <View style={styles.modalOverlay}>
+            <TouchableWithoutFeedback>
+              <View style={styles.modalContent}>
+                <View style={styles.modalHeader}>
+                  <Text style={styles.modalTitle}>Chọn danh mục</Text>
+                  <TouchableOpacity onPress={() => setIsCategoryModalVisible(false)} style={styles.closeButton}>
+                    <Ionicons name="close" size={24} color={PASTEL_PALETTE.title} />
+                  </TouchableOpacity>
+                </View>
+                {isLoadingCategories ? (
+                  <ActivityIndicator size="large" color={PASTEL_PALETTE.accentDeep} style={{ marginTop: 20 }} />
+                ) : (
+                  <ScrollView contentContainerStyle={{ paddingHorizontal: 16, paddingVertical: 16 }}>
+                    {categories.map((group: any) => {
+                      if (!group.items || group.items.length === 0) return null;
+                      return (
+                        <View key={group.id} style={{ marginBottom: 20 }}>
+                          <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
+                            <Ionicons name={group.icon as any || 'folder'} size={18} color={group.color || PASTEL_PALETTE.title} />
+                            <Text style={{ fontSize: 16, fontWeight: 'bold', color: group.color || PASTEL_PALETTE.title, marginLeft: 8 }}>
+                              {group.title}
+                            </Text>
+                          </View>
+                          
+                          {group.items.map((item: any) => (
+                            <TouchableOpacity 
+                              key={item.id}
+                              style={styles.categoryItem}
+                              onPress={() => {
+                                setSelectedCategory(item);
+                                setIsCategoryModalVisible(false);
+                              }}
+                              activeOpacity={0.7}
+                            >
+                              <View style={[styles.iconContainer, { backgroundColor: item.bgColor || PASTEL_PALETTE.lavenderSoft }]}>
+                                <Ionicons name={item.icon as any} size={22} color={item.color || PASTEL_PALETTE.accentDeep} />
+                              </View>
+                              <Text style={styles.categoryLabel}>{item.label}</Text>
+                              {selectedCategory?.id === item.id && (
+                                <Ionicons name="checkmark-circle" size={22} color={PASTEL_PALETTE.accentDeep} />
+                              )}
+                            </TouchableOpacity>
+                          ))}
+                        </View>
+                      );
+                    })}
+                  </ScrollView>
+                )}
+              </View>
+            </TouchableWithoutFeedback>
+          </View>
+        </TouchableWithoutFeedback>
+      </Modal>
+    );
+  };
+
   return (
     <KeyboardAvoidingView
       style={styles.safeArea}
@@ -214,12 +288,39 @@ export const TransferScreen = () => {
                 style={[styles.input, styles.amountInput]}
                 placeholder="0"
                 value={amount}
+                onKeyPress={(e) => {
+                  // Ngăn chặn phím 0 nếu input đang trống để giảm thiểu nháy trên Web
+                  if (e.nativeEvent.key === '0' && !amount) {
+                    e.preventDefault();
+                  }
+                }}
                 onChangeText={handleAmountChange}
                 keyboardType="numeric"
                 placeholderTextColor={PASTEL_PALETTE.textMuted}
               />
               <Text style={styles.currencySuffix}>VNĐ</Text>
             </View>
+          </View>
+
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Danh mục (Tùy chọn)</Text>
+            <TouchableOpacity 
+              style={[styles.input, { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }]}
+              onPress={() => setIsCategoryModalVisible(true)}
+              activeOpacity={0.7}
+            >
+              {selectedCategory ? (
+                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                  <View style={[{ width: 28, height: 28, borderRadius: 14, justifyContent: 'center', alignItems: 'center' }, { backgroundColor: selectedCategory.bgColor || PASTEL_PALETTE.lavenderSoft }]}>
+                    <Ionicons name={selectedCategory.icon as any} size={16} color={selectedCategory.color || PASTEL_PALETTE.accentDeep} />
+                  </View>
+                  <Text style={{ fontSize: 15, color: PASTEL_PALETTE.title, fontWeight: '600', marginLeft: 8 }}>{selectedCategory.label}</Text>
+                </View>
+              ) : (
+                <Text style={{ fontSize: 15, color: PASTEL_PALETTE.textMuted }}>Chọn danh mục giao dịch...</Text>
+              )}
+              <Ionicons name="chevron-down" size={20} color={PASTEL_PALETTE.textMuted} />
+            </TouchableOpacity>
           </View>
 
           <View style={styles.inputGroup}>
@@ -279,6 +380,8 @@ export const TransferScreen = () => {
         onConfirm={() => setErrorModalVisible(false)}
         onCancel={() => setErrorModalVisible(false)}
       />
+
+      {renderCategoryModal()}
     </KeyboardAvoidingView>
   );
 };

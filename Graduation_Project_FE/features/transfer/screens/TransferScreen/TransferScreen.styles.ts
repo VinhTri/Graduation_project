@@ -160,5 +160,67 @@ export const styles = StyleSheet.create({
     marginTop: 8, 
     fontWeight: '600',
     fontSize: 14
+  },
+  modalContainer: {
+    flex: 1,
+    backgroundColor: PASTEL_PALETTE.bg,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    backgroundColor: PASTEL_PALETTE.bg,
+    borderBottomWidth: 1,
+    borderBottomColor: PASTEL_PALETTE.border,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: PASTEL_PALETTE.title,
+  },
+  closeButton: {
+    padding: 4,
+  },
+  categoryItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    backgroundColor: PASTEL_PALETTE.bgSoft,
+    borderRadius: 14,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: PASTEL_PALETTE.border,
+  },
+  iconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  categoryLabel: {
+    flex: 1,
+    fontSize: 15,
+    color: PASTEL_PALETTE.title,
+    fontWeight: '600',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  modalContent: {
+    width: '100%',
+    maxWidth: 400,
+    backgroundColor: PASTEL_PALETTE.bg,
+    borderRadius: 24,
+    maxHeight: '80%',
+    overflow: 'hidden',
   }
 });

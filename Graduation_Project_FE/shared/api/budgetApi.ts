@@ -6,7 +6,9 @@ export interface BudgetCreateRequest {
   categoryId: number;
   walletId?: number;
   amount: number;
-  cycle: 'WEEKLY' | 'MONTHLY' | 'YEARLY';
+  cycle: 'WEEKLY' | 'MONTHLY' | 'YEARLY' | 'CUSTOM';
+  startDate?: string;
+  endDate?: string;
 }
 
 export interface BudgetUpdateRequest {
@@ -33,7 +35,7 @@ export interface BudgetResponse {
   walletName?: string;
   amount: number;
   spentAmount: number;
-  cycle: 'WEEKLY' | 'MONTHLY' | 'YEARLY';
+  cycle: 'WEEKLY' | 'MONTHLY' | 'YEARLY' | 'CUSTOM';
   startDate: string;
   endDate: string;
   isNotified80: boolean;

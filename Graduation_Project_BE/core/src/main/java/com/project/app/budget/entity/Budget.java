@@ -11,6 +11,7 @@ import org.hibernate.annotations.UpdateTimestamp;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.time.LocalDate;
 
 @Entity
 @Table(name = "budgets")
@@ -46,6 +47,12 @@ public class Budget {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     private BudgetCycle cycle;
+
+    @Column(name = "start_date")
+    private LocalDate startDate;
+
+    @Column(name = "end_date")
+    private LocalDate endDate;
 
     @Column(name = "is_deleted", nullable = false)
     @Builder.Default

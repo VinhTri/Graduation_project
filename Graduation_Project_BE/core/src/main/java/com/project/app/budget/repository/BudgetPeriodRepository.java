@@ -13,6 +13,8 @@ import java.util.Optional;
 @Repository
 public interface BudgetPeriodRepository extends JpaRepository<BudgetPeriod, Long> {
 
+    Optional<BudgetPeriod> findFirstByBudgetId(Long budgetId);
+
     @Query("SELECT bp FROM BudgetPeriod bp WHERE bp.budget.id = :budgetId " +
            "AND :date BETWEEN bp.startDate AND bp.endDate")
     Optional<BudgetPeriod> findByBudgetIdAndDate(@Param("budgetId") Long budgetId, @Param("date") LocalDate date);
