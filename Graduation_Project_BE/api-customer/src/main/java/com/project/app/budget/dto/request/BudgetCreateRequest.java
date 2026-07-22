@@ -22,6 +22,10 @@ public record BudgetCreateRequest(
         BigDecimal amount,
 
         @NotNull(message = "Chu kỳ không được để trống")
-        BudgetCycle cycle
+        BudgetCycle cycle,
+
+        LocalDate startDate,
+        
+        LocalDate endDate
 ) {
 }

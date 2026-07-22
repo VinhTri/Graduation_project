@@ -66,6 +66,16 @@ public class BudgetServiceImpl implements BudgetService {
             throw new AppException(ErrorCode.CATEGORY_INVALID_FOR_CASH); 
         }
 
+        // Validation: Custom cycle requires dates
+        if (request.cycle() == BudgetCycle.CUSTOM) {
+            if (request.startDate() == null || request.endDate() == null) {
+                throw new AppException(ErrorCode.INVALID_REQUEST); // Must have dates
+            }
+            if (request.startDate().isAfter(request.endDate())) {
+                throw new AppException(ErrorCode.INVALID_REQUEST); // Start date must be <= End date
+            }
+        }
+
         // Validation: Duplicate budget (same category and cycle)
         if (budgetRepository.existsByUserIdAndCategoryIdAndCycleAndIsDeletedFalse(user.getId(), category.getId(), request.cycle())) {
             throw new AppException(ErrorCode.BUDGET_ALREADY_EXISTS); // "A budget for this category and cycle already exists"
@@ -84,6 +94,8 @@ public class BudgetServiceImpl implements BudgetService {
                 .wallet(wallet)
                 .amount(request.amount())
                 .cycle(request.cycle())
+                .startDate(request.startDate())
+                .endDate(request.endDate())
                 .build();
 
         budget = budgetRepository.save(budget);
@@ -256,6 +268,22 @@ public class BudgetServiceImpl implements BudgetService {
      * Lazy-loads or creates the BudgetPeriod for the given date.
      */
     private BudgetPeriod getOrCreateCurrentPeriod(Budget budget, LocalDate date) {
+        if (budget.getCycle() == BudgetCycle.CUSTOM) {
+            // A custom budget only has one period.
+            return budgetPeriodRepository.findFirstByBudgetId(budget.getId())
+                    .orElseGet(() -> {
+                        BudgetPeriod newPeriod = BudgetPeriod.builder()
+                                .budget(budget)
+                                .startDate(budget.getStartDate())
+                                .endDate(budget.getEndDate())
+                                .spentAmount(BigDecimal.ZERO)
+                                .isNotified80(false)
+                                .isNotified100(false)
+                                .build();
+                        return budgetPeriodRepository.save(newPeriod);
+                    });
+        }
+
         return budgetPeriodRepository.findByBudgetIdAndDate(budget.getId(), date)
                 .orElseGet(() -> {
                     LocalDate startDate = date;

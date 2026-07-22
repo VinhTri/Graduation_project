@@ -331,6 +331,11 @@ public class TransactionServiceImpl implements TransactionService {
         senderTx.setNote(request.getNote() != null && !request.getNote().trim().isEmpty() 
             ? request.getNote().trim() 
             : "Chuyển tiền đến " + receiverWallet.getUser().getUsername());
+        if (request.getCategoryId() != null) {
+            senderTx.setCategoryId(request.getCategoryId());
+            // Adjust budget for transfer if category is selected
+            adjustBudgetForExpense(user, request.getCategoryId(), senderWallet.getId(), request.getAmount(), LocalDate.now());
+        }
         transactionRepository.save(senderTx);
 
         // 2. Cộng tiền người nhận

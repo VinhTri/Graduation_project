@@ -21,6 +21,7 @@ export interface TransferRequest {
   amount: number;
   pinCode: string;
   note?: string;
+  categoryId?: number;
 }
 
 export interface TransferResponse {

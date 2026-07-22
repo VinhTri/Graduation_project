@@ -46,7 +46,9 @@
           "photosPermission": "Cho phép SmartSpend truy cập thư viện ảnh để đổi ảnh đại diện.",
           "cameraPermission": "Cho phép SmartSpend dùng máy ảnh để chụp ảnh đại diện."
         }
-      ]
+      ],
+      "expo-asset",
+      "expo-font"
     ],
     "experiments": {
       "typedRoutes": true,
