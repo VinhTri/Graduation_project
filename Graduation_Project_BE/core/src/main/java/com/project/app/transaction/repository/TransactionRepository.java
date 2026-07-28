@@ -25,6 +25,13 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
             java.time.LocalDateTime endDate
     );
 
+    java.util.List<Transaction> findByUserAndStatusAndCreatedAtBetween(
+            com.project.app.user.entity.User user,
+            com.project.app.transaction.enums.TransactionStatus status,
+            java.time.LocalDateTime startDate,
+            java.time.LocalDateTime endDate
+    );
+
     java.util.List<Transaction> findByUserIdOrderByCreatedAtDesc(Long userId);
 
     java.util.List<Transaction> findByTypeAndNoteContainingIgnoreCaseOrderByCreatedAtDesc(
