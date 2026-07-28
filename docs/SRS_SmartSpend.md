@@ -79,15 +79,16 @@ SmartSpend là hệ thống độc lập gồm ba thành phần triển khai ri�
 
 ```
 +---------------------------+        +---------------------------+
-|  Mobile App (Customer)    |        |  Web Admin (Quản trị)     |
+|  App Customer (Mobile)    |        |  Web Admin (Quản trị)     |
 |  Expo / React Native      |        |  React + Vite + Ant Design|
 +-------------+-------------+        +-------------+-------------+
               |  HTTPS/REST                        |  HTTPS/REST
-              v                                    v
-        +-----------------------------------------------+
-        |            Backend (Spring Boot 3.2)          |
-        |   api-customer  |  api-admin  |  core (shared) |
-        +-----------------------+-----------------------+
+              |  /api/v1/auth/**                   |  /api/v1/admin/auth/login
+              v                                    |  /api/v1/admin/**
+        +------------------------------------------+-------------+
+        |            Backend (Spring Boot 3.2)                   |
+        | api-app-customer | api-web-admin | core (Auth+JWT+JPA) |
+        +-----------------------+--------------------------------+
                                 |
               +-----------------+------------------+
               |          |            |            |
@@ -95,11 +96,14 @@ SmartSpend là hệ thống độc lập gồm ba thành phần triển khai ri�
          MySQL DB    SMTP Email   SePay Webhook  PayOS Payout
 ```
 
-- **Backend**: dự án Maven đa module (`core` chứa entity/repository/security dùng chung; `api-customer` phục vụ ứng dụng khách; `api-admin` phục vụ quản trị). Spring Boot 3.2.5, Java 17, JWT (jjwt 0.12.5).
-- **Mobile App**: Expo SDK 54, React Native 0.81, React 19, Expo Router, Axios; biểu đồ dùng `react-native-gifted-charts` / `react-native-chart-kit`.
-- **Web Admin**: React 19 + Vite + Ant Design + Recharts + Zustand.
+- **Backend**: Maven đa module.
+  - **`core`**: entity/repository, **Auth dùng chung** (`AuthService`, DTO, JWT, `SecurityConfig`).
+  - **`api-app-customer`**: API cho App Customer (Mobile) — auth đầy đủ `/api/v1/auth/**` (login, đăng ký OTP, PIN…); `AppCustomerApplication`.
+  - **`api-web-admin`**: API cho Web Admin — login quản trị `POST /api/v1/admin/auth/login` (bắt buộc `role=ADMIN`) + API quản trị; `WebAdminApplication`; dùng chung `AuthService` từ core.
+- **App Customer** (`Graduation_Project_AppCustomer`): Expo SDK 54, React Native 0.81, React 19, Expo Router, Axios; biểu đồ dùng `react-native-gifted-charts` / `react-native-chart-kit`.
+- **Web Admin** (`Graduation_Project_WebAdmin`): React 19 + Vite + Ant Design + Recharts + Zustand. Login gọi `api-web-admin` (không phụ thuộc `api-app-customer` chỉ để đăng nhập).
 - **CSDL**: MySQL.
-- **Tích hợp ngoài**: SMTP (gửi OTP), SePay (đối soát nạp tiền), PayOS (chi hộ rút tiền), VietQR (sinh QR chuyển khoản).
+- **Tích hợp ngoài**: SMTP (gửi OTP), SePay (đối soát nạp tiền), PayOS (chi hộ rút tiền), VietQR (sinh mã QR chuyển khoản).
 
 ### 2.2. Chức năng chính của sản phẩm
 1. Xác thực & bảo mật (đăng ký OTP, đăng nhập JWT, quên mật khẩu, mã PIN, khóa PIN).
@@ -122,7 +126,7 @@ SmartSpend là hệ thống độc lập gồm ba thành phần triển khai ri�
 
 ### 2.4. Ràng buộc thiết kế
 - RB-01: Backend theo kiến trúc đa module Maven; phản hồi thống nhất qua `ApiResponse<T>` (success, message, data).
-- RB-02: Xác thực bằng JWT Bearer token; endpoint `/api/v1/auth/**` và webhook được phép truy cập không cần token.
+- RB-02: Xác thực JWT Bearer; public: `/api/v1/auth/**` (customer), `/api/v1/admin/auth/**` (login Admin), webhook SePay, một số endpoint public (vd. posts/uploads) theo `SecurityConfig`.
 - RB-03: Mật khẩu và mã PIN phải được băm (BCrypt), không lưu dạng thô.
 - RB-04: Mã PIN cố định 6 chữ số; STK dài 8–15 chữ số và duy nhất.
 - RB-05: Số tiền lưu dạng `BigDecimal`; hiển thị định dạng tiền tệ Việt Nam (₫).
@@ -280,7 +284,7 @@ SmartSpend là hệ thống độc lập gồm ba thành phần triển khai ri�
 
 | Mã | Yêu cầu | Ưu tiên | Trạng thái |
 |----|---------|---------|-----------|
-| FR-ADM-01 | Đăng nhập cổng Admin (Role = ADMIN). | Cao | [Đã có] |
+| FR-ADM-01 | Đăng nhập cổng Admin (`POST /api/v1/admin/auth/login`); BE bắt buộc Role = ADMIN (dùng `AuthService` chung trong core). | Cao | [Đã có] |
 | FR-ADM-02 | Xem danh sách người dùng (`GET /admin/users`). | Cao | [Đã có] |
 | FR-ADM-03 | Xem chi tiết người dùng (`GET /admin/users/{id}/details`). | Trung bình | [Đã có] |
 | FR-ADM-04 | Kích hoạt/khóa tài khoản người dùng (`PUT /admin/users/{id}/toggle-status`). | Cao | [Đã có] |
@@ -404,7 +408,8 @@ SmartSpend là hệ thống độc lập gồm ba thành phần triển khai ri�
 ### 8.1. Tổng hợp đường dẫn API chính
 | Nhóm | Endpoint tiêu biểu |
 |------|--------------------|
-| Auth | `/api/v1/auth/login`, `/register`, `/register/send-otp`, `/forgot-password`, `/reset-password`, `/verify-otp`, `/setup-pin`, `/verify-pin`, `/forgot-pin`, `/reset-pin`, `/pin-status` |
+| Auth (customer) | `/api/v1/auth/login`, `/register`, `/register/send-otp`, `/forgot-password`, `/reset-password`, `/verify-otp`, `/setup-pin`, `/verify-pin`, `/forgot-pin`, `/reset-pin`, `/pin-status`, `/change-password`, `/change-pin` |
+| Auth (admin) | `POST /api/v1/admin/auth/login` (chỉ ADMIN; service chung từ core) |
 | User | `/api/v1/user/me`, `/api/v1/user/search` |
 | Wallet | `/api/v1/wallets/me`, `/wallets/setup-account`, `/wallets/{id}/settings` |
 | Bank | `/api/v1/bank-accounts` |

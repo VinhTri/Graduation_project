@@ -54,7 +54,7 @@
 ## BE-S1-01: Khởi tạo Spring Boot multi-module (3 SP)
 - BE-S1-01-01: Tạo repo Git + README + .gitignore
 - BE-S1-01-02: Tạo module core (entity, repo, security)
-- BE-S1-01-03: Tạo module api-customer + CustomerApplication
+- BE-S1-01-03: Tạo module api-app-customer + AppCustomerApplication (trước đây: api-customer)
 - BE-S1-01-04: Cấu hình MySQL + application.properties
 - BE-S1-01-05: Cấu hình CORS cho FE Expo
 
