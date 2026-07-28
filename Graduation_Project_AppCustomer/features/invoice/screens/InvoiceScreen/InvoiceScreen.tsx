@@ -1,11 +1,12 @@
 import React, { useState, useCallback } from 'react';
-import { View, Text, TouchableOpacity, FlatList, ActivityIndicator, RefreshControl } from 'react-native';
+import { View, Text, TouchableOpacity, FlatList, ActivityIndicator, RefreshControl, Animated } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { styles } from './InvoiceScreen.styles';
+import { LinearGradient } from 'expo-linear-gradient';
+import { styles, PALETTE } from './InvoiceScreen.styles';
 import Colors from '@/shared/constants/Colors';
 import { invoiceService, InvoiceResponse } from '@/shared/api/services/invoiceService';
-import { Swipeable } from 'react-native-gesture-handler';
+import { Swipeable, RectButton } from 'react-native-gesture-handler';
 import { ConfirmModal } from '@/shared/components';
 
 export const InvoiceScreen = () => {
@@ -73,15 +74,47 @@ export const InvoiceScreen = () => {
     }
   };
 
-  const renderRightActions = (id: number, name: string) => {
+  const renderRightActions = (
+    progress: Animated.AnimatedInterpolation<number>,
+    _dragX: Animated.AnimatedInterpolation<number>,
+    id: number,
+    name: string
+  ) => {
+    const scale = progress.interpolate({
+      inputRange: [0, 1],
+      outputRange: [0.88, 1],
+      extrapolate: 'clamp',
+    });
+    const translateX = progress.interpolate({
+      inputRange: [0, 1],
+      outputRange: [20, 0],
+      extrapolate: 'clamp',
+    });
+
     return (
-      <TouchableOpacity 
-        style={styles.swipeDeleteButton} 
-        onPress={() => openDeleteModal(id, name)}
+      <Animated.View
+        style={[
+          styles.swipeDeleteActionWrap,
+          { transform: [{ scale }, { translateX }] },
+        ]}
       >
-        <Ionicons name="trash-outline" size={24} color={Colors.white} />
-        <Text style={styles.swipeDeleteText}>Xóa</Text>
-      </TouchableOpacity>
+        <RectButton
+          style={styles.swipeDeleteButton}
+          onPress={() => openDeleteModal(id, name)}
+        >
+          <LinearGradient
+            colors={['#FCA5A5', '#EF4444', '#DC2626']}
+            start={{ x: 0, y: 0.5 }}
+            end={{ x: 1, y: 0.5 }}
+            style={styles.swipeDeleteGradient}
+          >
+            <View style={styles.swipeDeleteIconCircle}>
+              <Ionicons name="trash" size={20} color="#FFFFFF" />
+            </View>
+            <Text style={styles.swipeDeleteText}>Xóa</Text>
+          </LinearGradient>
+        </RectButton>
+      </Animated.View>
     );
   };
 
@@ -91,7 +124,12 @@ export const InvoiceScreen = () => {
     const formattedDate = dueDate.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });
 
     return (
-      <Swipeable renderRightActions={() => renderRightActions(item.id, item.invoiceName)}>
+      <Swipeable 
+        renderRightActions={(progress, dragX) => renderRightActions(progress, dragX, item.id, item.invoiceName)}
+        overshootRight={false}
+        friction={2}
+        rightThreshold={36}
+      >
         <TouchableOpacity 
           style={styles.invoiceCard}
           activeOpacity={0.7}
@@ -122,22 +160,36 @@ export const InvoiceScreen = () => {
   return (
     <View style={styles.container}>
       {/* Header */}
-      <View style={styles.header}>
-        <View style={styles.headerLeft}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-            <Ionicons name="chevron-back-outline" size={22} color="#FFF" />
-          </TouchableOpacity>
-          <View style={styles.titleContainer}>
-            <Text style={styles.headerTitle}>Hóa đơn</Text>
-            <Text style={styles.headerSubtitle}>Quản lý thanh toán</Text>
-          </View>
-        </View>
-        <TouchableOpacity 
-          style={styles.createButton}
-          onPress={() => router.push('/invoice/create')}
+      <View style={styles.headerWrap}>
+        <LinearGradient
+          colors={[PALETTE.headerStart, PALETTE.headerMid, PALETTE.headerEnd]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.header}
         >
-          <Text style={styles.createButtonText}>Tạo hóa đơn</Text>
-        </TouchableOpacity>
+          <View style={styles.headerDecorCircleLarge} />
+          <View style={styles.headerDecorCircleSmall} />
+
+          <View style={styles.headerTopRow}>
+            <View style={styles.headerLeft}>
+              <TouchableOpacity onPress={() => router.back()} style={styles.backButton} activeOpacity={0.7}>
+                <Ionicons name="chevron-back-outline" size={22} color="#7C3AED" />
+              </TouchableOpacity>
+              <View style={styles.titleContainer}>
+                <Text style={styles.headerTitle}>Hóa đơn</Text>
+                <Text style={styles.headerSubtitle}>Quản lý thanh toán</Text>
+              </View>
+            </View>
+            <TouchableOpacity 
+              style={styles.createButton}
+              onPress={() => router.push('/invoice/create')}
+              activeOpacity={0.85}
+            >
+              <Ionicons name="add" size={16} color="#FFF" />
+              <Text style={styles.createButtonText}>Tạo hóa đơn</Text>
+            </TouchableOpacity>
+          </View>
+        </LinearGradient>
       </View>
 
       {/* Body */}

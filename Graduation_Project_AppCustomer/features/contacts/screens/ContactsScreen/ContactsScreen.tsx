@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, TextInput, FlatList, ActivityIndicator, Animated } from 'react-native';
+import { View, Text, TouchableOpacity, TextInput, FlatList, ActivityIndicator, Animated, TouchableWithoutFeedback, Keyboard, Platform } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -25,10 +25,11 @@ export const ContactsScreen = () => {
   const [loading, setLoading] = useState(false);
   const [pendingCount, setPendingCount] = useState(0);
   const [sentCount, setSentCount] = useState(0);
+  const [isSendingRequest, setIsSendingRequest] = useState(false);
 
   const [successModal, setSuccessModal] = useState<{ visible: boolean; title: string; message: string }>({ visible: false, title: '', message: '' });
   const [errorModal, setErrorModal] = useState<{ visible: boolean; title: string; message: string }>({ visible: false, title: '', message: '' });
-  const [confirmModal, setConfirmModal] = useState<{ visible: boolean; id: number; username: string; type: 'remove' | 'accept' | 'reject' | null }>({ visible: false, id: 0, username: '', type: null });
+  const [confirmModal, setConfirmModal] = useState<{ visible: boolean; id: number; username: string; type: 'remove' | 'accept' | 'reject' | 'cancel_request' | null }>({ visible: false, id: 0, username: '', type: null });
 
   useEffect(() => {
     fetchData();
@@ -94,8 +95,9 @@ export const ContactsScreen = () => {
   };
 
   const handleSendRequest = async () => {
-    if (!searchResult) return;
+    if (!searchResult || isSendingRequest) return;
     try {
+      setIsSendingRequest(true);
       const res = await friendshipService.sendRequest(searchResult.email);
       if (res.success) {
         setSearchResult({
@@ -111,6 +113,8 @@ export const ContactsScreen = () => {
       }
     } catch (error: any) {
       setErrorModal({ visible: true, title: 'Lỗi', message: error?.message || 'Có lỗi xảy ra' });
+    } finally {
+      setIsSendingRequest(false);
     }
   };
 
@@ -171,10 +175,11 @@ export const ContactsScreen = () => {
       return (
         <TouchableOpacity
           style={styles.pendingFriendButton}
-          onPress={handleCancelRequest}
+          onPress={() => setConfirmModal({ visible: true, id: searchResult.friendshipId || 0, username: searchResult.username, type: 'cancel_request' })}
           activeOpacity={0.85}
         >
-          <Text style={styles.pendingFriendText}>Đang gửi kết bạn</Text>
+          <Ionicons name="time-outline" size={14} color="#6B7280" />
+          <Text style={styles.pendingFriendText}>Đã gửi lời mời</Text>
         </TouchableOpacity>
       );
     }
@@ -192,9 +197,20 @@ export const ContactsScreen = () => {
     }
 
     return (
-      <TouchableOpacity style={styles.addFriendButton} onPress={handleSendRequest} activeOpacity={0.85}>
-        <Ionicons name="person-add" size={14} color="#FFF" />
-        <Text style={styles.addFriendText}>Kết bạn</Text>
+      <TouchableOpacity 
+        style={[styles.addFriendButton, isSendingRequest && { opacity: 0.6 }]} 
+        onPress={handleSendRequest} 
+        activeOpacity={0.85}
+        disabled={isSendingRequest}
+      >
+        {isSendingRequest ? (
+          <ActivityIndicator size="small" color="#FFF" />
+        ) : (
+          <Ionicons name="person-add" size={14} color="#FFF" />
+        )}
+        <Text style={styles.addFriendText}>
+          {isSendingRequest ? "Đang gửi..." : "Kết bạn"}
+        </Text>
       </TouchableOpacity>
     );
   };
@@ -389,7 +405,7 @@ export const ContactsScreen = () => {
   const listData =
     activeTab === 'FRIENDS' ? friends : activeTab === 'REQUESTS' ? requests : sentRequests;
 
-  return (
+  const content = (
     <View style={styles.container}>
       <View style={{ flex: 1 }}>
         <View style={styles.headerWrap}>
@@ -563,14 +579,35 @@ export const ContactsScreen = () => {
       <ConfirmModal
         visible={confirmModal.visible}
         title="Xác nhận"
-        message={`Bạn có chắc chắn muốn hủy kết bạn với ${confirmModal.username}?`}
+        message={
+          confirmModal.type === 'cancel_request' 
+            ? `Bạn có chắc chắn muốn thu hồi lời mời kết bạn gửi tới ${confirmModal.username}?`
+            : `Bạn có chắc chắn muốn hủy kết bạn với ${confirmModal.username}?`
+        }
         confirmText="Đồng ý"
         cancelText="Hủy"
-        isDestructive
-        onConfirm={executeRemoveFriend}
+        isDestructive={confirmModal.type === 'remove'}
+        onConfirm={
+          confirmModal.type === 'cancel_request' 
+            ? () => {
+                setConfirmModal({ ...confirmModal, visible: false });
+                handleCancelRequest();
+              }
+            : executeRemoveFriend
+        }
         onCancel={() => setConfirmModal({ ...confirmModal, visible: false })}
       />
     </View>
+  );
+
+  if (Platform.OS === 'web') {
+    return content;
+  }
+
+  return (
+    <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
+      {content}
+    </TouchableWithoutFeedback>
   );
 };
 

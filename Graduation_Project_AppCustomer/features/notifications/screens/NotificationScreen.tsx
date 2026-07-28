@@ -7,11 +7,19 @@ import {
   StyleSheet,
   ActivityIndicator,
   Alert,
+  Animated,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
+import { LinearGradient } from "expo-linear-gradient";
 import Colors from "../../../shared/constants/Colors";
+
+const PALETTE = {
+  headerStart: '#FFD6EC',
+  headerMid: '#E9D5FF',
+  headerEnd: '#BFDBFE',
+};
 import {
   notificationService,
   NotificationResponse,
@@ -19,7 +27,7 @@ import {
 import { fundService } from "../../../shared/api/services/fundService";
 import { fundStore } from "../../funds/store/fundStore";
 
-import { Swipeable } from "react-native-gesture-handler";
+import { Swipeable, RectButton } from "react-native-gesture-handler";
 
 const timeAgo = (dateInput: string) => {
   const date = new Date(dateInput);
@@ -112,15 +120,46 @@ export default function NotificationScreen() {
     }
   };
 
-  const renderRightActions = (id: number) => {
+  const renderRightActions = (
+    progress: Animated.AnimatedInterpolation<number>,
+    _dragX: Animated.AnimatedInterpolation<number>,
+    id: number
+  ) => {
+    const scale = progress.interpolate({
+      inputRange: [0, 1],
+      outputRange: [0.88, 1],
+      extrapolate: 'clamp',
+    });
+    const translateX = progress.interpolate({
+      inputRange: [0, 1],
+      outputRange: [20, 0],
+      extrapolate: 'clamp',
+    });
+
     return (
-      <TouchableOpacity
-        style={styles.deleteButton}
-        onPress={() => handleDelete(id)}
+      <Animated.View
+        style={[
+          styles.swipeDeleteActionWrap,
+          { transform: [{ scale }, { translateX }] },
+        ]}
       >
-        <Ionicons name="trash-outline" size={24} color={Colors.white} />
-        <Text style={styles.deleteText}>Xóa</Text>
-      </TouchableOpacity>
+        <RectButton
+          style={styles.swipeDeleteButton}
+          onPress={() => handleDelete(id)}
+        >
+          <LinearGradient
+            colors={['#FCA5A5', '#EF4444', '#DC2626']}
+            start={{ x: 0, y: 0.5 }}
+            end={{ x: 1, y: 0.5 }}
+            style={styles.swipeDeleteGradient}
+          >
+            <View style={styles.swipeDeleteIconCircle}>
+              <Ionicons name="trash" size={20} color="#FFFFFF" />
+            </View>
+            <Text style={styles.swipeDeleteText}>Xóa</Text>
+          </LinearGradient>
+        </RectButton>
+      </Animated.View>
     );
   };
 
@@ -129,13 +168,18 @@ export default function NotificationScreen() {
     const busy = actingId === item.id;
 
     return (
-      <Swipeable renderRightActions={() => renderRightActions(item.id)}>
+      <Swipeable 
+        renderRightActions={(progress, dragX) => renderRightActions(progress, dragX, item.id)}
+        overshootRight={false}
+        friction={2}
+        rightThreshold={36}
+      >
         <View style={[styles.notificationCard, !item.isRead && styles.unreadCard]}>
           <View style={styles.iconContainer}>
             <Ionicons
               name={isFundInvite ? "people" : "notifications"}
               size={24}
-              color={Colors.primary}
+              color="#EC4899"
             />
           </View>
           <View style={styles.contentContainer}>
@@ -176,28 +220,32 @@ export default function NotificationScreen() {
 
   return (
     <View style={styles.container}>
-      <View
-        style={{
-          backgroundColor: Colors.primary,
-          height: insets.top,
-          position: "absolute",
-          top: 0,
-          left: 0,
-          right: 0,
-        }}
-      />
+      {/* Header */}
+      <View style={styles.headerWrap}>
+        <LinearGradient
+          colors={[PALETTE.headerStart, PALETTE.headerMid, PALETTE.headerEnd]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={[styles.header, { paddingTop: insets.top + 12 }]}
+        >
+          <View style={styles.headerDecorCircleLarge} />
+          <View style={styles.headerDecorCircleSmall} />
 
-      <View style={{ flex: 1, paddingTop: insets.top }}>
-        <View style={styles.header}>
-          <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-            <Ionicons name="arrow-back" size={24} color={Colors.white} />
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>Thông báo</Text>
-        </View>
-        <View style={styles.content}>
+          <View style={styles.headerTopRow}>
+            <View style={styles.headerLeft}>
+              <TouchableOpacity onPress={() => router.back()} style={styles.backButton} activeOpacity={0.7}>
+                <Ionicons name="chevron-back-outline" size={22} color="#7C3AED" />
+              </TouchableOpacity>
+              <Text style={styles.headerTitle}>Thông báo</Text>
+            </View>
+          </View>
+        </LinearGradient>
+      </View>
+
+      <View style={styles.content}>
           {loading ? (
             <View style={styles.loadingContainer}>
-              <ActivityIndicator size="large" color={Colors.primary} />
+              <ActivityIndicator size="large" color="#EC4899" />
             </View>
           ) : (
             <FlatList
@@ -218,7 +266,6 @@ export default function NotificationScreen() {
             />
           )}
         </View>
-      </View>
     </View>
   );
 }
@@ -228,30 +275,60 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: Colors.background,
   },
+  headerWrap: {
+    borderBottomLeftRadius: 32,
+    borderBottomRightRadius: 32,
+    overflow: 'hidden',
+    marginBottom: 4,
+  },
   header: {
-    flexDirection: "row",
+    paddingBottom: 18,
+    paddingHorizontal: 24,
+  },
+  headerDecorCircleLarge: {
+    position: 'absolute',
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    backgroundColor: 'rgba(255, 255, 255, 0.28)',
+    top: -24,
+    right: -20,
+  },
+  headerDecorCircleSmall: {
+    position: 'absolute',
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: 'rgba(255, 255, 255, 0.22)',
+    bottom: 18,
+    left: 18,
+  },
+  headerTopRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  headerLeft: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  backButton: {
+    width: 40,
+    height: 40,
+    justifyContent: "center",
     alignItems: "center",
-    paddingHorizontal: 16,
-    paddingTop: 16,
-    paddingBottom: 40,
-    backgroundColor: Colors.primary,
+    marginRight: 10,
+    marginLeft: -8,
+  },
+  headerTitle: {
+    fontSize: 22,
+    fontWeight: "900",
+    color: '#5B21B6',
+    letterSpacing: 0.2,
   },
   content: {
     flex: 1,
     backgroundColor: Colors.background,
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    marginTop: -24,
-    overflow: "hidden",
-  },
-  backButton: {
-    padding: 8,
-    marginRight: 8,
-  },
-  headerTitle: {
-    fontSize: 20,
-    fontWeight: "700",
-    color: Colors.white,
   },
   listContainer: {
     padding: 16,
@@ -276,7 +353,7 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: Colors.primary + "1A",
+    backgroundColor: "#EC48991A",
     justifyContent: "center",
     alignItems: "center",
     marginRight: 16,
@@ -307,7 +384,7 @@ const styles = StyleSheet.create({
   },
   acceptBtn: {
     flex: 1,
-    backgroundColor: Colors.primary,
+    backgroundColor: "#EC4899",
     paddingVertical: 10,
     borderRadius: 10,
     alignItems: "center",
@@ -336,7 +413,7 @@ const styles = StyleSheet.create({
     width: 10,
     height: 10,
     borderRadius: 5,
-    backgroundColor: Colors.primary,
+    backgroundColor: "#EC4899",
     marginLeft: 8,
     marginTop: 6,
   },
@@ -355,18 +432,45 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: Colors.textMuted,
   },
-  deleteButton: {
-    backgroundColor: "#ef4444",
-    justifyContent: "center",
-    alignItems: "center",
-    width: 80,
-    marginBottom: 12,
-    borderRadius: 12,
+  swipeDeleteActionWrap: {
+    width: 90,
     marginLeft: 8,
+    marginBottom: 12,
   },
-  deleteText: {
-    color: Colors.white,
-    fontWeight: "600",
-    marginTop: 4,
+  swipeDeleteButton: {
+    flex: 1,
+    borderRadius: 16,
+    overflow: 'hidden',
+    shadowColor: '#DC2626',
+    shadowOffset: { width: -2, height: 2 },
+    shadowOpacity: 0.22,
+    shadowRadius: 6,
+    elevation: 4,
+  },
+  swipeDeleteGradient: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 14,
+    borderRadius: 16,
+    minHeight: '100%',
+  },
+  swipeDeleteIconCircle: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: 'rgba(255, 255, 255, 0.22)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 6,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.35)',
+  },
+  swipeDeleteText: {
+    color: '#FFFFFF',
+    fontWeight: '800',
+    fontSize: 12,
+    letterSpacing: 0.2,
   },
 });

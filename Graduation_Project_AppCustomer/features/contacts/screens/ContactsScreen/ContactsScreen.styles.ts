@@ -248,6 +248,9 @@ export const styles = StyleSheet.create({
     borderRadius: 16,
     borderWidth: 1,
     borderColor: '#D1D5DB',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
   },
   pendingFriendText: {
     color: '#4B5563',

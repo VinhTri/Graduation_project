@@ -13,9 +13,10 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { ConfirmModal } from '@/shared/components';
-import { styles } from './CreateInvoiceScreen.styles';
+import { styles, PALETTE } from './CreateInvoiceScreen.styles';
 import Colors from '@/shared/constants/Colors';
 import { invoiceService } from '@/shared/api/services/invoiceService';
 import { getAvailableReminderOptions } from '../../utils/invoiceUtils';
@@ -90,6 +91,24 @@ export const CreateInvoiceScreen = () => {
       return;
     }
 
+    const now = new Date();
+    const reminderDate = new Date(dueDate);
+    reminderDate.setHours(reminderTime.getHours(), reminderTime.getMinutes(), 0, 0);
+
+    if (reminderOption === 'Trước 1 ngày') {
+      reminderDate.setDate(reminderDate.getDate() - 1);
+    } else if (reminderOption === 'Trước 2 ngày') {
+      reminderDate.setDate(reminderDate.getDate() - 2);
+    } else if (reminderOption === 'Trước 3 ngày') {
+      reminderDate.setDate(reminderDate.getDate() - 3);
+    }
+
+    if (reminderDate <= now) {
+      setErrorMessage("Thời gian nhắc nhở không được nằm trong quá khứ.");
+      setErrorModalVisible(true);
+      return;
+    }
+
     try {
       setLoading(true);
       
@@ -125,13 +144,25 @@ export const CreateInvoiceScreen = () => {
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
       {/* Header */}
-      <View style={styles.header}>
-        <View style={styles.headerLeft}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-            <Ionicons name="chevron-back-outline" size={22} color="#FFF" />
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>Thêm hóa đơn</Text>
-        </View>
+      <View style={styles.headerWrap}>
+        <LinearGradient
+          colors={[PALETTE.headerStart, PALETTE.headerMid, PALETTE.headerEnd]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.header}
+        >
+          <View style={styles.headerDecorCircleLarge} />
+          <View style={styles.headerDecorCircleSmall} />
+
+          <View style={styles.headerTopRow}>
+            <View style={styles.headerLeft}>
+              <TouchableOpacity onPress={() => router.back()} style={styles.backButton} activeOpacity={0.7}>
+                <Ionicons name="chevron-back-outline" size={22} color="#7C3AED" />
+              </TouchableOpacity>
+              <Text style={styles.headerTitle}>Thêm hóa đơn</Text>
+            </View>
+          </View>
+        </LinearGradient>
       </View>
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
@@ -230,18 +261,18 @@ export const CreateInvoiceScreen = () => {
                   style={{ alignSelf: 'center' }}
                 />
                 {Platform.OS === 'ios' && (
-                  <TouchableOpacity 
-                    style={{ 
+                  <TouchableOpacity
+                    style={{
                       marginTop: 16,
                       width: '100%',
-                      backgroundColor: Colors.primary + '1A',
+                      backgroundColor: '#F472B6',
                       paddingVertical: 14,
                       borderRadius: 16,
                       alignItems: 'center'
                     }}
                     onPress={() => setShowTimePicker(false)}
                   >
-                    <Text style={{ color: Colors.primary, fontSize: 16, fontWeight: 'bold' }}>Xong</Text>
+                    <Text style={{ color: '#FFFFFF', fontSize: 16, fontWeight: 'bold' }}>Xong</Text>
                   </TouchableOpacity>
                 )}
               </View>
