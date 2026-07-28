@@ -14,7 +14,6 @@ const HOME_SERVICES = [
 
 const FIXED_SERVICES = [
   { id: "danh_muc", label: "Danh mục", icon: "layers-outline", color: "#7C3AED", bgColor: "#EDE9FE", route: "/categories" },
-  { id: "tat_ca", label: "Tất cả", icon: "grid-outline", color: "#64748B", bgColor: "#F1F5F9", route: "/all-services" },
 ] as const;
 
 export const ServicesGrid = () => {

@@ -39,8 +39,8 @@ export default function ConfirmModal({
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onCancel}>
       <KeyboardAvoidingView style={styles.overlay} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <View style={styles.modalContainer}>
-          <View style={[styles.iconContainer, { backgroundColor: iconColor + '1A' }]}>
-            <Ionicons name={iconName} size={32} color={iconColor} />
+          <View style={[styles.iconContainer, { backgroundColor: '#EC48991A' }]}>
+            <Ionicons name={iconName} size={32} color="#EC4899" />
           </View>
           <Text style={styles.title}>{title}</Text>
           {message ? <Text style={styles.message}>{message}</Text> : null}
@@ -52,7 +52,7 @@ export default function ConfirmModal({
               </TouchableOpacity>
             )}
             <TouchableOpacity 
-              style={[styles.confirmButton, { backgroundColor: confirmButtonColor || (isDestructive ? Colors.error : Colors.primary) }]} 
+              style={[styles.confirmButton, { backgroundColor: '#EC4899' }]} 
               onPress={onConfirm} 
               activeOpacity={0.8}
             >

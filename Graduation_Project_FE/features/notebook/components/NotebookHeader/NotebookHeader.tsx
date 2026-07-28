@@ -28,7 +28,7 @@ export const NotebookHeader: React.FC<NotebookHeaderProps> = ({
           onPress={() => router.push('/(tabs)/home')}
           activeOpacity={0.75}
         >
-          <Ionicons name="chevron-back" size={22} color={PASTEL_PALETTE.title} />
+          <Ionicons name="chevron-back-outline" size={22} color="#7C3AED" />
         </TouchableOpacity>
         <View style={styles.titleBlock}>
           <Text style={styles.title}>Sổ tay tiền mặt</Text>

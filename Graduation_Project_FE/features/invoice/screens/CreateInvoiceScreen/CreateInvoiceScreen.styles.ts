@@ -2,39 +2,68 @@ import { StyleSheet } from 'react-native';
 import Colors from '@/shared/constants/Colors';
 import Constants from 'expo-constants';
 
+export const PALETTE = {
+  headerStart: '#FFD6EC',
+  headerMid: '#E9D5FF',
+  headerEnd: '#BFDBFE',
+};
+
 export const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#F8FAFC',
   },
+  headerWrap: {
+    borderBottomLeftRadius: 32,
+    borderBottomRightRadius: 32,
+    overflow: 'hidden',
+    marginBottom: 4,
+  },
   header: {
-    backgroundColor: Colors.primary,
-    paddingTop: Constants.statusBarHeight + 10,
-    paddingBottom: 20,
-    paddingHorizontal: 16,
-    borderBottomLeftRadius: 24,
-    borderBottomRightRadius: 24,
+    paddingTop: Constants.statusBarHeight + 12,
+    paddingBottom: 18,
+    paddingHorizontal: 24,
+  },
+  headerDecorCircleLarge: {
+    position: 'absolute',
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    backgroundColor: 'rgba(255, 255, 255, 0.28)',
+    top: -24,
+    right: -20,
+  },
+  headerDecorCircleSmall: {
+    position: 'absolute',
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: 'rgba(255, 255, 255, 0.22)',
+    bottom: 18,
+    left: 18,
+  },
+  headerTopRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
   },
   headerLeft: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
   },
   backButton: {
-    width: 38,
-    height: 38,
-    borderRadius: 12,
-    backgroundColor: 'rgba(255, 255, 255, 0.12)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 14,
+    width: 40,
+    height: 40,
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: 10,
+    marginLeft: -8,
   },
   headerTitle: {
-    color: '#FFF',
-    fontSize: 20,
-    fontWeight: 'bold',
+    fontSize: 22,
+    fontWeight: "900",
+    color: '#5B21B6',
+    letterSpacing: 0.2,
   },
   content: {
     flex: 1,
@@ -93,7 +122,7 @@ export const styles = StyleSheet.create({
     padding: 0,
     fontSize: 20,
     fontWeight: 'bold',
-    color: Colors.primary,
+    color: '#EC4899',
   },
   currencySuffix: {
     fontSize: 18,
@@ -133,7 +162,7 @@ export const styles = StyleSheet.create({
     borderColor: '#F1F5F9',
   },
   saveButton: {
-    backgroundColor: Colors.primary,
+    backgroundColor: '#EC4899',
     borderRadius: 16,
     padding: 16,
     alignItems: 'center',

@@ -288,7 +288,7 @@ export const CreateBudgetScreen = () => {
       <PastelHeaderShell contentStyle={styles.headerContent}>
         <View style={styles.headerRow}>
           <TouchableOpacity onPress={() => router.back()} style={styles.backButton} activeOpacity={0.7}>
-            <Ionicons name="chevron-back" size={22} color={PASTEL_PALETTE.title} />
+            <Ionicons name="chevron-back-outline" size={22} color="#7C3AED" />
           </TouchableOpacity>
           <View style={{ flex: 1 }}>
             <Text style={styles.headerTitle}>Tạo Ngân sách mới</Text>
@@ -473,13 +473,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   backButton: {
-    width: 38,
-    height: 38,
-    borderRadius: 12,
-    backgroundColor: 'rgba(255, 255, 255, 0.7)',
+    width: 40,
+    height: 40,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 14,
+    marginRight: 10,
+    marginLeft: -8,
   },
   headerTitle: {
     color: PASTEL_PALETTE.title,
