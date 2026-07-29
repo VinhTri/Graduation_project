@@ -120,6 +120,44 @@ export default function NotificationScreen() {
     }
   };
 
+  const handleNotificationPress = (item: NotificationResponse) => {
+    console.log("Notification Pressed:", item);
+    if (item.type === "FUND_INVITE") return;
+    
+    switch (item.type) {
+      case "INVOICE_REMINDER":
+        if (item.relatedId) router.push(`/invoice/${item.relatedId}`);
+        else router.push("/invoice");
+        break;
+      case "FRIEND_REQUEST":
+      case "FRIEND_ACCEPTED":
+        router.push("/contacts");
+        break;
+      case "FUND_INVITE_ACCEPTED":
+        if (item.relatedId) router.push(`/funds/${item.relatedId}`);
+        else router.push("/funds");
+        break;
+      case "BUDGET_WARNING":
+      case "BUDGET_EXCEEDED":
+        router.push("/budget");
+        break;
+      case "GENERAL":
+      default:
+        // Dự phòng cho các thông báo từ backend chưa cập nhật type cụ thể
+        const title = item.title?.toLowerCase() || "";
+        if (title.includes("hóa đơn")) {
+          router.push("/invoice");
+        } else if (title.includes("kết bạn")) {
+          router.push("/contacts");
+        } else if (title.includes("ngân sách")) {
+          router.push("/budget");
+        } else {
+          Alert.alert("Thông tin", "Không thể điều hướng cho thông báo này vì hệ thống chưa xác định được đích đến.");
+        }
+        break;
+    }
+  };
+
   const renderRightActions = (
     progress: Animated.AnimatedInterpolation<number>,
     _dragX: Animated.AnimatedInterpolation<number>,
@@ -166,6 +204,7 @@ export default function NotificationScreen() {
   const renderItem = ({ item }: { item: NotificationResponse }) => {
     const isFundInvite = item.type === "FUND_INVITE" && !!item.relatedId;
     const busy = actingId === item.id;
+    const CardContainer = item.type === "FUND_INVITE" ? View : TouchableOpacity;
 
     return (
       <Swipeable 
@@ -174,7 +213,10 @@ export default function NotificationScreen() {
         friction={2}
         rightThreshold={36}
       >
-        <View style={[styles.notificationCard, !item.isRead && styles.unreadCard]}>
+        <CardContainer 
+          style={[styles.notificationCard, !item.isRead && styles.unreadCard]}
+          {...(item.type !== "FUND_INVITE" ? { onPress: () => handleNotificationPress(item), activeOpacity: 0.7 } : {})}
+        >
           <View style={styles.iconContainer}>
             <Ionicons
               name={isFundInvite ? "people" : "notifications"}
@@ -213,7 +255,7 @@ export default function NotificationScreen() {
             )}
           </View>
           {!item.isRead && <View style={styles.unreadDot} />}
-        </View>
+        </CardContainer>
       </Swipeable>
     );
   };

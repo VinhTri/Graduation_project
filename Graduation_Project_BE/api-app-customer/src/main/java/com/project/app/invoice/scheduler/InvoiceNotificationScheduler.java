@@ -3,6 +3,7 @@ package com.project.app.invoice.scheduler;
 import com.project.app.invoice.entity.Invoice;
 import com.project.app.invoice.repository.InvoiceRepository;
 import com.project.app.notification.service.NotificationService;
+import com.project.app.notification.enums.NotificationType;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -69,7 +70,7 @@ public class InvoiceNotificationScheduler {
                     invoice.getAmount().toString(),
                     invoice.getDueDate().toString());
 
-            notificationService.createNotification(invoice.getUser(), title, message);
+            notificationService.createNotification(invoice.getUser(), title, message, NotificationType.INVOICE_REMINDER, invoice.getId());
 
             invoice.setNotified(true);
             invoiceRepository.save(invoice);
