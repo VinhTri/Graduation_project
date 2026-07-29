@@ -7,6 +7,7 @@ import com.project.app.friendship.entity.FriendshipStatus;
 import com.project.app.friendship.repository.FriendshipRepository;
 import com.project.app.friendship.service.FriendshipService;
 import com.project.app.notification.service.NotificationService;
+import com.project.app.notification.enums.NotificationType;
 import com.project.app.user.entity.User;
 import com.project.app.user.repository.UserRepository;
 import com.project.app.wallet.service.WalletService;
@@ -52,7 +53,9 @@ public class FriendshipServiceImpl implements FriendshipService {
         notificationService.createNotification(
                 receiver,
                 "Lời mời kết bạn",
-                currentUser.getUsername() + " đã gửi cho bạn một lời mời kết bạn."
+                currentUser.getUsername() + " đã gửi cho bạn một lời mời kết bạn.",
+                NotificationType.FRIEND_REQUEST,
+                saved.getId()
         );
 
         try {
@@ -90,7 +93,9 @@ public class FriendshipServiceImpl implements FriendshipService {
         notificationService.createNotification(
                 friendship.getRequester(),
                 "Kết bạn thành công",
-                currentUser.getUsername() + " đã đồng ý lời mời kết bạn của bạn."
+                currentUser.getUsername() + " đã đồng ý lời mời kết bạn của bạn.",
+                NotificationType.FRIEND_ACCEPTED,
+                saved.getId()
         );
 
         return toResponse(saved, currentUser);
