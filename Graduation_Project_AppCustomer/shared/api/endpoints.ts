@@ -81,5 +81,9 @@ export const ENDPOINTS = {
     BASE: '/api/budgets',
     DETAIL: (id: number) => `/api/budgets/${id}`,
     SUMMARY: '/api/budgets/summary',
+  },
+  AI: {
+    CHAT: '/api/v1/ai/chat',
   }
 };
+
