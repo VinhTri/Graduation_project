@@ -98,17 +98,20 @@ public class AiChatServiceImpl implements AiChatService {
         Map<String, Object> ctx = new HashMap<>();
         if (user == null) {
             ctx.put("username", "Người dùng SmartSpend");
+            ctx.put("email", "");
             ctx.put("totalBalance", BigDecimal.ZERO);
             ctx.put("mainBalance", BigDecimal.ZERO);
             ctx.put("cashBalance", BigDecimal.ZERO);
             ctx.put("hasData", false);
             ctx.put("budgetsStr", "Chưa có ngân sách nào");
             ctx.put("distStr", "Chưa có báo cáo chi tiêu");
+            ctx.put("totalSpentMonth", BigDecimal.ZERO);
+            ctx.put("hasExpenseData", false);
             return ctx;
         }
 
         ctx.put("username", user.getUsername() != null ? user.getUsername() : user.getEmail());
-        ctx.put("email", user.getEmail());
+        ctx.put("email", user.getEmail() != null ? user.getEmail() : "");
 
         BigDecimal mainBalance = BigDecimal.ZERO;
         BigDecimal cashBalance = BigDecimal.ZERO;
@@ -128,11 +131,84 @@ public class AiChatServiceImpl implements AiChatService {
 
         BigDecimal totalBalance = mainBalance.add(cashBalance);
         ctx.put("mainBalance", mainBalance);
-        ctx.put("cashBalance", cashBalance);
-        ctx.put("totalBalance", totalBalance);
-        ctx.put("hasData", totalBalance.compareTo(BigDecimal.ZERO) > 0);
-        ctx.put("budgetsStr", "Chưa có ngân sách thiết lập");
-        ctx.put("distStr", "Chưa có báo cáo chi tiêu tháng này");
+        ctx.put("cashBalance"        // Fetch actual expense distribution from ReportService
+        BigDecimal totalSpentMonth = BigDecimal.ZERO;
+        String topCategoryName = null;
+        BigDecimal topCategoryAmount = BigDecimal.ZERO;
+        Double topCategoryPercentage = 0.0;
+        
+        String secondCategoryName = null;
+        BigDecimal secondCategoryAmount = BigDecimal.ZERO;
+        Double secondCategoryPercentage = 0.0;
+
+        String distStr = "Chưa có phát sinh chi tiêu tháng này";
+
+        try {
+            List<com.project.app.report.dto.response.ReportDistributionResponse> distribution = 
+                    reportService.getDistributionReport(user, com.project.app.transaction.enums.TransactionType.EXPENSE, "MONTH", java.time.LocalDate.now());
+            if (distribution != null && !distribution.isEmpty()) {
+                // Sort distribution descending by total amount
+                distribution.sort((a, b) -> {
+                    BigDecimal amtA = a.getTotalAmount() != null ? a.getTotalAmount() : BigDecimal.ZERO;
+                    BigDecimal amtB = b.getTotalAmount() != null ? b.getTotalAmount() : BigDecimal.ZERO;
+                    return amtB.compareTo(amtA);
+                });
+
+                DecimalFormat df = new DecimalFormat("#,###");
+                StringBuilder sb = new StringBuilder();
+                for (int i = 0; i < distribution.size(); i++) {
+                    com.project.app.report.dto.response.ReportDistributionResponse d = distribution.get(i);
+                    if (d.getTotalAmount() != null && d.getTotalAmount().compareTo(BigDecimal.ZERO) > 0) {
+                        totalSpentMonth = totalSpentMonth.add(d.getTotalAmount());
+                        if (i == 0) {
+                            topCategoryName = d.getCategoryName();
+                            topCategoryAmount = d.getTotalAmount();
+                            topCategoryPercentage = d.getPercentage() != null ? d.getPercentage() : 0.0;
+                        } else if (i == 1) {
+                            secondCategoryName = d.getCategoryName();
+                            secondCategoryAmount = d.getTotalAmount();
+                            secondCategoryPercentage = d.getPercentage() != null ? d.getPercentage() : 0.0;
+                        }
+                        sb.append(String.format("- %s: %s VNĐ (%.1f%%)\n", d.getCategoryName(), df.format(d.getTotalAmount()), d.getPercentage() != null ? d.getPercentage() : 0.0));
+                    }
+                }
+                if (sb.length() > 0) {
+                    distStr = sb.toString();
+                }
+            }
+        } catch (Exception e) {
+            log.error("Error fetching expense distribution report", e);
+        }
+
+        // Fetch actual budgets
+        String budgetsStr = "Chưa có ngân sách thiết lập";
+        try {
+            List<com.project.app.budget.entity.Budget> budgets = budgetRepository.findByUserIdAndIsDeletedFalse(user.getId());
+            if (budgets != null && !budgets.isEmpty()) {
+                DecimalFormat df = new DecimalFormat("#,###");
+                StringBuilder sb = new StringBuilder();
+                for (com.project.app.budget.entity.Budget b : budgets) {
+                    sb.append(String.format("- Ngân sách %s (%s): %s VNĐ\n", b.getName(), b.getCategory() != null ? b.getCategory().getName() : "Chung", df.format(b.getAmount())));
+                }
+                budgetsStr = sb.toString();
+            }
+        } catch (Exception e) {
+            log.error("Error fetching user budgets", e);
+        }
+
+        ctx.put("totalSpentMonth", totalSpentMonth);
+        ctx.put("topCategoryName", topCategoryName);
+        ctx.put("topCategoryAmount", topCategoryAmount);
+        ctx.put("topCategoryPercentage", topCategoryPercentage);
+        ctx.put("secondCategoryName", secondCategoryName);
+        ctx.put("secondCategoryAmount", secondCategoryAmount);
+        ctx.put("secondCategoryPercentage", secondCategoryPercentage);
+        ctx.put("distStr", distStr);
+        ctx.put("budgetsStr", budgetsStr);
+
+        boolean hasData = totalBalance.compareTo(BigDecimal.ZERO) > 0 || totalSpentMonth.compareTo(BigDecimal.ZERO) > 0;
+        ctx.put("hasData", hasData);
+        ctx.put("hasExpenseData", totalSpentMonth.compareTo(BigDecimal.ZERO) > 0);
 
         return ctx;
     }
@@ -140,44 +216,43 @@ public class AiChatServiceImpl implements AiChatService {
     private String callGemini25Flash(Map<String, Object> ctx, String userPrompt) throws Exception {
         DecimalFormat df = new DecimalFormat("#,###");
         String username = (String) ctx.get("username");
+        String email = (String) ctx.get("email");
         BigDecimal totalBal = (BigDecimal) ctx.get("totalBalance");
         BigDecimal mainBal = (BigDecimal) ctx.get("mainBalance");
         BigDecimal cashBal = (BigDecimal) ctx.get("cashBalance");
+        String distStr = (String) ctx.get("distStr");
+        String budgetsStr = (String) ctx.get("budgetsStr");
         boolean hasData = (boolean) ctx.get("hasData");
 
         String systemPrompt = String.format(
             "Bạn là Trợ lý AI SmartSpend - Trợ lý phân tích & tư vấn tài chính cá nhân chuyên nghiệp.\n\n" +
-            "DỮ LIỆU THỰC TẾ TÀI KHOẢN NGƯỜI DÙNG BẮT ĐƯỢC TỪ BACKEND:\n" +
-            "- Tên người dùng: %s\n" +
+            "DỮ LIỆU THỰC TẾ TÀI KHOẢN NGƯỜI DÙNG TỪ DATABASE HỆ THỐNG:\n" +
+            "- Tên người dùng / Email: %s (%s)\n" +
             "- Tổng số dư khả dụng: %s VNĐ (Ví chính: %s VNĐ, Ví tiền mặt: %s VNĐ)\n" +
+            "- Báo cáo chi tiêu tháng này:\n%s\n" +
+            "- Ngân sách đang thiết lập:\n%s\n" +
             "- Trạng thái chi tiêu: %s\n\n" +
             "QUY TẮC BẮT BUỘC KHI PHẢN HỒI:\n" +
-            "1. ĐÁNH SỐ THỨ TỰ RÕ RÀNG (1., 2., 3.): Mọi tư vấn, phân bổ ngân sách hoặc hướng dẫn BẮT BUỘC phải đánh số thứ tự 1., 2., 3. ở đầu dòng.\n" +
-            "2. BẮT BUỘC HOÀN THÀNH ĐẦY ĐỦ CÂU: Viết trọn vẹn câu trả lời, tuyệt đối KHÔNG được ngắt dở dang giữa câu.\n" +
-            "3. NẾU TÀI KHOẢN CHƯA CÓ SỐ DƯ (0đ) HOẶC CHƯA PHÁT SINH CHI TIÊU/GIAO DỊCH:\n" +
-            "   - BẮT BUỘC thông báo rõ tài khoản hiện chưa có dữ liệu giao dịch hoặc số dư đang là 0đ.\n" +
-            "   - YÊU CẦU NGƯỜI DÙNG NẠP TIỀN VÀO VÍ HOẶC TẠO GIAO DỊCH MỚI để AI có dữ liệu thu chi thực tế nhằm phân tích và đưa ra tư vấn cá nhân hóa chính xác nhất.\n" +
-            "   - KHÔNG tự ý đưa vào Mô hình phân bổ 50/30/20 trừ khi người dùng hỏi về phân bổ lương/ngân sách.\n" +
-            "4. NẾU NGƯỜI DÙNG HỎI PHÂN BỔ NGÂN SÁCH/LƯƠNG (VD: Lương 12tr, thuê 3tr):\n" +
-            "   - Đưa ra con số cụ thể bằng VNĐ (Cố định/Thuê 25%% = 3tr; Ăn uống 29%% = 3.5tr; Tiết kiệm 21%% = 2.5tr; Giải trí 13%% = 1.5tr; Dự phòng 12%% = 1.5tr).\n" +
-            "5. NẾU NGƯỜI DÙNG HỎI MỤC TIÊU TIẾT KIỆM (VD: Mua laptop 25tr sau 8 tháng):\n" +
-            "   - Bạn BẮT BUỘC tính số tiền cụ thể: 25.000.000 / 8 = 3.125.000 VNĐ/tháng và đưa ra 3 bước thực hiện.\n" +
-            "6. CÂU HỎI TƯƠNG TÁC CUỐI CÙNG:\n" +
-            "   - Cuối mỗi câu trả lời, hãy đính kèm 1 câu hỏi gợi ý hành động thân thiện (VD: 'Bạn có muốn Nạp tiền vào ví ngay để AI bắt đầu phân tích không?').\n" +
-            "7. TRI THỨC HƯỚNG DẪN ỨNG DỤNG:\n" +
-            "   - Tạo ngân sách: 1. Vào Ngân sách -> + Tạo ngân sách -> 2. Chọn danh mục, hạn mức, chu kỳ -> 3. Nhấn Lưu.\n" +
-            "   - Nạp/Rút tiền: 1. Nạp: Ví cá nhân -> Nạp tiền -> Quét QR SePay/Chuyển khoản -> Nhập PIN. 2. Rút: Ví cá nhân -> Rút tiền -> Nhập số tiền -> Nhập PIN.\n" +
-            "   - Tạo danh mục: 1. Cài đặt -> Quản lý danh mục -> 2. + Tạo danh mục mới -> 3. Nhập tên, icon, màu -> Nhấn Lưu.\n" +
-            "   - Tạo ví: 1. Trang chủ -> + Ví mới -> 2. Nhập tên, loại ví, số dư -> 3. Nhấn Lưu ví.\n" +
-            "   - Quên PIN: 1. Nhấn Quên mã PIN? -> 2. Nhập OTP -> 3. Tạo PIN 6 số mới.\n",
+            "1. ĐÁNH SỐ THỨ TỰ RÕ RÀNG (1., 2., 3.): Mọi tư vấn, hướng dẫn BẮT BUỘC phải đánh số thứ tự 1., 2., 3. ở đầu dòng.\n" +
+            "2. BẮT BUỘC HOÀN THÀNH ĐẦY ĐỦ CÂU: Viết trọn vẹn câu trả lời, tuyệt đối KHÔNG ngắt dở dang.\n" +
+            "3. NẾU HỎI KHOẢN NÀO CẮT GIẢM / TƯ VẤN THÓI QUEN CHI TIÊU:\n" +
+            "   - Nếu đã có dữ liệu chi tiêu ở trên: Phân tích trực tiếp các danh mục tiêu nhiều tiền nhất (Top 1, Top 2), tính con số tiết kiệm 15-20%% cụ thể bằng VNĐ.\n" +
+            "   - Nếu chưa có dữ liệu chi tiêu (0 VNĐ): Nêu rõ tài khoản chưa ghi nhận giao dịch chi tiêu tháng này, giải thích cách nạp tiền/ghi chép để AI phân tích thói quen, và gợi ý 3 khoản chi dễ lãng phí nhất theo mô hình 50/30/20.\n" +
+            "4. NẾU HỎI QUÊN PIN: Hướng dẫn bấm 'Quên mã PIN?', nhận mã OTP 6 số qua Email người dùng (%s) và nhập PIN 6 số mới.\n" +
+            "5. NẾU HỎI TẠO VÍ: Hướng dẫn vào Trang chủ / Ví cá nhân -> + Ví mới -> Nhập tên, loại ví, số dư -> Lưu ví.\n" +
+            "6. CÂU HỎI TƯƠNG TÁC CUỐI CÙNG: Đính kèm 1 câu hỏi gợi ý hành động thân thiện ở cuối câu.\n",
             username,
+            email,
             df.format(totalBal),
             df.format(mainBal),
             df.format(cashBal),
-            hasData ? "Đã có dữ liệu phát sinh" : "Chưa có phát sinh chi tiêu (Tài khoản mới)"
+            distStr,
+            budgetsStr,
+            hasData ? "Đã có dữ liệu phát sinh" : "Chưa có phát sinh chi tiêu (Tài khoản mới)",
+            email.isEmpty() ? "đăng ký" : email
         );
 
-        String endpoint = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=" + geminiApiKey;
+        String endpoint = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=" + geminiApiKey;
 
         ObjectNode reqJson = objectMapper.createObjectNode();
         ArrayNode contents = reqJson.putArray("contents");
@@ -300,6 +375,34 @@ public class AiChatServiceImpl implements AiChatService {
     }
 
     private AiActionPromptDto generateActionPrompt(String moduleType, String norm, String rawPrompt) {
+        if (norm.contains("tao vi") || norm.contains("xoa vi") || norm.contains("quan ly vi") || norm.contains("vi moi") || norm.contains("vi")) {
+            return AiActionPromptDto.builder()
+                    .question("Bạn có muốn mở màn hình Quản lý ví để xem hoặc tạo ví mới không?")
+                    .actions(Arrays.asList(
+                            AiActionItemDto.builder().label("Quản lý & Tạo ví").route("/wallet").build()
+                    ))
+                    .build();
+        }
+
+        if (norm.contains("pin") || norm.contains("quen pin")) {
+            return AiActionPromptDto.builder()
+                    .question("Bạn có muốn truy cập màn hình Cài đặt ngay không?")
+                    .actions(Arrays.asList(
+                            AiActionItemDto.builder().label("Vào Cài đặt").route("/settings").build()
+                    ))
+                    .build();
+        }
+
+        if (norm.contains("cat giam") || norm.contains("khoan nao")) {
+            return AiActionPromptDto.builder()
+                    .question("Bạn có muốn xem Báo cáo chi tiêu hoặc thiết lập Ngân sách cắt giảm ngay không?")
+                    .actions(Arrays.asList(
+                            AiActionItemDto.builder().label("Xem Báo cáo chi tiêu").route("/report").build(),
+                            AiActionItemDto.builder().label("Tạo Ngân sách").route("/budget/create").build()
+                    ))
+                    .build();
+        }
+
         if (norm.contains("laptop") || norm.contains("muc tieu") || norm.contains("mua")) {
             return AiActionPromptDto.builder()
                     .question("Bạn có muốn tạo ngay Ngân sách tiết kiệm 3.125.000đ/tháng cho mục tiêu này không?")
@@ -349,11 +452,11 @@ public class AiChatServiceImpl implements AiChatService {
                     .build();
         }
 
-        if (norm.contains("tao vi") || norm.contains("xoa vi") || norm.contains("quan ly vi")) {
+        if (norm.contains("tieu nhieu") || norm.contains("tieu o dau") || norm.contains("bao cao") || norm.contains("phan tich")) {
             return AiActionPromptDto.builder()
-                    .question("Bạn có muốn mở màn hình Quản lý ví để xem hoặc tạo ví mới không?")
+                    .question("Bạn có muốn mở màn hình Báo cáo phân tích chi tiêu ngay không?")
                     .actions(Arrays.asList(
-                            AiActionItemDto.builder().label("Mở Quản lý ví").route("/wallet").build()
+                            AiActionItemDto.builder().label("Xem Báo cáo chi tiêu").route("/report").build()
                     ))
                     .build();
         }
@@ -365,17 +468,67 @@ public class AiChatServiceImpl implements AiChatService {
     private AiChatResponse fallbackLocalEngine(Map<String, Object> ctx, String raw, String norm, String moduleType) {
         DecimalFormat df = new DecimalFormat("#,###");
         String username = (String) ctx.get("username");
+        String email = (String) ctx.get("email");
         BigDecimal totalBal = (BigDecimal) ctx.get("totalBalance");
         boolean hasData = (boolean) ctx.get("hasData");
 
         String text;
-        if (norm.contains("laptop") || norm.contains("muc tieu") || norm.contains("mua")) {
+        if (norm.contains("tao vi") || norm.contains("xoa vi") || norm.contains("quan ly vi") || norm.contains("vi moi") || norm.contains("vi")) {
+            text = "Hướng dẫn tạo và quản lý ví trong SmartSpend:\n\n" +
+                   "1. Tại Trang chủ hoặc mục Ví cá nhân, nhấn vào nút '+ Ví mới' (hoặc chọn Thêm ví).\n" +
+                   "2. Nhập Tên ví (ví dụ: Ví tiền mặt, Ví MoMo, Ví Techcombank), chọn Loại ví và nhập Số dư ban đầu.\n" +
+                   "3. Nhấn 'Lưu ví' để hoàn tất. Bạn có thể chọn ví này làm Ví mặc định để thực hiện các giao dịch.\n\n" +
+                   "👉 Bạn có muốn mở màn hình Quản lý ví để xem hoặc tạo ví mới ngay không?";
+        } else if (norm.contains("pin") || norm.contains("quen pin") || norm.contains("ma pin") || norm.contains("doi pin") || norm.contains("reset pin")) {
+            String targetEmail = email != null && !email.isEmpty() ? email : "Email đăng ký";
+            text = "Hướng dẫn xử lý khi quên mã PIN bảo mật trong SmartSpend:\n\n" +
+                   "1. Tại màn hình nhập PIN khi Nạp/Rút tiền hoặc trong Cài đặt, nhấn chọn 'Quên mã PIN?'.\n" +
+                   "2. Kiểm tra Email đăng ký tài khoản (" + targetEmail + ") để nhận mã xác minh OTP gửi về.\n" +
+                   "3. Nhập mã OTP chính xác, sau đó tiến hành tạo Mã PIN 6 số mới và xác nhận lại để hoàn tất.\n\n" +
+                   "👉 Bạn có muốn truy cập màn hình Cài đặt ngay bây giờ không?";
+        } else if (norm.contains("cat giam") || norm.contains("khoan nao") || norm.contains("cat giam chi tieu") || norm.contains("giam chi tieu")) {
+            String topCat = (String) ctx.get("topCategoryName");
+            BigDecimal topAmt = (BigDecimal) ctx.get("topCategoryAmount");
+            Double topPct = (Double) ctx.get("topCategoryPercentage");
+
+            String secondCat = (String) ctx.get("secondCategoryName");
+            BigDecimal secondAmt = (BigDecimal) ctx.get("secondCategoryAmount");
+            Double secondPct = (Double) ctx.get("secondCategoryPercentage");
+
+            boolean hasExpense = ctx.get("hasExpenseData") != null && (boolean) ctx.get("hasExpenseData");
+
+            if (hasExpense && topCat != null) {
+                String secondText = secondCat != null ? String.format(", đồng thời rà soát thêm danh mục '%s' (%s VNĐ, chiếm %.1f%%)", secondCat, df.format(secondAmt), secondPct) : "";
+                text = String.format(
+                    "Dựa trên thói quen chi tiêu thực tế của %s trong tháng này:\n\n" +
+                    "1. Phân tích danh mục lớn nhất: Bạn đang chi nhiều tiền nhất cho '%s' với %s VNĐ (chiếm %.1f%% tổng chi tiêu tháng).\n" +
+                    "2. Gợi ý cắt giảm cụ thể: Hãy ưu tiên cắt giảm 15 - 20%% chi phí ở danh mục '%s' để tiết kiệm khoảng %s VNĐ/tháng%s.\n" +
+                    "3. Khuyến nghị hành động: Mở mục Ngân sách để thiết lập hạn mức kiểm soát cho '%s', AI sẽ gửi cảnh báo tự động khi bạn chi tiêu gần vượt ngưỡng.\n\n" +
+                    "👉 Bạn có muốn mở màn hình Báo cáo phân tích chi tiêu hoặc Tạo ngân sách cho '%s' ngay bây giờ không?",
+                    username,
+                    topCat,
+                    df.format(topAmt),
+                    topPct,
+                    topCat,
+                    df.format(topAmt.multiply(new BigDecimal("0.2"))),
+                    secondText,
+                    topCat,
+                    topCat
+                );
+            } else {
+                text = "Phân tích & Gợi ý cắt giảm chi tiêu cho " + username + ":\n\n" +
+                       "1. Tài khoản của bạn hiện chưa ghi nhận phát sinh giao dịch chi tiêu trong tháng này.\n" +
+                       "2. Để AI phân tích chính xác thói quen tiêu dùng cá nhân và chỉ ra khoản lãng phí cần cắt giảm, hãy Nạp tiền vào ví hoặc Ghi chép các giao dịch thu chi hàng ngày.\n" +
+                       "3. Theo quy tắc quản lý tài chính 50/30/20, các khoản chi dễ cắt giảm nhất gồm: Mua sắm ngẫu hứng, Ăn uống ngoài không kế hoạch, Trà sữa/Cà phê hàng ngày và các Dịch vụ đăng ký không sử dụng.\n\n" +
+                       "👉 Bạn có muốn Ghi chép giao dịch đầu tiên hoặc Nạp tiền vào ví ngay bây giờ không?";
+            }
+        } else if (norm.contains("laptop") || norm.contains("muc tieu") || norm.contains("mua")) {
             text = "Lộ trình tiết kiệm mục tiêu mua sắm cho " + username + ":\n\n" +
                    "1. Để đạt mục tiêu 25 triệu sau 8 tháng, bạn cần trích cố định 3.125.000đ mỗi tháng.\n" +
                    "2. Mở một Ví tích lũy riêng và cài đặt tính năng tự động trích tiền khi nhận lương.\n" +
                    "3. Cắt giảm 10-15% chi tiêu phát sinh không kế hoạch để duy trì tiến độ.\n\n" +
                    "👉 Bạn có muốn tôi hướng dẫn tạo Ngân sách tiết kiệm cho mục tiêu này không?";
-        } else if (norm.contains("luong") || norm.contains("thue") || norm.contains("chia")) {
+        } else if (norm.contains("luong") || norm.contains("thue") || norm.contains("chia") || norm.contains("phan bo")) {
             text = "Gợi ý phân bổ ngân sách cho " + username + " (Lương 12tr, Tiền thuê 3tr):\n\n" +
                    "1. Tiền thuê & Cố định (25%): 3.000.000đ.\n" +
                    "2. Ăn uống & Sinh hoạt (29%): 3.500.000đ.\n" +
@@ -414,11 +567,17 @@ public class AiChatServiceImpl implements AiChatService {
                    "2. Chọn tab Chi tiêu hoặc Thu nhập -> '+ Tạo danh mục mới'.\n" +
                    "3. Nhập tên, icon & màu đại diện -> Nhấn 'Lưu'.\n\n" +
                    "👉 Bạn có muốn mở màn hình Quản lý danh mục ngay không?";
+        } else if (norm.contains("tieu nhieu") || norm.contains("tieu o dau") || norm.contains("bao cao") || norm.contains("phan tich") || norm.contains("thu chi")) {
+            text = "Hướng dẫn xem phân tích & báo cáo chi tiêu:\n\n" +
+                   "1. Vào mục 'Báo cáo' từ thanh điều hướng bên dưới.\n" +
+                   "2. Xem biểu đồ tròn phân bổ chi tiêu theo danh mục để biết bạn đang tiêu nhiều tiền nhất ở đâu.\n" +
+                   "3. So sánh biến động thu chi hàng tuần/hàng tháng để điều chỉnh thói quen tài chính kịp thời.\n\n" +
+                   "👉 Bạn có muốn chuyển sang màn hình Báo cáo phân tích chi tiêu ngay không?";
         } else {
             text = "Trợ lý AI SmartSpend đồng hành cùng " + username + ":\n\n" +
                    "1. Áp dụng mô hình 50/30/20 để quản lý tài chính hiệu quả.\n" +
                    "2. Thiết lập ngân sách và theo dõi báo cáo chi tiêu hàng tuần.\n" +
-                   "3. Bạn có thể hỏi: 'tư vấn tài chính', 'lương 12tr', 'mua laptop 25tr', 'nạp rút', 'ngân sách'.\n\n" +
+                   "3. Bạn có thể hỏi: 'tạo ví', 'quên PIN', 'cắt giảm chi tiêu', 'nạp rút', 'ngân sách', 'tư vấn tài chính'.\n\n" +
                    "👉 Bạn có muốn tôi hướng dẫn tạo Ngân sách đầu tiên không?";
         }
 

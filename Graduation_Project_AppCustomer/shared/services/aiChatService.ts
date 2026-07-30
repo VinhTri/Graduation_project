@@ -104,7 +104,7 @@ class AIChatService {
     let moduleType: 'RAG' | 'ANALYTICS' | 'RECOMMENDATION' = 'RAG';
     if (norm.includes('tu van') || norm.includes('tai chinh') || norm.includes('luong') || norm.includes('laptop') || norm.includes('chia')) {
       moduleType = 'RECOMMENDATION';
-    } else if (norm.includes('tieu') || norm.includes('bao cao') || norm.includes('phan tich')) {
+    } else if (norm.includes('tieu') || norm.includes('bao cao') || norm.includes('phan tich') || norm.includes('cat giam')) {
       moduleType = 'ANALYTICS';
     }
 
@@ -147,9 +147,11 @@ QUY TẮC BẮT BUỘC KHI PHẢN HỒI:
    - Tạo ngân sách: 1. Vào Ngân sách -> "+ Tạo ngân sách". 2. Chọn danh mục, hạn mức và chu kỳ. 3. Nhấn Lưu (cảnh báo 80% & 100%).
    - Nạp/Rút: 1. Nạp tiền: Ví cá nhân -> Nạp tiền -> Quét QR SePay/Chuyển khoản -> Nhập PIN. 2. Rút tiền: Ví cá nhân -> Rút tiền -> Nhập số tiền -> Nhập PIN. 3. Ví nhóm: Nạp/Rút quỹ.
    - Tạo danh mục: 1. Cài đặt -> Quản lý danh mục -> 2. "+ Tạo danh mục mới" -> 3. Nhập tên, icon, màu -> Nhấn Lưu.
+   - Tạo ví: 1. Trang chủ -> "+ Ví mới" -> 2. Nhập tên ví, loại ví, số dư -> 3. Nhấn Lưu ví.
+   - Quên PIN: 1. Tại màn hình nhập PIN nhấn Quên mã PIN? -> 2. Nhập OTP gửi về Email -> 3. Tạo PIN 6 số mới.
 `;
 
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`;
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`;
     
     const response = await fetch(url, {
       method: 'POST',
@@ -198,6 +200,34 @@ QUY TẮC BẮT BUỘC KHI PHẢN HỒI:
   }
 
   private buildActionPrompt(norm: string, rawPrompt: string): ActionPrompt | undefined {
+    if (norm.includes('tao vi') || norm.includes('xoa vi') || norm.includes('quan ly vi') || norm.includes('vi moi') || norm.includes('vi')) {
+      return {
+        question: "Bạn có muốn mở màn hình Quản lý ví để xem hoặc tạo ví mới không?",
+        actions: [
+          { label: "Quản lý & Tạo ví mới", route: "/wallet" }
+        ]
+      };
+    }
+
+    if (norm.includes('pin') || norm.includes('quen pin')) {
+      return {
+        question: "Bạn có muốn truy cập màn hình Cài đặt ngay không?",
+        actions: [
+          { label: "Vào Cài đặt", route: "/settings" }
+        ]
+      };
+    }
+
+    if (norm.includes('cat giam') || norm.includes('khoan nao')) {
+      return {
+        question: "Bạn có muốn xem Báo cáo chi tiêu hoặc thiết lập Ngân sách cắt giảm ngay không?",
+        actions: [
+          { label: "Xem Báo cáo chi tiêu", route: "/report" },
+          { label: "Tạo Ngân sách", route: "/budget/create" }
+        ]
+      };
+    }
+
     if (norm.includes('laptop') || norm.includes('muc tieu') || norm.includes('mua')) {
       return {
         question: "Bạn có muốn tạo ngay Ngân sách tiết kiệm 3.125.000đ/tháng cho mục tiêu này không?",
@@ -247,11 +277,11 @@ QUY TẮC BẮT BUỘC KHI PHẢN HỒI:
       };
     }
 
-    if (norm.includes('tao vi') || norm.includes('xoa vi') || norm.includes('quan ly vi')) {
+    if (norm.includes('tieu nhieu') || norm.includes('tieu o dau') || norm.includes('bao cao') || norm.includes('phan tich')) {
       return {
-        question: "Bạn có muốn mở màn hình Quản lý ví để xem hoặc tạo ví mới không?",
+        question: "Bạn có muốn mở màn hình Báo cáo phân tích chi tiêu ngay không?",
         actions: [
-          { label: "Quản lý & Tạo ví mới", route: "/wallet" }
+          { label: "Xem Báo cáo chi tiêu", route: "/report" }
         ]
       };
     }
@@ -262,9 +292,15 @@ QUY TẮC BẮT BUỘC KHI PHẢN HỒI:
 
   private buildLocalResponse(raw: string, norm: string, moduleType: 'RAG' | 'ANALYTICS' | 'RECOMMENDATION'): ChatMessage {
     let text = '';
-    if (norm.includes('laptop') || norm.includes('muc tieu') || norm.includes('mua')) {
+    if (norm.includes('tao vi') || norm.includes('xoa vi') || norm.includes('quan ly vi') || norm.includes('vi moi') || norm.includes('vi')) {
+      text = `Hướng dẫn tạo và quản lý ví trong SmartSpend:\n\n1. Tại Trang chủ hoặc mục Ví cá nhân, nhấn vào nút '+ Ví mới' (hoặc chọn Thêm ví).\n2. Nhập Tên ví (ví dụ: Ví tiền mặt, Ví MoMo, Ví Techcombank), chọn Loại ví và nhập Số dư ban đầu.\n3. Nhấn 'Lưu ví' để hoàn tất. Bạn có thể chọn ví này làm Ví mặc định để thực hiện các giao dịch.`;
+    } else if (norm.includes('pin') || norm.includes('quen pin') || norm.includes('ma pin') || norm.includes('doi pin')) {
+      text = `Hướng dẫn xử lý khi quên mã PIN bảo mật:\n\n1. Tại màn hình nhập PIN khi Nạp/Rút tiền hoặc trong Cài đặt, nhấn chọn 'Quên mã PIN?'.\n2. Kiểm tra Email đăng ký tài khoản SmartSpend để nhận mã xác minh OTP gửi về.\n3. Nhập mã OTP chính xác, sau đó tiến hành tạo Mã PIN 6 số mới và xác nhận lại để hoàn tất.`;
+    } else if (norm.includes('cat giam') || norm.includes('khoan nao') || norm.includes('giam chi tieu')) {
+      text = `Gợi ý các khoản chi tiêu có thể cắt giảm hiệu quả:\n\n1. Rà soát danh mục Giải trí & Mua sắm ngẫu hứng: Cắt giảm 15-20% các chi phí xem phim, cà phê, mua sắm không có trong kế hoạch.\n2. Hạn chế Ăn uống bên ngoài: Tăng cường tự nấu ăn tại nhà để tiết kiệm từ 1 - 2 triệu đồng mỗi tháng.\n3. Thiết lập Ngân sách hạn mức: Vào mục Ngân sách để cài đặt hạn mức chi tiêu tối đa cho từng danh mục, AI sẽ tự động cảnh báo khi bạn tiêu gần chạm ngưỡng.`;
+    } else if (norm.includes('laptop') || norm.includes('muc tieu') || norm.includes('mua')) {
       text = `Lộ trình tiết kiệm mua sắm mục tiêu:\n\n1. Để đạt mục tiêu 25 triệu sau 8 tháng, bạn cần trích cố định 3.125.000đ mỗi tháng.\n2. Hãy mở một Ví tích lũy riêng và cài đặt tính năng tự động trích tiền khi nhận lương.\n3. Duy trì mức chi tiêu cố định và hạn chế mua sắm không phát sinh kế hoạch.`;
-    } else if (norm.includes('luong') || norm.includes('thue') || norm.includes('chia')) {
+    } else if (norm.includes('luong') || norm.includes('thue') || norm.includes('chia') || norm.includes('phan bo')) {
       text = `Phương án phân bổ ngân sách tối ưu (Lương 12tr, Tiền thuê 3tr):\n\n1. Tiền thuê & Cố định (25%): 3.000.000đ.\n2. Ăn uống & Sinh hoạt (29%): 3.500.000đ.\n3. Tiết kiệm & Đầu tư (21%): 2.500.000đ.\n4. Giải trí & Mua sắm (25%): 3.000.000đ.`;
     } else if (norm.includes('tu van') || norm.includes('tai chinh') || norm.includes('cho toi')) {
       text = `Tài khoản của bạn hiện chưa có dữ liệu giao dịch hoặc số dư đang là 0đ.\n\n1. Vui lòng Nạp tiền vào ví hoặc Ghi chép giao dịch mới để SmartSpend có dữ liệu phân tích thu chi cá nhân cho bạn.\n2. Ngay khi có số dư và giao dịch đầu tiên, AI sẽ tự động phân tích và đưa ra tư vấn cá nhân hóa chi tiết.\n3. Hãy thực hiện Nạp tiền vào Ví chính ngay để bắt đầu trải nghiệm tư vấn tài chính thông minh!`;
@@ -272,8 +308,12 @@ QUY TẮC BẮT BUỘC KHI PHẢN HỒI:
       text = `Hướng dẫn tạo ngân sách trong SmartSpend:\n\n1. Vào mục "Ngân sách" -> "+ Tạo ngân sách".\n2. Chọn danh mục, hạn mức và chu kỳ (tuần/tháng).\n3. Nhấn "Lưu". Hệ thống tự cảnh báo khi chi tiêu tới 80% & 100%.`;
     } else if (norm.includes('nap') || norm.includes('rut')) {
       text = `Hướng dẫn nạp và rút tiền:\n\n1. Nạp tiền: Vào Ví cá nhân -> Nạp tiền -> Quét QR SePay/Chuyển khoản -> Nhập PIN.\n2. Rút tiền: Vào Ví cá nhân -> Rút tiền -> Nhập số tiền -> Nhập PIN.\n3. Ví nhóm: Mở Ví nhóm -> Nạp/Rút quỹ.`;
+    } else if (norm.includes('danh muc')) {
+      text = `Hướng dẫn tạo danh mục thu chi:\n\n1. Vào Cài đặt -> Quản lý danh mục.\n2. Chọn tab Chi tiêu hoặc Thu nhập -> "+ Tạo danh mục mới".\n3. Nhập tên, icon & màu đại diện -> Nhấn "Lưu".`;
+    } else if (norm.includes('tieu nhieu') || norm.includes('tieu o dau') || norm.includes('bao cao') || norm.includes('phan tich')) {
+      text = `Hướng dẫn xem phân tích & báo cáo chi tiêu:\n\n1. Vào mục "Báo cáo" từ thanh điều hướng bên dưới.\n2. Xem biểu đồ tròn phân bổ chi tiêu theo danh mục để biết bạn đang tiêu nhiều tiền nhất ở đâu.\n3. So sánh biến động thu chi hàng tuần/hàng tháng để điều chỉnh thói quen tài chính kịp thời.`;
     } else {
-      text = `Tư vấn tài chính & Hướng dẫn sử dụng SmartSpend:\n\n1. Áp dụng mô hình 50/30/20 để quản lý tài chính hiệu quả.\n2. Thiết lập ngân sách và theo dõi báo cáo chi tiêu hàng tuần.\n3. Bạn có thể hỏi: "nạp rút", "ngân sách", "lương 12tr", "mua laptop 25tr" hoặc "tư vấn tài chính hiện tại cho tôi".`;
+      text = `Tư vấn tài chính & Hướng dẫn sử dụng SmartSpend:\n\n1. Áp dụng mô hình 50/30/20 để quản lý tài chính hiệu quả.\n2. Thiết lập ngân sách và theo dõi báo cáo chi tiêu hàng tuần.\n3. Bạn có thể hỏi: "tạo ví", "quên PIN", "cắt giảm chi tiêu", "nạp rút", "ngân sách", "lương 12tr", "mua laptop 25tr" hoặc "tư vấn tài chính hiện tại cho tôi".`;
     }
 
     return {
