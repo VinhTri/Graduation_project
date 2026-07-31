@@ -245,14 +245,14 @@ public class AiChatServiceImpl implements AiChatService {
         String norm = normalizeText(userPrompt);
         String businessDataStr = "";
         if (norm.contains("muc tieu") || norm.contains("mua") || norm.contains("laptop") || norm.contains("xe") || norm.contains("sam") || norm.contains("oto") || norm.contains("o to") || norm.contains("nha")) {
-            Matcher amountMatcher = Pattern.compile("(\\d+(?:[.,]\\d+)?)\\s*(triệu|tr|trieu|tỷ|ty)", Pattern.CASE_INSENSITIVE).matcher(userPrompt);
-            Matcher monthMatcher = Pattern.compile("(\\d+)\\s*thá?ng", Pattern.CASE_INSENSITIVE).matcher(userPrompt);
+            Matcher amountMatcher = Pattern.compile("(\\d+(?:[.,]\\d+)?)\\s*(trieu|tr|ty)", Pattern.CASE_INSENSITIVE).matcher(norm);
+            Matcher monthMatcher = Pattern.compile("(\\d+)\\s*thang", Pattern.CASE_INSENSITIVE).matcher(norm);
 
             long targetAmount = 30000000L;
             if (amountMatcher.find()) {
                 double val = Double.parseDouble(amountMatcher.group(1).replace(",", "."));
                 String unit = amountMatcher.group(2).toLowerCase();
-                if (unit.contains("tỷ") || unit.contains("ty")) {
+                if (unit.contains("ty")) {
                     targetAmount = (long)(val * 1000000000L);
                 } else {
                     targetAmount = (long)(val * 1000000L);
@@ -552,14 +552,14 @@ public class AiChatServiceImpl implements AiChatService {
                        "3. Theo quy tắc quản lý tài chính 50/30/20, các khoản chi dễ cắt giảm nhất gồm: Mua sắm ngẫu hứng, Ăn uống ngoài không kế hoạch, Trà sữa/Cà phê hàng ngày và các Dịch vụ đăng ký không sử dụng.";
             }
         } else if (norm.contains("muc tieu") || norm.contains("mua") || norm.contains("laptop") || norm.contains("xe") || norm.contains("sam") || norm.contains("oto") || norm.contains("o to") || norm.contains("nha")) {
-            Matcher amountMatcher = Pattern.compile("(\\d+(?:[.,]\\d+)?)\\s*(triệu|tr|trieu|tỷ|ty)", Pattern.CASE_INSENSITIVE).matcher(raw);
-            Matcher monthMatcher = Pattern.compile("(\\d+)\\s*thá?ng", Pattern.CASE_INSENSITIVE).matcher(raw);
+            Matcher amountMatcher = Pattern.compile("(\\d+(?:[.,]\\d+)?)\\s*(trieu|tr|ty)", Pattern.CASE_INSENSITIVE).matcher(norm);
+            Matcher monthMatcher = Pattern.compile("(\\d+)\\s*thang", Pattern.CASE_INSENSITIVE).matcher(norm);
 
             long targetAmount = 30000000L;
             if (amountMatcher.find()) {
                 double val = Double.parseDouble(amountMatcher.group(1).replace(",", "."));
                 String unit = amountMatcher.group(2).toLowerCase();
-                if (unit.contains("tỷ") || unit.contains("ty")) {
+                if (unit.contains("ty")) {
                     targetAmount = (long)(val * 1000000000L);
                 } else {
                     targetAmount = (long)(val * 1000000L);

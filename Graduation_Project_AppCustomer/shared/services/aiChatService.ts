@@ -145,13 +145,27 @@ class AIChatService {
   private async callGeminiDirect(userPrompt: string): Promise<string> {
     const norm = normalizeText(userPrompt);
     let businessDataStr = "";
-    if (norm.includes('muc tieu') || norm.includes('mua') || norm.includes('laptop') || norm.includes('xe') || norm.includes('sam')) {
-      const amountMatch = userPrompt.match(/(\d+(?:[.,]\d+)?)\s*(triệu|tr)/i);
-      const monthMatch = userPrompt.match(/(\d+)\s*tháng/i);
-      const targetAmount = amountMatch ? parseFloat(amountMatch[1].replace(',', '.')) * 1000000 : 30000000;
-      const targetMonths = monthMatch ? parseInt(monthMatch[1]) : 3;
+    if (norm.includes('muc tieu') || norm.includes('mua') || norm.includes('laptop') || norm.includes('xe') || norm.includes('sam') || norm.includes('oto') || norm.includes('o to') || norm.includes('nha')) {
+      const amountMatch = norm.match(/(\d+(?:[.,]\d+)?)\s*(trieu|tr|ty)/i);
+      const monthMatch = norm.match(/(\d+)\s*thang/i);
+
+      let targetAmount = 30000000;
+      if (amountMatch) {
+        const val = parseFloat(amountMatch[1].replace(',', '.'));
+        const unit = amountMatch[2].toLowerCase();
+        targetAmount = (unit.includes('ty')) ? val * 1000000000 : val * 1000000;
+      }
+      const targetMonths = monthMatch ? parseInt(monthMatch[1], 10) : 3;
       const monthlySaving = targetMonths > 0 ? targetAmount / targetMonths : targetAmount;
-      businessDataStr = `\n3. BUSINESS DATA:\n- Mục tiêu: ${targetAmount.toLocaleString('vi-VN')} VNĐ\n- Thời gian: ${targetMonths} tháng\n- Tiết kiệm cần thiết: ${monthlySaving.toLocaleString('vi-VN')} VNĐ/tháng\n`;
+
+      let itemName = "ô tô";
+      if (norm.includes("laptop") || norm.includes("may tinh")) itemName = "laptop";
+      else if (norm.includes("xe may")) itemName = "xe máy";
+      else if (norm.includes("nha")) itemName = "nhà";
+      else if (norm.includes("oto") || norm.includes("o to") || norm.includes("xe hoi")) itemName = "ô tô";
+      else itemName = "mục tiêu mua sắm";
+
+      businessDataStr = `\n3. BUSINESS DATA:\n- Mục tiêu: ${itemName} (${targetAmount.toLocaleString('vi-VN')} VNĐ)\n- Thời gian: ${targetMonths} tháng\n- Tiết kiệm cần thiết: ${monthlySaving.toLocaleString('vi-VN')} VNĐ/tháng\n`;
     }
 
     const systemPrompt = `
@@ -286,14 +300,14 @@ Hãy trả lời người dùng theo đúng định dạng đã quy định.
     } else if (norm.includes('cat giam') || norm.includes('khoan nao') || norm.includes('giam chi tieu')) {
       text = `Gợi ý các khoản chi tiêu có thể cắt giảm hiệu quả:\n\n1. Rà soát danh mục Giải trí & Mua sắm ngẫu hứng: Cắt giảm 15-20% các chi phí xem phim, cà phê, mua sắm không có trong kế hoạch.\n2. Hạn chế Ăn uống bên ngoài: Tăng cường tự nấu ăn tại nhà để tiết kiệm từ 1 - 2 triệu đồng mỗi tháng.\n3. Thiết lập Ngân sách hạn mức: Vào mục Ngân sách để cài đặt hạn mức chi tiêu tối đa cho từng danh mục, AI sẽ tự động cảnh báo khi bạn tiêu gần chạm ngưỡng.`;
     } else if (norm.includes('muc tieu') || norm.includes('mua') || norm.includes('laptop') || norm.includes('xe') || norm.includes('sam') || norm.includes('oto') || norm.includes('o to') || norm.includes('nha')) {
-      const amountMatch = raw.match(/(\d+(?:[.,]\d+)?)\s*(triệu|tr|trieu|tỷ|ty)/i);
-      const monthMatch = raw.match(/(\d+)\s*thá?ng/i);
+      const amountMatch = norm.match(/(\d+(?:[.,]\d+)?)\s*(trieu|tr|ty)/i);
+      const monthMatch = norm.match(/(\d+)\s*thang/i);
 
       let targetAmount = 30_000_000;
       if (amountMatch) {
         const val = parseFloat(amountMatch[1].replace(',', '.'));
         const unit = amountMatch[2].toLowerCase();
-        targetAmount = (unit.includes('tỷ') || unit.includes('ty')) ? val * 1_000_000_000 : val * 1_000_000;
+        targetAmount = (unit.includes('ty')) ? val * 1_000_000_000 : val * 1_000_000;
       }
       const targetMonths = monthMatch ? parseInt(monthMatch[1], 10) : 3;
       const monthlySaving = Math.round(targetAmount / (targetMonths > 0 ? targetMonths : 1));
