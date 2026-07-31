@@ -207,34 +207,6 @@ export const AIChatModal: React.FC<AIChatModalProps> = ({ visible, onClose }) =>
                         ))}
                       </View>
                     ))}
-
-                    {/* Interactive Follow-up Question & Action Buttons */}
-                    {!msg.isUser && msg.actionPrompt && (
-                      <View style={styles.actionPromptContainer}>
-                        <Text style={styles.actionQuestionText}>
-                          ❓ {msg.actionPrompt.question}
-                        </Text>
-                        <View style={styles.actionButtonsRow}>
-                          {msg.actionPrompt.actions.map((act, actIdx) => (
-                            <TouchableOpacity
-                              key={actIdx}
-                              style={[
-                                styles.actionButton,
-                                actIdx === 0 && styles.actionButtonPrimary
-                              ]}
-                              onPress={() => handleActionClick(act)}
-                            >
-                              <Text style={[
-                                styles.actionButtonText,
-                                actIdx === 0 && styles.actionButtonTextPrimary
-                              ]}>
-                                {act.label}
-                              </Text>
-                            </TouchableOpacity>
-                          ))}
-                        </View>
-                      </View>
-                    )}
                   </View>
                 </View>
               );

@@ -43,7 +43,7 @@ export const QUICK_SUGGESTIONS: QuickSuggestion[] = [
   { id: '9', label: 'Khoản nào cắt giảm?', category: 'ANALYTICS', prompt: 'Khoản nào có thể cắt giảm?' },
 ];
 
-const GEMINI_API_KEY = process.env.EXPO_PUBLIC_GEMINI_API_KEY || "AIzaSyBEVNPlgMS8gro2LmgHB_SzsgRi4q1752I";
+const GEMINI_API_KEY = process.env.EXPO_PUBLIC_GEMINI_API_KEY || "";
 
 function normalizeText(text: string): string {
   return text
@@ -102,7 +102,7 @@ class AIChatService {
 
   private async fallbackDirectEngine(raw: string, norm: string): Promise<ChatMessage> {
     let moduleType: 'RAG' | 'ANALYTICS' | 'RECOMMENDATION' = 'RAG';
-    if (norm.includes('tu van') || norm.includes('tai chinh') || norm.includes('luong') || norm.includes('laptop') || norm.includes('chia')) {
+    if (norm.includes('tu van') || norm.includes('tai chinh') || norm.includes('luong') || norm.includes('laptop') || norm.includes('chia') || norm.includes('mua') || norm.includes('xe') || norm.includes('muc tieu') || norm.includes('trieu') || norm.includes('tr')) {
       moduleType = 'RECOMMENDATION';
     } else if (norm.includes('tieu') || norm.includes('bao cao') || norm.includes('phan tich') || norm.includes('cat giam')) {
       moduleType = 'ANALYTICS';
@@ -128,58 +128,117 @@ class AIChatService {
   }
 
   private async callGeminiDirect(userPrompt: string): Promise<string> {
-    const systemPrompt = `
-Bạn là Trợ lý AI SmartSpend - Trợ lý phân tích & tư vấn tài chính cá nhân chuyên nghiệp.
+    const norm = normalizeText(userPrompt);
+    let businessDataStr = "";
+    if (norm.includes('muc tieu') || norm.includes('mua') || norm.includes('laptop') || norm.includes('xe') || norm.includes('sam')) {
+      const amountMatch = userPrompt.match(/(\d+(?:[.,]\d+)?)\s*(triệu|tr)/i);
+      const monthMatch = userPrompt.match(/(\d+)\s*tháng/i);
+      const targetAmount = amountMatch ? parseFloat(amountMatch[1].replace(',', '.')) * 1000000 : 30000000;
+      const targetMonths = monthMatch ? parseInt(monthMatch[1]) : 3;
+      const monthlySaving = targetMonths > 0 ? targetAmount / targetMonths : targetAmount;
+      businessDataStr = `\n3. BUSINESS DATA:\n- Mục tiêu: ${targetAmount.toLocaleString('vi-VN')} VNĐ\n- Thời gian: ${targetMonths} tháng\n- Tiết kiệm cần thiết: ${monthlySaving.toLocaleString('vi-VN')} VNĐ/tháng\n`;
+    }
 
-QUY TẮC BẮT BUỘC KHI PHẢN HỒI:
-1. ĐÁNH SỐ THỨ TỰ RÕ RÀNG (1., 2., 3.): Mọi câu trả lời có quy trình các bước hoặc danh sách tư vấn BẮT BUỘC phải đánh số thứ tự 1., 2., 3. ở đầu dòng.
-2. BẮT BUỘC HOÀN THÀNH ĐẦY ĐỦ CÂU: Viết trọn vẹn câu trả lời, tuyệt đối KHÔNG được ngắt dở dang nửa câu. Đi thẳng vào vấn đề chính.
-3. CÂU HỎI TƯƠNG TÁC CUỐI CÙNG: Cuối mỗi câu trả lời, hãy đặt 1 câu hỏi tương tác thân thiện gợi ý hành động tiếp theo (VD: 'Bạn có muốn Nạp tiền vào ví ngay để AI bắt đầu phân tích không?').
-4. NẾU NGƯỜI DÙNG YÊU CẦU TƯ VẤN TÀI CHÍNH HIỆN TẠI KHI CHƯA NẠP TIỀN HOẶC CHƯA CÓ GIAO DỊCH (SỐ DƯ 0Đ):
-   - BẮT BUỘC thông báo rõ tài khoản hiện chưa có dữ liệu giao dịch hoặc số dư đang là 0đ.
-   - YÊU CẦU NGƯỜI DÙNG NẠP TIỀN VÀO VÍ HOẶC TẠO GIAO DỊCH MỚI để AI có dữ liệu thu chi thực tế nhằm tư vấn chính xác.
-   - KHÔNG tự ý đưa vào Mô hình phân bổ 50/30/20 nếu người dùng không hỏi về phân bổ lương/ngân sách.
-5. NẾU NGƯỜI DÙNG HỎI PHÂN BỔ LƯƠNG/NGÂN SÁCH (VD: Lương 12tr, thuê 3tr):
-   - Đưa ra con số cụ thể: Cố định/Thuê 25% = 3tr; Ăn uống 29% = 3.5tr; Tiết kiệm 21% = 2.5tr; Giải trí 13% = 1.5tr; Dự phòng 12% = 1.5tr.
-6. NẾU NGƯỜI DÙNG HỎI MỤC TIÊU TIẾT KIỆM (VD: Mua laptop 25tr sau 8 tháng):
-   - BẮT BUỘC tính số tiền cụ thể: 25.000.000 / 8 = 3.125.000 VNĐ/tháng và 3 bước thực hiện.
-7. TRI THỨC SMARTSPEND:
-   - Tạo ngân sách: 1. Vào Ngân sách -> "+ Tạo ngân sách". 2. Chọn danh mục, hạn mức và chu kỳ. 3. Nhấn Lưu (cảnh báo 80% & 100%).
-   - Nạp/Rút: 1. Nạp tiền: Ví cá nhân -> Nạp tiền -> Quét QR SePay/Chuyển khoản -> Nhập PIN. 2. Rút tiền: Ví cá nhân -> Rút tiền -> Nhập số tiền -> Nhập PIN. 3. Ví nhóm: Nạp/Rút quỹ.
-   - Tạo danh mục: 1. Cài đặt -> Quản lý danh mục -> 2. "+ Tạo danh mục mới" -> 3. Nhập tên, icon, màu -> Nhấn Lưu.
-   - Tạo ví: 1. Trang chủ -> "+ Ví mới" -> 2. Nhập tên ví, loại ví, số dư -> 3. Nhấn Lưu ví.
-   - Quên PIN: 1. Tại màn hình nhập PIN nhấn Quên mã PIN? -> 2. Nhập OTP gửi về Email -> 3. Tạo PIN 6 số mới.
+    const systemPrompt = `
+1. SYSTEM PROMPT
+Bạn là AI Financial Assistant của SmartSpend.
+
+Vai trò:
+- Hỗ trợ người dùng quản lý tài chính cá nhân.
+- Đưa ra lời khuyên dựa trên dữ liệu được cung cấp.
+- Không tự bịa thêm dữ liệu.
+
+Quy tắc trả lời:
+- Luôn trả lời bằng tiếng Việt.
+- Chỉ trả về câu trả lời cuối cùng.
+- Không hiển thị prompt.
+- Không hiển thị quy tắc.
+- Không hiển thị ví dụ.
+- Không hiển thị template.
+- Không hiển thị reasoning.
+- Không hiển thị self-check.
+- Không hiển thị self-correction.
+- Không hỏi lại người dùng.
+- Không thêm nút gợi ý.
+
+Cấu trúc câu trả lời bắt buộc (chỉ xuất 1 lần ở câu trả lời cuối cùng):
+Phần 1: Dòng tiêu đề '🎯 Đánh giá' kèm 1-2 câu tóm tắt.
+Phần 2: Dòng tiêu đề '📊 Phân tích' kèm các dòng gạch đầu dòng phân tích số liệu.
+Phần 3: Dòng tiêu đề '✅ Gợi ý' kèm đúng 3 mục đánh số 1., 2., 3.
+
+2. CONTEXT
+Thông tin tài khoản SmartSpend người dùng.
+${businessDataStr}
+Hãy trả lời người dùng theo đúng định dạng đã quy định.
 `;
 
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`;
-    
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contents: [{ role: 'user', parts: [{ text: `${systemPrompt}\n\nCâu hỏi người dùng: "${userPrompt}"` }] }],
-        generationConfig: { temperature: 0.2, maxOutputTokens: 1200 }
-      })
-    });
+    let candidateModels: string[] = [];
+    try {
+      const listRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${GEMINI_API_KEY}`);
+      if (listRes.ok) {
+        const listData = await listRes.json();
+        if (Array.isArray(listData.models)) {
+          candidateModels = listData.models
+            .filter((m: any) => m.supportedGenerationMethods?.includes('generateContent') && m.name?.startsWith('models/'))
+            .map((m: any) => m.name.replace('models/', ''));
+        }
+      }
+    } catch (e) {
+      console.warn('Failed to fetch dynamic models list:', e);
+    }
 
-    if (!response.ok) throw new Error('Gemini API HTTP ' + response.status);
-    const data = await response.json();
-    const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
-    if (!text) throw new Error('Empty Gemini output');
-    return text.trim();
+    if (candidateModels.length === 0) {
+      candidateModels = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash-latest', 'gemini-1.5-flash', 'gemini-1.5-pro'];
+    }
+    
+    for (const modelName of candidateModels) {
+      try {
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${GEMINI_API_KEY}`;
+        const response = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            system_instruction: {
+              parts: [{ text: systemPrompt }]
+            },
+            contents: [{ role: 'user', parts: [{ text: userPrompt }] }],
+            generationConfig: { temperature: 0.1, maxOutputTokens: 1200 }
+          })
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          let text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+          if (text) {
+            text = text.trim();
+            const lastTargetIdx = text.lastIndexOf("🎯");
+            if (lastTargetIdx !== -1) {
+              text = text.substring(lastTargetIdx).trim();
+            } else if (text.includes("User Goal") || text.includes("User Identity") || text.includes("Drafting") || text.includes("Step 1") || text.includes("Rule 1") || text.includes("Self-")) {
+              const lastNumIdx = text.lastIndexOf("1. ");
+              if (lastNumIdx !== -1) {
+                text = text.substring(lastNumIdx).trim();
+              }
+            }
+            const trailing = ["*Self-", "Self-Correction", "Check structure", "Check language", "Check constraints", "Check math", "Ensure tone", "Vietnamese only"];
+            for (const marker of trailing) {
+              const idx = text.indexOf(marker);
+              if (idx !== -1) text = text.substring(0, idx).trim();
+            }
+            return text;
+          }
+        }
+      } catch (e) {
+        console.warn(`Model ${modelName} call failed:`, e);
+      }
+    }
+
+    throw new Error('All Gemini API model candidates failed');
   }
 
   private buildCards(moduleType: string, norm: string, rawPrompt: string) {
-    if (norm.includes('laptop') || norm.includes('muc tieu') || norm.includes('mua')) {
-      return [{
-        type: 'GOAL_PLAN' as const,
-        title: 'Kế hoạch tiết kiệm tích lũy mục tiêu',
-        items: [
-          { label: 'Mục tiêu tài chính', value: '25.0 triệu đ', color: '#2563EB' },
-          { label: 'Thời gian hoàn thành', value: '8 tháng', color: '#4B5563' },
-          { label: 'Cần tiết kiệm/tháng', value: '3.125.000 đ', color: '#10B981' }
-        ]
-      }];
+    if (norm.includes('muc tieu') || norm.includes('mua') || norm.includes('laptop') || norm.includes('xe') || norm.includes('sam')) {
+      return [];
     }
 
     if (norm.includes('luong') || norm.includes('thue') || norm.includes('chia') || norm.includes('phan bo')) {
@@ -195,98 +254,10 @@ QUY TẮC BẮT BUỘC KHI PHẢN HỒI:
       }];
     }
 
-    // Do NOT return 50/30/20 card for general queries or empty account advisory unless specifically asking about budget/salary split
     return undefined;
   }
 
   private buildActionPrompt(norm: string, rawPrompt: string): ActionPrompt | undefined {
-    if (norm.includes('tao vi') || norm.includes('xoa vi') || norm.includes('quan ly vi') || norm.includes('vi moi') || norm.includes('vi')) {
-      return {
-        question: "Bạn có muốn mở màn hình Quản lý ví để xem hoặc tạo ví mới không?",
-        actions: [
-          { label: "Quản lý & Tạo ví mới", route: "/wallet" }
-        ]
-      };
-    }
-
-    if (norm.includes('pin') || norm.includes('quen pin')) {
-      return {
-        question: "Bạn có muốn truy cập màn hình Cài đặt ngay không?",
-        actions: [
-          { label: "Vào Cài đặt", route: "/settings" }
-        ]
-      };
-    }
-
-    if (norm.includes('cat giam') || norm.includes('khoan nao')) {
-      return {
-        question: "Bạn có muốn xem Báo cáo chi tiêu hoặc thiết lập Ngân sách cắt giảm ngay không?",
-        actions: [
-          { label: "Xem Báo cáo chi tiêu", route: "/report" },
-          { label: "Tạo Ngân sách", route: "/budget/create" }
-        ]
-      };
-    }
-
-    if (norm.includes('laptop') || norm.includes('muc tieu') || norm.includes('mua')) {
-      return {
-        question: "Bạn có muốn tạo ngay Ngân sách tiết kiệm 3.125.000đ/tháng cho mục tiêu này không?",
-        actions: [
-          { label: "Tạo ngân sách ngay", route: "/budget/create" },
-          { label: "Quản lý ngân sách", route: "/budget" }
-        ]
-      };
-    }
-
-    if (norm.includes('tu van') || norm.includes('tai chinh')) {
-      return {
-        question: "Tài khoản chưa có số dư & dữ liệu. Bạn có muốn Nạp tiền vào ví ngay không?",
-        actions: [
-          { label: "Nạp tiền ngay", route: "/transfer" },
-          { label: "Quản lý Ví", route: "/wallet" }
-        ]
-      };
-    }
-
-    if (norm.includes('luong') || norm.includes('thue') || norm.includes('chia') || norm.includes('ngan sach')) {
-      return {
-        question: "Bạn có muốn mở màn hình Tạo ngân sách chi tiêu ngay bây giờ không?",
-        actions: [
-          { label: "Tạo ngân sách ngay", route: "/budget/create" },
-          { label: "Quản lý danh mục", route: "/categories" }
-        ]
-      };
-    }
-
-    if (norm.includes('nap') || norm.includes('rut')) {
-      return {
-        question: "Bạn có muốn chuyển sang màn hình Nạp/Rút tiền ngay bây giờ không?",
-        actions: [
-          { label: "Tới màn hình Nạp/Rút", route: "/transfer" },
-          { label: "Quản lý Ví cá nhân", route: "/wallet" }
-        ]
-      };
-    }
-
-    if (norm.includes('danh muc')) {
-      return {
-        question: "Bạn có muốn mở màn hình Quản lý danh mục ngay không?",
-        actions: [
-          { label: "Mở Quản lý danh mục", route: "/categories" }
-        ]
-      };
-    }
-
-    if (norm.includes('tieu nhieu') || norm.includes('tieu o dau') || norm.includes('bao cao') || norm.includes('phan tich')) {
-      return {
-        question: "Bạn có muốn mở màn hình Báo cáo phân tích chi tiêu ngay không?",
-        actions: [
-          { label: "Xem Báo cáo chi tiêu", route: "/report" }
-        ]
-      };
-    }
-
-    // Do NOT attach action prompt box for general queries or number choices (1, 2, 3)
     return undefined;
   }
 
@@ -298,8 +269,15 @@ QUY TẮC BẮT BUỘC KHI PHẢN HỒI:
       text = `Hướng dẫn xử lý khi quên mã PIN bảo mật:\n\n1. Tại màn hình nhập PIN khi Nạp/Rút tiền hoặc trong Cài đặt, nhấn chọn 'Quên mã PIN?'.\n2. Kiểm tra Email đăng ký tài khoản SmartSpend để nhận mã xác minh OTP gửi về.\n3. Nhập mã OTP chính xác, sau đó tiến hành tạo Mã PIN 6 số mới và xác nhận lại để hoàn tất.`;
     } else if (norm.includes('cat giam') || norm.includes('khoan nao') || norm.includes('giam chi tieu')) {
       text = `Gợi ý các khoản chi tiêu có thể cắt giảm hiệu quả:\n\n1. Rà soát danh mục Giải trí & Mua sắm ngẫu hứng: Cắt giảm 15-20% các chi phí xem phim, cà phê, mua sắm không có trong kế hoạch.\n2. Hạn chế Ăn uống bên ngoài: Tăng cường tự nấu ăn tại nhà để tiết kiệm từ 1 - 2 triệu đồng mỗi tháng.\n3. Thiết lập Ngân sách hạn mức: Vào mục Ngân sách để cài đặt hạn mức chi tiêu tối đa cho từng danh mục, AI sẽ tự động cảnh báo khi bạn tiêu gần chạm ngưỡng.`;
-    } else if (norm.includes('laptop') || norm.includes('muc tieu') || norm.includes('mua')) {
-      text = `Lộ trình tiết kiệm mua sắm mục tiêu:\n\n1. Để đạt mục tiêu 25 triệu sau 8 tháng, bạn cần trích cố định 3.125.000đ mỗi tháng.\n2. Hãy mở một Ví tích lũy riêng và cài đặt tính năng tự động trích tiền khi nhận lương.\n3. Duy trì mức chi tiêu cố định và hạn chế mua sắm không phát sinh kế hoạch.`;
+    } else if (norm.includes('muc tieu') || norm.includes('mua') || norm.includes('laptop') || norm.includes('xe')) {
+      const amountMatch = raw.match(/(\d+(?:[.,]\d+)?)\s*(triệu|tr|trieu)/i);
+      const monthMatch = raw.match(/(\d+)\s*tháng/i);
+
+      const targetAmount = amountMatch ? parseFloat(amountMatch[1].replace(',', '.')) * 1_000_000 : 30_000_000;
+      const targetMonths = monthMatch ? parseInt(monthMatch[1], 10) : 3;
+      const monthlySaving = Math.round(targetAmount / (targetMonths > 0 ? targetMonths : 1));
+
+      text = `Lộ trình tiết kiệm mục tiêu mua sắm:\n\n1. Để đạt mục tiêu ${(targetAmount / 1_000_000).toLocaleString('vi-VN')} triệu VNĐ trong ${targetMonths} tháng, bạn cần trích cố định ${monthlySaving.toLocaleString('vi-VN')}đ mỗi tháng.\n2. Hãy mở một Ví tích lũy riêng và cài đặt tính năng tự động trích tiền khi nhận lương.\n3. Duy trì mức chi tiêu cố định và hạn chế mua sắm không phát sinh kế hoạch.`;
     } else if (norm.includes('luong') || norm.includes('thue') || norm.includes('chia') || norm.includes('phan bo')) {
       text = `Phương án phân bổ ngân sách tối ưu (Lương 12tr, Tiền thuê 3tr):\n\n1. Tiền thuê & Cố định (25%): 3.000.000đ.\n2. Ăn uống & Sinh hoạt (29%): 3.500.000đ.\n3. Tiết kiệm & Đầu tư (21%): 2.500.000đ.\n4. Giải trí & Mua sắm (25%): 3.000.000đ.`;
     } else if (norm.includes('tu van') || norm.includes('tai chinh') || norm.includes('cho toi')) {
