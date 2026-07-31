@@ -119,10 +119,19 @@ export function FundDetailScreen() {
 
   if (!fund) {
     return (
-      <View style={[styles.container, styles.center]}>
-        <Text style={styles.emptyTitle}>Không tìm thấy quỹ</Text>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backLink}>
-          <Text style={styles.backLinkText}>Quay lại</Text>
+      <View style={[styles.container, styles.center, { backgroundColor: '#F8FAFC' }]}>
+        <View style={{ width: 80, height: 80, borderRadius: 40, backgroundColor: '#FCE7F3', justifyContent: 'center', alignItems: 'center', marginBottom: 16 }}>
+          <Feather name="folder-minus" size={36} color="#EC4899" />
+        </View>
+        <Text style={[styles.emptyTitle, { fontSize: 20, color: '#1E293B', marginBottom: 8 }]}>Quỹ không tồn tại</Text>
+        <Text style={{ fontSize: 15, color: '#64748B', textAlign: 'center', marginHorizontal: 32, marginBottom: 24, lineHeight: 22 }}>
+          Quỹ này có thể đã bị xóa bởi người tạo hoặc bạn không còn quyền truy cập.
+        </Text>
+        <TouchableOpacity 
+          onPress={() => router.replace('/(tabs)/funds')} 
+          style={{ backgroundColor: '#F472B6', paddingHorizontal: 24, paddingVertical: 12, borderRadius: 12, elevation: 2, shadowColor: '#F472B6', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 8 }}
+        >
+          <Text style={{ color: '#FFF', fontWeight: 'bold', fontSize: 15 }}>Quay về danh sách quỹ</Text>
         </TouchableOpacity>
       </View>
     );

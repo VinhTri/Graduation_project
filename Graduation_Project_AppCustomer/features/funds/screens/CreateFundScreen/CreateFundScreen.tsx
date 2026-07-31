@@ -164,7 +164,7 @@ export function CreateFundScreen() {
           <View style={styles.inputWrap}>
             <Feather name="target" size={18} color={FUND_PALETTE.textMuted} />
             <TextInput
-              style={styles.input}
+              style={[styles.input, { color: '#EC4899', fontWeight: 'bold' }]}
               placeholder="0"
               placeholderTextColor="#9CA3AF"
               keyboardType="numeric"
@@ -173,7 +173,7 @@ export function CreateFundScreen() {
               maxLength={14}
               editable={!reachedLimit}
             />
-            <Text style={styles.currency}>₫</Text>
+            <Text style={[styles.currency, { color: '#EC4899', fontWeight: 'bold' }]}>₫</Text>
           </View>
 
           <View style={styles.chipRow}>
