@@ -244,24 +244,45 @@ public class AiChatServiceImpl implements AiChatService {
         // Business Data calculated programmatically by Backend
         String norm = normalizeText(userPrompt);
         String businessDataStr = "";
-        if (norm.contains("muc tieu") || norm.contains("mua") || norm.contains("laptop") || norm.contains("xe") || norm.contains("sam")) {
-            Matcher amountMatcher = Pattern.compile("(\\d+(?:[.,]\\d+)?)\\s*(triệu|tr)", Pattern.CASE_INSENSITIVE).matcher(userPrompt);
-            Matcher monthMatcher = Pattern.compile("(\\d+)\\s*tháng", Pattern.CASE_INSENSITIVE).matcher(userPrompt);
+        if (norm.contains("muc tieu") || norm.contains("mua") || norm.contains("laptop") || norm.contains("xe") || norm.contains("sam") || norm.contains("oto") || norm.contains("o to") || norm.contains("nha")) {
+            Matcher amountMatcher = Pattern.compile("(\\d+(?:[.,]\\d+)?)\\s*(triệu|tr|trieu|tỷ|ty)", Pattern.CASE_INSENSITIVE).matcher(userPrompt);
+            Matcher monthMatcher = Pattern.compile("(\\d+)\\s*thá?ng", Pattern.CASE_INSENSITIVE).matcher(userPrompt);
 
-            long targetAmount = amountMatcher.find() ? (long)(Double.parseDouble(amountMatcher.group(1).replace(",", ".")) * 1000000L) : 30000000L;
+            long targetAmount = 30000000L;
+            if (amountMatcher.find()) {
+                double val = Double.parseDouble(amountMatcher.group(1).replace(",", "."));
+                String unit = amountMatcher.group(2).toLowerCase();
+                if (unit.contains("tỷ") || unit.contains("ty")) {
+                    targetAmount = (long)(val * 1000000000L);
+                } else {
+                    targetAmount = (long)(val * 1000000L);
+                }
+            }
+
             int targetMonths = monthMatcher.find() ? Integer.parseInt(monthMatcher.group(1)) : 3;
             long monthlySaving = targetMonths > 0 ? targetAmount / targetMonths : targetAmount;
             long remainingGap = totalBal.longValue() < targetAmount ? targetAmount - totalBal.longValue() : 0;
             long monthlyGapSaving = targetMonths > 0 && remainingGap > 0 ? remainingGap / targetMonths : 0;
 
+            String itemName = "ô tô";
+            if (norm.contains("laptop") || norm.contains("may tinh")) itemName = "laptop";
+            else if (norm.contains("xe may")) itemName = "xe máy";
+            else if (norm.contains("nha")) itemName = "nhà";
+            else if (norm.contains("oto") || norm.contains("o to") || norm.contains("xe hoi")) itemName = "ô tô";
+            else itemName = "mục tiêu mua sắm";
+
+            log.info("AI Financial Goal extracted -> Item: {}, Amount: {}, Months: {}, RemainingGap: {}, MonthlyGapSaving: {}", 
+                     itemName, df.format(targetAmount), targetMonths, df.format(remainingGap), df.format(monthlyGapSaving > 0 ? monthlyGapSaving : monthlySaving));
+
             businessDataStr = String.format(
                 "\n3. BUSINESS DATA\n" +
-                "Mục tiêu tài chính:\n" +
+                "Mục tiêu tài chính (%s):\n" +
                 "- Giá mục tiêu: %s VNĐ\n" +
                 "- Thời gian: %d tháng\n" +
                 "- Số tiền còn thiếu: %s VNĐ\n" +
                 "- Nếu sử dụng số dư hiện tại: Cần tiết kiệm %s VNĐ/tháng\n" +
                 "- Nếu không sử dụng số dư hiện tại: Cần tiết kiệm %s VNĐ/tháng\n",
+                itemName,
                 df.format(targetAmount),
                 targetMonths,
                 df.format(remainingGap),
@@ -312,6 +333,8 @@ public class AiChatServiceImpl implements AiChatService {
             budgetsStr,
             businessDataStr
         );
+
+        log.info("System Prompt payload to Gemini:\n{}", systemPrompt);
 
         HttpClient client = HttpClient.newBuilder()
                 .connectTimeout(Duration.ofSeconds(10))
@@ -528,19 +551,36 @@ public class AiChatServiceImpl implements AiChatService {
                        "2. Để AI phân tích chính xác thói quen tiêu dùng cá nhân và chỉ ra khoản lãng phí cần cắt giảm, hãy Nạp tiền vào ví hoặc Ghi chép các giao dịch thu chi hàng ngày.\n" +
                        "3. Theo quy tắc quản lý tài chính 50/30/20, các khoản chi dễ cắt giảm nhất gồm: Mua sắm ngẫu hứng, Ăn uống ngoài không kế hoạch, Trà sữa/Cà phê hàng ngày và các Dịch vụ đăng ký không sử dụng.";
             }
-        } else if (norm.contains("muc tieu") || norm.contains("mua") || norm.contains("laptop") || norm.contains("xe") || norm.contains("sam")) {
-            Matcher amountMatcher = Pattern.compile("(\\d+(?:[.,]\\d+)?)\\s*(triệu|tr)", Pattern.CASE_INSENSITIVE).matcher(raw);
-            Matcher monthMatcher = Pattern.compile("(\\d+)\\s*tháng", Pattern.CASE_INSENSITIVE).matcher(raw);
+        } else if (norm.contains("muc tieu") || norm.contains("mua") || norm.contains("laptop") || norm.contains("xe") || norm.contains("sam") || norm.contains("oto") || norm.contains("o to") || norm.contains("nha")) {
+            Matcher amountMatcher = Pattern.compile("(\\d+(?:[.,]\\d+)?)\\s*(triệu|tr|trieu|tỷ|ty)", Pattern.CASE_INSENSITIVE).matcher(raw);
+            Matcher monthMatcher = Pattern.compile("(\\d+)\\s*thá?ng", Pattern.CASE_INSENSITIVE).matcher(raw);
 
-            long targetAmount = amountMatcher.find() ? (long)(Double.parseDouble(amountMatcher.group(1).replace(",", ".")) * 1000000L) : 30000000L;
+            long targetAmount = 30000000L;
+            if (amountMatcher.find()) {
+                double val = Double.parseDouble(amountMatcher.group(1).replace(",", "."));
+                String unit = amountMatcher.group(2).toLowerCase();
+                if (unit.contains("tỷ") || unit.contains("ty")) {
+                    targetAmount = (long)(val * 1000000000L);
+                } else {
+                    targetAmount = (long)(val * 1000000L);
+                }
+            }
+
             int targetMonths = monthMatcher.find() ? Integer.parseInt(monthMatcher.group(1)) : 3;
             long monthlySaving = targetMonths > 0 ? targetAmount / targetMonths : targetAmount;
             long remainingGap = totalBal.longValue() < targetAmount ? targetAmount - totalBal.longValue() : 0;
             long monthlyGapSaving = targetMonths > 0 && remainingGap > 0 ? remainingGap / targetMonths : 0;
 
+            String itemName = "ô tô";
+            if (norm.contains("laptop") || norm.contains("may tinh")) itemName = "laptop";
+            else if (norm.contains("xe may")) itemName = "xe máy";
+            else if (norm.contains("nha")) itemName = "nhà";
+            else if (norm.contains("oto") || norm.contains("o to") || norm.contains("xe hoi")) itemName = "ô tô";
+            else itemName = "mục tiêu mua sắm";
+
             text = String.format(
                 "🎯 Đánh giá\n" +
-                "Mục tiêu mua sắm %s VNĐ trong %d tháng của bạn hoàn toàn khả thi nếu thiết lập kế hoạch tiết kiệm kỷ luật từ hôm nay.\n\n" +
+                "Mục tiêu mua %s %s VNĐ trong %d tháng của bạn hoàn toàn khả thi nếu thiết lập kế hoạch tiết kiệm kỷ luật từ hôm nay.\n\n" +
                 "📊 Phân tích\n" +
                 "- Tổng số tiền cần có: %s VNĐ.\n" +
                 "- Số dư hiện tại: %s VNĐ.\n" +
@@ -551,6 +591,7 @@ public class AiChatServiceImpl implements AiChatService {
                 "1. Ưu tiên trích lập khoản tiết kiệm cố định hàng tháng vào một ví riêng để bảo toàn nguồn vốn.\n" +
                 "2. Thiết lập mục tiêu tài chính %s VNĐ trên ứng dụng SmartSpend để dễ dàng theo dõi tiến độ.\n" +
                 "3. Kiểm soát chặt chẽ chi tiêu hàng ngày để đảm bảo duy trì hạn mức tiết kiệm đúng kế hoạch.",
+                itemName,
                 df.format(targetAmount),
                 targetMonths,
                 df.format(targetAmount),
