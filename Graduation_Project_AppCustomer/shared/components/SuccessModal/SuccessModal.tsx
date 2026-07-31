@@ -38,6 +38,7 @@ interface SuccessModalProps {
   title: string;
   message: string;
   isAutoClose?: boolean;
+  autoCloseText?: string;
   variant?: SuccessModalVariant;
   onClose: () => void;
 }
@@ -47,6 +48,7 @@ export default function SuccessModal({
   title,
   message,
   isAutoClose = false,
+  autoCloseText = 'Đang chuyển hướng...',
   variant = 'default',
   onClose,
 }: SuccessModalProps) {
@@ -104,7 +106,7 @@ export default function SuccessModal({
           {isAutoClose ? (
             <View style={styles.autoCloseContainer}>
               <ActivityIndicator size="small" color={theme.loaderColor} />
-              <Text style={styles.autoCloseText}>Đang chuyển hướng...</Text>
+              {!!autoCloseText && <Text style={styles.autoCloseText}>{autoCloseText}</Text>}
             </View>
           ) : (
             <TouchableOpacity 

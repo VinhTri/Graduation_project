@@ -131,7 +131,9 @@ public class AiChatServiceImpl implements AiChatService {
 
         BigDecimal totalBalance = mainBalance.add(cashBalance);
         ctx.put("mainBalance", mainBalance);
-        ctx.put("cashBalance"        // Fetch actual expense distribution from ReportService
+        ctx.put("cashBalance", cashBalance);
+        
+        // Fetch actual expense distribution from ReportService
         BigDecimal totalSpentMonth = BigDecimal.ZERO;
         String topCategoryName = null;
         BigDecimal topCategoryAmount = BigDecimal.ZERO;
@@ -188,7 +190,7 @@ public class AiChatServiceImpl implements AiChatService {
                 DecimalFormat df = new DecimalFormat("#,###");
                 StringBuilder sb = new StringBuilder();
                 for (com.project.app.budget.entity.Budget b : budgets) {
-                    sb.append(String.format("- Ngân sách %s (%s): %s VNĐ\n", b.getName(), b.getCategory() != null ? b.getCategory().getName() : "Chung", df.format(b.getAmount())));
+                    sb.append(String.format("- Ngân sách %s (%s): %s VNĐ\n", b.getName(), b.getCategory() != null ? b.getCategory().getLabel() : "Chung", df.format(b.getAmount())));
                 }
                 budgetsStr = sb.toString();
             }

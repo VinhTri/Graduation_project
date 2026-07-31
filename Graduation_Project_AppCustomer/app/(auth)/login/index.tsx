@@ -218,6 +218,7 @@ export default function LoginScreen() {
         title="Đăng nhập thành công!"
         message="Chào mừng bạn quay lại với SmartSpend."
         isAutoClose={true}
+        variant="pastel"
         onClose={handleSuccessClose}
       />
     </SafeAreaView>

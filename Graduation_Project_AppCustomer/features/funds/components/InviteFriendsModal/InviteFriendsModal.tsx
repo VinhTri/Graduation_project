@@ -26,6 +26,7 @@ import { FUND_PALETTE } from '../../theme';
 import { MAX_FUND_MEMBERS } from '../../constants';
 import { fundStore } from '../../store/fundStore';
 import FundAvatar from '../FundAvatar/FundAvatar';
+import SuccessModal from '../../../../shared/components/SuccessModal/SuccessModal';
 
 type InviteFriendsModalProps = {
   visible: boolean;
@@ -60,6 +61,8 @@ export function InviteFriendsModal({
   const [searchError, setSearchError] = useState<string | null>(null);
   const [invitingId, setInvitingId] = useState<number | null>(null);
   const [keyboardHeight, setKeyboardHeight] = useState(0);
+  const [successVisible, setSuccessVisible] = useState(false);
+  const [successMessage, setSuccessMessage] = useState('');
   const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
@@ -236,7 +239,8 @@ export function InviteFriendsModal({
     try {
       await fundStore.inviteMember(fundId, row.userId);
       onInvited?.();
-      Alert.alert('Đã gửi', `Đã gửi lời mời tới ${row.username}`);
+      setSuccessMessage(`Đã gửi lời mời tới ${row.username}`);
+      setSuccessVisible(true);
     } catch (err: any) {
       Alert.alert('Không thể mời', err?.message || 'Vui lòng thử lại');
     } finally {
@@ -416,6 +420,15 @@ export function InviteFriendsModal({
           )}
         </View>
       </View>
+      <SuccessModal
+        visible={successVisible}
+        title="Đã gửi"
+        message={successMessage}
+        isAutoClose={true}
+        autoCloseText=""
+        variant="pastel"
+        onClose={() => setSuccessVisible(false)}
+      />
     </Modal>
   );
 }

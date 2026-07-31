@@ -1,12 +1,13 @@
 export const formatCurrency = (value: number): string => {
   if (!value && value !== 0) return '0';
-  return value.toLocaleString('vi-VN');
+  // Use regex to add comma (,) as thousands separator
+  return value.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
 };
 
 export const formatCurrencyWithSymbol = (value: number): string =>
   `${formatCurrency(value)}\u00A0₫`;
 
-// Rút gọn số lớn: 1.500.000 -> 1,5tr
+// Rút gọn số lớn: 1.500.000 -> 1.5tr
 export const formatCompactCurrency = (value: number): string => {
   if (value >= 1_000_000_000) return `${(value / 1_000_000_000).toFixed(1).replace('.0', '')} tỷ`;
   if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(1).replace('.0', '')} tr`;
