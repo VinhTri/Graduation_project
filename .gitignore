@@ -15,3 +15,11 @@ build/
 
 # Local runtime uploads (avatars, etc.)
 uploads/
+
+# Node & Frontend
+node_modules/
+.expo/
+dist/
+.env
+.next/
+coverage/

@@ -6,13 +6,14 @@ Chào mừng bạn đến với dự án App Quản lý chi tiêu! Đây là d�
 
 ```text
 /root
-├── /Graduation_Project_BE # Code chính Backend (Spring Boot)
-├── /Graduation_Project_FE # Code chính Frontend (React/...)
-├── /docs                  # Chứa toàn bộ tài liệu dự án
-│   ├── /diagrams          # File .drawio và .png xuất ra (ví dụ: database schema)
-│   ├── /specs             # Tài liệu Word, PDF, yêu cầu dự án
-│   └── docs.md            # File tổng hợp link (Notion, Google Docs, Jira)
-└── README.md              # Giới thiệu dự án và hướng dẫn
+├── /Graduation_Project_BE           # Backend Spring Boot (Maven đa module)
+│   ├── core                         # Auth/JWT, entity, repository dùng chung
+│   ├── api-app-customer             # API cho App Customer (Mobile) — port 9090
+│   └── api-web-admin                # API cho Web Admin — port 8082
+├── /Graduation_Project_AppCustomer  # Mobile App (Expo / React Native)
+├── /Graduation_Project_WebAdmin     # Web Admin (React + Vite + Ant Design)
+├── /docs                            # Tài liệu dự án
+└── README.md
 ```
 
 ## Tài liệu dự án

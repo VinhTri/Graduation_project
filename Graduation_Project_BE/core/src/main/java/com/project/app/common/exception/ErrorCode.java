@@ -35,6 +35,8 @@ public enum ErrorCode {
     WITHDRAW_FAILED("TX_3003", "Xảy ra lỗi trong quá trình rút tiền. Vui lòng thử lại sau!", HttpStatus.INTERNAL_SERVER_ERROR),
     ACCOUNT_ALREADY_SETUP("WALL_2005", "Ví này đã được thiết lập số tài khoản!", HttpStatus.CONFLICT),
     ACCOUNT_NUMBER_ALREADY_EXISTS("WALL_2006", "Số tài khoản này đã được người khác sử dụng!", HttpStatus.CONFLICT),
+    RECEIVER_NOT_FOUND("WALL_2008", "Không tìm thấy người nhận với số tài khoản này!", HttpStatus.NOT_FOUND),
+    CANNOT_TRANSFER_SELF("WALL_2009", "Không thể chuyển tiền cho chính mình!", HttpStatus.BAD_REQUEST),
 
     // ---- LỖI DANH MỤC ----
     CATEGORY_GROUP_NOT_FOUND("CAT_5001", "Không tìm thấy nhóm danh mục!", HttpStatus.NOT_FOUND),
@@ -73,7 +75,12 @@ public enum ErrorCode {
     FUND_OWNER_CANNOT_LEAVE("FUND_8016", "Chủ quỹ không thể rời quỹ. Hãy xóa quỹ thay vì rời!", HttpStatus.BAD_REQUEST),
     FUND_MEMBER_LIMIT_EXCEEDED("FUND_8017", "Quỹ đã đạt tối đa 10 thành viên!", HttpStatus.BAD_REQUEST),
 
+    // ---- LỖI NGÂN SÁCH ----
+    BUDGET_NOT_FOUND("BUDGET_9001", "Không tìm thấy ngân sách!", HttpStatus.NOT_FOUND),
+    BUDGET_ALREADY_EXISTS("BUDGET_9002", "Ngân sách cho danh mục và chu kỳ này đã tồn tại!", HttpStatus.CONFLICT),
+
     // ---- LỖI HỆ THỐNG CHUNG ----
+    INVALID_REQUEST("SYS_4000", "Yêu cầu không hợp lệ!", HttpStatus.BAD_REQUEST),
     UNCATEGORIZED_EXCEPTION("SYS_9999", "Đã xảy ra lỗi hệ thống, vui lòng thử lại sau!", HttpStatus.INTERNAL_SERVER_ERROR);
 
     private final String code;

@@ -4,6 +4,7 @@ public enum TransactionType {
     TOP_UP,
     WITHDRAW,
     TRANSFER,
+    RECEIVE_TRANSFER,
     PAYMENT,
     EXPENSE,
     INCOME,
