@@ -50,14 +50,19 @@ export const EditBudgetScreen = () => {
   };
 
   const handleAmountChange = (text: string) => {
-    setAmount(text);
-    if (text.trim() === '') {
+    let numericValue = text.replace(/[^0-9]/g, '');
+    numericValue = numericValue.replace(/^0+/, '');
+    
+    if (!numericValue) {
+      setAmount('');
       setAmountError('');
       return;
     }
-    if (/[^0-9]/.test(text) || isNaN(Number(text))) {
-      setAmountError('Vui lòng nhập số');
-    } else if (Number(text) < 10000) {
+    
+    const formatted = numericValue.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+    setAmount(formatted);
+    
+    if (Number(numericValue) < 10000) {
       setAmountError('Hạn mức phải từ 10.000đ trở lên');
     } else {
       setAmountError('');
@@ -70,7 +75,7 @@ export const EditBudgetScreen = () => {
       try {
         const data = await budgetApi.getBudgetById(Number(id));
         setName(data.name);
-        setAmount(data.amount.toString());
+        setAmount(data.amount.toString().replace(/\B(?=(\d{3})+(?!\d))/g, "."));
         setSelectedCycle(data.cycle);
         setSelectedCategory({
           id: data.categoryId,
@@ -90,7 +95,8 @@ export const EditBudgetScreen = () => {
     fetchBudget();
   }, [id]);
 
-  const isFormValid = !!name.trim() && !!selectedCategory && !!amount && !/[^0-9]/.test(amount) && !isNaN(Number(amount)) && Number(amount) >= 10000;
+  const numericAmountText = amount ? amount.replace(/\./g, '') : '0';
+  const isFormValid = !!name.trim() && !!selectedCategory && !!amount && !isNaN(Number(numericAmountText)) && Number(numericAmountText) >= 10000;
 
   const handleSave = async () => {
     if (!name.trim()) {
@@ -101,7 +107,7 @@ export const EditBudgetScreen = () => {
       showToast('Vui lòng chọn danh mục áp dụng.');
       return;
     }
-    if (!amount || /[^0-9]/.test(amount) || isNaN(Number(amount)) || Number(amount) < 10000) {
+    if (!numericAmountText || isNaN(Number(numericAmountText)) || Number(numericAmountText) < 10000) {
       setAmountError('Hạn mức phải từ 10.000đ trở lên');
       showToast('Hạn mức ngân sách phải từ 10.000đ trở lên.');
       return;
@@ -111,7 +117,7 @@ export const EditBudgetScreen = () => {
       setIsSubmitting(true);
       await budgetApi.updateBudget(Number(id), {
         name: name.trim(),
-        amount: Number(amount),
+        amount: Number(numericAmountText),
       });
       router.back();
     } catch (error: any) {
@@ -386,7 +392,7 @@ const styles = StyleSheet.create({
     height: 52,
     fontSize: 15,
     color: PASTEL_PALETTE.title,
-    backgroundColor: PASTEL_PALETTE.bgSoft,
+    backgroundColor: '#FFF',
   },
   selectInput: {
     borderWidth: 1,
@@ -394,7 +400,7 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     paddingHorizontal: 16,
     height: 52,
-    backgroundColor: PASTEL_PALETTE.bgSoft,
+    backgroundColor: '#FFF',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -432,7 +438,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: PASTEL_PALETTE.bgSoft,
+    backgroundColor: '#FFF',
   },
   cycleButtonActive: {
     borderColor: PASTEL_PALETTE.accentDeep,
@@ -453,7 +459,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: PASTEL_PALETTE.border,
     borderRadius: 14,
-    backgroundColor: PASTEL_PALETTE.bgSoft,
+    backgroundColor: '#FFF',
     paddingHorizontal: 16,
     height: 56,
   },

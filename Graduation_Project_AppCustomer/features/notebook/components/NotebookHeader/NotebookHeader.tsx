@@ -8,6 +8,8 @@ import { NotebookHeaderProps } from './NotebookHeader.types';
 import { styles } from './NotebookHeader.styles';
 
 export const NotebookHeader: React.FC<NotebookHeaderProps> = ({
+  topTab,
+  setTopTab,
   totalBalance,
   onAddCashBalance,
   onSpendCashBalance,
@@ -28,13 +30,35 @@ export const NotebookHeader: React.FC<NotebookHeaderProps> = ({
           onPress={() => router.push('/(tabs)/home')}
           activeOpacity={0.75}
         >
-          <Ionicons name="chevron-back-outline" size={22} color="#7C3AED" />
+          <Ionicons name="chevron-back-outline" size={24} color="#7C3AED" />
         </TouchableOpacity>
         <View style={styles.titleBlock}>
-          <Text style={styles.title}>Sổ tay tiền mặt</Text>
-          <Text style={styles.subtitle}>Ghi chép thu chi tiền mặt hàng ngày</Text>
+          <Text style={styles.title}>Quản lý sổ tay</Text>
         </View>
       </View>
+
+      <View style={styles.segmentedControl}>
+        <TouchableOpacity
+          style={[styles.segmentBtn, topTab === 'cash' && styles.segmentBtnActive]}
+          onPress={() => setTopTab('cash')}
+          activeOpacity={0.8}
+        >
+          <Text style={[styles.segmentText, topTab === 'cash' && styles.segmentTextActive]}>
+            Sổ tay tiền mặt
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.segmentBtn, topTab === 'bank' && styles.segmentBtnActive]}
+          onPress={() => setTopTab('bank')}
+          activeOpacity={0.8}
+        >
+          <Text style={[styles.segmentText, topTab === 'bank' && styles.segmentTextActive]}>
+            Sổ tay ngân hàng
+          </Text>
+        </TouchableOpacity>
+      </View>
+
+      {topTab === 'cash' && (
 
       <View style={styles.balanceCard}>
         <View style={styles.balanceHeader}>
@@ -62,7 +86,7 @@ export const NotebookHeader: React.FC<NotebookHeaderProps> = ({
                 activeOpacity={0.85}
               >
                 <Feather name="plus-circle" size={16} color={PASTEL_PALETTE.accentDeep} />
-                <Text style={styles.addBalanceText}>Thêm số dư</Text>
+                <Text style={styles.addBalanceText}>Thu nhập</Text>
               </TouchableOpacity>
             ) : null}
             {onSpendCashBalance ? (
@@ -72,12 +96,13 @@ export const NotebookHeader: React.FC<NotebookHeaderProps> = ({
                 activeOpacity={0.85}
               >
                 <Feather name="minus-circle" size={16} color="#DC2626" />
-                <Text style={styles.spendBalanceText}>Chi số dư</Text>
+                <Text style={styles.spendBalanceText}>Chi tiêu</Text>
               </TouchableOpacity>
             ) : null}
           </View>
         )}
       </View>
+      )}
     </PastelHeaderShell>
   );
 };

@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, Dimensions } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView, Dimensions, Platform, Modal, TouchableWithoutFeedback } from 'react-native';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import { Ionicons, Feather } from '@expo/vector-icons';
 import { PieChart, BarChart } from 'react-native-gifted-charts';
 import Colors from '../../../../shared/constants/Colors';
@@ -189,6 +190,7 @@ export const NotebookReport = ({ transactions }: Props) => {
   const [activeTab, setActiveTab] = useState<ActiveTab>('expense');
   const [dateFilter, setDateFilter] = useState<DateFilter>('month');
   const [selectedDate, setSelectedDate] = useState(new Date());
+  const [showPicker, setShowPicker] = useState(false);
 
   const txType = activeTab === 'expense' ? 'EXPENSE' : 'INCOME';
 
@@ -365,10 +367,16 @@ export const NotebookReport = ({ transactions }: Props) => {
         <TouchableOpacity style={styles.dateNavBtn} onPress={() => shiftPeriod(-1)} activeOpacity={0.7}>
           <Ionicons name="chevron-back" size={18} color={PASTEL_PALETTE.title} />
         </TouchableOpacity>
-        <View style={styles.dateTextContainer}>
+        
+        <TouchableOpacity 
+          style={styles.dateTextContainer} 
+          onPress={() => setShowPicker(true)}
+          activeOpacity={0.7}
+        >
           <Ionicons name="calendar-outline" size={18} color={PASTEL_PALETTE.title} />
           <Text style={styles.dateText}>{getDateLabel()}</Text>
-        </View>
+        </TouchableOpacity>
+
         <TouchableOpacity
           style={[styles.dateNavBtn, !canGoNext() && { opacity: 0.4 }]}
           onPress={() => shiftPeriod(1)}
@@ -378,6 +386,74 @@ export const NotebookReport = ({ transactions }: Props) => {
           <Ionicons name="chevron-forward" size={18} color={PASTEL_PALETTE.title} />
         </TouchableOpacity>
       </View>
+
+      {showPicker && Platform.OS !== 'ios' && (
+        <DateTimePicker
+          value={selectedDate}
+          mode="date"
+          display="default"
+          onChange={(event, date) => {
+            setShowPicker(false);
+            if (date) {
+              const now = new Date();
+              if (date > now) {
+                setSelectedDate(now);
+              } else {
+                setSelectedDate(date);
+              }
+            }
+          }}
+          maximumDate={new Date()}
+        />
+      )}
+
+      {Platform.OS === 'ios' && (
+        <Modal
+          visible={showPicker}
+          transparent={true}
+          animationType="slide"
+        >
+          <TouchableOpacity 
+            style={{ flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.4)' }}
+            activeOpacity={1}
+            onPress={() => setShowPicker(false)}
+          >
+            <TouchableWithoutFeedback>
+              <View style={{ backgroundColor: 'white', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 16, paddingBottom: 32 }}>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderBottomWidth: 1, borderBottomColor: '#E2E8F0', paddingBottom: 12, marginBottom: 12 }}>
+                  <Text style={{ fontSize: 16, fontWeight: '600', color: PASTEL_PALETTE.title }}>
+                    Chọn ngày báo cáo
+                  </Text>
+                  <TouchableOpacity onPress={() => setShowPicker(false)}>
+                    <Text style={{ fontSize: 16, fontWeight: 'bold', color: PASTEL_PALETTE.accentDeep }}>Xong</Text>
+                  </TouchableOpacity>
+                </View>
+                <View style={{ alignItems: 'center' }}>
+                  <DateTimePicker
+                    value={selectedDate}
+                    mode="date"
+                    display="inline"
+                    onChange={(event, date) => {
+                      if (date) {
+                        const now = new Date();
+                        if (date > now) {
+                          setSelectedDate(now);
+                        } else {
+                          setSelectedDate(date);
+                        }
+                      }
+                    }}
+                    maximumDate={new Date()}
+                    locale="vi-VN"
+                    themeVariant="light"
+                    style={{ alignSelf: 'center' }}
+                  />
+                </View>
+              </View>
+            </TouchableWithoutFeedback>
+          </TouchableOpacity>
+        </Modal>
+      )}
 
       <View style={styles.summaryRow}>
         <TouchableOpacity

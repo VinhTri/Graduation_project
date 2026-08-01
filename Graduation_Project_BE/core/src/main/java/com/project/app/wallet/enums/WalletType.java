@@ -2,5 +2,7 @@ package com.project.app.wallet.enums;
 
 public enum WalletType {
     MAIN,
-    CASH
+    CASH,
+    LINKED,
+    MANUAL
 }

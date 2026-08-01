@@ -23,11 +23,16 @@ export const ENDPOINTS = {
     TOP_UP: '/api/v1/transactions/top-up',
     WITHDRAW: '/api/v1/transactions/withdraw',
     MANUAL: '/api/v1/transactions/manual',
+    UPDATE_MANUAL: (transactionCode: string) => `/api/v1/transactions/manual/${transactionCode}`,
+    DELETE_MANUAL: (transactionCode: string) => `/api/v1/transactions/manual/${transactionCode}`,
     TRANSFER: '/api/v1/transactions/transfer',
   },
   WALLET: {
     MY_WALLET: '/api/v1/wallets/me',
     CASH_WALLET: '/api/v1/wallets/cash',
+    BANK_WALLETS: '/api/v1/wallets/banks',
+    CREATE_MANUAL_BANK: '/api/v1/wallets/manual-bank',
+    DELETE_MANUAL_BANK: (id: number) => `/api/v1/wallets/manual-bank/${id}`,
     UPDATE_SETTINGS: (id: number) => `/api/v1/wallets/${id}/settings`,
   },
   HISTORY: {

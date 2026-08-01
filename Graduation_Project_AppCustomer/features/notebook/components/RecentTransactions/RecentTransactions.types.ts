@@ -16,5 +16,9 @@ export interface TransactionItem {
 
 export interface RecentTransactionsProps {
   transactions: TransactionItem[];
+  listTitle?: string;
+  emptyTitle?: string;
+  emptySubtitle?: string;
   onPressItem?: (item: TransactionItem) => void;
+  onDeleteItem?: (item: TransactionItem) => void;
 }

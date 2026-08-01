@@ -132,4 +132,52 @@ public class WalletServiceImpl implements WalletService {
         String accountNumber = wallet.getAccountNumber();
         return accountNumber != null && !accountNumber.isBlank() ? accountNumber : null;
     }
+
+    @Override
+    @Transactional(readOnly = true)
+    public java.util.List<Wallet> getBankWallets(Long userId) {
+        return walletRepository.findByUserIdAndWalletTypeIn(
+                userId,
+                java.util.Arrays.asList(WalletType.LINKED, WalletType.MANUAL)
+        );
+    }
+
+    @Override
+    @Transactional
+    public Wallet createManualBankWallet(Long userId, String bankName, String accountNumber) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+
+        if (accountNumber != null && walletRepository.existsByAccountNumber(accountNumber)) {
+            throw new AppException(ErrorCode.ACCOUNT_NUMBER_ALREADY_EXISTS);
+        }
+
+        Wallet manualBankWallet = new Wallet(
+                user,
+                bankName != null ? bankName : "Tài khoản ngân hàng",
+                BigDecimal.ZERO,
+                false,
+                true,
+                WalletType.MANUAL
+        );
+        manualBankWallet.setAccountNumber(accountNumber);
+        
+        return walletRepository.save(manualBankWallet);
+    }
+    @Override
+    @Transactional
+    public void deleteManualBankWallet(Long walletId, Long userId) {
+        Wallet wallet = walletRepository.findById(walletId)
+                .orElseThrow(() -> new AppException(ErrorCode.WALLET_NOT_FOUND));
+
+        if (!wallet.getUser().getId().equals(userId)) {
+            throw new AppException(ErrorCode.UNAUTHORIZED_ACCESS);
+        }
+
+        if (wallet.getWalletType() != WalletType.MANUAL) {
+            throw new AppException(ErrorCode.INVALID_REQUEST);
+        }
+
+        walletRepository.delete(wallet);
+    }
 }

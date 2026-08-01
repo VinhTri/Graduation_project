@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import Colors from '../../../shared/constants/Colors';
+import { PASTEL_PALETTE } from '../../../shared/constants/PastelPalette';
 import { useCategoryContext } from '../../../shared/contexts/CategoryContext';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
@@ -74,17 +75,13 @@ export function CategorySelectModal({
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <View style={styles.overlay}>
+        <TouchableOpacity style={StyleSheet.absoluteFill} activeOpacity={1} onPress={onClose} />
         <View style={styles.container}>
           <View style={styles.header}>
             <Text style={styles.headerTitle}>Chọn danh mục</Text>
             <View style={styles.headerActions}>
-              {hasAnyCategory && onAddCategory ? (
-                <TouchableOpacity style={styles.addBtn} onPress={handleCreate} activeOpacity={0.85}>
-                  <Ionicons name="add" size={22} color={Colors.primary} />
-                </TouchableOpacity>
-              ) : null}
               <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
-                <Ionicons name="close" size={24} color={Colors.text} />
+                <Ionicons name="close" size={24} color={PASTEL_PALETTE.title} />
               </TouchableOpacity>
             </View>
           </View>
@@ -108,76 +105,40 @@ export function CategorySelectModal({
               ) : null}
             </View>
           ) : (
-            <View style={styles.pagerSection}>
-              <ScrollView
-                ref={pagerRef}
-                horizontal
-                pagingEnabled
-                showsHorizontalScrollIndicator={false}
-                onMomentumScrollEnd={handleScrollEnd}
-                scrollEventThrottle={16}
-                decelerationRate="fast"
-                bounces={false}
-              >
-                {groupsWithItems.map((group) => (
-                  <View key={group.id} style={[styles.page, { width: PAGE_WIDTH }]}>
-                    <View style={styles.groupCard}>
-                      <View style={[styles.groupHeader, { backgroundColor: group.bgColor }]}>
-                        <View style={styles.groupHeaderLeft}>
-                          <Ionicons
-                            name={(group.icon as any) || 'layers-outline'}
-                            size={20}
-                            color={group.color}
-                          />
-                          <Text style={[styles.groupTitle, { color: group.color }]} numberOfLines={1}>
-                            {group.title}
-                          </Text>
-                        </View>
-                      </View>
-                      <View style={styles.gridContainer}>
-                        {group.items.map((item: any) => (
-                          <TouchableOpacity
-                            key={item.id}
-                            style={styles.gridItem}
-                            onPress={() => onSelect(item, group.title)}
-                            activeOpacity={0.7}
-                          >
-                            <View style={styles.iconWrapper}>
-                              <Ionicons name={item.icon as any} size={28} color={item.color} />
-                            </View>
-                            <Text style={styles.itemLabel} numberOfLines={2}>
-                              {item.label}
-                            </Text>
-                          </TouchableOpacity>
-                        ))}
-                      </View>
-                    </View>
+            <ScrollView 
+              contentContainerStyle={styles.listContent}
+              showsVerticalScrollIndicator={false}
+              bounces={true}
+            >
+              {groupsWithItems.map((group) => (
+                <View key={group.id} style={styles.listGroup}>
+                  <View style={styles.listGroupHeader}>
+                    <Ionicons
+                      name={(group.icon as any) || 'folder'}
+                      size={18}
+                      color={group.color || Colors.title}
+                    />
+                    <Text style={[styles.listGroupTitle, { color: group.color || Colors.title }]}>
+                      {group.title}
+                    </Text>
                   </View>
-                ))}
-              </ScrollView>
-
-              {showDots ? (
-                <View style={styles.dotsWrap}>
-                  <View style={styles.dotsRow}>
-                    {groupsWithItems.map((group, i) => (
-                      <View
-                        key={group.id}
-                        style={[
-                          styles.dot,
-                          i === activeIndex && styles.dotActive,
-                          i === activeIndex && { backgroundColor: group.color },
-                        ]}
-                      />
-                    ))}
-                  </View>
-                  {activeIndex < groupsWithItems.length - 1 ? (
-                    <Text style={styles.swipeHint}>Vuốt sang trái để xem nhóm khác</Text>
-                  ) : (
-                    <Text style={styles.swipeHint}>Vuốt sang phải để quay lại</Text>
-                  )}
+                  
+                  {group.items.map((item: any) => (
+                    <TouchableOpacity 
+                      key={item.id}
+                      style={styles.listItem}
+                      onPress={() => onSelect(item, group.title)}
+                      activeOpacity={0.7}
+                    >
+                      <View style={[styles.listIconContainer, { backgroundColor: item.bgColor || Colors.lavenderSoft }]}>
+                        <Ionicons name={item.icon as any} size={22} color={item.color || Colors.accentDeep} />
+                      </View>
+                      <Text style={styles.listItemLabel}>{item.label}</Text>
+                    </TouchableOpacity>
+                  ))}
                 </View>
-              ) : null}
-            </View>
+              ))}
+            </ScrollView>
           )}
         </View>
       </View>
@@ -188,132 +149,94 @@ export function CategorySelectModal({
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'flex-end',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
   },
   container: {
-    backgroundColor: Colors.background,
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    maxHeight: '90%',
-    paddingBottom: 24,
+    width: '100%',
+    maxWidth: 400,
+    backgroundColor: PASTEL_PALETTE.bg,
+    borderRadius: 24,
+    maxHeight: '80%',
+    overflow: 'hidden',
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    padding: 20,
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    backgroundColor: PASTEL_PALETTE.bg,
     borderBottomWidth: 1,
-    borderBottomColor: Colors.border,
+    borderBottomColor: PASTEL_PALETTE.border,
   },
   headerTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: Colors.text,
+    color: PASTEL_PALETTE.title,
   },
   headerActions: {
-    position: 'absolute',
-    right: 16,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    gap: 8,
   },
   closeBtn: {
     padding: 4,
   },
   addBtn: {
-    width: 36,
-    height: 36,
+    width: 32,
+    height: 32,
     borderRadius: 10,
-    backgroundColor: Colors.white,
+    backgroundColor: PASTEL_PALETTE.white,
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: PASTEL_PALETTE.border,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  pagerSection: {
-    paddingTop: 12,
+  listContent: {
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    paddingBottom: 40,
   },
-  page: {
-    paddingHorizontal: PAGE_HORIZONTAL_PADDING,
+  listGroup: {
+    marginBottom: 20,
   },
-  groupCard: {
-    backgroundColor: Colors.white,
-    borderRadius: 14,
-    overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 6,
-    elevation: 3,
+  listGroupHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
   },
-  groupHeader: {
+  listGroupTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    marginLeft: 8,
+  },
+  listItem: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingVertical: 14,
+    backgroundColor: PASTEL_PALETTE.bgSoft,
+    borderRadius: 14,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: PASTEL_PALETTE.border,
   },
-  groupHeaderLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    flex: 1,
-  },
-  groupTitle: {
-    flex: 1,
-    fontSize: 15,
-    fontWeight: '700',
-  },
-  gridContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    padding: 16,
-    paddingBottom: 8,
-    gap: 16,
-  },
-  gridItem: {
-    width: '21%',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  iconWrapper: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+  listIconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 8,
+    marginRight: 12,
   },
-  itemLabel: {
-    fontSize: 12,
-    color: Colors.text,
-    textAlign: 'center',
-  },
-  dotsWrap: {
-    alignItems: 'center',
-    paddingTop: 14,
-    paddingBottom: 4,
-    gap: 8,
-  },
-  dotsRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  dot: {
-    width: 7,
-    height: 7,
-    borderRadius: 4,
-    backgroundColor: '#D1D5DB',
-  },
-  dotActive: {
-    width: 18,
-    borderRadius: 4,
-  },
-  swipeHint: {
-    fontSize: 12,
-    color: Colors.textMuted,
-    fontWeight: '500',
+  listItemLabel: {
+    fontSize: 15,
+    color: PASTEL_PALETTE.title,
+    fontWeight: '600',
+    flex: 1,
   },
   emptyWrap: {
     alignItems: 'center',

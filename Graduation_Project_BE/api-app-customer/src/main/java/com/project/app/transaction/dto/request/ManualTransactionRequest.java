@@ -17,6 +17,8 @@ public record ManualTransactionRequest(
         @NotNull(message = "Danh mục là bắt buộc")
         Long categoryId,
 
-        String note
+        String note,
+        
+        Long walletId
 ) {
 }
