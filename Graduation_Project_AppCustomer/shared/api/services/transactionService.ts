@@ -52,6 +52,7 @@ export interface ManualTransactionRequest {
   type: 'EXPENSE' | 'INCOME';
   categoryId: number;
   note?: string;
+  walletId?: number;
 }
 
 export interface ManualTransactionResponse {
@@ -101,6 +102,18 @@ export const transactionService = {
   ): Promise<ManualTransactionResponse> => {
     const response = await axiosClient.post(ENDPOINTS.TRANSACTION.MANUAL, data);
     return response.data;
+  },
+
+  updateManualTransaction: async (
+    transactionCode: string,
+    data: ManualTransactionRequest
+  ): Promise<ManualTransactionResponse> => {
+    const response = await axiosClient.put(ENDPOINTS.TRANSACTION.UPDATE_MANUAL(transactionCode), data);
+    return response.data;
+  },
+
+  deleteManualTransaction: async (transactionCode: string): Promise<void> => {
+    await axiosClient.delete(ENDPOINTS.TRANSACTION.DELETE_MANUAL(transactionCode));
   },
 
   getTransactionHistory: async (wallet: 'main' | 'cash' = 'main'): Promise<TransactionHistoryItem[]> => {

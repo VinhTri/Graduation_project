@@ -100,7 +100,7 @@ export const TransferScreen = () => {
       setAmount('');
       return;
     }
-    const formatted = numericValue.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+    const formatted = numericValue.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
     setAmount(formatted);
   };
 
@@ -117,7 +117,7 @@ export const TransferScreen = () => {
       return;
     }
 
-    const numericAmount = parseFloat(amount.replace(/,/g, ''));
+    const numericAmount = parseFloat(amount.replace(/\./g, ''));
     if (isNaN(numericAmount) || numericAmount < 1000) {
       setErrorMessage("Số tiền chuyển tối thiểu là 1.000đ.");
       setErrorModalVisible(true);
@@ -298,7 +298,7 @@ export const TransferScreen = () => {
                 keyboardType="numeric"
                 placeholderTextColor={PASTEL_PALETTE.textMuted}
               />
-              <Text style={styles.currencySuffix}>VNĐ</Text>
+              <Text style={styles.currencySuffix}>đ</Text>
             </View>
           </View>
 

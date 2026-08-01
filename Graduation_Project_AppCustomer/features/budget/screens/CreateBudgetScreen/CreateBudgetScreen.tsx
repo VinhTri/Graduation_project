@@ -64,7 +64,7 @@ export const CreateBudgetScreen = () => {
       return;
     }
     
-    const formatted = numericValue.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+    const formatted = numericValue.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
     setAmount(formatted);
     
     if (Number(numericValue) < 10000) {
@@ -74,7 +74,7 @@ export const CreateBudgetScreen = () => {
     }
   };
 
-  const isFormValid = !!name.trim() && !!selectedCategory && !!amount && (parseFloat(amount.replace(/,/g, '')) >= 10000) && (selectedCycle !== 'CUSTOM' || (startDate <= endDate));
+  const isFormValid = !!name.trim() && !!selectedCategory && !!amount && (parseFloat(amount.replace(/\./g, '')) >= 10000) && (selectedCycle !== 'CUSTOM' || (startDate <= endDate));
 
   const formatDate = (date: Date) => {
     const d = date.getDate().toString().padStart(2, '0');
@@ -117,7 +117,7 @@ export const CreateBudgetScreen = () => {
       });
       return;
     }
-    const numericAmount = parseFloat(amount.replace(/,/g, ''));
+    const numericAmount = parseFloat(amount.replace(/\./g, ''));
     if (!numericAmount || isNaN(numericAmount) || numericAmount < 10000) {
       setAmountError('Hạn mức phải từ 10.000đ trở lên');
       return;
@@ -326,9 +326,9 @@ export const CreateBudgetScreen = () => {
                   </View>
                   <Text style={styles.selectTextValue}>{selectedCategory.label}</Text>
                 </View>
-              ) : (
-                <Text style={styles.selectTextPlaceholder}>Chọn danh mục...</Text>
-              )}
+                ) : (
+                  <Text style={styles.selectTextPlaceholder}>Chọn danh mục...</Text>
+                )}
               <Ionicons name="chevron-down" size={20} color={PASTEL_PALETTE.textGray} />
             </TouchableOpacity>
           </View>
@@ -337,7 +337,7 @@ export const CreateBudgetScreen = () => {
             <Text style={styles.label}>Thời gian áp dụng</Text>
             <View style={{ flexDirection: 'row', gap: 12 }}>
               <TouchableOpacity 
-                style={[styles.input, { flex: 1, paddingHorizontal: 12, flexDirection: 'row', alignItems: 'center', borderColor: startDate > endDate ? '#EF4444' : 'transparent', borderWidth: startDate > endDate ? 1 : 0 }]}
+                style={[styles.input, { flex: 1, paddingHorizontal: 12, flexDirection: 'row', alignItems: 'center', borderColor: startDate > endDate ? '#EF4444' : PASTEL_PALETTE.border, borderWidth: 1 }]}
                 onPress={() => { setDatePickerMode('start'); setShowDatePicker(true); }}
                 activeOpacity={0.7}
               >
@@ -349,7 +349,7 @@ export const CreateBudgetScreen = () => {
               </TouchableOpacity>
 
               <TouchableOpacity 
-                style={[styles.input, { flex: 1, paddingHorizontal: 12, flexDirection: 'row', alignItems: 'center', borderColor: startDate > endDate ? '#EF4444' : 'transparent', borderWidth: startDate > endDate ? 1 : 0 }]}
+                style={[styles.input, { flex: 1, paddingHorizontal: 12, flexDirection: 'row', alignItems: 'center', borderColor: startDate > endDate ? '#EF4444' : PASTEL_PALETTE.border, borderWidth: 1 }]}
                 onPress={() => { setDatePickerMode('end'); setShowDatePicker(true); }}
                 activeOpacity={0.7}
               >
@@ -422,30 +422,36 @@ export const CreateBudgetScreen = () => {
           transparent={true}
           animationType="slide"
         >
-          <View style={{ flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.4)' }}>
-            <View style={{ backgroundColor: 'white', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 16, paddingBottom: 32 }}>
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderBottomWidth: 1, borderBottomColor: PASTEL_PALETTE.gray200, paddingBottom: 12, marginBottom: 12 }}>
-                <Text style={{ fontSize: 16, fontWeight: '600', color: PASTEL_PALETTE.title }}>
-                  {datePickerMode === 'start' ? 'Chọn ngày bắt đầu' : 'Chọn ngày kết thúc'}
-                </Text>
-                <TouchableOpacity onPress={() => setShowDatePicker(false)}>
-                  <Text style={{ fontSize: 16, fontWeight: 'bold', color: PASTEL_PALETTE.accentDeep }}>Xong</Text>
-                </TouchableOpacity>
+          <TouchableOpacity 
+            style={{ flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.4)' }}
+            activeOpacity={1}
+            onPress={() => setShowDatePicker(false)}
+          >
+            <TouchableWithoutFeedback>
+              <View style={{ backgroundColor: 'white', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 16, paddingBottom: 32 }}>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderBottomWidth: 1, borderBottomColor: PASTEL_PALETTE.gray200, paddingBottom: 12, marginBottom: 12 }}>
+                  <Text style={{ fontSize: 16, fontWeight: '600', color: PASTEL_PALETTE.title }}>
+                    {datePickerMode === 'start' ? 'Chọn ngày bắt đầu' : 'Chọn ngày kết thúc'}
+                  </Text>
+                  <TouchableOpacity onPress={() => setShowDatePicker(false)}>
+                    <Text style={{ fontSize: 16, fontWeight: 'bold', color: PASTEL_PALETTE.accentDeep }}>Xong</Text>
+                  </TouchableOpacity>
+                </View>
+                <View style={{ alignItems: 'center' }}>
+                  <DateTimePicker
+                    value={datePickerMode === 'start' ? startDate : endDate}
+                    mode="date"
+                    display="inline"
+                    minimumDate={datePickerMode === 'start' ? new Date() : startDate}
+                    onChange={onChangeDate}
+                    locale="vi-VN"
+                    themeVariant="light"
+                    style={{ alignSelf: 'center' }}
+                  />
+                </View>
               </View>
-              <View style={{ alignItems: 'center' }}>
-                <DateTimePicker
-                  value={datePickerMode === 'start' ? startDate : endDate}
-                  mode="date"
-                  display="inline"
-                  minimumDate={datePickerMode === 'start' ? new Date() : startDate}
-                  onChange={onChangeDate}
-                  locale="vi-VN"
-                  themeVariant="light"
-                  style={{ alignSelf: 'center' }}
-                />
-              </View>
-            </View>
-          </View>
+            </TouchableWithoutFeedback>
+          </TouchableOpacity>
         </Modal>
       )}
 
@@ -531,7 +537,7 @@ const styles = StyleSheet.create({
     height: 52,
     fontSize: 15,
     color: PASTEL_PALETTE.title,
-    backgroundColor: PASTEL_PALETTE.bgSoft,
+    backgroundColor: '#FFF',
   },
   selectInput: {
     borderWidth: 1,
@@ -539,7 +545,7 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     paddingHorizontal: 16,
     height: 52,
-    backgroundColor: PASTEL_PALETTE.bgSoft,
+    backgroundColor: '#FFF',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -577,7 +583,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: PASTEL_PALETTE.bgSoft,
+    backgroundColor: '#FFF',
   },
   cycleButtonActive: {
     borderColor: PASTEL_PALETTE.accentDeep,
@@ -598,7 +604,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: PASTEL_PALETTE.border,
     borderRadius: 14,
-    backgroundColor: PASTEL_PALETTE.bgSoft,
+    backgroundColor: '#FFF',
     paddingHorizontal: 16,
     height: 56,
   },

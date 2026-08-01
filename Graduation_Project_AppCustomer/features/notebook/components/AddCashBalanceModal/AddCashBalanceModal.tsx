@@ -9,8 +9,9 @@ import {
   Platform,
   Pressable,
   ScrollView,
+  ActivityIndicator,
 } from 'react-native';
-import { Feather, Ionicons } from '@expo/vector-icons';
+import { Feather, Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { PASTEL_PALETTE } from '../../../../shared/constants/PastelPalette';
 import {
@@ -38,13 +39,22 @@ export type CashBalancePayload = {
   category: CashCategory;
 };
 
+export type InitialCashData = {
+  transactionCode: string;
+  amount: number;
+  note?: string;
+  category: CashCategory;
+};
+
 type Props = {
   visible: boolean;
   mode: CashBalanceMode;
   currentBalance?: number;
   saving?: boolean;
+  initialData?: InitialCashData;
   onClose: () => void;
   onConfirm: (payload: CashBalancePayload) => void | Promise<void>;
+  onDelete?: () => void | Promise<void>;
 };
 
 /** form = sheet tiền mặt | select = chọn DM | create = tạo DM/nhóm | wait = chờ animation Modal */
@@ -76,8 +86,10 @@ export const AddCashBalanceModal = ({
   mode,
   currentBalance = 0,
   saving = false,
+  initialData,
   onClose,
   onConfirm,
+  onDelete,
 }: Props) => {
   const insets = useSafeAreaInsets();
   const switchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -86,8 +98,13 @@ export const AddCashBalanceModal = ({
   const [category, setCategory] = useState<CashCategory | null>(null);
   const [error, setError] = useState('');
   const [step, setStep] = useState<FlowStep>('form');
+  const [focusedInput, setFocusedInput] = useState<'amount' | 'note' | null>(null);
+
+  const amountRef = useRef<TextInput>(null);
+  const noteRef = useRef<TextInput>(null);
 
   const isSpend = mode === 'spend';
+  const isEditMode = !!initialData;
 
   const clearSwitchTimer = () => {
     if (switchTimerRef.current) {
@@ -111,12 +128,18 @@ export const AddCashBalanceModal = ({
       setStep('form');
       return;
     }
-    setAmountText('');
-    setNote('');
-    setCategory(null);
+    if (initialData) {
+      setAmountText(formatInput(initialData.amount.toString()));
+      setNote(initialData.note || '');
+      setCategory(initialData.category);
+    } else {
+      setAmountText('');
+      setNote('');
+      setCategory(null);
+    }
     setError('');
     setStep('form');
-  }, [visible, mode]);
+  }, [visible, mode, initialData]);
 
   useEffect(() => () => clearSwitchTimer(), []);
 
@@ -127,7 +150,7 @@ export const AddCashBalanceModal = ({
       return;
     }
     if (isSpend && amount > currentBalance) {
-      setError('Số dư tiền mặt không đủ');
+      setError('Số dư không đủ');
       return;
     }
     if (!category) {
@@ -151,83 +174,85 @@ export const AddCashBalanceModal = ({
       <Modal
         visible={visible && step === 'form'}
         transparent
-        animationType="slide"
+        animationType="fade"
         onRequestClose={onClose}
       >
         <View style={styles.overlay}>
           <Pressable style={styles.backdrop} onPress={onClose} />
           <KeyboardAvoidingView
             behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-            style={[styles.sheet, { paddingBottom: Math.max(insets.bottom, 16) + 8 }]}
+            style={styles.keyboardWrap}
           >
-            <View style={styles.handle} />
-            <View style={styles.header}>
-              <Text style={styles.title}>
-                {isSpend ? 'Chi số dư tiền mặt' : 'Thêm số dư tiền mặt'}
-              </Text>
-              <TouchableOpacity style={styles.closeBtn} onPress={onClose} activeOpacity={0.75}>
-                <Feather name="x" size={18} color={PASTEL_PALETTE.title} />
-              </TouchableOpacity>
-            </View>
-
-            <ScrollView
-              keyboardShouldPersistTaps="handled"
-              showsVerticalScrollIndicator={false}
-              bounces={false}
-            >
-              <Text style={styles.hint}>
-                {isSpend
-                  ? 'Trừ tiền mặt khỏi sổ tay và gắn danh mục chi tiêu.'
-                  : 'Cộng tiền mặt vào sổ tay và gắn danh mục thu nhập.'}
-              </Text>
-
-              <Text style={styles.label}>Số tiền</Text>
-              <View style={styles.inputWrap}>
-                <Feather name="dollar-sign" size={16} color={PASTEL_PALETTE.textMuted} />
-                <TextInput
-                  style={styles.input}
-                  placeholder="0"
-                  placeholderTextColor={PASTEL_PALETTE.textMuted}
-                  keyboardType="number-pad"
-                  value={amountText}
-                  onChangeText={(t) => {
-                    setAmountText(formatInput(t));
-                    if (error) setError('');
-                  }}
-                />
-                <Text style={styles.suffix}>₫</Text>
+            <View style={styles.modalContainer}>
+              <View style={styles.header}>
+                <View style={styles.headerTitleWrap}>
+                  <View style={[styles.iconWrap, isSpend && { backgroundColor: '#FEE2E2' }]}>
+                    <MaterialCommunityIcons 
+                      name={isSpend ? "minus-circle-outline" : "plus-circle-outline"} 
+                      size={24} 
+                      color={isSpend ? '#DC2626' : PASTEL_PALETTE.accentDeep} 
+                    />
+                  </View>
+                  <Text style={styles.title}>
+                    {isEditMode ? (isSpend ? 'Sửa Chi tiêu' : 'Sửa Thu nhập') : (isSpend ? 'Chi tiêu' : 'Thu nhập')}
+                  </Text>
+                </View>
+                <TouchableOpacity style={styles.closeBtn} onPress={onClose} activeOpacity={0.75}>
+                  <MaterialCommunityIcons name="close" size={24} color={PASTEL_PALETTE.textMuted} />
+                </TouchableOpacity>
               </View>
+
+              <ScrollView
+                keyboardShouldPersistTaps="handled"
+                showsVerticalScrollIndicator={false}
+                bounces={false}
+              >
+                <Text style={styles.hint}>
+                  {isSpend
+                    ? 'Trừ tiền khỏi sổ tay và gắn danh mục chi tiêu.'
+                    : 'Cộng tiền vào sổ tay và gắn danh mục thu nhập.'}
+                </Text>
+
+                <Text style={styles.label}>Số tiền</Text>
+                <View style={[styles.amountInputContainer, focusedInput === 'amount' && styles.amountInputContainerFocused, !!error && styles.amountInputContainerError]}>
+                  <TextInput
+                    ref={amountRef}
+                    style={[styles.amountInputText, { color: isSpend ? '#DC2626' : PASTEL_PALETTE.accentDeep }]}
+                    placeholder="0"
+                    placeholderTextColor={PASTEL_PALETTE.gray400}
+                    keyboardType="numeric"
+                    value={amountText}
+                    onKeyPress={(e) => {
+                      if (e.nativeEvent.key === '0' && !amountText) {
+                        e.preventDefault();
+                      }
+                    }}
+                    onFocus={() => setFocusedInput('amount')}
+                    onBlur={() => setFocusedInput(null)}
+                    onChangeText={(t) => {
+                      setAmountText(formatInput(t));
+                      if (error) setError('');
+                    }}
+                  />
+                  <Text style={[styles.currencySuffix, { color: isSpend ? '#DC2626' : PASTEL_PALETTE.accentDeep }]}>đ</Text>
+                </View>
 
               <Text style={[styles.label, { marginTop: 14 }]}>Chọn danh mục</Text>
               <TouchableOpacity
-                style={[styles.categoryCard, !category && styles.categoryCardEmpty]}
-                activeOpacity={0.85}
+                style={styles.selectInput}
+                activeOpacity={0.7}
                 onPress={() => setStep('select')}
               >
-                <View
-                  style={[
-                    styles.categoryIcon,
-                    category
-                      ? { backgroundColor: category.bgColor || `${category.color}22` }
-                      : styles.categoryIconEmpty,
-                  ]}
-                >
-                  <Ionicons
-                    name={(category?.icon as any) || 'pricetag-outline'}
-                    size={22}
-                    color={category?.color || PASTEL_PALETTE.textMuted}
-                  />
-                </View>
-                <View style={styles.categoryInfo}>
-                  <Text style={[styles.categoryTitle, !category && styles.categoryTitleEmpty]}>
-                    {category ? category.label : 'Chưa chọn danh mục'}
-                  </Text>
-                  {category ? (
-                    <Text style={styles.categoryHint}>{category.groupName || 'Danh mục'}</Text>
-                  ) : (
-                    <Text style={styles.categoryHint}>Nhấn để phân loại giao dịch</Text>
-                  )}
-                </View>
+                {category ? (
+                  <View style={styles.selectedCategory}>
+                    <View style={[styles.smallIconContainer, { backgroundColor: category.bgColor || `${category.color}22` }]}>
+                      <Ionicons name={category.icon as any} size={16} color={category.color || PASTEL_PALETTE.accentDeep} />
+                    </View>
+                    <Text style={styles.selectTextValue}>{category.label}</Text>
+                  </View>
+                ) : (
+                  <Text style={styles.selectTextPlaceholder}>Chọn danh mục...</Text>
+                )}
                 <Ionicons name="chevron-down" size={20} color={PASTEL_PALETTE.textMuted} />
               </TouchableOpacity>
 
@@ -244,45 +269,81 @@ export const AddCashBalanceModal = ({
                   {note.length}/{MAX_CASH_NOTE_LENGTH}
                 </Text>
               </View>
-              <View style={styles.inputWrap}>
-                <Feather name="edit-3" size={16} color={PASTEL_PALETTE.textMuted} />
-                <TextInput
-                  style={styles.input}
-                  placeholder={isSpend ? 'Chi tiêu, đưa tiền...' : 'Số dư đầu kỳ, tiền rút mặt...'}
-                  placeholderTextColor={PASTEL_PALETTE.textMuted}
-                  value={note}
-                  onChangeText={(t) => setNote(t.slice(0, MAX_CASH_NOTE_LENGTH))}
-                  maxLength={MAX_CASH_NOTE_LENGTH}
-                />
-              </View>
+                <Pressable 
+                  style={[styles.inputWrap, focusedInput === 'note' && styles.inputFocused]}
+                  onPress={() => noteRef.current?.focus()}
+                >
+                  <Feather name="edit-3" size={16} color={focusedInput === 'note' ? PASTEL_PALETTE.accentDeep : PASTEL_PALETTE.textMuted} />
+                  <TextInput
+                    ref={noteRef}
+                    style={styles.input}
+                    placeholder={isSpend ? 'Chi tiêu, đưa tiền...' : 'Số dư đầu kỳ, tiền rút mặt...'}
+                    placeholderTextColor={PASTEL_PALETTE.textMuted}
+                    value={note}
+                    onFocus={() => setFocusedInput('note')}
+                    onBlur={() => setFocusedInput(null)}
+                    onChangeText={(t) => setNote(t.slice(0, MAX_CASH_NOTE_LENGTH))}
+                    maxLength={MAX_CASH_NOTE_LENGTH}
+                  />
+                </Pressable>
 
               {!!error && <Text style={styles.error}>{error}</Text>}
 
               <TouchableOpacity
                 style={[styles.primaryBtn, isSpend && styles.primaryBtnSpend, saving && { opacity: 0.7 }]}
-                activeOpacity={0.85}
+                activeOpacity={0.8}
                 disabled={saving}
                 onPress={handleConfirm}
               >
-                <Text style={styles.primaryBtnText}>
-                  {saving
-                    ? 'Đang lưu...'
-                    : isSpend
-                      ? 'Trừ khỏi sổ tay'
-                      : 'Cộng vào sổ tay'}
-                </Text>
+                {saving ? (
+                  <ActivityIndicator color={PASTEL_PALETTE.white} />
+                ) : (
+                  <>
+                    <MaterialCommunityIcons 
+                      name={isEditMode ? "content-save" : (isSpend ? "minus-circle" : "plus-circle")} 
+                      size={20} 
+                      color={PASTEL_PALETTE.white} 
+                    />
+                    <Text style={styles.primaryBtnText}>
+                      {isEditMode ? 'Lưu thay đổi' : (isSpend ? 'Trừ khỏi sổ tay' : 'Cộng vào sổ tay')}
+                    </Text>
+                  </>
+                )}
               </TouchableOpacity>
+
+              {isEditMode && onDelete && (
+                <TouchableOpacity
+                  style={{
+                    marginTop: 16,
+                    paddingVertical: 14,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    borderRadius: 14,
+                    backgroundColor: '#FEF2F2',
+                    borderWidth: 1,
+                    borderColor: '#FCA5A5'
+                  }}
+                  activeOpacity={0.8}
+                  disabled={saving}
+                  onPress={onDelete}
+                >
+                  <Text style={{ color: '#DC2626', fontSize: 16, fontWeight: '600' }}>
+                    Xóa giao dịch
+                  </Text>
+                </TouchableOpacity>
+              )}
             </ScrollView>
-          </KeyboardAvoidingView>
-        </View>
-      </Modal>
+          </View>
+        </KeyboardAvoidingView>
+      </View>
+    </Modal>
 
       <CategorySelectModal
         visible={visible && step === 'select'}
         onClose={() => setStep('form')}
         onSelect={(item, groupName) => {
           if (isFundSystemCategory(item.id)) {
-            setError('Danh mục quỹ không dùng cho sổ tay tiền mặt');
+            setError('Danh mục quỹ không dùng cho sổ tay');
             setStep('form');
             return;
           }
