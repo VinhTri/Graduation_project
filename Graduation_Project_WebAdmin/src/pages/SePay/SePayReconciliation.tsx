@@ -8,7 +8,6 @@ import {
   Modal,
   Row,
   Select,
-  Space,
   Statistic,
   Table,
   Tabs,
@@ -20,7 +19,6 @@ import type { ColumnsType } from 'antd/es/table';
 import {
   AlertOutlined,
   CheckCircleOutlined,
-  ReloadOutlined,
   SearchOutlined,
   SyncOutlined,
   WarningOutlined,
@@ -373,19 +371,14 @@ export const SePayReconciliation: React.FC = () => {
             nhưng chưa cộng ví.
           </Paragraph>
         </div>
-        <Space wrap>
-          <Button icon={<ReloadOutlined />} onClick={() => void loadHistory()} loading={loadingHistory}>
-            Làm mới lịch sử
-          </Button>
-          <Button
-            type="primary"
-            icon={<SyncOutlined />}
-            loading={loadingReport}
-            onClick={() => void loadReport(true)}
-          >
-            Chạy đối soát
-          </Button>
-        </Space>
+        <Button
+          type="primary"
+          icon={<SyncOutlined />}
+          loading={loadingReport}
+          onClick={() => void loadReport(true)}
+        >
+          Chạy đối soát
+        </Button>
       </div>
 
       <Row gutter={[14, 14]} className="sepay-stats">

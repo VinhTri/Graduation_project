@@ -15,7 +15,6 @@ import {
   Progress,
 } from 'antd';
 import {
-  ReloadOutlined,
   DownloadOutlined,
   ArrowUpOutlined,
   ArrowDownOutlined,
@@ -152,6 +151,8 @@ export const Report: React.FC = () => {
         targetUsers.map((u) => apiClient.get(`/api/v1/admin/users/${u.id}/details`))
       );
 
+      const REAL_MONEY_TYPES = new Set(['TOP_UP', 'WITHDRAW']);
+
       let balanceSum = 0;
       const allTx: TxItem[] = [];
 
@@ -161,13 +162,15 @@ export const Report: React.FC = () => {
         if (!detail) return;
         balanceSum += Number(detail.totalBalance || 0);
         const txs: TxItem[] = detail.recentTransactions || [];
-        txs.forEach((tx) => {
-          allTx.push({
-            ...tx,
-            amount: Number(tx.amount || 0),
-            username: targetUsers[index]?.username || detail.userInfo?.username,
+        txs
+          .filter((tx) => REAL_MONEY_TYPES.has(tx.type))
+          .forEach((tx) => {
+            allTx.push({
+              ...tx,
+              amount: Number(tx.amount || 0),
+              username: targetUsers[index]?.username || detail.userInfo?.username,
+            });
           });
-        });
       });
 
       setTotalWalletBalance(balanceSum);
@@ -414,9 +417,6 @@ export const Report: React.FC = () => {
               { value: 'all', label: 'Toàn bộ dữ liệu' },
             ]}
           />
-          <Button icon={<ReloadOutlined />} onClick={loadData} loading={loading}>
-            Làm mới
-          </Button>
           <Button type="primary" icon={<DownloadOutlined />} disabled>
             Xuất báo cáo
           </Button>
@@ -469,7 +469,7 @@ export const Report: React.FC = () => {
                 <WalletOutlined />
               </div>
               <div>
-                <span>Số dư ví hệ thống</span>
+                <span>Số dư ví MAIN (tiền thật)</span>
                 <strong>{formatVND(stats.totalWalletBalance)}</strong>
                 <small>Tổng balance người dùng</small>
               </div>

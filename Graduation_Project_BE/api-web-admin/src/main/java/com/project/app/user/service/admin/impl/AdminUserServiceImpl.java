@@ -2,6 +2,9 @@ package com.project.app.user.service.admin.impl;
 
 import com.project.app.common.exception.AppException;
 import com.project.app.common.exception.ErrorCode;
+import com.project.app.transaction.entity.Transaction;
+import com.project.app.transaction.enums.TransactionStatus;
+import com.project.app.transaction.enums.TransactionType;
 import com.project.app.transaction.repository.TransactionRepository;
 import com.project.app.user.dto.response.TransactionHistoryResponse;
 import com.project.app.user.dto.response.UserDetailsResponse;
@@ -10,10 +13,12 @@ import com.project.app.user.entity.User;
 import com.project.app.user.repository.UserRepository;
 import com.project.app.user.service.admin.AdminUserService;
 import com.project.app.wallet.entity.Wallet;
+import com.project.app.wallet.enums.WalletType;
 import com.project.app.wallet.repository.WalletRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -43,7 +48,7 @@ public class AdminUserServiceImpl implements AdminUserService {
     public void toggleUserStatus(Long userId) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
-        
+
         user.setActive(!user.isActive());
         userRepository.save(user);
     }
@@ -63,13 +68,28 @@ public class AdminUserServiceImpl implements AdminUserService {
                 .build();
 
         List<Wallet> wallets = walletRepository.findByUserId(userId);
-        java.math.BigDecimal totalBalance = wallets.stream()
+        BigDecimal totalBalance = wallets.stream()
+                .filter(w -> w.getWalletType() == WalletType.MAIN)
                 .map(Wallet::getBalance)
-                .reduce(java.math.BigDecimal.ZERO, java.math.BigDecimal::add);
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-        List<TransactionHistoryResponse> recentTransactions = transactionRepository.findByUserIdOrderByCreatedAtDesc(userId)
+        List<Transaction> moneyFlow = transactionRepository.findByUserIdOrderByCreatedAtDesc(userId)
                 .stream()
-                .limit(20) // Lấy 20 giao dịch gần nhất
+                .filter(tx -> tx.getType() == TransactionType.TOP_UP || tx.getType() == TransactionType.WITHDRAW)
+                .collect(Collectors.toList());
+
+        BigDecimal totalTopUp = moneyFlow.stream()
+                .filter(tx -> tx.getType() == TransactionType.TOP_UP && tx.getStatus() == TransactionStatus.SUCCESS)
+                .map(Transaction::getAmount)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        BigDecimal totalWithdraw = moneyFlow.stream()
+                .filter(tx -> tx.getType() == TransactionType.WITHDRAW && tx.getStatus() == TransactionStatus.SUCCESS)
+                .map(Transaction::getAmount)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        List<TransactionHistoryResponse> recentTransactions = moneyFlow.stream()
+                .limit(20)
                 .map(tx -> TransactionHistoryResponse.builder()
                         .transactionCode(tx.getTransactionCode())
                         .type(tx.getType().name())
@@ -83,6 +103,8 @@ public class AdminUserServiceImpl implements AdminUserService {
         return UserDetailsResponse.builder()
                 .userInfo(userInfo)
                 .totalBalance(totalBalance)
+                .totalTopUp(totalTopUp)
+                .totalWithdraw(totalWithdraw)
                 .recentTransactions(recentTransactions)
                 .build();
     }

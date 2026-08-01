@@ -2,12 +2,18 @@ package com.project.app.transaction.repository;
 
 import com.project.app.transaction.entity.Transaction;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
 import java.util.Optional;
 
 @Repository
 public interface TransactionRepository extends JpaRepository<Transaction, Long> {
+
+    @Query("SELECT t FROM Transaction t JOIN FETCH t.user JOIN FETCH t.wallet ORDER BY t.createdAt DESC")
+    List<Transaction> findAllWithUserAndWalletOrderByCreatedAtDesc();
+
     Optional<Transaction> findByTransactionCode(String transactionCode);
     
     Optional<Transaction> findFirstByUserAndTypeAndStatusAndCreatedAtAfterOrderByCreatedAtDesc(

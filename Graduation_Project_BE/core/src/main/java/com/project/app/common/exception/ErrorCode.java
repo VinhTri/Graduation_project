@@ -79,6 +79,9 @@ public enum ErrorCode {
     BUDGET_NOT_FOUND("BUDGET_9001", "Không tìm thấy ngân sách!", HttpStatus.NOT_FOUND),
     BUDGET_ALREADY_EXISTS("BUDGET_9002", "Ngân sách cho danh mục và chu kỳ này đã tồn tại!", HttpStatus.CONFLICT),
 
+    // ---- LỖI HỖ TRỢ ----
+    SUPPORT_TICKET_NOT_FOUND("SUP_1001", "Không tìm thấy yêu cầu hỗ trợ!", HttpStatus.NOT_FOUND),
+
     // ---- LỖI HỆ THỐNG CHUNG ----
     INVALID_REQUEST("SYS_4000", "Yêu cầu không hợp lệ!", HttpStatus.BAD_REQUEST),
     UNCATEGORIZED_EXCEPTION("SYS_9999", "Đã xảy ra lỗi hệ thống, vui lòng thử lại sau!", HttpStatus.INTERNAL_SERVER_ERROR);
