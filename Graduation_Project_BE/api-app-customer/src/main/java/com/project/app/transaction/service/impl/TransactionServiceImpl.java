@@ -453,7 +453,7 @@ public class TransactionServiceImpl implements TransactionService {
         );
     }
 
-    // ====================== GIAO DỊCH THỦ CÔNG TIỀN MẶT (SỔ TAY) ======================
+    // ====================== GIAO DỊCH THỦ CÔNG TIỀN MẶT / NGÂN HÀNG (SỔ TAY) ======================
     @Override
     @Transactional
     public ManualTransactionResponse createManualTransaction(User user, ManualTransactionRequest request) {
@@ -470,25 +470,31 @@ public class TransactionServiceImpl implements TransactionService {
             throw new AppException(ErrorCode.CATEGORY_INVALID_FOR_CASH);
         }
 
-        Wallet cashWallet = walletService.getOrCreateCashWallet(user.getId());
+        Wallet targetWallet;
+        if (request.walletId() != null) {
+            targetWallet = walletService.getWalletById(request.walletId(), user.getId());
+        } else {
+            targetWallet = walletService.getOrCreateCashWallet(user.getId());
+        }
+
         BigDecimal amount = request.amount();
 
         if (type == TransactionType.EXPENSE) {
-            if (cashWallet.getBalance().compareTo(amount) < 0) {
+            if (targetWallet.getBalance().compareTo(amount) < 0) {
                 throw new AppException(ErrorCode.INSUFFICIENT_BALANCE);
             }
-            cashWallet.setBalance(cashWallet.getBalance().subtract(amount));
+            targetWallet.setBalance(targetWallet.getBalance().subtract(amount));
         } else {
-            cashWallet.setBalance(cashWallet.getBalance().add(amount));
+            targetWallet.setBalance(targetWallet.getBalance().add(amount));
         }
-        walletRepository.save(cashWallet);
+        walletRepository.save(targetWallet);
 
-        String transactionCode = "CASH" + System.currentTimeMillis()
+        String transactionCode = "MANUAL" + System.currentTimeMillis()
                 + UUID.randomUUID().toString().substring(0, 4).toUpperCase();
 
         Transaction transaction = new Transaction();
         transaction.setUser(user);
-        transaction.setWallet(cashWallet);
+        transaction.setWallet(targetWallet);
         transaction.setAmount(amount);
         transaction.setType(type);
         transaction.setStatus(TransactionStatus.SUCCESS);
@@ -498,7 +504,7 @@ public class TransactionServiceImpl implements TransactionService {
         transaction = transactionRepository.save(transaction);
 
         if (type == TransactionType.EXPENSE) {
-            adjustBudgetForExpense(user, category.getId(), cashWallet.getId(), amount, LocalDate.now());
+            adjustBudgetForExpense(user, category.getId(), targetWallet.getId(), amount, LocalDate.now());
         }
 
         return new ManualTransactionResponse(
@@ -508,9 +514,95 @@ public class TransactionServiceImpl implements TransactionService {
                 transaction.getAmount(),
                 transaction.getCategoryId(),
                 transaction.getNote(),
-                cashWallet.getBalance(),
+                targetWallet.getBalance(),
                 transaction.getCreatedAt()
         );
+    }
+
+    @Override
+    @Transactional
+    public ManualTransactionResponse updateManualTransaction(String transactionCode, User user, ManualTransactionRequest request) {
+        Transaction transaction = getTransactionByCode(transactionCode, user);
+
+        if (transaction.getType() != TransactionType.EXPENSE && transaction.getType() != TransactionType.INCOME) {
+            throw new AppException(ErrorCode.INVALID_TRANSACTION);
+        }
+        
+        Wallet wallet = transaction.getWallet();
+        
+        // Reverse old transaction impact
+        if (transaction.getType() == TransactionType.EXPENSE) {
+            wallet.setBalance(wallet.getBalance().add(transaction.getAmount()));
+            adjustBudgetForExpense(user, transaction.getCategoryId(), wallet.getId(), transaction.getAmount().negate(), transaction.getCreatedAt().toLocalDate());
+        } else {
+            wallet.setBalance(wallet.getBalance().subtract(transaction.getAmount()));
+        }
+
+        TransactionType newType = request.type();
+        if (newType != TransactionType.EXPENSE && newType != TransactionType.INCOME) {
+            throw new AppException(ErrorCode.INVALID_MANUAL_TRANSACTION_TYPE);
+        }
+
+        CategoryItem category = categoryItemRepository.findById(request.categoryId())
+                .orElseThrow(() -> new AppException(ErrorCode.CATEGORY_ITEM_NOT_FOUND));
+
+        if (category.getUser() == null || !category.getUser().getId().equals(user.getId()) || category.isDeleted()) {
+            throw new AppException(ErrorCode.CATEGORY_INVALID_FOR_CASH);
+        }
+
+        BigDecimal newAmount = request.amount();
+
+        // Apply new transaction impact
+        if (newType == TransactionType.EXPENSE) {
+            if (wallet.getBalance().compareTo(newAmount) < 0) {
+                throw new AppException(ErrorCode.INSUFFICIENT_BALANCE);
+            }
+            wallet.setBalance(wallet.getBalance().subtract(newAmount));
+            adjustBudgetForExpense(user, category.getId(), wallet.getId(), newAmount, transaction.getCreatedAt().toLocalDate());
+        } else {
+            wallet.setBalance(wallet.getBalance().add(newAmount));
+        }
+
+        walletRepository.save(wallet);
+
+        transaction.setAmount(newAmount);
+        transaction.setType(newType);
+        transaction.setCategoryId(category.getId());
+        transaction.setNote(request.note());
+        
+        transaction = transactionRepository.save(transaction);
+
+        return new ManualTransactionResponse(
+                transaction.getTransactionCode(),
+                transaction.getType(),
+                transaction.getStatus(),
+                transaction.getAmount(),
+                transaction.getCategoryId(),
+                transaction.getNote(),
+                wallet.getBalance(),
+                transaction.getCreatedAt()
+        );
+    }
+
+    @Override
+    @Transactional
+    public void deleteManualTransaction(String transactionCode, User user) {
+        Transaction transaction = getTransactionByCode(transactionCode, user);
+
+        if (transaction.getType() != TransactionType.EXPENSE && transaction.getType() != TransactionType.INCOME) {
+            throw new AppException(ErrorCode.INVALID_TRANSACTION);
+        }
+
+        Wallet wallet = transaction.getWallet();
+        if (transaction.getType() == TransactionType.EXPENSE) {
+            wallet.setBalance(wallet.getBalance().add(transaction.getAmount()));
+            adjustBudgetForExpense(user, transaction.getCategoryId(), wallet.getId(), transaction.getAmount().negate(), transaction.getCreatedAt().toLocalDate());
+        } else {
+            wallet.setBalance(wallet.getBalance().subtract(transaction.getAmount()));
+        }
+        
+        walletRepository.save(wallet);
+        transactionRepository.delete(transaction);
     }
 
     private Wallet getWalletForTopUp(User user, Long walletId) {

@@ -34,7 +34,7 @@ public class Wallet {
     private boolean isDeletable = true;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "wallet_type", length = 20)
+    @Column(name = "wallet_type", columnDefinition = "VARCHAR(20)")
     private WalletType walletType = WalletType.MAIN;
 
     @Column(name = "is_limit_enabled", nullable = false)

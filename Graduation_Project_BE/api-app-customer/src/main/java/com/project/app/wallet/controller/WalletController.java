@@ -144,4 +144,72 @@ public class WalletController {
                 .data(dto)
                 .build());
     }
+
+    // ====================== LẤY DANH SÁCH VÍ NGÂN HÀNG ======================
+    @GetMapping("/banks")
+    public ResponseEntity<ApiResponse<java.util.List<WalletDto>>> getBankWallets(@AuthenticationPrincipal CustomUserDetails userDetails) {
+        java.util.List<Wallet> wallets = walletService.getBankWallets(userDetails.getUser().getId());
+        
+        java.util.List<WalletDto> dtoList = wallets.stream().map(wallet -> WalletDto.builder()
+                .id(wallet.getId())
+                .name(wallet.getName())
+                .balance(wallet.getBalance())
+                .accountNumber(wallet.getAccountNumber())
+                .isDefault(wallet.isDefault())
+                .isLimitEnabled(wallet.isLimitEnabled())
+                .transactionLimit(wallet.getTransactionLimit())
+                .dailyLimit(wallet.getDailyLimit())
+                .walletType(wallet.getWalletType() != null ? wallet.getWalletType().name() : "MANUAL")
+                .build()).toList();
+
+        return ResponseEntity.ok(ApiResponse.<java.util.List<WalletDto>>builder()
+                .success(true)
+                .message("Lấy danh sách ví ngân hàng thành công")
+                .data(dtoList)
+                .build());
+    }
+
+    // ====================== TẠO VÍ NGÂN HÀNG THỦ CÔNG ======================
+    @Data
+    public static class CreateManualBankRequest {
+        @jakarta.validation.constraints.NotBlank(message = "Tên ngân hàng không được để trống")
+        private String bankName;
+        private String accountNumber;
+    }
+
+    @org.springframework.web.bind.annotation.PostMapping("/manual-bank")
+    public ResponseEntity<ApiResponse<WalletDto>> createManualBankWallet(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @jakarta.validation.Valid @org.springframework.web.bind.annotation.RequestBody CreateManualBankRequest request) {
+        
+        Wallet wallet = walletService.createManualBankWallet(userDetails.getUser().getId(), request.getBankName(), request.getAccountNumber());
+        
+        WalletDto dto = WalletDto.builder()
+                .id(wallet.getId())
+                .name(wallet.getName())
+                .balance(wallet.getBalance())
+                .accountNumber(wallet.getAccountNumber())
+                .isDefault(wallet.isDefault())
+                .isLimitEnabled(wallet.isLimitEnabled())
+                .walletType(wallet.getWalletType().name())
+                .build();
+
+        return ResponseEntity.ok(ApiResponse.<WalletDto>builder()
+                .success(true)
+                .message("Thêm sổ tay tài khoản ngân hàng thành công")
+                .data(dto)
+                .build());
+    }
+    @org.springframework.web.bind.annotation.DeleteMapping("/manual-bank/{id}")
+    public ResponseEntity<ApiResponse<Void>> deleteManualBankWallet(
+            @org.springframework.web.bind.annotation.PathVariable Long id,
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+        
+        walletService.deleteManualBankWallet(id, userDetails.getUser().getId());
+
+        return ResponseEntity.ok(ApiResponse.<Void>builder()
+                .success(true)
+                .message("Xóa sổ tay tài khoản ngân hàng thành công")
+                .build());
+    }
 }

@@ -104,6 +104,32 @@ public class TransactionController {
                 .build());
     }
 
+    @PutMapping("/manual/{transactionCode}")
+    public ResponseEntity<ApiResponse<com.project.app.transaction.dto.response.ManualTransactionResponse>> updateManualTransaction(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @PathVariable String transactionCode,
+            @Valid @RequestBody com.project.app.transaction.dto.request.ManualTransactionRequest request) {
+
+        var response = transactionService.updateManualTransaction(transactionCode, userDetails.getUser(), request);
+        return ResponseEntity.ok(ApiResponse.<com.project.app.transaction.dto.response.ManualTransactionResponse>builder()
+                .success(true)
+                .message("Cập nhật giao dịch thành công")
+                .data(response)
+                .build());
+    }
+
+    @DeleteMapping("/manual/{transactionCode}")
+    public ResponseEntity<ApiResponse<Void>> deleteManualTransaction(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @PathVariable String transactionCode) {
+
+        transactionService.deleteManualTransaction(transactionCode, userDetails.getUser());
+        return ResponseEntity.ok(ApiResponse.<Void>builder()
+                .success(true)
+                .message("Xóa giao dịch thành công")
+                .build());
+    }
+
     @PostMapping("/transfer")
     public ResponseEntity<ApiResponse<TransferResponse>> processTransfer(
             @AuthenticationPrincipal CustomUserDetails userDetails,

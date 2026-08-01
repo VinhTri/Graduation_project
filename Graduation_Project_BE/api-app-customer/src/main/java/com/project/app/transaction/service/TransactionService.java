@@ -21,4 +21,6 @@ public interface TransactionService {
     WithdrawResponse processWithdrawal(User user, WithdrawRequest request);
     TransferResponse processTransfer(User user, TransferRequest request);
     ManualTransactionResponse createManualTransaction(User user, ManualTransactionRequest request);
+    ManualTransactionResponse updateManualTransaction(String transactionCode, User user, ManualTransactionRequest request);
+    void deleteManualTransaction(String transactionCode, User user);
 }

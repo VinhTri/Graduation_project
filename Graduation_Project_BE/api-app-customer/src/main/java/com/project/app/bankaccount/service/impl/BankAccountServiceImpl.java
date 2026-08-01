@@ -25,8 +25,9 @@ public class BankAccountServiceImpl implements BankAccountService {
 
     private final BankAccountRepository bankAccountRepository;
     private final PayOsPayoutService payOsPayoutService;
+    private final com.project.app.wallet.repository.WalletRepository walletRepository;
 
-    // ====================== LẤY DANH S�?CH ======================
+    // ====================== LẤY DANH SÁCH ======================
     @Transactional(readOnly = true)
     public List<BankAccountResponse> getBankAccounts(User user) {
         return bankAccountRepository.findByUserId(user.getId())
@@ -85,6 +86,19 @@ public class BankAccountServiceImpl implements BankAccountService {
                 .build();
 
         BankAccount savedAccount = bankAccountRepository.save(bankAccount);
+
+        // Tạo Wallet tương ứng cho sổ tay tài khoản ngân hàng (LINKED)
+        com.project.app.wallet.entity.Wallet linkedWallet = new com.project.app.wallet.entity.Wallet(
+                user,
+                request.getBankName() + " - " + request.getAccountNumber().substring(Math.max(0, request.getAccountNumber().length() - 4)),
+                java.math.BigDecimal.ZERO,
+                false,
+                true,
+                com.project.app.wallet.enums.WalletType.LINKED
+        );
+        linkedWallet.setAccountNumber(request.getAccountNumber());
+        walletRepository.save(linkedWallet);
+
         return mapToResponse(savedAccount);
     }
 
@@ -95,6 +109,11 @@ public class BankAccountServiceImpl implements BankAccountService {
                 .orElseThrow(() -> new AppException(ErrorCode.BANK_ACCOUNT_NOT_FOUND));
 
         bankAccountRepository.delete(bankAccount);
+        
+        // Xóa Wallet tương ứng (dựa vào accountNumber và loại LINKED)
+        walletRepository.findByAccountNumber(bankAccount.getAccountNumber())
+                .filter(w -> w.getWalletType() == com.project.app.wallet.enums.WalletType.LINKED && w.getUser().getId().equals(user.getId()))
+                .ifPresent(walletRepository::delete);
 
         // Nếu tài khoản bị xóa là mặc định, chuyển trạng thái mặc định sang tài khoản đầu tiên còn lại (nếu có)
         if (bankAccount.isDefault()) {

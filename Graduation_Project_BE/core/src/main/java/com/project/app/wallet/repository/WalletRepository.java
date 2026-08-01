@@ -15,6 +15,7 @@ public interface WalletRepository extends JpaRepository<Wallet, Long> {
     Optional<Wallet> findByIdAndUserId(Long id, Long userId);
     Optional<Wallet> findByUserIdAndIsDefaultTrue(Long userId);
     Optional<Wallet> findByUserIdAndWalletType(Long userId, com.project.app.wallet.enums.WalletType walletType);
+    List<Wallet> findByUserIdAndWalletTypeIn(Long userId, List<com.project.app.wallet.enums.WalletType> walletTypes);
     Optional<Wallet> findByAccountNumber(String accountNumber);
 
     @Query("SELECT w.user FROM Wallet w WHERE UPPER(TRIM(w.accountNumber)) = UPPER(TRIM(:accountNumber))")

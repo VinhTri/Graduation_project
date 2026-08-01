@@ -39,6 +39,10 @@ public class HistoryServiceImpl implements HistoryService {
         if (wallet != null && wallet.equalsIgnoreCase("cash")) {
             transactions = transactionRepository.findByUserIdAndWallet_WalletTypeOrderByCreatedAtDesc(
                     user.getId(), WalletType.CASH);
+        } else if (wallet != null && wallet.matches("\\d+")) {
+            // It's a walletId
+            Long walletId = Long.parseLong(wallet);
+            transactions = transactionRepository.findByUserIdAndWalletIdOrderByCreatedAtDesc(user.getId(), walletId);
         } else {
             transactions = transactionRepository.findByUserIdAndWallet_IsDefaultTrueOrderByCreatedAtDesc(
                     user.getId());
