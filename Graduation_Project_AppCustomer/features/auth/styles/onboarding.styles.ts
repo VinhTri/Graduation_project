@@ -1,6 +1,6 @@
 import { StyleSheet, Dimensions } from 'react-native';
 
-const { width, height } = Dimensions.get('window');
+const { width } = Dimensions.get('window');
 
 export const styles = StyleSheet.create({
   container: {
@@ -43,7 +43,7 @@ export const styles = StyleSheet.create({
   title1: {
     fontSize: 28,
     fontWeight: '800',
-    color: '#4B5563', // A bit softer dark color
+    color: '#4B5563',
     textAlign: 'center',
     lineHeight: 40,
   },

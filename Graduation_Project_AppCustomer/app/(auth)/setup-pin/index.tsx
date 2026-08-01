@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, SafeAreaView, Alert } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { styles } from './_setup-pin.styles';
+import { styles } from '@/features/auth/styles/setup-pin.styles';
 import { axiosClient } from '../../../shared/api/axiosClient';
 import SuccessModal from '../../../shared/components/SuccessModal/SuccessModal';
 

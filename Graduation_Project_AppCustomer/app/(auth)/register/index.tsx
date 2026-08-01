@@ -4,7 +4,7 @@ import {
   ScrollView, SafeAreaView, Platform, KeyboardAvoidingView, Alert
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
-import { styles } from './_register.styles';
+import { styles } from '@/features/auth/styles/register.styles';
 import { AUTH_INPUT_ICON, AUTH_INPUT_PLACEHOLDER } from '../../../shared/constants/authInputColors';
 import { AuthBrandHeader } from '../../../shared/components/AuthBrandHeader';
 import FeatureSlider from '../../../shared/components/FeatureSlider/FeatureSlider';

@@ -1,30 +1,19 @@
 package com.project.app.ai.service.impl;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ArrayNode;
-import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.project.app.ai.client.GeminiClient;
+import com.project.app.ai.dto.internal.GoalContext;
 import com.project.app.ai.dto.request.AiChatRequest;
+import com.project.app.ai.dto.request.ChatMessageHistoryDto;
 import com.project.app.ai.dto.response.*;
-import com.project.app.ai.service.AiChatService;
-import com.project.app.budget.repository.BudgetRepository;
-import com.project.app.report.service.ReportService;
-import com.project.app.transaction.repository.TransactionRepository;
+import com.project.app.ai.parser.GoalNameParser;
+import com.project.app.ai.service.*;
 import com.project.app.user.entity.User;
-import com.project.app.wallet.entity.Wallet;
-import com.project.app.wallet.repository.WalletRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
-import java.net.URI;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
 import java.text.DecimalFormat;
-import java.time.Duration;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
@@ -36,35 +25,32 @@ import java.util.regex.Pattern;
 @RequiredArgsConstructor
 public class AiChatServiceImpl implements AiChatService {
 
-    private final WalletRepository walletRepository;
-    private final BudgetRepository budgetRepository;
-    private final ReportService reportService;
-    private final TransactionRepository transactionRepository;
-    private final ObjectMapper objectMapper;
-
-    @Value("${gemini.api.key:}")
-    private String geminiApiKey;
-
-    private String getEffectiveGeminiApiKey() {
-        if (geminiApiKey != null && !geminiApiKey.trim().isEmpty() && !geminiApiKey.contains("YOUR_GEMINI_API_KEY")) {
-            return geminiApiKey.trim();
-        }
-        try {
-            // Default Base64 fallback key so any team member pulling the code can run Gemini live out-of-the-box
-            String b64 = "QVEuQWI4Uk42SXFX" + "T2lGeGNfa2dPdEQzSk5NX0xlTXFo" + "V0xPY3RIOERJejR6NV9mbEdyZw==";
-            byte[] decoded = Base64.getDecoder().decode(b64);
-            return new String(decoded).trim();
-        } catch (Exception e) {
-            return "";
-        }
-    }
+    private final AiContextService aiContextService;
+    private final AiIntentService aiIntentService;
+    private final AiGoalCalculatorService aiGoalCalculatorService;
+    private final AiPromptService aiPromptService;
+    private final GeminiClient geminiClient;
+    private final GoalNameParser goalNameParser;
 
     @Override
     public AiChatResponse processChat(User user, AiChatRequest request) {
-        String userPrompt = request != null && request.getMessage() != null ? request.getMessage().trim() : "";
+        String rawMessage = request != null && request.getMessage() != null ? request.getMessage() : "";
+        String userPrompt = rawMessage.trim();
+        if (request != null) {
+            request.setMessage(userPrompt);
+        }
+
+        List<ChatMessageHistoryDto> history = request != null ? request.getHistory() : null;
+        if (history != null) {
+            for (ChatMessageHistoryDto msg : history) {
+                if (msg != null && msg.getContent() != null) {
+                    msg.setContent(msg.getContent().trim());
+                }
+            }
+        }
         String normalized = normalizeText(userPrompt);
 
-        // Handle numeric shortcut selections (1, 2, 3) from welcome menu
+        // Handle numeric menu selection shortcuts (1, 2, 3)
         if ("1".equals(normalized)) {
             userPrompt = "Hướng dẫn sử dụng ứng dụng (Ngân sách, Nạp/Rút tiền, Danh mục, Tạo ví, Quên PIN)";
             normalized = normalizeText(userPrompt);
@@ -76,20 +62,146 @@ public class AiChatServiceImpl implements AiChatService {
             normalized = normalizeText(userPrompt);
         }
 
-        // Identify module category
-        String moduleType = "RAG";
-        if (isRecommendationQuery(normalized)) {
-            moduleType = "RECOMMENDATION";
-        } else if (isAnalyticsQuery(normalized)) {
-            moduleType = "ANALYTICS";
+        // 1. Intent Classification
+        boolean hasHistory = history != null && !history.isEmpty();
+        boolean hasPreviousGoal = hasHistory && !aiGoalCalculatorService.findPreviousGoalMessage(history).isEmpty();
+
+        boolean containsGoalContextUpdate =
+                normalized.matches(".*\\b\\d+(?:[.,]\\d+)?\\s*(trieu|tr|m|nghin|k)\\b.*")
+                        && (
+                            normalized.contains("hien tai toi co")
+                            || normalized.contains("hien toi co")
+                            || normalized.contains("toi co")
+                            || normalized.contains("dang co")
+                            || normalized.contains("so du")
+                            || normalized.contains("giu lai")
+                            || normalized.contains("quy du phong")
+                            || normalized.contains("tiet kiem duoc")
+                            || normalized.contains("moi thang")
+                            || normalized.contains("hang thang")
+                            || normalized.contains("von")
+                        );
+
+        String initialGoalName = goalNameParser.extractGoalName(userPrompt, normalized);
+        boolean isNewGoal = aiGoalCalculatorService.isNewGoalQuery(userPrompt, initialGoalName);
+
+        boolean isGoalFollowUp = !isNewGoal && isFinancialGoalFollowUp(normalized);
+        boolean isFollowUp = !isNewGoal && hasHistory && (aiIntentService.isFollowUpQueryPrompt(normalized) || containsGoalContextUpdate || isGoalFollowUp);
+
+        String moduleType = aiIntentService.classifyIntent(normalized, history);
+
+        // Override Intent if user is creating a new goal or following up
+        if (isNewGoal) {
+            moduleType = "FINANCIAL_GOAL";
+            isFollowUp = false;
+        } else if (hasPreviousGoal && (isFollowUp || containsGoalContextUpdate || isGoalFollowUp)) {
+            moduleType = "FINANCIAL_GOAL";
+            isFollowUp = true;
         }
 
-        // Aggregate User Account Context from Database
-        Map<String, Object> userContext = fetchUserAccountContext(user);
+        log.info("===== AI DEBUG =====");
+        log.info("userPrompt = {}", userPrompt);
+        log.info("normalized = {}", normalized);
+        log.info("moduleType = {}", moduleType);
+        log.info("isFollowUp = {}", isFollowUp);
+        log.info("hasPreviousGoal = {}", hasPreviousGoal);
+        log.info("containsGoalContextUpdate = {}", containsGoalContextUpdate);
+        log.info("isGoalFollowUp = {}", isGoalFollowUp);
+        log.info("history size = {}", history != null ? history.size() : 0);
+        log.info("====================");
+
+        // Aggregate Context
+        Map<String, Object> userContext = aiContextService.fetchUserAccountContext(user);
+        BigDecimal totalBal = (BigDecimal) userContext.get("totalBalance");
+
+        GoalContext goalContext = null;
+        if ("FINANCIAL_GOAL".equalsIgnoreCase(moduleType)) {
+            goalContext = aiGoalCalculatorService.calculate(userPrompt, history, totalBal);
+        }
+
+        boolean isBudgetQuery = isBudgetPlanningQuery(normalized);
+        if (isBudgetQuery && !hasPreviousGoal) {
+            moduleType = "RECOMMENDATION";
+        }
+
+        // 4. Handle ANALYTICS queries directly using authoritative DB context data (0ms latency, 100% data accuracy)
+        if ("ANALYTICS".equalsIgnoreCase(moduleType)) {
+            String aiText = buildAnalyticsResponse(userPrompt, userContext);
+            List<AiCardDto> cards = generateCards(moduleType, normalized, userPrompt, userContext);
+            AiActionPromptDto actionPrompt = generateActionPrompt(moduleType, normalized, userPrompt);
+
+            return AiChatResponse.builder()
+                    .id(UUID.randomUUID().toString())
+                    .text(aiText)
+                    .moduleType(moduleType)
+                    .timestamp(LocalTime.now().format(DateTimeFormatter.ofPattern("HH:mm")))
+                    .cards(cards)
+                    .actionPrompt(actionPrompt)
+                    .build();
+        }
+
+        // 5. Handle RECOMMENDATION (Budget Planning) queries directly using calculated business allocation data
+        if ("RECOMMENDATION".equalsIgnoreCase(moduleType) || isBudgetQuery) {
+            String aiText = buildBudgetRecommendationResponse(userPrompt, userContext);
+            List<AiCardDto> cards = generateCards("RECOMMENDATION", normalized, userPrompt, userContext);
+            AiActionPromptDto actionPrompt = generateActionPrompt("RECOMMENDATION", normalized, userPrompt);
+
+            return AiChatResponse.builder()
+                    .id(UUID.randomUUID().toString())
+                    .text(aiText)
+                    .moduleType("RECOMMENDATION")
+                    .timestamp(LocalTime.now().format(DateTimeFormatter.ofPattern("HH:mm")))
+                    .cards(cards)
+                    .actionPrompt(actionPrompt)
+                    .build();
+        }
+
+        // 6. Handle APP_GUIDE queries directly using rich step-by-step knowledge base
+        if ("APP_GUIDE".equalsIgnoreCase(moduleType) || aiIntentService.isAppGuideQueryPrompt(normalized)) {
+            String aiText = buildAppGuideResponse(normalized);
+            List<AiCardDto> cards = generateCards("APP_GUIDE", normalized, userPrompt, userContext);
+            AiActionPromptDto actionPrompt = generateActionPrompt("APP_GUIDE", normalized, userPrompt);
+
+            return AiChatResponse.builder()
+                    .id(UUID.randomUUID().toString())
+                    .text(aiText)
+                    .moduleType("APP_GUIDE")
+                    .timestamp(LocalTime.now().format(DateTimeFormatter.ofPattern("HH:mm")))
+                    .cards(cards)
+                    .actionPrompt(actionPrompt)
+                    .build();
+        }
+
+        // 7. Handle ALL FINANCIAL_GOAL queries directly using programmatic business calculation (0ms latency, zero LLM dependency, 100% data accuracy)
+        if ("FINANCIAL_GOAL".equalsIgnoreCase(moduleType) && goalContext != null && goalContext.isGoalQuery()) {
+            String aiText;
+            if (isFollowUp) {
+                aiText = buildGoalFollowUpResponse(userPrompt, normalized, goalContext, totalBal);
+            } else {
+                aiText = formatGoalCalculationResponse(goalContext, totalBal);
+            }
+
+            List<AiCardDto> cards = generateCards(moduleType, normalized, userPrompt, userContext);
+            AiActionPromptDto actionPrompt = generateActionPrompt(moduleType, normalized, userPrompt);
+
+            return AiChatResponse.builder()
+                    .id(UUID.randomUUID().toString())
+                    .text(aiText)
+                    .moduleType(moduleType)
+                    .timestamp(LocalTime.now().format(DateTimeFormatter.ofPattern("HH:mm")))
+                    .cards(cards)
+                    .actionPrompt(actionPrompt)
+                    .build();
+        }
 
         try {
-            // Call Gemini 2.5 Flash API directly from Spring Boot Backend
-            String aiText = callGemini25Flash(userContext, userPrompt);
+            // 5. Construct System Prompt & Call Gemini Client for FINANCIAL_GOAL & RAG queries
+            String systemPrompt = aiPromptService.buildSystemPrompt(userContext, userPrompt, goalContext, isFollowUp);
+            log.info("System Prompt payload sent to Gemini Client:\n{}", systemPrompt);
+
+            String rawText = geminiClient.callGeminiApi(systemPrompt, userPrompt, history);
+            String aiText = sanitizeAiText(rawText, isFollowUp);
+
             List<AiCardDto> cards = generateCards(moduleType, normalized, userPrompt, userContext);
             AiActionPromptDto actionPrompt = generateActionPrompt(moduleType, normalized, userPrompt);
 
@@ -103,353 +215,695 @@ public class AiChatServiceImpl implements AiChatService {
                     .build();
 
         } catch (Exception e) {
-            log.warn("Error calling Gemini API from Spring Boot, executing fallback local engine: {}", e.getMessage());
-            return fallbackLocalEngine(userContext, userPrompt, normalized, moduleType);
+            log.warn("Error calling Gemini API client, executing fallback engine: {}", e.getMessage());
+            return fallbackLocalEngine(userContext, userPrompt, normalized, moduleType, history, goalContext, isFollowUp);
         }
     }
 
-    private Map<String, Object> fetchUserAccountContext(User user) {
-        Map<String, Object> ctx = new HashMap<>();
-        if (user == null) {
-            ctx.put("username", "Người dùng SmartSpend");
-            ctx.put("email", "");
-            ctx.put("totalBalance", BigDecimal.ZERO);
-            ctx.put("mainBalance", BigDecimal.ZERO);
-            ctx.put("cashBalance", BigDecimal.ZERO);
-            ctx.put("hasData", false);
-            ctx.put("budgetsStr", "Chưa có ngân sách nào");
-            ctx.put("distStr", "Chưa có báo cáo chi tiêu");
-            ctx.put("totalSpentMonth", BigDecimal.ZERO);
-            ctx.put("hasExpenseData", false);
-            return ctx;
-        }
-
-        ctx.put("username", user.getUsername() != null ? user.getUsername() : user.getEmail());
-        ctx.put("email", user.getEmail() != null ? user.getEmail() : "");
-
-        BigDecimal mainBalance = BigDecimal.ZERO;
-        BigDecimal cashBalance = BigDecimal.ZERO;
-
-        try {
-            List<Wallet> wallets = walletRepository.findByUserId(user.getId());
-            for (Wallet w : wallets) {
-                if (w.isDefault()) {
-                    mainBalance = w.getBalance() != null ? w.getBalance() : BigDecimal.ZERO;
-                } else if ("CASH".equalsIgnoreCase(w.getWalletType() != null ? w.getWalletType().name() : "")) {
-                    cashBalance = w.getBalance() != null ? w.getBalance() : BigDecimal.ZERO;
-                }
-            }
-        } catch (Exception e) {
-            log.error("Error fetching user wallets", e);
-        }
-
-        BigDecimal totalBalance = mainBalance.add(cashBalance);
-        ctx.put("totalBalance", totalBalance);
-        ctx.put("mainBalance", mainBalance);
-        ctx.put("cashBalance", cashBalance);
-
-        // Fetch actual expense distribution from ReportService
-        BigDecimal totalSpentMonth = BigDecimal.ZERO;
-        String topCategoryName = null;
-        BigDecimal topCategoryAmount = BigDecimal.ZERO;
-        Double topCategoryPercentage = 0.0;
-        
-        String secondCategoryName = null;
-        BigDecimal secondCategoryAmount = BigDecimal.ZERO;
-        Double secondCategoryPercentage = 0.0;
-
-        String distStr = "Chưa có phát sinh chi tiêu tháng này";
-
-        try {
-            List<com.project.app.report.dto.response.ReportDistributionResponse> distribution = 
-                    reportService.getDistributionReport(user, com.project.app.transaction.enums.TransactionType.EXPENSE, "MONTH", java.time.LocalDate.now());
-            if (distribution != null && !distribution.isEmpty()) {
-                // Sort distribution descending by total amount
-                distribution.sort((a, b) -> {
-                    BigDecimal amtA = a.getTotalAmount() != null ? a.getTotalAmount() : BigDecimal.ZERO;
-                    BigDecimal amtB = b.getTotalAmount() != null ? b.getTotalAmount() : BigDecimal.ZERO;
-                    return amtB.compareTo(amtA);
-                });
-
-                DecimalFormat df = new DecimalFormat("#,###");
-                StringBuilder sb = new StringBuilder();
-                for (int i = 0; i < distribution.size(); i++) {
-                    com.project.app.report.dto.response.ReportDistributionResponse d = distribution.get(i);
-                    if (d.getTotalAmount() != null && d.getTotalAmount().compareTo(BigDecimal.ZERO) > 0) {
-                        totalSpentMonth = totalSpentMonth.add(d.getTotalAmount());
-                        if (i == 0) {
-                            topCategoryName = d.getCategoryName();
-                            topCategoryAmount = d.getTotalAmount();
-                            topCategoryPercentage = d.getPercentage() != null ? d.getPercentage() : 0.0;
-                        } else if (i == 1) {
-                            secondCategoryName = d.getCategoryName();
-                            secondCategoryAmount = d.getTotalAmount();
-                            secondCategoryPercentage = d.getPercentage() != null ? d.getPercentage() : 0.0;
-                        }
-                        sb.append(String.format("- %s: %s VNĐ (%.1f%%)\n", d.getCategoryName(), df.format(d.getTotalAmount()), d.getPercentage() != null ? d.getPercentage() : 0.0));
-                    }
-                }
-                if (sb.length() > 0) {
-                    distStr = sb.toString();
-                }
-            }
-        } catch (Exception e) {
-            log.error("Error fetching expense distribution report", e);
-        }
-
-        // Fetch actual budgets
-        String budgetsStr = "Chưa có ngân sách thiết lập";
-        try {
-            List<com.project.app.budget.entity.Budget> budgets = budgetRepository.findByUserIdAndIsDeletedFalse(user.getId());
-            if (budgets != null && !budgets.isEmpty()) {
-                DecimalFormat df = new DecimalFormat("#,###");
-                StringBuilder sb = new StringBuilder();
-                for (com.project.app.budget.entity.Budget b : budgets) {
-                    sb.append(String.format("- Ngân sách %s (%s): %s VNĐ\n", b.getName(), b.getCategory() != null ? b.getCategory().getLabel() : "Chung", df.format(b.getAmount())));
-                }
-                budgetsStr = sb.toString();
-            }
-        } catch (Exception e) {
-            log.error("Error fetching user budgets", e);
-        }
-
-        ctx.put("totalSpentMonth", totalSpentMonth);
-        ctx.put("topCategoryName", topCategoryName);
-        ctx.put("topCategoryAmount", topCategoryAmount);
-        ctx.put("topCategoryPercentage", topCategoryPercentage);
-        ctx.put("secondCategoryName", secondCategoryName);
-        ctx.put("secondCategoryAmount", secondCategoryAmount);
-        ctx.put("secondCategoryPercentage", secondCategoryPercentage);
-        ctx.put("distStr", distStr);
-        ctx.put("budgetsStr", budgetsStr);
-
-        boolean hasData = totalBalance.compareTo(BigDecimal.ZERO) > 0 || totalSpentMonth.compareTo(BigDecimal.ZERO) > 0;
-        ctx.put("hasData", hasData);
-        ctx.put("hasExpenseData", totalSpentMonth.compareTo(BigDecimal.ZERO) > 0);
-
-        return ctx;
-    }
-
-    private String callGemini25Flash(Map<String, Object> ctx, String userPrompt) throws Exception {
+    private String buildAnalyticsResponse(String userPrompt, Map<String, Object> ctx) {
         DecimalFormat df = new DecimalFormat("#,###");
         String username = (String) ctx.get("username");
-        String email = (String) ctx.get("email");
-        BigDecimal totalBal = (BigDecimal) ctx.get("totalBalance");
-        BigDecimal mainBal = (BigDecimal) ctx.get("mainBalance");
-        BigDecimal cashBal = (BigDecimal) ctx.get("cashBalance");
-        String distStr = (String) ctx.get("distStr");
-        String budgetsStr = (String) ctx.get("budgetsStr");
-        boolean hasData = (boolean) ctx.get("hasData");
+        BigDecimal totalSpentMonth = (BigDecimal) ctx.getOrDefault("totalSpentMonth", BigDecimal.ZERO);
+        boolean hasExpenseData = Boolean.TRUE.equals(ctx.get("hasExpenseData"));
+        String topCategoryName = (String) ctx.get("topCategoryName");
+        BigDecimal topCategoryAmount = (BigDecimal) ctx.getOrDefault("topCategoryAmount", BigDecimal.ZERO);
+        Double topCategoryPercentage = (Double) ctx.getOrDefault("topCategoryPercentage", 0.0);
+        String secondCategoryName = (String) ctx.get("secondCategoryName");
+        BigDecimal secondCategoryAmount = (BigDecimal) ctx.getOrDefault("secondCategoryAmount", BigDecimal.ZERO);
+        Double secondCategoryPercentage = (Double) ctx.getOrDefault("secondCategoryPercentage", 0.0);
 
-        // Business Data calculated programmatically by Backend
-        String norm = normalizeText(userPrompt);
-        String businessDataStr = "";
-        if (norm.contains("muc tieu") || norm.contains("mua") || norm.contains("laptop") || norm.contains("xe") || norm.contains("sam") || norm.contains("oto") || norm.contains("o to") || norm.contains("nha")) {
-            Matcher amountMatcher = Pattern.compile("(\\d+(?:[.,]\\d+)?)\\s*(trieu|tr|ty)", Pattern.CASE_INSENSITIVE).matcher(norm);
-            Matcher monthMatcher = Pattern.compile("(\\d+)\\s*thang", Pattern.CASE_INSENSITIVE).matcher(norm);
+        String normalized = normalizeText(userPrompt);
 
-            long targetAmount = 30000000L;
-            if (amountMatcher.find()) {
-                double val = Double.parseDouble(amountMatcher.group(1).replace(",", "."));
-                String unit = amountMatcher.group(2).toLowerCase();
-                if (unit.contains("ty")) {
-                    targetAmount = (long)(val * 1000000000L);
-                } else {
-                    targetAmount = (long)(val * 1000000L);
-                }
+        // 1. Total monthly expense queries ("Tháng này tôi đã chi bao nhiêu tiền?", "Tôi đã tiêu bao nhiêu tiền?")
+        if (normalized.contains("da chi bao nhieu") || normalized.contains("chi bao nhieu") || normalized.contains("tieu bao nhieu")
+                || normalized.contains("thang nay toi da chi") || normalized.contains("thang nay da chi") || normalized.contains("thang nay toi tieu")
+                || normalized.contains("tong chi") || normalized.contains("tong tien chi")) {
+
+            if (!hasExpenseData) {
+                return "📊 Chi tiêu tháng này\n\n" +
+                       "Tài khoản của bạn hiện chưa ghi nhận phát sinh giao dịch chi tiêu nào trong tháng này.\n\n" +
+                       "Hãy thêm các giao dịch chi tiêu vào SmartSpend để AI có thể phân tích chính xác cho bạn.";
             }
 
-            int targetMonths = monthMatcher.find() ? Integer.parseInt(monthMatcher.group(1)) : 3;
-            long monthlySaving = targetMonths > 0 ? targetAmount / targetMonths : targetAmount;
-            long remainingGap = totalBal.longValue() < targetAmount ? targetAmount - totalBal.longValue() : 0;
-            long monthlyGapSaving = targetMonths > 0 && remainingGap > 0 ? remainingGap / targetMonths : 0;
-
-            String itemName = "ô tô";
-            if (norm.contains("laptop") || norm.contains("may tinh")) itemName = "laptop";
-            else if (norm.contains("xe may")) itemName = "xe máy";
-            else if (norm.contains("nha")) itemName = "nhà";
-            else if (norm.contains("oto") || norm.contains("o to") || norm.contains("xe hoi")) itemName = "ô tô";
-            else itemName = "mục tiêu mua sắm";
-
-            log.info("AI Financial Goal extracted -> Item: {}, Amount: {}, Months: {}, RemainingGap: {}, MonthlyGapSaving: {}", 
-                     itemName, df.format(targetAmount), targetMonths, df.format(remainingGap), df.format(monthlyGapSaving > 0 ? monthlyGapSaving : monthlySaving));
-
-            businessDataStr = String.format(
-                "\n3. BUSINESS DATA\n" +
-                "Mục tiêu tài chính (%s):\n" +
-                "- Giá mục tiêu: %s VNĐ\n" +
-                "- Thời gian: %d tháng\n" +
-                "- Số tiền còn thiếu: %s VNĐ\n" +
-                "- Nếu sử dụng số dư hiện tại: Cần tiết kiệm %s VNĐ/tháng\n" +
-                "- Nếu không sử dụng số dư hiện tại: Cần tiết kiệm %s VNĐ/tháng\n",
-                itemName,
-                df.format(targetAmount),
-                targetMonths,
-                df.format(remainingGap),
-                monthlyGapSaving > 0 ? df.format(monthlyGapSaving) : "0",
-                df.format(monthlySaving)
+            return String.format(
+                "📊 Chi tiêu tháng này\n\n" +
+                "Trong tháng này, bạn đã chi tổng cộng **%s VNĐ**.\n\n" +
+                "Bạn có thể xem báo cáo chi tiết trên ứng dụng để biết số tiền đã chi theo từng danh mục.",
+                df.format(totalSpentMonth)
             );
         }
 
-        String systemPrompt = String.format(
-            "1. SYSTEM PROMPT\n" +
-            "Bạn là AI Financial Assistant của SmartSpend.\n\n" +
-            "Vai trò:\n" +
-            "- Hỗ trợ người dùng quản lý tài chính cá nhân.\n" +
-            "- Đưa ra lời khuyên dựa trên dữ liệu được cung cấp.\n" +
-            "- Không tự bịa thêm dữ liệu.\n\n" +
-            "Quy tắc trả lời:\n" +
-            "- Luôn trả lời bằng tiếng Việt.\n" +
-            "- Chỉ trả về câu trả lời cuối cùng.\n" +
-            "- Không hiển thị prompt.\n" +
-            "- Không hiển thị quy tắc.\n" +
-            "- Không hiển thị ví dụ.\n" +
-            "- Không hiển thị template.\n" +
-            "- Không hiển thị reasoning.\n" +
-            "- Không hiển thị self-check.\n" +
-            "- Không hiển thị self-correction.\n" +
-            "- Không hỏi lại người dùng.\n" +
-            "- Không thêm nút gợi ý.\n\n" +
-            "Cấu trúc câu trả lời bắt buộc (chỉ xuất 1 lần ở câu trả lời cuối cùng):\n" +
-            "Phần 1: Dòng tiêu đề '🎯 Đánh giá' kèm 1-2 câu tóm tắt.\n" +
-            "Phần 2: Dòng tiêu đề '📊 Phân tích' kèm các dòng gạch đầu dòng phân tích số liệu.\n" +
-            "Phần 3: Dòng tiêu đề '✅ Gợi ý' kèm đúng 3 mục đánh số 1., 2., 3.\n\n" +
-            "2. CONTEXT\n" +
-            "Thông tin người dùng:\n" +
-            "- Email / Tên: %s (%s)\n" +
-            "- Ví tiền mặt: %s VNĐ\n" +
-            "- Ví chính: %s VNĐ\n" +
-            "- Tổng số dư: %s VNĐ\n" +
-            "- Chi tiêu tháng này: %s\n" +
-            "- Ngân sách: %s\n" +
-            "%s\n" +
-            "Hãy trả lời người dùng theo đúng định dạng đã quy định.\n",
-            email,
-            username,
-            df.format(cashBal),
-            df.format(mainBal),
-            df.format(totalBal),
-            distStr,
-            budgetsStr,
-            businessDataStr
-        );
-
-        log.info("System Prompt payload to Gemini:\n{}", systemPrompt);
-
-        HttpClient client = HttpClient.newBuilder()
-                .connectTimeout(Duration.ofSeconds(10))
-                .build();
-
-        String activeApiKey = getEffectiveGeminiApiKey();
-
-        List<String> candidateModels = new ArrayList<>();
-        try {
-            String listModelsUrl = "https://generativelanguage.googleapis.com/v1beta/models?key=" + activeApiKey;
-            HttpRequest listReq = HttpRequest.newBuilder().uri(URI.create(listModelsUrl)).GET().build();
-            HttpResponse<String> listRes = client.send(listReq, HttpResponse.BodyHandlers.ofString());
-            if (listRes.statusCode() == 200) {
-                JsonNode modelsJson = objectMapper.readTree(listRes.body());
-                JsonNode modelsArr = modelsJson.path("models");
-                if (modelsArr.isArray()) {
-                    for (JsonNode m : modelsArr) {
-                        String mName = m.path("name").asText("");
-                        JsonNode methods = m.path("supportedGenerationMethods");
-                        boolean supportsGen = false;
-                        if (methods.isArray()) {
-                            for (JsonNode method : methods) {
-                                if ("generateContent".equals(method.asText())) {
-                                    supportsGen = true;
-                                    break;
-                                }
-                            }
-                        }
-                        if (supportsGen && mName.startsWith("models/")) {
-                            candidateModels.add(mName.substring("models/".length()));
-                        }
-                    }
-                }
+        // 2. Top spending category queries ("Tôi tiêu nhiều nhất ở đâu?", "Chi vào đâu nhiều nhất?")
+        if (normalized.contains("tieu nhieu o dau") || normalized.contains("tieu o dau") || normalized.contains("chi vao dau")) {
+            if (!hasExpenseData || topCategoryName == null) {
+                return "📊 Phân tích chi tiêu\n\n" +
+                       "Tháng này bạn chưa có dữ liệu chi tiêu để phân tích danh mục lớn nhất.";
             }
-        } catch (Exception e) {
-            log.warn("Failed to fetch Gemini model list, fallback to static candidates: {}", e.getMessage());
+
+            return String.format(
+                "📊 Phân tích chi tiêu\n\n" +
+                "Danh mục bạn chi nhiều nhất trong tháng này là **%s** với **%s VNĐ**, chiếm khoảng **%.1f%%** tổng chi tiêu tháng.",
+                topCategoryName, df.format(topCategoryAmount), topCategoryPercentage
+            );
         }
 
-        if (candidateModels.isEmpty()) {
-            candidateModels.addAll(Arrays.asList("gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash-latest", "gemini-1.5-flash", "gemini-1.5-pro"));
+        // 3. Cost reduction queries ("Tôi nên cắt giảm khoản chi nào?", "Cắt giảm khoản chi")
+        if (normalized.contains("cat giam") || normalized.contains("khoan chi")) {
+            if (!hasExpenseData || topCategoryName == null) {
+                return "💡 Gợi ý cắt giảm chi tiêu\n\n" +
+                       "Tài khoản của bạn hiện chưa ghi nhận phát sinh giao dịch chi tiêu trong tháng này.\n\n" +
+                       "Hãy ghi nhận các giao dịch thu chi hàng ngày để AI chỉ ra khoản lãng phí cần cắt giảm.";
+            }
+
+            BigDecimal suggestedCut = topCategoryAmount.multiply(new BigDecimal("0.15"));
+            String secondText = secondCategoryName != null ? String.format(", đồng thời rà soát thêm danh mục '%s' (%s VNĐ, chiếm %.1f%%)", secondCategoryName, df.format(secondCategoryAmount), secondCategoryPercentage) : "";
+
+            return String.format(
+                "💡 Gợi ý cắt giảm\n\n" +
+                "Khoản bạn nên ưu tiên xem xét là **%s** vì đây đang là danh mục có mức chi cao nhất: **%s VNĐ** (chiếm %.1f%% tổng chi tiêu).\n\n" +
+                "Nếu giảm khoảng 15%% khoản chi này, bạn có thể tiết kiệm khoảng **%s VNĐ/tháng**%s.",
+                topCategoryName, df.format(topCategoryAmount), topCategoryPercentage, df.format(suggestedCut), secondText
+            );
         }
 
-        Exception lastException = null;
+        // Default Analytics response
+        if (!hasExpenseData) {
+            return "📊 Chi tiêu tháng này\n\n" +
+                   "Tài khoản của bạn hiện chưa ghi nhận phát sinh giao dịch chi tiêu trong tháng này.";
+        }
 
-        for (String modelName : candidateModels) {
-            try {
-                String endpoint = "https://generativelanguage.googleapis.com/v1beta/models/" + modelName + ":generateContent?key=" + activeApiKey;
+        return String.format(
+            "📊 Tổng chi tiêu tháng này của bạn là **%s VNĐ**.",
+            df.format(totalSpentMonth)
+        );
+    }
 
-                ObjectNode reqJson = objectMapper.createObjectNode();
+    private String buildGoalFollowUpResponse(String userPrompt, String normalized, GoalContext goalContext, BigDecimal totalBal) {
+        DecimalFormat df = new DecimalFormat("#,###");
+        String goalName = goalContext.getGoalName();
+        String actionPrefix = goalName.startsWith("tích lũy") ? "" : "mua ";
+        long usableBal = goalContext.getUsableBalance();
 
-                // System Instruction (Google Gemini Native System Field)
-                ObjectNode sysInst = reqJson.putObject("system_instruction");
-                ArrayNode sysParts = sysInst.putArray("parts");
-                sysParts.addObject().put("text", systemPrompt);
+        // 1. Duration question check ("Cần bao lâu để đạt mục tiêu", "bao lâu", "mất bao lâu")
+        boolean asksHowLong = normalized.contains("can bao lau") || normalized.contains("bao lau") || normalized.contains("mat bao lau") || normalized.contains("bao nhieu thang");
+        if (asksHowLong && goalContext.getCustomMonthlySaving() > 0) {
+            long monthlySaving = goalContext.getCustomMonthlySaving();
+            long monthsNeededWithBal = goalContext.getMonthsNeededWithBalance() > 0 ? goalContext.getMonthsNeededWithBalance() : 1;
+            long monthsNeededWithoutBal = goalContext.getMonthsNeededWithoutBalance() > 0 ? goalContext.getMonthsNeededWithoutBalance() : 1;
 
-                // User Content
-                ArrayNode contents = reqJson.putArray("contents");
-                ObjectNode userObj = contents.addObject();
-                userObj.put("role", "user");
-                ArrayNode parts = userObj.putArray("parts");
-                parts.addObject().put("text", userPrompt);
+            return String.format(
+                "⏱️ **Thời gian cần để đạt mục tiêu**\n\n" +
+                "Với khả năng tiết kiệm **%s VNĐ/tháng**:\n\n" +
+                "• **Nếu sử dụng vốn khả dụng (%s VNĐ)**: Cần khoảng **%d tháng** (Số tiền còn thiếu: %s VNĐ).\n" +
+                "• **Nếu giữ nguyên số dư hiện tại**: Cần khoảng **%d tháng**.\n\n" +
+                "🎯 Mục tiêu: %s**%s %s VNĐ**.",
+                df.format(monthlySaving),
+                df.format(usableBal),
+                monthsNeededWithBal,
+                df.format(goalContext.getRemainingAmount()),
+                monthsNeededWithoutBal,
+                actionPrefix,
+                goalName,
+                df.format(goalContext.getTargetAmount())
+            );
+        }
 
-                ObjectNode genConfig = reqJson.putObject("generationConfig");
-                genConfig.put("temperature", 0.1);
-                genConfig.put("maxOutputTokens", 1200);
+        // 2. Custom monthly saving capacity check ("Nếu mỗi tháng tôi chỉ tiết kiệm 2 triệu thì sao? Có đủ không?")
+        if (goalContext.getCustomMonthlySaving() > 0) {
+            long customAmt = goalContext.getCustomMonthlySaving();
+            long monthsWithBal = goalContext.getMonthsNeededWithBalance() > 0 ? goalContext.getMonthsNeededWithBalance() : 1;
+            long monthsFull = goalContext.getMonthsNeededWithoutBalance() > 0 ? goalContext.getMonthsNeededWithoutBalance() : 1;
 
-                HttpRequest httpRequest = HttpRequest.newBuilder()
-                        .uri(URI.create(endpoint))
-                        .header("Content-Type", "application/json")
-                        .POST(HttpRequest.BodyPublishers.ofString(objectMapper.writeValueAsString(reqJson)))
-                        .build();
+            if (!goalContext.isAchievable()) {
+                long neededMonthly = goalContext.getMonthlyGapSaving();
+                long gapMonthly = neededMonthly > customAmt ? neededMonthly - customAmt : 0;
 
-                HttpResponse<String> httpResponse = client.send(httpRequest, HttpResponse.BodyHandlers.ofString());
-
-                if (httpResponse.statusCode() == 200) {
-                    JsonNode resJson = objectMapper.readTree(httpResponse.body());
-                    JsonNode candidate = resJson.path("candidates").get(0);
-                    if (candidate != null && candidate.has("content")) {
-                        JsonNode partNode = candidate.path("content").path("parts").get(0);
-                        if (partNode != null && partNode.has("text")) {
-                            String resultText = partNode.path("text").asText().trim();
-                            return sanitizeAiText(resultText);
-                        }
+                String balNotice;
+                if (goalContext.getUserDeclaredBalance() > 0) {
+                    if (goalContext.getEmergencyFund() > 0) {
+                        balNotice = String.format("• Vốn ban đầu (theo giả định): **%s VNĐ** (Giữ lại **%s VNĐ** làm quỹ dự phòng ➔ Vốn khả dụng: **%s VNĐ**).\n", df.format(goalContext.getUserDeclaredBalance()), df.format(goalContext.getEmergencyFund()), df.format(usableBal));
+                    } else {
+                        balNotice = String.format("• Vốn ban đầu (theo giả định): **%s VNĐ** (Số dư thực tế trên SmartSpend: **%s VNĐ**).\n", df.format(goalContext.getUserDeclaredBalance()), df.format(totalBal));
                     }
                 } else {
-                    log.warn("Gemini model {} returned status {}: {}", modelName, httpResponse.statusCode(), httpResponse.body());
+                    balNotice = String.format("• Số dư hiện tại: **%s VNĐ**.\n", df.format(totalBal));
                 }
-            } catch (Exception e) {
-                lastException = e;
+
+                return String.format(
+                    "❌ **Chưa đủ để đạt mục tiêu trong %d tháng!**\n\n" +
+                    "Mục tiêu: %s**%s %s VNĐ** trong %d tháng.\n" +
+                    "%s" +
+                    "• Tiết kiệm hàng tháng: **%s VNĐ/tháng** × %d tháng = **%s VNĐ**.\n" +
+                    "• Tổng tích lũy dự kiến: **%s VNĐ** (Còn thiếu: **%s VNĐ**).\n\n" +
+                    "➡️ **Thời gian thực tế cần thiết**: Bạn cần khoảng **%d tháng** (nếu dùng vốn khả dụng) hoặc **%d tháng** (nếu không dùng vốn khả dụng).\n\n" +
+                    "💡 **Giải pháp**: Để đạt mục tiêu đúng %d tháng, bạn cần tiết kiệm khoảng **%s VNĐ/tháng** (tăng thêm **%s VNĐ/tháng**).",
+                    goalContext.getDurationMonths(),
+                    actionPrefix,
+                    goalName,
+                    df.format(goalContext.getTargetAmount()),
+                    goalContext.getDurationMonths(),
+                    balNotice,
+                    df.format(customAmt),
+                    goalContext.getDurationMonths(),
+                    df.format(customAmt * goalContext.getDurationMonths()),
+                    df.format(goalContext.getProjectedAmount()),
+                    df.format(goalContext.getShortfallAmount()),
+                    monthsWithBal,
+                    monthsFull,
+                    goalContext.getDurationMonths(),
+                    df.format(neededMonthly),
+                    df.format(gapMonthly)
+                );
+            } else {
+                long surplus = goalContext.getSurplusAmount();
+                String surplusText = surplus > 0 ? String.format(" (Dự kiến dư **%s VNĐ**)", df.format(surplus)) : "";
+
+                return String.format(
+                    "✅ **Hoàn toàn đủ khả năng đạt mục tiêu!**\n\n" +
+                    "Mục tiêu: %s**%s %s VNĐ** trong %d tháng.\n" +
+                    "• Khả năng tiết kiệm: **%s VNĐ/tháng**.\n" +
+                    "• Tổng tích lũy dự kiến sau %d tháng: **%s VNĐ**%s.\n\n" +
+                    "➡️ **Phương án 1 (Sử dụng vốn khả dụng %s VNĐ)**: Bạn sẽ hoàn thành mục tiêu sau khoảng **%d tháng**.\n" +
+                    "➡️ **Phương án 2 (Giữ nguyên số dư hiện tại)**: Bạn sẽ hoàn thành mục tiêu sau khoảng **%d tháng**.",
+                    actionPrefix,
+                    goalName,
+                    df.format(goalContext.getTargetAmount()),
+                    goalContext.getDurationMonths(),
+                    df.format(customAmt),
+                    goalContext.getDurationMonths(),
+                    df.format(goalContext.getProjectedAmount()),
+                    surplusText,
+                    df.format(usableBal),
+                    monthsWithBal,
+                    monthsFull
+                );
             }
         }
 
-        throw new RuntimeException("All Gemini model endpoints failed. Last error: " + (lastException != null ? lastException.getMessage() : "Unknown"));
+        // 3. Keep balance option check ("Nếu tôi không dùng số dư hiện tại thì sao?")
+        boolean keepCurrentBalance = normalized.contains("khong dung") || normalized.contains("giu nguyen")
+                || normalized.contains("khong su dung") || normalized.contains("khong dung so du");
+
+        if (keepCurrentBalance) {
+            return String.format(
+                "💰 **Nếu không sử dụng số dư hiện tại**\n\n" +
+                "Bạn giữ nguyên số dư và không dùng khoản tiền này cho mục tiêu.\n\n" +
+                "Để đạt mục tiêu %s**%s %s VNĐ** trong %d tháng, bạn cần tự tiết kiệm khoảng **%s VNĐ/tháng**.",
+                actionPrefix,
+                goalName,
+                df.format(goalContext.getTargetAmount()),
+                goalContext.getDurationMonths(),
+                df.format(goalContext.getMonthlySaving())
+            );
+        }
+
+        // 4. Use balance option check ("Nếu sử dụng toàn bộ số dư hiện tại thì sao?")
+        boolean useCurrentBalance = normalized.contains("dung so du") || normalized.contains("dung toan bo") || normalized.contains("su dung so du");
+        if (useCurrentBalance) {
+            long effectiveBal = goalContext.getUserDeclaredBalance() > 0 
+                ? Math.max(0, goalContext.getUserDeclaredBalance() - goalContext.getEmergencyFund()) 
+                : totalBal.longValue();
+            long remGap = Math.max(0, goalContext.getTargetAmount() - effectiveBal);
+            long neededMonthly = goalContext.getDurationMonths() > 0 ? Math.round((double) remGap / goalContext.getDurationMonths()) : remGap;
+
+            return String.format(
+                "💰 **Nếu sử dụng vốn khả dụng hiện tại**\n\n" +
+                "Sử dụng số tiền khả dụng **%s VNĐ**, bạn còn thiếu **%s VNĐ** cho mục tiêu %s**%s %s VNĐ**.\n\n" +
+                "➡️ Trong %d tháng, bạn cần tiết kiệm khoảng **%s VNĐ/tháng**.",
+                df.format(effectiveBal),
+                df.format(remGap),
+                actionPrefix,
+                goalName,
+                df.format(goalContext.getTargetAmount()),
+                goalContext.getDurationMonths(),
+                df.format(neededMonthly)
+            );
+        }
+
+        // 5. Explicit declared balance / emergency fund update check
+        if (goalContext.getUserDeclaredBalance() > 0 || goalContext.getEmergencyFund() > 0) {
+            long declaredBal = goalContext.getUserDeclaredBalance() > 0 ? goalContext.getUserDeclaredBalance() : totalBal.longValue();
+            long emergencyFund = goalContext.getEmergencyFund();
+            long targetAmt = goalContext.getTargetAmount();
+            long remainingGap = goalContext.getRemainingAmount();
+            int months = goalContext.getDurationMonths() > 0 ? goalContext.getDurationMonths() : 1;
+            long neededMonthly = goalContext.getMonthlyGapSaving();
+
+            StringBuilder sb = new StringBuilder();
+            sb.append(String.format("💰 **Cập nhật kế hoạch %s%s %s VNĐ**\n\n", actionPrefix, goalName, df.format(targetAmt)));
+            sb.append(String.format("💵 **Số tiền hiện có**: %s VNĐ\n", df.format(declaredBal)));
+            if (emergencyFund > 0) {
+                sb.append(String.format("🛡️ **Quỹ dự phòng giữ lại**: %s VNĐ\n", df.format(emergencyFund)));
+            }
+            sb.append(String.format("🎯 **Số tiền có thể dùng cho mục tiêu**: %s VNĐ\n\n", df.format(usableBal)));
+            sb.append(String.format("📌 **Số tiền còn thiếu**:\n%s - %s = **%s VNĐ**\n\n", df.format(targetAmt), df.format(usableBal), df.format(remainingGap)));
+            sb.append(String.format("➡️ **Để đạt mục tiêu trong %d tháng**:\n", months));
+            sb.append(String.format("%s ÷ %d ≈ **%s VNĐ/tháng**.", df.format(remainingGap), months, df.format(neededMonthly)));
+            return sb.toString();
+        }
+
+        // 6. Rich Follow-up response layout
+        long monthlyWithBal = goalContext.getMonthlyGapSaving() > 0 ? goalContext.getMonthlyGapSaving() : goalContext.getMonthlySaving();
+        long monthlyWithoutBal = goalContext.getMonthlySaving();
+        double roundedMillion = Math.round((double) monthlyWithBal / 10000.0) / 100.0;
+
+        return String.format(
+            "🎯 **Kế hoạch %s%s %s VNĐ trong %d tháng**\n\n" +
+            "💵 **Số dư hiện tại**: %s VNĐ\n" +
+            "📌 **Số tiền còn thiếu**: %s VNĐ\n\n" +
+            "➡️ **Phương án 1 (Sử dụng số dư hiện tại)**:\nCần tiết kiệm khoảng **%s VNĐ/tháng** trong %d tháng.\n\n" +
+            "➡️ **Phương án 2 (Giữ nguyên số dư hiện tại)**:\nCần tiết kiệm khoảng **%s VNĐ/tháng** trong %d tháng.\n\n" +
+            "💡 **Gợi ý**: Bạn nên tiết kiệm khoảng **%.2f triệu VNĐ/tháng** nếu chấp nhận sử dụng số dư hiện tại cho mục tiêu này.",
+            actionPrefix,
+            goalName,
+            df.format(goalContext.getTargetAmount()),
+            goalContext.getDurationMonths(),
+            df.format(totalBal),
+            df.format(goalContext.getRemainingAmount()),
+            df.format(monthlyWithBal),
+            goalContext.getDurationMonths(),
+            df.format(monthlyWithoutBal),
+            goalContext.getDurationMonths(),
+            roundedMillion
+        );
+    }
+
+    private String formatGoalCalculationResponse(GoalContext goalContext, BigDecimal dbTotalBal) {
+        DecimalFormat df = new DecimalFormat("#,###");
+        String goalName = goalContext.getGoalName();
+        String actionPrefix = goalName.startsWith("tích lũy") ? "" : "mua ";
+        long targetAmt = goalContext.getTargetAmount();
+        int months = goalContext.getDurationMonths();
+
+        // 1. If user explicitly specified NOT USING current balance (e.g. "Hiện tôi có 12 triệu nhưng không muốn dùng số tiền đó")
+        if (!goalContext.isUseCurrentBalance()) {
+            long fullMonthly = months > 0 ? Math.round((double) targetAmt / months) : targetAmt;
+            double roundedMillion = Math.round((double) fullMonthly / 10000.0) / 100.0;
+
+            String userBalInfo = goalContext.getUserDeclaredBalance() > 0 ?
+                String.format("💵 **Số tiền hiện có (theo câu hỏi)**: %s VNĐ\n🔒 **Lựa chọn**: Giữ nguyên số tiền này và không sử dụng cho mục tiêu.\n", df.format(goalContext.getUserDeclaredBalance())) :
+                "🔒 **Lựa chọn**: Giữ nguyên số dư hiện tại và không sử dụng cho mục tiêu này.\n";
+
+            return String.format(
+                "🎯 **Kế hoạch %s%s %s VNĐ trong %d tháng**\n\n" +
+                "%s" +
+                "📌 **Số tiền cần tích lũy mới**: %s VNĐ\n\n" +
+                "➡️ **Mỗi tháng bạn cần tiết kiệm khoảng**:\n" +
+                "**%s ÷ %d = %s VNĐ/tháng** trong %d tháng.\n\n" +
+                "💡 **Gợi ý**: Bạn nên trích lập khoảng **%.2f triệu VNĐ/tháng** vào một ví riêng trên SmartSpend để bảo toàn kế hoạch %s%s đúng %d tháng.",
+                actionPrefix, goalName,
+                df.format(targetAmt), months,
+                userBalInfo,
+                df.format(targetAmt),
+                df.format(targetAmt), months, df.format(fullMonthly), months,
+                roundedMillion,
+                actionPrefix, goalName, months
+            );
+        }
+
+        // 2. If user specified a custom monthly saving rate (e.g. "Mỗi tháng tôi chỉ có thể tiết kiệm 2 triệu")
+        if (goalContext.getCustomMonthlySaving() > 0) {
+            long customAmt = goalContext.getCustomMonthlySaving();
+            long effectiveBal = goalContext.getUserDeclaredBalance() > 0 ? goalContext.getUserDeclaredBalance() : dbTotalBal.longValue();
+            long remainingGap = targetAmt > effectiveBal ? targetAmt - effectiveBal : 0;
+            long neededMonthly = months > 0 ? Math.round((double) remainingGap / months) : customAmt;
+            long gapMonthly = neededMonthly > customAmt ? neededMonthly - customAmt : 0;
+            long monthsWithBal = (long) Math.ceil((double) remainingGap / customAmt);
+
+            if (!goalContext.isAchievable()) {
+                String balNotice = goalContext.getUserDeclaredBalance() > 0 ?
+                    String.format("- Số tiền hiện có (giả định): **%s VNĐ** (Số dư thực tế trên SmartSpend: **%s VNĐ**).\n", df.format(goalContext.getUserDeclaredBalance()), df.format(dbTotalBal)) :
+                    String.format("- Số dư hiện có trên SmartSpend: **%s VNĐ**.\n", df.format(dbTotalBal));
+
+                return String.format(
+                    "💻 **Đánh giá mục tiêu %s%s**\n\n" +
+                    "Bạn muốn %s**%s %s VNĐ** trong %d tháng.\n\n" +
+                    "📊 **Phân tích chi tiết:**\n" +
+                    "%s" +
+                    "- Số tiền còn thiếu: **%s VNĐ**.\n" +
+                    "- Khả năng tiết kiệm: **%s VNĐ/tháng**.\n" +
+                    "- Thời gian dự định: **%d tháng**.\n\n" +
+                    "Sau %d tháng, tổng số tiền bạn có là:\n" +
+                    "**%s + (%s × %d) = %s VNĐ**\n\n" +
+                    "❌ **Kế hoạch chưa đủ để %s%s!**\n" +
+                    "Bạn sẽ còn thiếu khoảng **%s VNĐ**.\n\n" +
+                    "💡 **Gợi ý phương án điều chỉnh:**\n" +
+                    "1. **Để đạt mục tiêu đúng %d tháng**: Bạn cần tiết kiệm khoảng **%s VNĐ/tháng** (tăng thêm khoảng **%s VNĐ/tháng**).\n" +
+                    "2. **Nếu giữ nguyên mức tiết kiệm %s VNĐ/tháng**: Bạn cần khoảng **%d tháng** để đạt đủ mục tiêu.",
+                    actionPrefix, goalName,
+                    actionPrefix, goalName, df.format(targetAmt), months,
+                    balNotice,
+                    df.format(remainingGap),
+                    df.format(customAmt),
+                    months,
+                    months,
+                    df.format(effectiveBal), df.format(customAmt), months, df.format(goalContext.getProjectedAmount()),
+                    actionPrefix, goalName,
+                    df.format(goalContext.getShortfallAmount()),
+                    months, df.format(neededMonthly), df.format(gapMonthly),
+                    df.format(customAmt), monthsWithBal > 0 ? monthsWithBal : 1
+                );
+            } else {
+                return String.format(
+                    "💻 **Đánh giá mục tiêu %s%s**\n\n" +
+                    "✅ **Kế hoạch hoàn toàn khả thi!**\n\n" +
+                    "📊 **Phân tích chi tiết:**\n" +
+                    "- Số tiền hiện có: **%s VNĐ**\n" +
+                    "- Khả năng tiết kiệm: **%s VNĐ/tháng** × %d tháng = **%s VNĐ**\n" +
+                    "- Tổng tiền dự kiến sau %d tháng: **%s VNĐ**\n\n" +
+                    "🎯 Mục tiêu **%s VNĐ** sẽ đạt được đầy đủ!",
+                    actionPrefix, goalName,
+                    df.format(effectiveBal),
+                    df.format(customAmt), months, df.format(customAmt * months),
+                    months, df.format(goalContext.getProjectedAmount()),
+                    df.format(targetAmt)
+                );
+            }
+        }
+
+        // 3. Standard 3-part layout (when customMonthlySaving == 0 and useCurrentBalance == true)
+        long effectiveBal = goalContext.getUserDeclaredBalance() > 0 ? goalContext.getUserDeclaredBalance() : dbTotalBal.longValue();
+        long remainingGap = targetAmt > effectiveBal ? targetAmt - effectiveBal : 0;
+        long gapMonthly = months > 0 ? Math.round((double) remainingGap / months) : targetAmt;
+        long fullMonthly = months > 0 ? Math.round((double) targetAmt / months) : targetAmt;
+
+        String evaluationText;
+        if (remainingGap == 0) {
+            evaluationText = String.format(
+                "Số dư hiện tại của bạn (%s VNĐ) đã đủ để hoàn thành mục tiêu %s%s %s VNĐ ngay hôm nay!",
+                df.format(effectiveBal), actionPrefix, goalName, df.format(targetAmt)
+            );
+        } else {
+            evaluationText = String.format(
+                "Mục tiêu %s%s %s VNĐ trong %d tháng của bạn hoàn toàn khả thi nếu thiết lập kế hoạch tiết kiệm kỷ luật từ hôm nay.",
+                actionPrefix, goalName, df.format(targetAmt), months
+            );
+        }
+
+        return String.format(
+            "🎯 **Đánh giá**\n" +
+            "%s\n\n" +
+            "📊 **Phân tích**\n" +
+            "- Tổng số tiền cần có: %s VNĐ.\n" +
+            "- Số dư hiện có: %s VNĐ.\n" +
+            "- Số tiền còn thiếu: %s VNĐ.\n" +
+            "- **Phương án 1 (Sử dụng toàn bộ số dư hiện tại %s VNĐ)**: Bạn cần tiết kiệm khoảng **%s VNĐ/tháng** trong %d tháng.\n" +
+            "- **Phương án 2 (Giữ nguyên số dư hiện tại cho mục đích khác)**: Bạn cần tiết kiệm khoảng **%s VNĐ/tháng** trong %d tháng.\n\n" +
+            "✅ **Gợi ý**\n" +
+            "1. Ưu tiên trích lập khoản tiết kiệm cố định hàng tháng vào một ví riêng để bảo toàn nguồn vốn.\n" +
+            "2. Thiết lập mục tiêu tài chính %s trên ứng dụng SmartSpend để dễ dàng theo dõi tiến độ.\n" +
+            "3. Kiểm soát chặt chẽ chi tiêu hàng ngày để đảm bảo duy trì hạn mức tiết kiệm đúng kế hoạch.",
+            evaluationText,
+            df.format(targetAmt), df.format(effectiveBal), df.format(remainingGap),
+            df.format(effectiveBal), df.format(gapMonthly), months,
+            df.format(fullMonthly), months, goalName
+        );
+    }
+
+    private boolean isFinancialGoalFollowUp(String norm) {
+        if (norm == null || norm.isEmpty()) return false;
+
+        return norm.contains("tiet kiem")
+                || norm.contains("moi thang")
+                || norm.contains("hang thang")
+                || norm.contains("bao nhieu thang")
+                || norm.contains("bao lau")
+                || norm.contains("co du khong")
+                || norm.contains("du khong")
+                || norm.contains("thieu bao nhieu")
+                || norm.contains("con thieu")
+                || norm.contains("tang them")
+                || norm.contains("tang thoi gian")
+                || norm.contains("them thang")
+                || norm.contains("giu lai")
+                || norm.contains("giu nguyen")
+                || norm.contains("khong dung")
+                || norm.contains("su dung so du")
+                || norm.contains("so tien hien co")
+                || norm.contains("hien tai toi co")
+                || norm.contains("toi co")
+                || norm.contains("dang co")
+                || norm.contains("quy du phong");
+    }
+
+    private boolean isBudgetPlanningQuery(String norm) {
+        if (norm == null || norm.isEmpty()) return false;
+
+        // How-to guide queries (e.g. "cách tạo ngân sách", "hướng dẫn tạo ngân sách") MUST be handled by APP_GUIDE!
+        if (norm.contains("cach tao") || norm.contains("huong dan") || norm.contains("cach lap") || norm.contains("tao ngan sach")) {
+            return false;
+        }
+
+        boolean hasIncome = norm.contains("luong") || norm.contains("thu nhap") || norm.contains("moi thang toi co") || norm.contains("moi thang toi nhan");
+        boolean hasBudgetKeyword = norm.contains("chia ngan sach") || norm.contains("phan bo") || norm.contains("nen chia") 
+                || norm.contains("nen tiet kiem bao nhieu") || norm.contains("tiet kiem bao nhieu") 
+                || norm.contains("phan bo thu nhap") || norm.contains("chia the nao") || norm.contains("chia nhu the nao");
+
+        return hasIncome || (hasBudgetKeyword && (norm.contains("chia") || norm.contains("phan bo") || norm.contains("luong") || norm.contains("thu nhap")));
+    }
+
+    private String buildBudgetRecommendationResponse(String userPrompt, Map<String, Object> ctx) {
+        DecimalFormat df = new DecimalFormat("#,###");
+        String normPrompt = normalizeText(userPrompt);
+
+        Matcher incomeMatcher = Pattern.compile("(?:luong|thu nhap).*?(\\d+(?:[.,]\\d+)?)\\s*(trieu|tr|m)", Pattern.CASE_INSENSITIVE).matcher(normPrompt);
+        Matcher rentMatcher = Pattern.compile("(?:tien thue|thue|tien nha).*?(\\d+(?:[.,]\\d+)?)\\s*(trieu|tr|m)", Pattern.CASE_INSENSITIVE).matcher(normPrompt);
+
+        long income = 0;
+        long rent = 0;
+
+        if (incomeMatcher.find()) {
+            double val = Double.parseDouble(incomeMatcher.group(1).replace(",", "."));
+            income = (long) (val * 1_000_000L);
+        }
+
+        if (rentMatcher.find()) {
+            double val = Double.parseDouble(rentMatcher.group(1).replace(",", "."));
+            rent = (long) (val * 1_000_000L);
+        }
+
+        if (income <= 0) {
+            return "💡 **Tư vấn lập ngân sách**\n\n" +
+                   "Bạn vui lòng cho AI biết thu nhập hàng tháng (ví dụ: *'Lương tôi 12 triệu, tiền thuê 3 triệu. Nên chia thế nào?'*) để AI tính toán phân bổ ngân sách chính xác cho bạn nhé.";
+        }
+
+        long remaining = income - rent;
+
+        if (remaining <= 0) {
+            return String.format(
+                "⚠️ **Cảnh báo ngân sách**\n\n" +
+                "Chi phí thuê nhà **%s VNĐ** đã bằng hoặc vượt quá tổng thu nhập **%s VNĐ/tháng** của bạn.\n" +
+                "Bạn nên xem xét tìm phương án giảm chi phí cố định này trước khi lập kế hoạch phân bổ chi tiêu.",
+                df.format(rent), df.format(income)
+            );
+        }
+
+        long food = Math.round(remaining * 0.40);
+        long saving = Math.round(remaining * 0.25);
+        long entertainment = Math.round(remaining * 0.15);
+        long emergency = remaining - food - saving - entertainment;
+
+        return String.format(
+            "💰 **Gợi ý phân bổ ngân sách hàng tháng**\n\n" +
+            "• Thu nhập hàng tháng: **%s VNĐ**\n" +
+            "• Tiền thuê cố định: **%s VNĐ**\n" +
+            "• Khoản khả dụng còn lại: **%s VNĐ**\n\n" +
+            "📊 **Tỷ lệ phân bổ khuyến nghị:**\n" +
+            "- 🏠 Tiền thuê & cố định: **%s VNĐ** (%.1f%%)\n" +
+            "- 🍚 Ăn uống & sinh hoạt: **%s VNĐ** (%.1f%%)\n" +
+            "- 💰 Tiết kiệm & đầu tư: **%s VNĐ** (%.1f%%)\n" +
+            "- 🎮 Giải trí & cá nhân: **%s VNĐ** (%.1f%%)\n" +
+            "- 🛡️ Quỹ dự phòng linh hoạt: **%s VNĐ** (%.1f%%)",
+            df.format(income),
+            df.format(rent),
+            df.format(remaining),
+            df.format(rent), (double) rent / income * 100,
+            df.format(food), (double) food / income * 100,
+            df.format(saving), (double) saving / income * 100,
+            df.format(entertainment), (double) entertainment / income * 100,
+            df.format(emergency), (double) emergency / income * 100
+        );
+    }
+
+    private String buildAppGuideResponse(String norm) {
+        if (norm == null) norm = "";
+
+        if (norm.contains("vi") || norm.contains("tao vi") || norm.contains("them vi")) {
+            return "👛 **Hướng dẫn Tạo & Quản lý Ví trên SmartSpend**\n\n" +
+                   "Để tạo ví mới và quản lý dòng tiền cá nhân:\n" +
+                   "1. Mở mục **Ví tiền** (Wallet) từ Menu chính.\n" +
+                   "2. Nhấn nút **Thêm ví mới** (+).\n" +
+                   "3. Nhập **Tên ví** (ví dụ: *'Ví Tiền mặt'*, *'Ví MoMo'*, *'Tài khoản VCB'*).\n" +
+                   "4. Chọn Loại tài khoản & Nhập **Số dư ban đầu**.\n" +
+                   "5. Nhấn **Tạo ví**. Số dư ví mới sẽ tự động được cộng vào Tổng tài sản của bạn!";
+        }
+
+        if (norm.contains("danh muc") || norm.contains("tao danh muc") || norm.contains("them danh muc")) {
+            return "🏷️ **Hướng dẫn Tạo & Quản lý Danh mục Chi tiêu**\n\n" +
+                   "Các bước tạo danh mục thu chi mới:\n" +
+                   "1. Vào mục **Cài đặt** ➔ Chọn **Quản lý danh mục**.\n" +
+                   "2. Chọn Tab **Chi tiêu** hoặc **Thu nhập**.\n" +
+                   "3. Nhấn **Thêm danh mục mới** (+).\n" +
+                   "4. Nhập **Tên danh mục** (ví dụ: *'Ăn uống'*, *'Giải trí'*, *'Học tập'*).\n" +
+                   "5. Chọn Biểu tượng (Icon) & Màu sắc đại diện ➔ Nhấn **Lưu**.\n" +
+                   "Danh mục mới sẽ xuất hiện ngay lập tức khi bạn Thêm giao dịch!";
+        }
+
+        if (norm.contains("ngan sach") || norm.contains("tao ngan sach") || norm.contains("lap ngan sach")) {
+            return "🎯 **Hướng dẫn Thiết lập Hạn mức Ngân sách**\n\n" +
+                   "Các bước tạo ngân sách kiểm soát chi tiêu:\n" +
+                   "1. Mở màn hình **Ngân sách** (Budget) trên thanh điều hướng.\n" +
+                   "2. Nhấn **Tạo ngân sách mới** (+).\n" +
+                   "3. Chọn **Danh mục chi tiêu** cần kiểm soát (ví dụ: *'Ăn uống'*, *'Mua sắm'*).\n" +
+                   "4. Nhập **Hạn mức số tiền tối đa** cho tháng.\n" +
+                   "5. Nhấn **Xác nhận**. AI SmartSpend sẽ tự động gửi cảnh báo khi chi tiêu của bạn đạt 80% và 100% hạn mức!";
+        }
+
+        if (norm.contains("giao dich") || norm.contains("them giao dich") || norm.contains("ghi chep") || norm.contains("nhap thu chi")) {
+            return "📝 **Hướng dẫn Tạo Giao dịch Thu / Chi**\n\n" +
+                   "Các bước ghi chép giao dịch nhanh:\n" +
+                   "1. Nhấn nút **Cộng (+)** màu xanh nổi ở giữa thanh Menu bên dưới.\n" +
+                   "2. Chọn loại giao dịch: **Chi tiêu** hoặc **Thu nhập**.\n" +
+                   "3. Nhập **Số tiền** giao dịch.\n" +
+                   "4. Chọn **Danh mục** & **Ví thanh toán** tương ứng.\n" +
+                   "5. Nhấn **Lưu giao dịch**. Hệ thống sẽ tự động cập nhật số dư ví và biểu đồ báo cáo!";
+        }
+
+        if (norm.contains("nap") || norm.contains("rut") || norm.contains("chuyen tien")) {
+            return "💰 **Hướng dẫn Nạp, Rút & Chuyển tiền giữa các Ví**\n\n" +
+                   "• **Để Nạp tiền vào Ví**:\n" +
+                   "  1. Vào màn hình **Ví tiền** ➔ Chọn Ví cần nạp ➔ Nhấn **Nạp tiền**.\n" +
+                   "  2. Nhập số tiền & Xác nhận giao dịch.\n\n" +
+                   "• **Để Rút tiền / Chuyển tiền giữa các Ví**:\n" +
+                   "  1. Vào màn hình **Ví tiền** ➔ Chọn **Chuyển tiền**.\n" +
+                   "  2. Chọn **Ví nguồn**, **Ví nhận** & Nhập **Số tiền chuyển**.\n" +
+                   "  3. Nhấn **Xác nhận chuyển**. Số dư các ví sẽ được cập nhật tự động!";
+        }
+
+        if (norm.contains("pin") || norm.contains("mat khau")) {
+            return "🔒 **Hướng dẫn Đổi & Khôi phục Mã PIN Bảo mật**\n\n" +
+                   "• **Đổi mã PIN**: Vào **Cài đặt** ➔ **Bảo mật** ➔ **Đổi mã PIN** ➔ Nhập PIN hiện tại và PIN mới.\n" +
+                   "• **Quên mã PIN**: Tại màn hình nhập PIN, nhấn **'Quên mã PIN'** ➔ Hệ thống sẽ gửi mã OTP xác minh qua Email đăng ký để bạn tạo lại PIN mới an toàn!";
+        }
+
+        return "📖 **Hướng dẫn Sử dụng ứng dụng SmartSpend**\n\n" +
+               "SmartSpend hỗ trợ bạn quản lý tài chính toàn diện:\n" +
+               "1. 👛 **Quản lý Ví tiền**: Thêm ví tiền mặt, ví điện tử, tài khoản ngân hàng.\n" +
+               "2. 🏷️ **Danh mục**: Phân loại các khoản Thu / Chi dễ dàng.\n" +
+               "3. 🎯 **Ngân sách**: Đặt hạn mức chi tiêu hàng tháng và nhận cảnh báo tự động.\n" +
+               "4. 📝 **Ghi chép giao dịch**: Nhấn nút (+) ở Menu dưới để ghi chép nhanh giao dịch.";
+    }
+
+    private AiChatResponse fallbackLocalEngine(Map<String, Object> ctx, String raw, String norm, String moduleType, 
+                                               List<ChatMessageHistoryDto> history, GoalContext goalContext, boolean isFollowUp) {
+        DecimalFormat df = new DecimalFormat("#,###");
+        String username = (String) ctx.get("username");
+        BigDecimal totalBal = (BigDecimal) ctx.get("totalBalance");
+
+        String text;
+        if ("APP_GUIDE".equalsIgnoreCase(moduleType) || aiIntentService.isAppGuideQueryPrompt(norm)) {
+            text = buildAppGuideResponse(norm);
+        } else if ("ANALYTICS".equalsIgnoreCase(moduleType) || norm.contains("tieu o dau") || norm.contains("cat giam")) {
+            String topCat = (String) ctx.get("topCategoryName");
+            BigDecimal topAmt = (BigDecimal) ctx.get("topCategoryAmount");
+            Double topPct = (Double) ctx.get("topCategoryPercentage");
+            String secondCat = (String) ctx.get("secondCategoryName");
+            BigDecimal secondAmt = (BigDecimal) ctx.get("secondCategoryAmount");
+            Double secondPct = (Double) ctx.get("secondCategoryPercentage");
+
+            boolean hasExpense = ctx.get("hasExpenseData") != null && (boolean) ctx.get("hasExpenseData");
+
+            if (hasExpense && topCat != null) {
+                String secondText = secondCat != null ? String.format(", đồng thời rà soát thêm danh mục '%s' (%s VNĐ, chiếm %.1f%%)", secondCat, df.format(secondAmt), secondPct) : "";
+                text = String.format(
+                    "Dựa trên thói quen chi tiêu thực tế của %s trong tháng này:\n\n" +
+                    "1. Phân tích danh mục lớn nhất: Bạn đang chi nhiều tiền nhất cho '%s' với %s VNĐ (chiếm %.1f%% tổng chi tiêu tháng).\n" +
+                    "2. Gợi ý cắt giảm cụ thể: Hãy ưu tiên cắt giảm 15 - 20%% chi phí ở danh mục '%s' để tiết kiệm khoảng %s VNĐ/tháng%s.\n" +
+                    "3. Khuyến nghị hành động: Mở mục Ngân sách để thiết lập hạn mức kiểm soát cho '%s', AI sẽ gửi cảnh báo tự động khi bạn chi tiêu gần vượt ngưỡng.",
+                    username, topCat, df.format(topAmt), topPct, topCat, df.format(topAmt.multiply(new BigDecimal("0.2"))), secondText, topCat
+                );
+            } else {
+                text = "Phân tích & Gợi ý cắt giảm chi tiêu cho " + username + ":\n\n" +
+                       "1. Tài khoản của bạn hiện chưa ghi nhận phát sinh giao dịch chi tiêu trong tháng này.\n" +
+                       "2. Để AI phân tích chính xác thói quen tiêu dùng cá nhân và chỉ ra khoản lãng phí cần cắt giảm, hãy Nạp tiền vào ví hoặc Ghi chép các giao dịch thu chi hàng ngày.\n" +
+                       "3. Theo quy tắc quản lý tài chính 50/30/20, các khoản chi dễ cắt giảm nhất gồm: Mua sắm ngẫu hứng, Ăn uống ngoài không kế hoạch, Trà sữa/Cà phê hàng ngày và các Dịch vụ đăng ký không sử dụng.";
+            }
+        } else if (goalContext != null && goalContext.isGoalQuery()) {
+            if (isFollowUp) {
+                boolean mentionKeepBal = norm.contains("khong dung") || norm.contains("giu nguyen") || norm.contains("so sanh");
+                if (mentionKeepBal) {
+                    text = String.format(
+                        "Nếu giữ nguyên số dư %s VNĐ hiện có cho mục đích khác, bạn cần tiết kiệm khoảng %s VNĐ/tháng trong %d tháng.",
+                        df.format(totalBal), df.format(goalContext.getMonthlySaving()), goalContext.getDurationMonths()
+                    );
+                } else {
+                    text = String.format(
+                        "Nếu sử dụng số dư hiện tại %s VNĐ, bạn cần tiết kiệm khoảng %s VNĐ/tháng trong %d tháng để mua %s.",
+                        df.format(totalBal), df.format(goalContext.getMonthlyGapSaving() > 0 ? goalContext.getMonthlyGapSaving() : goalContext.getMonthlySaving()),
+                        goalContext.getDurationMonths(), goalContext.getGoalName()
+                    );
+                }
+            } else {
+                String actionPrefix = goalContext.getGoalName().startsWith("tích lũy") ? "" : "mua ";
+                String evaluationText;
+                if (goalContext.getRemainingAmount() == 0) {
+                    evaluationText = String.format(
+                        "Số dư hiện tại của bạn (%s VNĐ) đã đủ để hoàn thành mục tiêu %s%s %s VNĐ ngay hôm nay!",
+                        df.format(totalBal), actionPrefix, goalContext.getGoalName(), df.format(goalContext.getTargetAmount())
+                    );
+                } else {
+                    evaluationText = String.format(
+                        "Mục tiêu %s%s %s VNĐ trong %d tháng của bạn hoàn toàn khả thi nếu thiết lập kế hoạch tiết kiệm kỷ luật từ hôm nay.",
+                        actionPrefix, goalContext.getGoalName(), df.format(goalContext.getTargetAmount()), goalContext.getDurationMonths()
+                    );
+                }
+
+                text = String.format(
+                    "🎯 Đánh giá\n" +
+                    "%s\n\n" +
+                    "📊 Phân tích\n" +
+                    "- Tổng số tiền cần có: %s VNĐ.\n" +
+                    "- Số dư hiện có: %s VNĐ.\n" +
+                    "- Số tiền còn thiếu: %s VNĐ.\n" +
+                    "- Phương án 1 (Sử dụng toàn bộ số dư hiện tại %s VNĐ): Bạn cần tiết kiệm khoảng %s VNĐ/tháng trong %d tháng.\n" +
+                    "- Phương án 2 (Giữ nguyên số dư hiện tại cho mục đích khác): Bạn cần tiết kiệm khoảng %s VNĐ/tháng trong %d tháng.\n\n" +
+                    "✅ Gợi ý\n" +
+                    "1. Ưu tiên trích lập khoản tiết kiệm cố định hàng tháng vào một ví riêng để bảo toàn nguồn vốn.\n" +
+                    "2. Thiết lập mục tiêu tài chính %s trên ứng dụng SmartSpend để dễ dàng theo dõi tiến độ.\n" +
+                    "3. Kiểm soát chặt chẽ chi tiêu hàng ngày để đảm bảo duy trì hạn mức tiết kiệm đúng kế hoạch.",
+                    evaluationText,
+                    df.format(goalContext.getTargetAmount()), df.format(totalBal), df.format(goalContext.getRemainingAmount()),
+                    df.format(totalBal), df.format(goalContext.getMonthlyGapSaving()), goalContext.getDurationMonths(),
+                    df.format(goalContext.getMonthlySaving()), goalContext.getDurationMonths(), goalContext.getGoalName()
+                );
+            }
+        } else if ("RECOMMENDATION".equalsIgnoreCase(moduleType) || isBudgetPlanningQuery(norm)) {
+            text = buildBudgetRecommendationResponse(raw, ctx);
+        } else {
+            text = "Xin chào " + username + "! Tôi là Trợ lý AI SmartSpend.\n\n" +
+                   "Tôi có thể hỗ trợ bạn:\n" +
+                   "1. 💡 Tư vấn lập kế hoạch tiết kiệm mua sắm (ví dụ: 'Tôi muốn mua laptop 25 triệu trong 8 tháng').\n" +
+                   "2. 📊 Phân tích danh mục chi tiêu & Gợi ý khoản cần cắt giảm.\n" +
+                   "3. 💰 Hướng dẫn quản lý hạn mức ngân sách và phân bổ thu nhập hợp lý.";
+        }
+
+        List<AiCardDto> cards = generateCards(moduleType, norm, raw, ctx);
+        AiActionPromptDto actionPrompt = generateActionPrompt(moduleType, norm, raw);
+
+        return AiChatResponse.builder()
+                .id(UUID.randomUUID().toString())
+                .text(text)
+                .moduleType(moduleType)
+                .timestamp(LocalTime.now().format(DateTimeFormatter.ofPattern("HH:mm")))
+                .cards(cards)
+                .actionPrompt(actionPrompt)
+                .build();
     }
 
     private List<AiCardDto> generateCards(String moduleType, String norm, String rawPrompt, Map<String, Object> ctx) {
         DecimalFormat df = new DecimalFormat("#,###");
-        BigDecimal totalBal = (BigDecimal) ctx.get("totalBalance");
-        BigDecimal mainBal = (BigDecimal) ctx.get("mainBalance");
-        BigDecimal cashBal = (BigDecimal) ctx.get("cashBalance");
-        boolean hasData = (boolean) ctx.get("hasData");
-
         List<AiCardDto> cards = new ArrayList<>();
 
-        // RAG / How-to questions should not display financial cards
-        if ("RAG".equalsIgnoreCase(moduleType) && !norm.contains("tu van") && !norm.contains("luong") && !norm.contains("laptop") && !norm.contains("chia")) {
-            return cards;
-        }
-
-        // 1. Goal plan queries should return empty cards so ONLY clean 3-part text advice is rendered
-        if (norm.contains("muc tieu") || norm.contains("mua") || norm.contains("laptop") || norm.contains("xe") || norm.contains("sam")) {
-            return cards;
-        }
-
-        // 2. Budget allocation / Salary
         if (norm.contains("luong") || norm.contains("thue") || norm.contains("chia") || norm.contains("phan bo")) {
             Matcher incomeMatcher = Pattern.compile("(?:lương|thu nhập)\\s*(?:tôi)?\\s*(\\d+)", Pattern.CASE_INSENSITIVE).matcher(rawPrompt);
             Matcher fallbackIncome = Pattern.compile("(\\d+)\\s*(triệu|tr)", Pattern.CASE_INSENSITIVE).matcher(rawPrompt);
@@ -476,218 +930,72 @@ public class AiChatServiceImpl implements AiChatService {
             return cards;
         }
 
-        // 3. General Recommendation / Account metrics
-        if ("RECOMMENDATION".equalsIgnoreCase(moduleType) || norm.contains("tu van") || norm.contains("tai chinh")) {
-            if (hasData) {
-                cards.add(AiCardDto.builder()
-                        .type("METRICS")
-                        .title("Sức khỏe tài chính tài khoản")
-                        .items(Arrays.asList(
-                                AiCardItemDto.builder().label("Tổng số dư khả dụng").value(df.format(totalBal) + " đ").color("#10B981").build(),
-                                AiCardItemDto.builder().label("Ví chính").value(df.format(mainBal) + " đ").color("#4F46E5").build(),
-                                AiCardItemDto.builder().label("Ví tiền mặt").value(df.format(cashBal) + " đ").color("#F59E0B").build()
-                        ))
-                        .build());
-            }
-            return cards;
-        }
-
         return cards;
     }
 
     private AiActionPromptDto generateActionPrompt(String moduleType, String norm, String rawPrompt) {
+        if ("FINANCIAL_GOAL".equalsIgnoreCase(moduleType) || norm.contains("muc tieu") || norm.contains("mua") || norm.contains("tiet kiem")) {
+            String itemName = goalNameParser.extractGoalName(rawPrompt, norm);
+            String labelText = "🎯 Thiết lập mục tiêu " + (itemName.startsWith("tích lũy") ? itemName : "mua " + itemName);
+            AiActionItemDto action = AiActionItemDto.builder()
+                    .label(labelText)
+                    .route("/goals/create")
+                    .prompt("Tạo mục tiêu " + itemName)
+                    .build();
+            return AiActionPromptDto.builder()
+                    .question("Gợi ý hành động nhanh cho mục tiêu tài chính của bạn:")
+                    .actions(Collections.singletonList(action))
+                    .build();
+        } else if ("ANALYTICS".equalsIgnoreCase(moduleType) || norm.contains("chi tieu") || norm.contains("cat giam")) {
+            AiActionItemDto action = AiActionItemDto.builder()
+                    .label("📊 Xem báo cáo chi tiết thu chi")
+                    .route("/reports")
+                    .prompt("Xem báo cáo chi tiêu")
+                    .build();
+            return AiActionPromptDto.builder()
+                    .question("Gợi ý xem báo cáo phân tích chi tiêu:")
+                    .actions(Collections.singletonList(action))
+                    .build();
+        } else if ("RECOMMENDATION".equalsIgnoreCase(moduleType) || norm.contains("ngan sach") || norm.contains("phan bo")) {
+            AiActionItemDto action = AiActionItemDto.builder()
+                    .label("💰 Thiết lập hạn mức ngân sách")
+                    .route("/budgets/create")
+                    .prompt("Thiết lập ngân sách")
+                    .build();
+            return AiActionPromptDto.builder()
+                    .question("Gợi ý quản lý hạn mức ngân sách:")
+                    .actions(Collections.singletonList(action))
+                    .build();
+        }
         return null;
     }
 
-    private AiChatResponse fallbackLocalEngine(Map<String, Object> ctx, String raw, String norm, String moduleType) {
-        DecimalFormat df = new DecimalFormat("#,###");
-        String username = (String) ctx.get("username");
-        String email = (String) ctx.get("email");
-        BigDecimal totalBal = (BigDecimal) ctx.get("totalBalance");
-        boolean hasData = (boolean) ctx.get("hasData");
-
-        String text;
-        if (norm.contains("tao vi") || norm.contains("xoa vi") || norm.contains("quan ly vi") || norm.contains("vi moi") || norm.contains("vi")) {
-            text = "Hướng dẫn tạo và quản lý ví trong SmartSpend:\n\n" +
-                   "1. Tại Trang chủ hoặc mục Ví cá nhân, nhấn vào nút '+ Ví mới' (hoặc chọn Thêm ví).\n" +
-                   "2. Nhập Tên ví (ví dụ: Ví tiền mặt, Ví MoMo, Ví Techcombank), chọn Loại ví và nhập Số dư ban đầu.\n" +
-                   "3. Nhấn 'Lưu ví' để hoàn tất. Bạn có thể chọn ví này làm Ví mặc định để thực hiện các giao dịch.";
-        } else if (norm.contains("pin") || norm.contains("quen pin") || norm.contains("ma pin") || norm.contains("doi pin") || norm.contains("reset pin")) {
-            String targetEmail = email != null && !email.isEmpty() ? email : "Email đăng ký";
-            text = "Hướng dẫn xử lý khi quên mã PIN bảo mật trong SmartSpend:\n\n" +
-                   "1. Tại màn hình nhập PIN khi Nạp/Rút tiền hoặc trong Cài đặt, nhấn chọn 'Quên mã PIN?'.\n" +
-                   "2. Kiểm tra Email đăng ký tài khoản (" + targetEmail + ") để nhận mã xác minh OTP gửi về.\n" +
-                   "3. Nhập mã OTP chính xác, sau đó tiến hành tạo Mã PIN 6 số mới và xác nhận lại để hoàn tất.";
-        } else if (norm.contains("cat giam") || norm.contains("khoan nao") || norm.contains("cat giam chi tieu") || norm.contains("giam chi tieu")) {
-            String topCat = (String) ctx.get("topCategoryName");
-            BigDecimal topAmt = (BigDecimal) ctx.get("topCategoryAmount");
-            Double topPct = (Double) ctx.get("topCategoryPercentage");
-
-            String secondCat = (String) ctx.get("secondCategoryName");
-            BigDecimal secondAmt = (BigDecimal) ctx.get("secondCategoryAmount");
-            Double secondPct = (Double) ctx.get("secondCategoryPercentage");
-
-            boolean hasExpense = ctx.get("hasExpenseData") != null && (boolean) ctx.get("hasExpenseData");
-
-            if (hasExpense && topCat != null) {
-                String secondText = secondCat != null ? String.format(", đồng thời rà soát thêm danh mục '%s' (%s VNĐ, chiếm %.1f%%)", secondCat, df.format(secondAmt), secondPct) : "";
-                text = String.format(
-                    "Dựa trên thói quen chi tiêu thực tế của %s trong tháng này:\n\n" +
-                    "1. Phân tích danh mục lớn nhất: Bạn đang chi nhiều tiền nhất cho '%s' với %s VNĐ (chiếm %.1f%% tổng chi tiêu tháng).\n" +
-                    "2. Gợi ý cắt giảm cụ thể: Hãy ưu tiên cắt giảm 15 - 20%% chi phí ở danh mục '%s' để tiết kiệm khoảng %s VNĐ/tháng%s.\n" +
-                    "3. Khuyến nghị hành động: Mở mục Ngân sách để thiết lập hạn mức kiểm soát cho '%s', AI sẽ gửi cảnh báo tự động khi bạn chi tiêu gần vượt ngưỡng.",
-                    username,
-                    topCat,
-                    df.format(topAmt),
-                    topPct,
-                    topCat,
-                    df.format(topAmt.multiply(new BigDecimal("0.2"))),
-                    secondText,
-                    topCat
-                );
-            } else {
-                text = "Phân tích & Gợi ý cắt giảm chi tiêu cho " + username + ":\n\n" +
-                       "1. Tài khoản của bạn hiện chưa ghi nhận phát sinh giao dịch chi tiêu trong tháng này.\n" +
-                       "2. Để AI phân tích chính xác thói quen tiêu dùng cá nhân và chỉ ra khoản lãng phí cần cắt giảm, hãy Nạp tiền vào ví hoặc Ghi chép các giao dịch thu chi hàng ngày.\n" +
-                       "3. Theo quy tắc quản lý tài chính 50/30/20, các khoản chi dễ cắt giảm nhất gồm: Mua sắm ngẫu hứng, Ăn uống ngoài không kế hoạch, Trà sữa/Cà phê hàng ngày và các Dịch vụ đăng ký không sử dụng.";
-            }
-        } else if (norm.contains("muc tieu") || norm.contains("mua") || norm.contains("laptop") || norm.contains("xe") || norm.contains("sam") || norm.contains("oto") || norm.contains("o to") || norm.contains("nha")) {
-            Matcher amountMatcher = Pattern.compile("(\\d+(?:[.,]\\d+)?)\\s*(trieu|tr|ty)", Pattern.CASE_INSENSITIVE).matcher(norm);
-            Matcher monthMatcher = Pattern.compile("(\\d+)\\s*thang", Pattern.CASE_INSENSITIVE).matcher(norm);
-
-            long targetAmount = 30000000L;
-            if (amountMatcher.find()) {
-                double val = Double.parseDouble(amountMatcher.group(1).replace(",", "."));
-                String unit = amountMatcher.group(2).toLowerCase();
-                if (unit.contains("ty")) {
-                    targetAmount = (long)(val * 1000000000L);
-                } else {
-                    targetAmount = (long)(val * 1000000L);
-                }
-            }
-
-            int targetMonths = monthMatcher.find() ? Integer.parseInt(monthMatcher.group(1)) : 3;
-            long monthlySaving = targetMonths > 0 ? targetAmount / targetMonths : targetAmount;
-            long remainingGap = totalBal.longValue() < targetAmount ? targetAmount - totalBal.longValue() : 0;
-            long monthlyGapSaving = targetMonths > 0 && remainingGap > 0 ? remainingGap / targetMonths : 0;
-
-            String itemName = "ô tô";
-            if (norm.contains("laptop") || norm.contains("may tinh")) itemName = "laptop";
-            else if (norm.contains("xe may")) itemName = "xe máy";
-            else if (norm.contains("nha")) itemName = "nhà";
-            else if (norm.contains("oto") || norm.contains("o to") || norm.contains("xe hoi")) itemName = "ô tô";
-            else itemName = "mục tiêu mua sắm";
-
-            text = String.format(
-                "🎯 Đánh giá\n" +
-                "Mục tiêu mua %s %s VNĐ trong %d tháng của bạn hoàn toàn khả thi nếu thiết lập kế hoạch tiết kiệm kỷ luật từ hôm nay.\n\n" +
-                "📊 Phân tích\n" +
-                "- Tổng số tiền cần có: %s VNĐ.\n" +
-                "- Số dư hiện tại: %s VNĐ.\n" +
-                "- Số tiền còn thiếu: %s VNĐ.\n" +
-                "- Phương án 1 (Sử dụng toàn bộ số dư hiện tại): Bạn cần tiết kiệm khoảng %s VNĐ/tháng.\n" +
-                "- Phương án 2 (Giữ nguyên số dư cho mục đích khác): Bạn cần tiết kiệm khoảng %s VNĐ/tháng.\n\n" +
-                "✅ Gợi ý\n" +
-                "1. Ưu tiên trích lập khoản tiết kiệm cố định hàng tháng vào một ví riêng để bảo toàn nguồn vốn.\n" +
-                "2. Thiết lập mục tiêu tài chính %s VNĐ trên ứng dụng SmartSpend để dễ dàng theo dõi tiến độ.\n" +
-                "3. Kiểm soát chặt chẽ chi tiêu hàng ngày để đảm bảo duy trì hạn mức tiết kiệm đúng kế hoạch.",
-                itemName,
-                df.format(targetAmount),
-                targetMonths,
-                df.format(targetAmount),
-                df.format(totalBal),
-                df.format(remainingGap),
-                monthlyGapSaving > 0 ? df.format(monthlyGapSaving) : df.format(monthlySaving),
-                df.format(monthlySaving),
-                df.format(targetAmount)
-            );
-        } else if (norm.contains("luong") || norm.contains("thue") || norm.contains("chia") || norm.contains("phan bo")) {
-            text = "Gợi ý phân bổ ngân sách cho " + username + " (Lương 12tr, Tiền thuê 3tr):\n\n" +
-                   "1. Tiền thuê & Cố định (25%): 3.000.000đ.\n" +
-                   "2. Ăn uống & Sinh hoạt (29%): 3.500.000đ.\n" +
-                   "3. Tiết kiệm & Đầu tư (21%): 2.500.000đ.\n" +
-                   "4. Giải trí & Cá nhân (25%): 3.000.000đ.";
-        } else if (norm.contains("tu van") || norm.contains("tai chinh")) {
-            if (hasData) {
-                text = "Tư vấn tài chính cho " + username + ":\n\n" +
-                       "1. Tổng số dư khả dụng hiện tại là " + df.format(totalBal) + "đ.\n" +
-                       "2. Nên trích tối thiểu 20% tích lũy vào Quỹ khẩn cấp trước khi chi tiêu.\n" +
-                       "3. Thiết lập hạn mức Ngân sách cho danh mục Ăn uống và Mua sắm để kiểm soát dòng tiền.";
-            } else {
-                text = "Tài khoản của bạn hiện chưa có dữ liệu giao dịch hoặc số dư đang là 0đ.\n\n" +
-                       "1. Vui lòng Nạp tiền vào ví hoặc Ghi chép giao dịch mới để SmartSpend có dữ liệu phân tích thu chi thực tế cho bạn.\n" +
-                       "2. Trong thời gian chờ, bạn có thể tham khảo Mô hình 50/30/20 (50% Thiết yếu, 30% Sở thích, 20% Tiết kiệm) để chuẩn bị quản lý dòng tiền.\n" +
-                       "3. Hãy thực hiện Nạp tiền vào Ví chính ngay để bắt đầu trải nghiệm phân tích & tư vấn tài chính cá nhân hóa!";
-            }
-        } else if (norm.contains("ngan sach")) {
-            text = "Hướng dẫn tạo ngân sách trong SmartSpend:\n\n" +
-                   "1. Mở mục Ngân sách -> Nhấn '+ Tạo ngân sách'.\n" +
-                   "2. Chọn danh mục, nhập hạn mức và chu kỳ (tuần/tháng).\n" +
-                   "3. Nhấn 'Lưu'. Hệ thống tự cảnh báo khi chi tiêu tới 80% & 100%.";
-        } else if (norm.contains("nap") || norm.contains("rut")) {
-            text = "Hướng dẫn nạp và rút tiền:\n\n" +
-                   "1. Nạp tiền: Ví cá nhân -> Nạp tiền -> Quét QR SePay/Chuyển khoản -> Nhập PIN.\n" +
-                   "2. Rút tiền: Ví cá nhân -> Rút tiền -> Nhập số tiền -> Nhập PIN.\n" +
-                   "3. Ví nhóm: Mở Ví nhóm -> Nạp/Rút quỹ.";
-        } else if (norm.contains("danh muc")) {
-            text = "Hướng dẫn tạo danh mục thu chi:\n\n" +
-                   "1. Vào Cài đặt -> Quản lý danh mục.\n" +
-                   "2. Chọn tab Chi tiêu hoặc Thu nhập -> '+ Tạo danh mục mới'.\n" +
-                   "3. Nhập tên, icon & màu đại diện -> Nhấn 'Lưu'.";
-        } else if (norm.contains("tieu nhieu") || norm.contains("tieu o dau") || norm.contains("bao cao") || norm.contains("phan tich") || norm.contains("thu chi")) {
-            text = "Hướng dẫn xem phân tích & báo cáo chi tiêu:\n\n" +
-                   "1. Vào mục 'Báo cáo' từ thanh điều hướng bên dưới.\n" +
-                   "2. Xem biểu đồ tròn phân bổ chi tiêu theo danh mục để biết bạn đang tiêu nhiều tiền nhất ở đâu.\n" +
-                   "3. So sánh biến động thu chi hàng tuần/hàng tháng để điều chỉnh thói quen tài chính kịp thời.";
-        } else {
-            text = "Trợ lý AI SmartSpend đồng hành cùng " + username + ":\n\n" +
-                   "1. Áp dụng mô hình 50/30/20 để quản lý tài chính hiệu quả.\n" +
-                   "2. Thiết lập ngân sách và theo dõi báo cáo chi tiêu hàng tuần.\n" +
-                   "3. Bạn có thể hỏi: 'tạo ví', 'quên PIN', 'cắt giảm chi tiêu', 'nạp rút', 'ngân sách', 'tư vấn tài chính'.";
-        }
-
-        return AiChatResponse.builder()
-                .id(UUID.randomUUID().toString())
-                .text(text)
-                .moduleType(moduleType)
-                .timestamp(LocalTime.now().format(DateTimeFormatter.ofPattern("HH:mm")))
-                .cards(generateCards(moduleType, norm, raw, ctx))
-                .actionPrompt(generateActionPrompt(moduleType, norm, raw))
-                .build();
-    }
-
-    private boolean isRecommendationQuery(String norm) {
-        String[] keywords = {"tu van", "recommend", "advisor", "cho toi", "tai chinh", "luong", "thue", "chia ngan sach", "tiet kiem", "laptop", "muc tieu", "vuot", "chia", "hien tai", "mua", "xe", "sam", "trieu", "tr"};
-        return Arrays.stream(keywords).anyMatch(norm::contains);
-    }
-
-    private boolean isAnalyticsQuery(String norm) {
-        String[] keywords = {"tieu nhieu o dau", "tieu o dau", "bao cao", "phan tich", "xu huong", "cat giam", "chi tieu", "thang nay tieu", "tai khoan"};
-        return Arrays.stream(keywords).anyMatch(norm::contains);
-    }
-
-    private String sanitizeAiText(String text) {
+    private String sanitizeAiText(String text, boolean isFollowUp) {
         if (text == null) return "";
         String result = text.trim();
 
-        // 1. ALWAYS slice from the LAST occurrence of "🎯" to strip all preceding template drafts & English reasoning
-        int lastTargetIdx = result.lastIndexOf("🎯");
-        if (lastTargetIdx != -1) {
-            result = result.substring(lastTargetIdx).trim();
+        if (isFollowUp) {
+            result = result.replaceAll("(?m)^🎯\\s*Đánh giá.*$", "").trim();
+            result = result.replaceAll("(?m)^📊\\s*Phân tích.*$", "").trim();
+            result = result.replaceAll("(?m)^✅\\s*Gợi ý.*$", "").trim();
         } else {
-            int lastNumIdx = result.lastIndexOf("1. ");
-            if (lastNumIdx != -1 && (result.contains("User Goal") || result.contains("User Identity") || result.contains("Drafting") || result.contains("Step 1") || result.contains("Rule 1") || result.contains("Self-"))) {
-                result = result.substring(lastNumIdx).trim();
-            } else if (result.contains("User Goal") || result.contains("User Identity") || result.contains("Drafting") || result.contains("Step 1") || result.contains("Rule 1") || result.contains("Self-")) {
-                Pattern p = Pattern.compile("(?m)^(1\\.|[1-9]\\.|Để|Lộ trình|Hướng dẫn|Tài khoản|Dựa trên|Gợi ý)");
-                Matcher m = p.matcher(result);
-                if (m.find()) {
-                    result = result.substring(m.start()).trim();
+            int lastTargetIdx = result.lastIndexOf("🎯");
+            if (lastTargetIdx != -1) {
+                result = result.substring(lastTargetIdx).trim();
+            } else {
+                int lastNumIdx = result.lastIndexOf("1. ");
+                if (lastNumIdx != -1 && (result.contains("User Goal") || result.contains("User Identity") || result.contains("Drafting") || result.contains("Step 1") || result.contains("Rule 1") || result.contains("Self-"))) {
+                    result = result.substring(lastNumIdx).trim();
+                } else if (result.contains("User Goal") || result.contains("User Identity") || result.contains("Drafting") || result.contains("Step 1") || result.contains("Rule 1") || result.contains("Self-")) {
+                    Pattern p = Pattern.compile("(?m)^(1\\.|[1-9]\\.|Để|Lộ trình|Hướng dẫn|Tài khoản|Dựa trên|Gợi ý)");
+                    Matcher m = p.matcher(result);
+                    if (m.find()) {
+                        result = result.substring(m.start()).trim();
+                    }
                 }
             }
         }
 
-        // 2. Remove trailing self-correction / self-check / constraint evaluation blocks if present
         String[] trailingMarkers = {"*Self-", "Self-Correction", "Check structure", "Check language", "Check constraints", "Check math", "Ensure tone", "Vietnamese only"};
         for (String marker : trailingMarkers) {
             int idx = result.indexOf(marker);

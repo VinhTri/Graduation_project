@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, TextInput, TouchableOpacity, SafeAreaView, Alert, ActivityIndicator, KeyboardAvoidingView, TouchableWithoutFeedback, Keyboard, Platform, ScrollView } from 'react-native';
 import { Feather, Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { styles } from './_verify-stk.styles';
+import { styles } from '@/features/auth/styles/verify-stk.styles';
 import { axiosClient } from '../../../shared/api/axiosClient';
 import ConfirmModal from '../../../shared/components/ConfirmModal/ConfirmModal';
 import SuccessModal from '../../../shared/components/SuccessModal/SuccessModal';

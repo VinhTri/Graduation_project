@@ -5,13 +5,11 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.util.List;
-
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class AiChatRequest {
-    private String message;
-    private List<ChatMessageHistoryDto> history;
+public class ChatMessageHistoryDto {
+    private String role;
+    private String content;
 }

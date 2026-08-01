@@ -24,6 +24,11 @@ export interface ChatMessage {
   }[];
 }
 
+export interface ChatMessageHistoryDto {
+  role: 'user' | 'assistant' | 'model' | string;
+  content: string;
+}
+
 export interface QuickSuggestion {
   id: string;
   label: string;
@@ -72,7 +77,7 @@ function normalizeText(text: string): string {
 
 class AIChatService {
 
-  async processMessage(userPrompt: string): Promise<ChatMessage> {
+  async processMessage(userPrompt: string, history?: ChatMessageHistoryDto[]): Promise<ChatMessage> {
     let raw = userPrompt.trim();
     let norm = normalizeText(raw);
 
@@ -91,7 +96,8 @@ class AIChatService {
     // Try Spring Boot Backend AI Endpoint first
     try {
       const response: any = await axiosClient.post(ENDPOINTS.AI.CHAT, {
-        message: raw
+        message: raw,
+        history: history || []
       });
 
       const resData = response.data || response;
@@ -112,19 +118,24 @@ class AIChatService {
     }
 
     // Fallback: FE Direct Gemini 2.5 Flash + Local Advisory Engine
-    return await this.fallbackDirectEngine(raw, norm);
+    return await this.fallbackDirectEngine(raw, norm, history);
   }
 
-  private async fallbackDirectEngine(raw: string, norm: string): Promise<ChatMessage> {
+  private async fallbackDirectEngine(raw: string, norm: string, history?: ChatMessageHistoryDto[]): Promise<ChatMessage> {
+    let combinedNorm = norm;
+    if (history) {
+      combinedNorm += " " + history.map(h => normalizeText(h.content || "")).join(" ");
+    }
+
     let moduleType: 'RAG' | 'ANALYTICS' | 'RECOMMENDATION' = 'RAG';
-    if (norm.includes('tu van') || norm.includes('tai chinh') || norm.includes('luong') || norm.includes('laptop') || norm.includes('chia') || norm.includes('mua') || norm.includes('xe') || norm.includes('muc tieu') || norm.includes('trieu') || norm.includes('tr')) {
+    if (combinedNorm.includes('tu van') || combinedNorm.includes('tai chinh') || combinedNorm.includes('luong') || combinedNorm.includes('laptop') || combinedNorm.includes('chia') || combinedNorm.includes('mua') || combinedNorm.includes('xe') || combinedNorm.includes('muc tieu') || combinedNorm.includes('trieu') || combinedNorm.includes('tr') || combinedNorm.includes('the la') || combinedNorm.includes('bao lau')) {
       moduleType = 'RECOMMENDATION';
-    } else if (norm.includes('tieu') || norm.includes('bao cao') || norm.includes('phan tich') || norm.includes('cat giam')) {
+    } else if (combinedNorm.includes('tieu') || combinedNorm.includes('bao cao') || combinedNorm.includes('phan tich') || combinedNorm.includes('cat giam')) {
       moduleType = 'ANALYTICS';
     }
 
     try {
-      const aiText = await this.callGeminiDirect(raw);
+      const aiText = await this.callGeminiDirect(raw, history);
       const cards = this.buildCards(moduleType, norm, raw);
       const actionPrompt = this.buildActionPrompt(norm, raw);
 
@@ -142,12 +153,17 @@ class AIChatService {
     }
   }
 
-  private async callGeminiDirect(userPrompt: string): Promise<string> {
+  private async callGeminiDirect(userPrompt: string, history?: ChatMessageHistoryDto[]): Promise<string> {
     const norm = normalizeText(userPrompt);
+    let combinedNorm = norm;
+    if (history) {
+      combinedNorm += " " + history.map(h => normalizeText(h.content || "")).join(" ");
+    }
+
     let businessDataStr = "";
-    if (norm.includes('muc tieu') || norm.includes('mua') || norm.includes('laptop') || norm.includes('xe') || norm.includes('sam') || norm.includes('oto') || norm.includes('o to') || norm.includes('nha')) {
-      const amountMatch = norm.match(/(\d+(?:[.,]\d+)?)\s*(trieu|tr|ty)/i);
-      const monthMatch = norm.match(/(\d+)\s*thang/i);
+    if (combinedNorm.includes('muc tieu') || combinedNorm.includes('mua') || combinedNorm.includes('laptop') || combinedNorm.includes('xe') || combinedNorm.includes('sam') || combinedNorm.includes('oto') || combinedNorm.includes('o to') || combinedNorm.includes('nha') || combinedNorm.includes('the la') || combinedNorm.includes('bao lau')) {
+      const amountMatch = norm.match(/(\d+(?:[.,]\d+)?)\s*(trieu|tr|ty)/i) || combinedNorm.match(/(\d+(?:[.,]\d+)?)\s*(trieu|tr|ty)/i);
+      const monthMatch = norm.match(/(\d+)\s*thang/i) || combinedNorm.match(/(\d+)\s*thang/i);
 
       let targetAmount = 30000000;
       if (amountMatch) {
@@ -159,10 +175,10 @@ class AIChatService {
       const monthlySaving = targetMonths > 0 ? targetAmount / targetMonths : targetAmount;
 
       let itemName = "ô tô";
-      if (norm.includes("laptop") || norm.includes("may tinh")) itemName = "laptop";
-      else if (norm.includes("xe may")) itemName = "xe máy";
-      else if (norm.includes("nha")) itemName = "nhà";
-      else if (norm.includes("oto") || norm.includes("o to") || norm.includes("xe hoi")) itemName = "ô tô";
+      if (combinedNorm.includes("laptop") || combinedNorm.includes("may tinh")) itemName = "laptop";
+      else if (combinedNorm.includes("xe may")) itemName = "xe máy";
+      else if (combinedNorm.includes("nha")) itemName = "nhà";
+      else if (combinedNorm.includes("oto") || combinedNorm.includes("o to") || combinedNorm.includes("xe hoi")) itemName = "ô tô";
       else itemName = "mục tiêu mua sắm";
 
       businessDataStr = `\n3. BUSINESS DATA:\n- Mục tiêu: ${itemName} (${targetAmount.toLocaleString('vi-VN')} VNĐ)\n- Thời gian: ${targetMonths} tháng\n- Tiết kiệm cần thiết: ${monthlySaving.toLocaleString('vi-VN')} VNĐ/tháng\n`;
@@ -180,25 +196,12 @@ Vai trò:
 Quy tắc trả lời:
 - Luôn trả lời bằng tiếng Việt.
 - Chỉ trả về câu trả lời cuối cùng.
-- Không hiển thị prompt.
-- Không hiển thị quy tắc.
-- Không hiển thị ví dụ.
-- Không hiển thị template.
-- Không hiển thị reasoning.
-- Không hiển thị self-check.
-- Không hiển thị self-correction.
-- Không hỏi lại người dùng.
-- Không thêm nút gợi ý.
-
-Cấu trúc câu trả lời bắt buộc (chỉ xuất 1 lần ở câu trả lời cuối cùng):
-Phần 1: Dòng tiêu đề '🎯 Đánh giá' kèm 1-2 câu tóm tắt.
-Phần 2: Dòng tiêu đề '📊 Phân tích' kèm các dòng gạch đầu dòng phân tích số liệu.
-Phần 3: Dòng tiêu đề '✅ Gợi ý' kèm đúng 3 mục đánh số 1., 2., 3.
+- Trả lời trực tiếp ngắn gọn nếu người dùng hỏi lại / hỏi nối tiếp (follow-up).
 
 2. CONTEXT
 Thông tin tài khoản SmartSpend người dùng.
 ${businessDataStr}
-Hãy trả lời người dùng theo đúng định dạng đã quy định.
+Hãy trả lời người dùng dựa trên lịch sử hội thoại và số liệu trên.
 `;
 
     const apiKey = getEffectiveGeminiApiKey();
@@ -220,6 +223,26 @@ Hãy trả lời người dùng theo đúng định dạng đã quy định.
     if (candidateModels.length === 0) {
       candidateModels = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash-latest', 'gemini-1.5-flash', 'gemini-1.5-pro'];
     }
+
+    const formattedContents: any[] = [];
+    if (history) {
+      const validHistory = history.filter(h => h.content && !h.content.includes("Xin chào! Tôi là Trợ lý AI SmartSpend")).slice(-10);
+      let lastRole = '';
+      for (const h of validHistory) {
+        const role = (h.role === 'assistant' || h.role === 'bot' || h.role === 'model') ? 'model' : 'user';
+        if (formattedContents.length === 0 && role !== 'user') continue;
+        if (role === lastRole && formattedContents.length > 0) {
+          formattedContents[formattedContents.length - 1].parts.push({ text: h.content });
+        } else {
+          formattedContents.push({ role, parts: [{ text: h.content }] });
+          lastRole = role;
+        }
+      }
+    }
+
+    if (formattedContents.length === 0 || formattedContents[formattedContents.length - 1].role !== 'user') {
+      formattedContents.push({ role: 'user', parts: [{ text: userPrompt }] });
+    }
     
     for (const modelName of candidateModels) {
       try {
@@ -231,7 +254,7 @@ Hãy trả lời người dùng theo đúng định dạng đã quy định.
             system_instruction: {
               parts: [{ text: systemPrompt }]
             },
-            contents: [{ role: 'user', parts: [{ text: userPrompt }] }],
+            contents: formattedContents,
             generationConfig: { temperature: 0.1, maxOutputTokens: 1200 }
           })
         });
@@ -244,16 +267,6 @@ Hãy trả lời người dùng theo đúng định dạng đã quy định.
             const lastTargetIdx = text.lastIndexOf("🎯");
             if (lastTargetIdx !== -1) {
               text = text.substring(lastTargetIdx).trim();
-            } else if (text.includes("User Goal") || text.includes("User Identity") || text.includes("Drafting") || text.includes("Step 1") || text.includes("Rule 1") || text.includes("Self-")) {
-              const lastNumIdx = text.lastIndexOf("1. ");
-              if (lastNumIdx !== -1) {
-                text = text.substring(lastNumIdx).trim();
-              }
-            }
-            const trailing = ["*Self-", "Self-Correction", "Check structure", "Check language", "Check constraints", "Check math", "Ensure tone", "Vietnamese only"];
-            for (const marker of trailing) {
-              const idx = text.indexOf(marker);
-              if (idx !== -1) text = text.substring(0, idx).trim();
             }
             return text;
           }
@@ -299,7 +312,7 @@ Hãy trả lời người dùng theo đúng định dạng đã quy định.
       text = `Hướng dẫn xử lý khi quên mã PIN bảo mật:\n\n1. Tại màn hình nhập PIN khi Nạp/Rút tiền hoặc trong Cài đặt, nhấn chọn 'Quên mã PIN?'.\n2. Kiểm tra Email đăng ký tài khoản SmartSpend để nhận mã xác minh OTP gửi về.\n3. Nhập mã OTP chính xác, sau đó tiến hành tạo Mã PIN 6 số mới và xác nhận lại để hoàn tất.`;
     } else if (norm.includes('cat giam') || norm.includes('khoan nao') || norm.includes('giam chi tieu')) {
       text = `Gợi ý các khoản chi tiêu có thể cắt giảm hiệu quả:\n\n1. Rà soát danh mục Giải trí & Mua sắm ngẫu hứng: Cắt giảm 15-20% các chi phí xem phim, cà phê, mua sắm không có trong kế hoạch.\n2. Hạn chế Ăn uống bên ngoài: Tăng cường tự nấu ăn tại nhà để tiết kiệm từ 1 - 2 triệu đồng mỗi tháng.\n3. Thiết lập Ngân sách hạn mức: Vào mục Ngân sách để cài đặt hạn mức chi tiêu tối đa cho từng danh mục, AI sẽ tự động cảnh báo khi bạn tiêu gần chạm ngưỡng.`;
-    } else if (norm.includes('muc tieu') || norm.includes('mua') || norm.includes('laptop') || norm.includes('xe') || norm.includes('sam') || norm.includes('oto') || norm.includes('o to') || norm.includes('nha')) {
+    } else if (norm.includes('muc tieu') || norm.includes('mua') || norm.includes('laptop') || norm.includes('xe') || norm.includes('sam') || norm.includes('oto') || norm.includes('o to') || norm.includes('nha') || norm.includes('tiet kiem') || norm.includes('moi thang') || norm.includes('du khong') || norm.includes('co du') || norm.includes('giu lai') || norm.includes('quy du phong')) {
       const amountMatch = norm.match(/(\d+(?:[.,]\d+)?)\s*(trieu|tr|ty)/i);
       const monthMatch = norm.match(/(\d+)\s*thang/i);
 

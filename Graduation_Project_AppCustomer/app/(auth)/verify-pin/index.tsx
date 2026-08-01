@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, SafeAreaView, Alert, ActivityIndicator } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { styles } from './_verify-pin.styles';
+import { styles } from '@/features/auth/styles/verify-pin.styles';
 import { axiosClient } from '../../../shared/api/axiosClient';
 
 export default function VerifyPinScreen() {

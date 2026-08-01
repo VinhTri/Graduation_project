@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { View, Text, SafeAreaView, TouchableOpacity, Animated } from 'react-native';
 import { Feather } from '@expo/vector-icons';
-import { styles } from './_onboarding.styles';
+import { styles } from '@/features/auth/styles/onboarding.styles';
 import { useRouter } from 'expo-router';
 
 export default function OnboardingScreen() {

@@ -59,8 +59,15 @@ export const AIChatModal: React.FC<AIChatModalProps> = ({ visible, onClose }) =>
     Keyboard.dismiss();
     setIsLoading(true);
 
+    const historyDto = messages
+      .filter(m => m.text && !m.text.includes("Xin chào! Tôi là Trợ lý AI SmartSpend"))
+      .map(m => ({
+        role: m.isUser ? ('user' as const) : ('assistant' as const),
+        content: m.text
+      }));
+
     try {
-      const response = await aiChatService.processMessage(promptToSend);
+      const response = await aiChatService.processMessage(promptToSend, historyDto);
       setMessages(prev => [...prev, response]);
     } catch (error) {
       console.error("AI Response error:", error);
