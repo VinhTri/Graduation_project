@@ -4,6 +4,8 @@ import {
   DashboardOutlined,
   UserOutlined,
   TransactionOutlined,
+  HistoryOutlined,
+  CustomerServiceOutlined,
   LogoutOutlined,
   BarChartOutlined,
   FileTextOutlined,
@@ -24,6 +26,8 @@ const SIDEBAR_COLLAPSED_KEY = 'admin_sidebar_collapsed';
 const PAGE_META: Record<string, { title: string; parent?: string }> = {
   '/': { title: 'Tổng quan' },
   '/users': { title: 'Người dùng', parent: 'Quản lý' },
+  '/transaction-history': { title: 'Lịch sử giao dịch', parent: 'Quản lý' },
+  '/support': { title: 'Hỗ trợ người dùng', parent: 'Quản lý' },
   '/transactions': { title: 'Đối soát SePay', parent: 'Quản lý' },
   '/reports': { title: 'Báo cáo', parent: 'Phân tích' },
   '/posts': { title: 'Bài viết', parent: 'Nội dung' },
@@ -184,6 +188,8 @@ export const AdminLayout: React.FC = () => {
                   label: collapsed ? '' : 'Quản lý',
                   children: [
                     { key: '/users', icon: <UserOutlined />, label: 'Người dùng' },
+                    { key: '/transaction-history', icon: <HistoryOutlined />, label: 'Lịch sử giao dịch' },
+                    { key: '/support', icon: <CustomerServiceOutlined />, label: 'Hỗ trợ người dùng' },
                     { key: '/transactions', icon: <TransactionOutlined />, label: 'Đối soát SePay' },
                     { key: '/posts', icon: <FileTextOutlined />, label: 'Bài viết' },
                   ],

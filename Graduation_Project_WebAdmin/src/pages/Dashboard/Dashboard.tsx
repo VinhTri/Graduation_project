@@ -7,7 +7,6 @@ import {
   Tag,
   Typography,
   Button,
-  Space,
   Spin,
   Empty,
   message,
@@ -15,20 +14,15 @@ import {
 } from 'antd';
 import {
   UserOutlined,
-  TransactionOutlined,
-  DollarCircleOutlined,
   ArrowUpOutlined,
   ArrowDownOutlined,
-  ReloadOutlined,
-  FileTextOutlined,
-  WalletOutlined,
-  TeamOutlined,
   CheckCircleOutlined,
   ClockCircleOutlined,
   CloseCircleOutlined,
-  BarChartOutlined,
-  BankOutlined,
+  WalletOutlined,
   SafetyCertificateOutlined,
+  BankOutlined,
+  DollarCircleOutlined,
   ApiOutlined,
 } from '@ant-design/icons';
 import {
@@ -133,6 +127,8 @@ export const Dashboard: React.FC = () => {
         targetUsers.map((u) => apiClient.get(`/api/v1/admin/users/${u.id}/details`))
       );
 
+      const REAL_MONEY_TYPES = new Set(['TOP_UP', 'WITHDRAW']);
+
       let balanceSum = 0;
       const allTx: TxItem[] = [];
 
@@ -140,15 +136,18 @@ export const Dashboard: React.FC = () => {
         if (result.status !== 'fulfilled') return;
         const detail = result.value.data?.data || result.value.data;
         if (!detail) return;
+        // BE đã trả MAIN-only; FE vẫn chỉ lấy nạp/rút để thống kê dòng tiền thật
         balanceSum += Number(detail.totalBalance || 0);
         const txs: TxItem[] = detail.recentTransactions || [];
-        txs.forEach((tx) => {
-          allTx.push({
-            ...tx,
-            amount: Number(tx.amount || 0),
-            username: targetUsers[index]?.username || detail.userInfo?.username,
+        txs
+          .filter((tx) => REAL_MONEY_TYPES.has(tx.type))
+          .forEach((tx) => {
+            allTx.push({
+              ...tx,
+              amount: Number(tx.amount || 0),
+              username: targetUsers[index]?.username || detail.userInfo?.username,
+            });
           });
-        });
       });
 
       setTotalWalletBalance(balanceSum);
@@ -280,37 +279,6 @@ export const Dashboard: React.FC = () => {
     },
   ];
 
-  const quickLinks = [
-    {
-      title: 'Người dùng',
-      desc: `${stats.activeUsers} đang hoạt động`,
-      icon: <TeamOutlined />,
-      path: '/users',
-      tone: 'purple',
-    },
-    {
-      title: 'Giao dịch',
-      desc: `${stats.txCount} GD gần đây`,
-      icon: <TransactionOutlined />,
-      path: '/transactions',
-      tone: 'pink',
-    },
-    {
-      title: 'Bài viết',
-      desc: `${stats.activePosts}/${stats.totalPosts} đang hiện`,
-      icon: <FileTextOutlined />,
-      path: '/posts',
-      tone: 'blue',
-    },
-    {
-      title: 'Báo cáo',
-      desc: 'Phân tích chi tiết',
-      icon: <BarChartOutlined />,
-      path: '/reports',
-      tone: 'green',
-    },
-  ];
-
   return (
     <div className="dash-page">
       <div className="dash-hero">
@@ -318,18 +286,12 @@ export const Dashboard: React.FC = () => {
           <div className="dash-hero-kicker">SmartSpend Admin</div>
           <h2>Tổng quan hệ thống</h2>
           <p>
-            Theo dõi người dùng, ví, nạp/rút và nội dung — dữ liệu lấy trực tiếp từ các module
-            đang vận hành.
+            Theo dõi người dùng, số dư ví MAIN, dòng nạp/rút thật và nội dung — không gồm sổ tay tiền mặt.
           </p>
         </div>
-        <Space wrap>
-          <Button icon={<ReloadOutlined />} onClick={loadData} loading={loading}>
-            Làm mới
-          </Button>
-          <Button type="primary" onClick={() => navigate('/reports')}>
-            Xem báo cáo
-          </Button>
-        </Space>
+        <Button type="primary" onClick={() => navigate('/reports')}>
+          Xem báo cáo
+        </Button>
       </div>
 
       <Spin spinning={loading}>
@@ -378,31 +340,12 @@ export const Dashboard: React.FC = () => {
                 <WalletOutlined />
               </div>
               <div>
-                <span>Số dư ví hệ thống</span>
+                <span>Số dư ví MAIN (tiền thật)</span>
                 <strong>{formatVND(stats.totalWalletBalance)}</strong>
                 <small>Dòng tiền ròng {formatVND(stats.netFlow)}</small>
               </div>
             </Card>
           </Col>
-        </Row>
-
-        <div className="dash-section-label">Lối tắt quản trị</div>
-        <Row gutter={[12, 12]}>
-          {quickLinks.map((item) => (
-            <Col xs={24} sm={12} xl={6} key={item.path}>
-              <button
-                type="button"
-                className={`dash-quick tone-${item.tone}`}
-                onClick={() => navigate(item.path)}
-              >
-                <span className="dash-quick-icon">{item.icon}</span>
-                <span className="dash-quick-text">
-                  <strong>{item.title}</strong>
-                  <small>{item.desc}</small>
-                </span>
-              </button>
-            </Col>
-          ))}
         </Row>
 
         <Row gutter={[14, 14]} style={{ marginTop: 14 }}>

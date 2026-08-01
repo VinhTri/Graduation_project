@@ -7,6 +7,8 @@ import { Users } from './pages/Users/Users';
 import { Report } from './pages/Report/Report';
 import { ManagePosts } from './pages/Posts';
 import { SePayReconciliation } from './pages/SePay';
+import { TransactionHistory } from './pages/Transactions';
+import { Support } from './pages/Support';
 import { PrivateRoute, PublicOnlyRoute } from './components/PrivateRoute';
 
 function App() {
@@ -41,6 +43,8 @@ function App() {
               <Route index element={<Dashboard />} />
               <Route path="users" element={<Users />} />
               <Route path="posts" element={<ManagePosts />} />
+              <Route path="transaction-history" element={<TransactionHistory />} />
+              <Route path="support" element={<Support />} />
               <Route path="transactions" element={<SePayReconciliation />} />
               <Route path="reports" element={<Report />} />
             </Route>

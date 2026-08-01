@@ -21,14 +21,14 @@ import {
   EyeOutlined,
   LockOutlined,
   UnlockOutlined,
-  ReloadOutlined,
   SearchOutlined,
   UserOutlined,
   TeamOutlined,
   SafetyCertificateOutlined,
   StopOutlined,
   MailOutlined,
-  WalletOutlined,
+  ArrowDownOutlined,
+  ArrowUpOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { apiClient } from '../../services/api';
@@ -58,6 +58,8 @@ interface TransactionHistory {
 interface UserDetailsResponse {
   userInfo: UserResponse;
   totalBalance: number;
+  totalTopUp?: number;
+  totalWithdraw?: number;
   recentTransactions: TransactionHistory[];
 }
 
@@ -351,11 +353,7 @@ export const Users = () => {
             <TeamOutlined /> Quản lý tài khoản
           </div>
           <h2>Danh sách người dùng</h2>
-          <p>Theo dõi, khóa/mở khóa và xem chi tiết ví cùng lịch sử giao dịch của từng tài khoản.</p>
         </div>
-        <Button icon={<ReloadOutlined />} onClick={fetchUsers} loading={loading}>
-          Làm mới
-        </Button>
       </div>
 
       <div className="users-stats">
@@ -481,13 +479,33 @@ export const Users = () => {
               </div>
             </div>
 
-            <div className="users-balance-card">
-              <div className="users-balance-icon">
-                <WalletOutlined />
+            <div className="users-money-grid">
+              <div className="users-balance-card">
+                <div className="users-balance-icon users-balance-icon--logo">
+                  <img src="/brand/smartspend-icon.png" alt="SmartSpend" />
+                </div>
+                <div>
+                  <span>Số dư ví SmartSpend</span>
+                  <Title level={3}>{formatVND(Number(selectedUser.totalBalance || 0))}</Title>
+                </div>
               </div>
-              <div>
-                <span>Tổng số dư các ví</span>
-                <Title level={2}>{formatVND(Number(selectedUser.totalBalance || 0))}</Title>
+              <div className="users-balance-card users-balance-card--topup">
+                <div className="users-balance-icon users-balance-icon--topup">
+                  <ArrowDownOutlined />
+                </div>
+                <div>
+                  <span>Tổng nạp (thành công)</span>
+                  <Title level={3}>{formatVND(Number(selectedUser.totalTopUp || 0))}</Title>
+                </div>
+              </div>
+              <div className="users-balance-card users-balance-card--withdraw">
+                <div className="users-balance-icon users-balance-icon--withdraw">
+                  <ArrowUpOutlined />
+                </div>
+                <div>
+                  <span>Tổng rút (thành công)</span>
+                  <Title level={3}>{formatVND(Number(selectedUser.totalWithdraw || 0))}</Title>
+                </div>
               </div>
             </div>
 
@@ -509,7 +527,7 @@ export const Users = () => {
             />
 
             <div className="users-drawer-section">
-              <h4>Lịch sử giao dịch gần đây</h4>
+              <h4>Lịch sử nạp / rút gần đây</h4>
               <Table
                 columns={transactionColumns}
                 dataSource={selectedUser.recentTransactions || []}
