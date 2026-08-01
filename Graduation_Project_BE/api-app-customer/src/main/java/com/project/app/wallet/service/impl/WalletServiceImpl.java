@@ -20,11 +20,13 @@ public class WalletServiceImpl implements WalletService {
     private final WalletRepository walletRepository;
     private final AuthService authService;
     private final UserRepository userRepository;
+    private final com.project.app.transaction.repository.TransactionRepository transactionRepository;
 
-    public WalletServiceImpl(WalletRepository walletRepository, AuthService authService, UserRepository userRepository) {
+    public WalletServiceImpl(WalletRepository walletRepository, AuthService authService, UserRepository userRepository, com.project.app.transaction.repository.TransactionRepository transactionRepository) {
         this.walletRepository = walletRepository;
         this.authService = authService;
         this.userRepository = userRepository;
+        this.transactionRepository = transactionRepository;
     }
 
     // ====================== LẤY VÍ MẶC ĐỊNH ======================
@@ -177,6 +179,9 @@ public class WalletServiceImpl implements WalletService {
         if (wallet.getWalletType() != WalletType.MANUAL) {
             throw new AppException(ErrorCode.INVALID_REQUEST);
         }
+
+        // Xóa tất cả các giao dịch liên quan trước
+        transactionRepository.deleteAllByWalletId(walletId);
 
         walletRepository.delete(wallet);
     }

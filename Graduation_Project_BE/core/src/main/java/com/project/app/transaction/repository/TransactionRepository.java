@@ -41,6 +41,8 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
 
     java.util.List<Transaction> findByUserIdAndWalletIdOrderByCreatedAtDesc(Long userId, Long walletId);
 
+    void deleteAllByWalletId(Long walletId);
+
     java.util.List<Transaction> findByUserAndTypeAndStatusAndWallet_IsDefaultTrueAndCreatedAtBetween(
             com.project.app.user.entity.User user,
             com.project.app.transaction.enums.TransactionType type,

@@ -311,27 +311,7 @@ export const AddCashBalanceModal = ({
                 )}
               </TouchableOpacity>
 
-              {isEditMode && onDelete && (
-                <TouchableOpacity
-                  style={{
-                    marginTop: 16,
-                    paddingVertical: 14,
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    borderRadius: 14,
-                    backgroundColor: '#FEF2F2',
-                    borderWidth: 1,
-                    borderColor: '#FCA5A5'
-                  }}
-                  activeOpacity={0.8}
-                  disabled={saving}
-                  onPress={onDelete}
-                >
-                  <Text style={{ color: '#DC2626', fontSize: 16, fontWeight: '600' }}>
-                    Xóa giao dịch
-                  </Text>
-                </TouchableOpacity>
-              )}
+
             </ScrollView>
           </View>
         </KeyboardAvoidingView>
