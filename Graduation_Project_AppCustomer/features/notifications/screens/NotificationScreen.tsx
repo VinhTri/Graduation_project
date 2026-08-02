@@ -141,6 +141,9 @@ export default function NotificationScreen() {
       case "BUDGET_EXCEEDED":
         router.push("/budget");
         break;
+      case "NOTEBOOK_REMINDER":
+        router.push("/(tabs)/notebook");
+        break;
       case "GENERAL":
       default:
         // Dự phòng cho các thông báo từ backend chưa cập nhật type cụ thể
@@ -151,6 +154,8 @@ export default function NotificationScreen() {
           router.push("/contacts");
         } else if (title.includes("ngân sách")) {
           router.push("/budget");
+        } else if (title.includes("sổ tay")) {
+          router.push("/(tabs)/notebook");
         } else {
           Alert.alert("Thông tin", "Không thể điều hướng cho thông báo này vì hệ thống chưa xác định được đích đến.");
         }
@@ -206,6 +211,15 @@ export default function NotificationScreen() {
     const busy = actingId === item.id;
     const CardContainer = item.type === "FUND_INVITE" ? View : TouchableOpacity;
 
+    const getIconName = () => {
+      if (isFundInvite) return "people";
+      if (item.type === "NOTEBOOK_REMINDER") return "book-outline";
+      if (item.type === "INVOICE_REMINDER") return "receipt-outline";
+      if (item.type === "BUDGET_WARNING" || item.type === "BUDGET_EXCEEDED") return "pie-chart-outline";
+      if (item.type === "FRIEND_REQUEST" || item.type === "FRIEND_ACCEPTED") return "person-add-outline";
+      return "notifications";
+    };
+
     return (
       <Swipeable 
         renderRightActions={(progress, dragX) => renderRightActions(progress, dragX, item.id)}
@@ -219,7 +233,7 @@ export default function NotificationScreen() {
         >
           <View style={styles.iconContainer}>
             <Ionicons
-              name={isFundInvite ? "people" : "notifications"}
+              name={getIconName() as any}
               size={24}
               color="#EC4899"
             />
