@@ -24,6 +24,10 @@ export const PASTEL_PALETTE = {
   success: '#10B981',
   error: '#EF4444',
   background: '#FFF8FC',
+  black: '#000000',
+  warning: '#F59E0B',
+  danger: '#EF4444',
+  textMain: '#1F2937',
 };
 
 export const PASTEL_HEADER_GRADIENT = [

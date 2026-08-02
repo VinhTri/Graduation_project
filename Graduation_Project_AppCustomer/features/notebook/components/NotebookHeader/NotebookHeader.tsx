@@ -84,7 +84,6 @@ export const NotebookHeader: React.FC<NotebookHeaderProps> = ({
           </View>
         )}
       </View>
-      )}
     </PastelHeaderShell>
   );
 };

@@ -296,7 +296,7 @@ export default function NotebookScreen() {
         initialData={selectedTransaction || undefined}
         onClose={() => setBalanceModalVisible(false)}
         onConfirm={handleCashBalanceChange}
-        onDelete={() => selectedTransaction && handleDeleteTransaction(selectedTransaction)}
+        onDelete={() => { if (selectedTransaction) handleDeleteTransaction(selectedTransaction); }}
       />
 
       <ConfirmModal
@@ -311,10 +311,6 @@ export default function NotebookScreen() {
         onConfirm={confirmDeleteTransaction}
         onCancel={() => setTxToDelete(null)}
       />
-      </>
-      ) : (
-        <BankNotebookList />
-      )}
     </View>
   );
 }
