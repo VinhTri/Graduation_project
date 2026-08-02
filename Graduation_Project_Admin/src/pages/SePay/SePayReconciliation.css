@@ -1,0 +1,78 @@
+.sepay-page {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.sepay-hero {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+  padding: 20px 22px;
+  border-radius: 18px;
+  border: 1px solid #f3e8ff;
+  background:
+    radial-gradient(ellipse 55% 80% at 0% 0%, rgba(244, 114, 182, 0.14), transparent 55%),
+    radial-gradient(ellipse 45% 70% at 100% 0%, rgba(167, 139, 250, 0.14), transparent 50%),
+    #fff;
+}
+
+.sepay-hero-kicker {
+  color: #7c3aed;
+  font-size: 0.76rem;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  margin-bottom: 8px;
+}
+
+.sepay-hero h2 {
+  margin: 0 0 8px;
+  font-size: 1.4rem;
+  font-weight: 900;
+  color: #0f172a;
+  letter-spacing: -0.3px;
+}
+
+.sepay-hero .ant-typography {
+  margin-bottom: 0;
+  max-width: 640px;
+  color: #64748b;
+}
+
+.sepay-stats {
+  margin-bottom: 14px;
+}
+
+.sepay-stat-card {
+  border-radius: 16px;
+  border: 1px solid #f3e8ff;
+  height: 100%;
+}
+
+.sepay-stat-ok .ant-statistic-content {
+  color: #059669;
+}
+
+.sepay-stat-bad .ant-statistic-content {
+  color: #dc2626;
+}
+
+.sepay-stat-warn .ant-statistic-content {
+  color: #d97706;
+}
+
+.sepay-panel {
+  border-radius: 18px;
+  border: 1px solid #f3e8ff;
+}
+
+.sepay-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 16px;
+}

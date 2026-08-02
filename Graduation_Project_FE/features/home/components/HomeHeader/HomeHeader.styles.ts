@@ -1,0 +1,95 @@
+import { StyleSheet } from "react-native";
+import { PASTEL_PALETTE } from "@/shared/constants/PastelPalette";
+
+export const styles = StyleSheet.create({
+  headerShell: {
+    marginTop: 0,
+  },
+  container: {
+    paddingBottom: 32,
+  },
+  topRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 16,
+  },
+  searchContainer: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "rgba(255, 255, 255, 0.62)",
+    borderRadius: 20,
+    paddingHorizontal: 12,
+    height: 40,
+    marginRight: 12,
+    borderWidth: 1,
+    borderColor: "rgba(255, 255, 255, 0.85)",
+  },
+  searchIcon: {
+    marginRight: 8,
+  },
+  searchInput: {
+    flex: 1,
+    color: PASTEL_PALETTE.title,
+    fontSize: 14,
+    fontWeight: "500",
+  },
+  notificationBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "rgba(255, 255, 255, 0.62)",
+    alignItems: "center",
+    justifyContent: "center",
+    position: "relative",
+    overflow: "visible",
+    borderWidth: 1,
+    borderColor: "rgba(255, 255, 255, 0.85)",
+  },
+  badge: {
+    position: "absolute",
+    top: -2,
+    right: -2,
+    minWidth: 16,
+    height: 16,
+    borderRadius: 8,
+    backgroundColor: PASTEL_PALETTE.accentDeep,
+    borderWidth: 1,
+    borderColor: PASTEL_PALETTE.white,
+    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: 2,
+  },
+  badgeText: {
+    color: PASTEL_PALETTE.white,
+    fontSize: 8,
+    fontWeight: "bold",
+  },
+  quickActionsRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+    paddingHorizontal: 4,
+    zIndex: 2,
+  },
+  actionItem: {
+    alignItems: "center",
+    width: 70,
+  },
+  iconWrapper: {
+    width: 48,
+    height: 48,
+    borderRadius: 16,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: "rgba(255, 255, 255, 0.75)",
+  },
+  actionLabel: {
+    color: PASTEL_PALETTE.title,
+    fontSize: 12,
+    fontWeight: "600",
+    textAlign: "center",
+  },
+});

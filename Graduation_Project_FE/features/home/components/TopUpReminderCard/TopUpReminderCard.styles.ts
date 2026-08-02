@@ -1,0 +1,73 @@
+import { StyleSheet } from "react-native";
+
+export const styles = StyleSheet.create({
+  container: {
+    backgroundColor: "#FFF1F7",
+    borderRadius: 20,
+    padding: 16,
+    flexDirection: "row",
+    alignItems: "flex-start",
+    borderWidth: 1.5,
+    borderColor: "#FBCFE8",
+    shadowColor: "#DB2777",
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.12,
+    shadowRadius: 12,
+    elevation: 3,
+  },
+  iconWrap: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: "#FCE7F3",
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: 12,
+  },
+  iconEmoji: {
+    fontSize: 26,
+  },
+  sparkleBadge: {
+    position: "absolute",
+    top: -2,
+    right: -2,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: "#FEF3C7",
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 2,
+    borderColor: "#FFF1F7",
+  },
+  content: {
+    flex: 1,
+  },
+  title: {
+    fontSize: 15,
+    fontWeight: "800",
+    color: "#9D174D",
+    marginBottom: 4,
+  },
+  message: {
+    fontSize: 13,
+    color: "#BE185D",
+    lineHeight: 19,
+  },
+  ctaRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: 10,
+    alignSelf: "flex-start",
+    backgroundColor: "#FCE7F3",
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 100,
+  },
+  ctaText: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: "#DB2777",
+    marginRight: 4,
+  },
+});

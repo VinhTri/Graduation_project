@@ -1,0 +1,186 @@
+import { StyleSheet } from "react-native";
+import { PASTEL_PALETTE } from "../../../../shared/constants/PastelPalette";
+
+export const styles = StyleSheet.create({
+  cardContainer: {
+    width: "100%",
+  },
+  walletBody: {
+    borderRadius: 24,
+    padding: 20,
+    minHeight: 168,
+    overflow: "hidden",
+    borderWidth: 1.5,
+    borderColor: "rgba(255, 255, 255, 0.55)",
+    shadowColor: PASTEL_PALETTE.lavender,
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.22,
+    shadowRadius: 18,
+    elevation: 6,
+  },
+  decorCircle: {
+    position: "absolute",
+    width: 110,
+    height: 110,
+    borderRadius: 55,
+    backgroundColor: "rgba(255, 255, 255, 0.22)",
+    top: -30,
+    right: -24,
+  },
+  headerRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+    marginBottom: 14,
+  },
+  headerLeft: {
+    flex: 1,
+    minWidth: 0,
+    paddingRight: 10,
+  },
+  brandRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
+  brandLogo: {
+    marginRight: 14,
+    borderWidth: 1,
+    borderColor: "rgba(255, 255, 255, 0.75)",
+  },
+  brandTextWrap: {
+    flex: 1,
+    minWidth: 0,
+  },
+  brandTitle: {
+    fontSize: 20,
+    fontWeight: "900",
+    letterSpacing: 0.2,
+  },
+  brandSmart: {
+    color: PASTEL_PALETTE.title,
+  },
+  brandSpend: {
+    color: PASTEL_PALETTE.accent,
+  },
+  cardNumber: {
+    fontSize: 12,
+    color: PASTEL_PALETTE.subtitle,
+    marginTop: 4,
+    fontWeight: "600",
+  },
+  limitBox: {
+    maxWidth: 128,
+    backgroundColor: "rgba(255, 255, 255, 0.5)",
+    borderRadius: 14,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    borderWidth: 1,
+    borderColor: "rgba(255, 255, 255, 0.7)",
+  },
+  limitRow: {
+    alignItems: "flex-end",
+  },
+  limitRowSpacing: {
+    marginTop: 6,
+  },
+  limitLabel: {
+    fontSize: 9,
+    color: PASTEL_PALETTE.textMuted,
+    fontWeight: "700",
+    marginBottom: 2,
+  },
+  limitValue: {
+    fontSize: 11,
+    fontWeight: "800",
+    color: PASTEL_PALETTE.title,
+    textAlign: "right",
+  },
+  limitPlaceholder: {
+    fontSize: 10,
+    fontWeight: "600",
+    color: PASTEL_PALETTE.subtitle,
+    textAlign: "right",
+    lineHeight: 14,
+  },
+  balanceSection: {
+    backgroundColor: "rgba(255, 255, 255, 0.52)",
+    borderRadius: 18,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    borderWidth: 1,
+    borderColor: "rgba(255, 255, 255, 0.75)",
+  },
+  balanceLabel: {
+    fontSize: 11,
+    color: PASTEL_PALETTE.textMuted,
+    fontWeight: "700",
+  },
+  balanceValue: {
+    fontSize: 26,
+    fontWeight: "900",
+    color: PASTEL_PALETTE.title,
+    marginTop: 4,
+    letterSpacing: -0.5,
+  },
+  subValue: {
+    fontSize: 12,
+    color: PASTEL_PALETTE.subtitle,
+    fontWeight: "700",
+    marginTop: 4,
+  },
+  expandHint: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 4,
+    marginTop: 12,
+  },
+  expandHintText: {
+    fontSize: 11,
+    color: PASTEL_PALETTE.subtitle,
+    fontWeight: "600",
+  },
+  actionsSection: {
+    paddingTop: 6,
+    paddingBottom: 2,
+    paddingHorizontal: 4,
+  },
+  actionsDivider: {
+    height: 1,
+    backgroundColor: "rgba(124, 58, 237, 0.18)",
+    marginBottom: 12,
+    marginHorizontal: 4,
+  },
+  actionsRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    justifyContent: "space-between",
+    gap: 4,
+  },
+  actionItem: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "flex-start",
+    minWidth: 0,
+    paddingVertical: 2,
+    paddingHorizontal: 1,
+  },
+  actionLabel: {
+    marginTop: 5,
+    fontSize: 9,
+    fontWeight: "700",
+    color: PASTEL_PALETTE.title,
+    textAlign: "center",
+    lineHeight: 12,
+  },
+  measureWrap: {
+    position: "absolute",
+    opacity: 0,
+    left: 20,
+    right: 20,
+    zIndex: -1,
+  },
+});
+
+export default styles;

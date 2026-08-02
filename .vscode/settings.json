@@ -1,0 +1,5 @@
+{
+  "typescript.tsdk": "Graduation_Project_FE/node_modules/typescript/lib",
+  "typescript.enablePromptUseWorkspaceTsdk": true,
+  "java.configuration.updateBuildConfiguration": "interactive"
+}
