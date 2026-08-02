@@ -42,10 +42,46 @@ const QUICK_ACTIONS = [
   },
 ];
 
+import { useLanguage, useTheme } from "@/shared/contexts/ThemeLanguageContext";
+
 export const HomeHeader = () => {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const [unreadCount, setUnreadCount] = useState(0);
+  const { language } = useLanguage();
+  const { theme } = useTheme();
+  const isEn = language === 'en';
+
+  const quickActions = [
+    {
+      id: "topup",
+      label: isEn ? "Top Up/Withdraw" : "Nạp/Rút",
+      route: "/wallet/action?initialTab=topup",
+      type: "logo" as const,
+      bgColor: theme.isDark ? theme.bgSoft : PASTEL_PALETTE.accentSoft,
+    },
+    {
+      id: "transfer",
+      label: isEn ? "Transfer" : "Chuyển tiền",
+      icon: "paper-plane-outline" as const,
+      color: theme.isDark ? theme.primary : PASTEL_PALETTE.lavender,
+      bgColor: theme.isDark ? theme.bgSoft : PASTEL_PALETTE.lavenderSoft,
+    },
+    {
+      id: "qr",
+      label: isEn ? "Scan QR" : "Quét mã QR",
+      icon: "qr-code-outline" as const,
+      color: theme.isDark ? theme.primary : PASTEL_PALETTE.accentDeep,
+      bgColor: theme.isDark ? theme.bgSoft : PASTEL_PALETTE.accentSoft,
+    },
+    {
+      id: "utilities",
+      label: isEn ? "Utilities" : "Ví tiện ích",
+      icon: "grid-outline" as const,
+      color: theme.textSecondary,
+      bgColor: theme.isDark ? theme.bgSoft : "rgba(255, 255, 255, 0.72)",
+    },
+  ];
 
   useFocusEffect(
     React.useCallback(() => {
@@ -56,7 +92,6 @@ export const HomeHeader = () => {
   const loadUnreadCount = async () => {
     try {
       const res: any = await notificationService.getUnreadCount();
-      console.log("🚀 ~ loadUnreadCount ~ res:", res);
       if (res && res.success !== undefined) {
          setUnreadCount(Number(res.data));
       }
@@ -72,20 +107,20 @@ export const HomeHeader = () => {
     >
       {/* Search and Notification Row */}
       <View style={styles.topRow}>
-        <View style={styles.searchContainer}>
-          <Ionicons name="search-outline" size={20} color={PASTEL_PALETTE.subtitle} style={styles.searchIcon} />
+        <View style={[styles.searchContainer, { backgroundColor: theme.isDark ? theme.card : 'rgba(255,255,255,0.85)', borderColor: theme.cardBorder }]}>
+          <Ionicons name="search-outline" size={20} color={theme.textSecondary} style={styles.searchIcon} />
           <TextInput 
-            style={styles.searchInput}
-            placeholder="Tìm kiếm giao dịch, quỹ..."
-            placeholderTextColor={PASTEL_PALETTE.textMuted}
+            style={[styles.searchInput, { color: theme.textPrimary }]}
+            placeholder={isEn ? "Search transactions, funds..." : "Tìm kiếm giao dịch, quỹ..."}
+            placeholderTextColor={theme.textMuted}
           />
         </View>
         <TouchableOpacity 
-          style={styles.notificationBtn} 
+          style={[styles.notificationBtn, { backgroundColor: theme.isDark ? theme.card : 'rgba(255,255,255,0.85)' }]} 
           activeOpacity={0.7}
           onPress={() => router.push("/notifications")}
         >
-          <Ionicons name="notifications-outline" size={22} color={PASTEL_PALETTE.subtitle} />
+          <Ionicons name="notifications-outline" size={22} color={theme.textPrimary} />
           {unreadCount > 0 && (
             <View style={styles.badge}>
               <Text style={styles.badgeText}>
@@ -98,7 +133,7 @@ export const HomeHeader = () => {
 
       {/* Quick Actions */}
       <View style={styles.quickActionsRow}>
-        {QUICK_ACTIONS.map((action) => (
+        {quickActions.map((action) => (
           <TouchableOpacity
             key={action.id}
             style={styles.actionItem}
@@ -107,19 +142,20 @@ export const HomeHeader = () => {
               if (action.route) router.push(action.route as any);
             }}
           >
-            <View style={[styles.iconWrapper, { backgroundColor: action.bgColor }]}>
+            <View style={[styles.iconWrapper, { backgroundColor: action.bgColor, borderColor: theme.cardBorder }]}>
               {action.type === "logo" ? (
                 <SmartSpendIcon size={32} borderRadius={8} />
               ) : (
                 <Ionicons name={action.icon!} size={24} color={action.color} />
               )}
             </View>
-            <Text style={styles.actionLabel}>{action.label}</Text>
+            <Text style={[styles.actionLabel, { color: theme.textPrimary }]}>{action.label}</Text>
           </TouchableOpacity>
         ))}
       </View>
     </PastelHeaderShell>
   );
 };
+
 
 export default HomeHeader;

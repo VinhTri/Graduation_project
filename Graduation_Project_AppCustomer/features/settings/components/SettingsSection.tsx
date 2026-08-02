@@ -1,5 +1,6 @@
 import React, { ReactNode } from 'react';
 import { View, Text, TouchableOpacity } from 'react-native';
+import { useTheme } from '../../../shared/contexts/ThemeLanguageContext';
 import { styles } from '../SettingsScreen.styles';
 
 interface SettingsSectionProps {
@@ -9,19 +10,22 @@ interface SettingsSectionProps {
 }
 
 export const SettingsSection = ({ title, rightLink, children }: SettingsSectionProps) => {
+  const { theme } = useTheme();
+
   return (
     <View style={styles.section}>
       <View style={styles.sectionHeader}>
-        <Text style={styles.sectionTitle}>{title}</Text>
+        <Text style={[styles.sectionTitle, { color: theme.textPrimary }]}>{title}</Text>
         {rightLink && (
           <TouchableOpacity activeOpacity={0.7}>
-            <Text style={styles.sectionLink}>{rightLink}</Text>
+            <Text style={[styles.sectionLink, { color: theme.primary }]}>{rightLink}</Text>
           </TouchableOpacity>
         )}
       </View>
-      <View style={styles.sectionBody}>
+      <View style={[styles.sectionBody, { backgroundColor: theme.card, borderColor: theme.cardBorder }]}>
         {children}
       </View>
     </View>
   );
 };
+

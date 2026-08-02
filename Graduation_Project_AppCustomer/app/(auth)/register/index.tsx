@@ -1,8 +1,9 @@
 import React, { useState, useRef } from 'react';
 import { 
   View, Text, TextInput, TouchableOpacity, 
-  ScrollView, SafeAreaView, Platform, KeyboardAvoidingView, Alert
+  ScrollView, Platform, KeyboardAvoidingView, Alert
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { styles } from '@/features/auth/styles/register.styles';
 import { AUTH_INPUT_ICON, AUTH_INPUT_PLACEHOLDER } from '../../../shared/constants/authInputColors';

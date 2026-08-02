@@ -3,6 +3,7 @@ import { View, StyleSheet, ViewStyle, StyleProp } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { PASTEL_HEADER_GRADIENT, PASTEL_PALETTE } from '../../constants/PastelPalette';
+import { useTheme } from '../../contexts/ThemeLanguageContext';
 
 interface PastelHeaderShellProps {
   children: React.ReactNode;
@@ -16,11 +17,12 @@ export default function PastelHeaderShell({
   contentStyle,
 }: PastelHeaderShellProps) {
   const insets = useSafeAreaInsets();
+  const { theme } = useTheme();
 
   return (
     <View style={[styles.wrap, style]}>
       <LinearGradient
-        colors={[...PASTEL_HEADER_GRADIENT]}
+        colors={[...theme.headerGradient]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={[styles.gradient, { paddingTop: insets.top + 12 }, contentStyle]}

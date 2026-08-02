@@ -6,6 +6,7 @@ import { PastelHeaderShell } from '../../../../shared/components/PastelHeaderShe
 import { PASTEL_PALETTE } from '../../../../shared/constants/PastelPalette';
 import { NotebookHeaderProps } from './NotebookHeader.types';
 import { styles } from './NotebookHeader.styles';
+import { useLanguage, useTheme } from '../../../../shared/contexts/ThemeLanguageContext';
 
 export const NotebookHeader: React.FC<NotebookHeaderProps> = ({
   topTab,
@@ -16,6 +17,9 @@ export const NotebookHeader: React.FC<NotebookHeaderProps> = ({
 }) => {
   const router = useRouter();
   const [isBalanceHidden, setIsBalanceHidden] = useState(false);
+  const { t, language } = useLanguage();
+  const { theme } = useTheme();
+  const isEn = language === 'en';
 
   const formatCurrency = (val: number) => {
     if (isBalanceHidden) return '•••••• ₫';
@@ -26,77 +30,55 @@ export const NotebookHeader: React.FC<NotebookHeaderProps> = ({
     <PastelHeaderShell contentStyle={styles.headerContent}>
       <View style={styles.topRow}>
         <TouchableOpacity
-          style={styles.backBtn}
+          style={[styles.backBtn, { backgroundColor: theme.isDark ? theme.card : 'rgba(255,255,255,0.72)', borderColor: theme.cardBorder }]}
           onPress={() => router.push('/(tabs)/home')}
           activeOpacity={0.75}
         >
-          <Ionicons name="chevron-back-outline" size={24} color="#7C3AED" />
+          <Ionicons name="chevron-back" size={22} color={theme.textPrimary} />
         </TouchableOpacity>
         <View style={styles.titleBlock}>
-          <Text style={styles.title}>Quản lý sổ tay</Text>
+          <Text style={[styles.title, { color: theme.isDark ? '#FFFFFF' : PASTEL_PALETTE.title }]}>{t('expenseNotebook')}</Text>
+          <Text style={[styles.subtitle, { color: theme.isDark ? theme.textSecondary : PASTEL_PALETTE.subtitle }]}>{t('notebookSub')}</Text>
         </View>
       </View>
 
-      <View style={styles.segmentedControl}>
-        <TouchableOpacity
-          style={[styles.segmentBtn, topTab === 'cash' && styles.segmentBtnActive]}
-          onPress={() => setTopTab('cash')}
-          activeOpacity={0.8}
-        >
-          <Text style={[styles.segmentText, topTab === 'cash' && styles.segmentTextActive]}>
-            Sổ tay tiền mặt
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.segmentBtn, topTab === 'bank' && styles.segmentBtnActive]}
-          onPress={() => setTopTab('bank')}
-          activeOpacity={0.8}
-        >
-          <Text style={[styles.segmentText, topTab === 'bank' && styles.segmentTextActive]}>
-            Sổ tay ngân hàng
-          </Text>
-        </TouchableOpacity>
-      </View>
-
-      {topTab === 'cash' && (
-
-      <View style={styles.balanceCard}>
+      <View style={[styles.balanceCard, { backgroundColor: theme.card, borderColor: theme.cardBorder }]}>
         <View style={styles.balanceHeader}>
-          <Text style={styles.balanceLabel}>SỐ DƯ TIỀN MẶT</Text>
+          <Text style={[styles.balanceLabel, { color: theme.textSecondary }]}>{t('cashBalance').toUpperCase()}</Text>
           <TouchableOpacity
-            style={styles.eyeBtn}
+            style={[styles.eyeBtn, { backgroundColor: theme.isDark ? theme.bgSoft : PASTEL_PALETTE.accentSoft }]}
             onPress={() => setIsBalanceHidden((v) => !v)}
             activeOpacity={0.75}
           >
             <Feather
               name={isBalanceHidden ? 'eye-off' : 'eye'}
               size={15}
-              color={PASTEL_PALETTE.accentDeep}
+              color={theme.primary}
             />
           </TouchableOpacity>
         </View>
-        <Text style={styles.balanceValue}>{formatCurrency(totalBalance)}</Text>
+        <Text style={[styles.balanceValue, { color: theme.textPrimary }]}>{formatCurrency(totalBalance)}</Text>
 
         {(onAddCashBalance || onSpendCashBalance) && (
           <View style={styles.balanceActions}>
             {onAddCashBalance ? (
               <TouchableOpacity
-                style={styles.addBalanceBtn}
+                style={[styles.addBalanceBtn, { backgroundColor: theme.isDark ? theme.bgSoft : PASTEL_PALETTE.accentSoft, borderColor: theme.cardBorder }]}
                 onPress={onAddCashBalance}
                 activeOpacity={0.85}
               >
-                <Feather name="plus-circle" size={16} color={PASTEL_PALETTE.accentDeep} />
-                <Text style={styles.addBalanceText}>Thu nhập</Text>
+                <Feather name="plus-circle" size={16} color={theme.primary} />
+                <Text style={[styles.addBalanceText, { color: theme.primary }]}>{isEn ? 'Add Cash' : 'Thêm số dư'}</Text>
               </TouchableOpacity>
             ) : null}
             {onSpendCashBalance ? (
               <TouchableOpacity
-                style={styles.spendBalanceBtn}
+                style={[styles.spendBalanceBtn, { backgroundColor: theme.isDark ? 'rgba(220,38,38,0.15)' : '#FEE2E2', borderColor: '#FECACA' }]}
                 onPress={onSpendCashBalance}
                 activeOpacity={0.85}
               >
                 <Feather name="minus-circle" size={16} color="#DC2626" />
-                <Text style={styles.spendBalanceText}>Chi tiêu</Text>
+                <Text style={styles.spendBalanceText}>{isEn ? 'Spend Cash' : 'Chi số dư'}</Text>
               </TouchableOpacity>
             ) : null}
           </View>
@@ -108,3 +90,4 @@ export const NotebookHeader: React.FC<NotebookHeaderProps> = ({
 };
 
 export default NotebookHeader;
+

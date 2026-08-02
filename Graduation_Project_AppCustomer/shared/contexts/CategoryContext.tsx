@@ -1,4 +1,4 @@
-import React, { createContext, useState, useEffect, useContext } from 'react';
+import React, { createContext, useState, useEffect, useContext, useCallback, useMemo } from 'react';
 import { CategoryGroup, ServiceItem } from '../../features/categories/data/mockData';
 import { axiosClient } from '../api/axiosClient';
 
@@ -18,13 +18,12 @@ export const CategoryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const [categories, setCategories] = useState<CategoryGroup[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  useEffect(() => {
-    loadCategories();
-  }, []);
-
-  const loadCategories = async () => {
+  const loadCategories = useCallback(async () => {
     try {
-      setIsLoading(true);
+      setCategories(prev => {
+        if (prev.length === 0) setIsLoading(true);
+        return prev;
+      });
       const response = await axiosClient.get('/api/v1/categories');
       if (response && response.data) {
         setCategories(response.data);
@@ -37,26 +36,29 @@ export const CategoryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
 
-  const addService = async (categoryId: string, newService: Omit<ServiceItem, 'id'>) => {
+  useEffect(() => {
+    loadCategories();
+  }, [loadCategories]);
+
+  const addService = useCallback(async (categoryId: string, newService: Omit<ServiceItem, 'id'>) => {
     try {
-      const response = await axiosClient.post('/api/v1/categories/items', {
+      await axiosClient.post('/api/v1/categories/items', {
         groupId: categoryId,
         label: newService.label,
         icon: newService.icon,
         color: newService.color,
         bgColor: newService.bgColor
       });
-      // Refresh categories after adding
       await loadCategories();
     } catch (error) {
       console.error("Failed to add service", error);
       throw error;
     }
-  };
+  }, [loadCategories]);
 
-  const addGroup = async (group: { title: string; icon: string; color: string; bgColor: string }): Promise<string> => {
+  const addGroup = useCallback(async (group: { title: string; icon: string; color: string; bgColor: string }): Promise<string> => {
     try {
       const response = await axiosClient.post('/api/v1/categories/groups', {
         title: group.title,
@@ -70,20 +72,19 @@ export const CategoryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       console.error("Failed to add group", error);
       throw error;
     }
-  };
+  }, [loadCategories]);
 
-  const removeService = async (serviceId: string) => {
+  const removeService = useCallback(async (serviceId: string) => {
     try {
       await axiosClient.delete(`/api/v1/categories/items/${serviceId}`);
-      // Refresh categories after deleting
       await loadCategories();
     } catch (error) {
       console.error("Failed to remove service", error);
       throw error;
     }
-  };
+  }, [loadCategories]);
 
-  const removeGroup = async (groupId: string) => {
+  const removeGroup = useCallback(async (groupId: string) => {
     try {
       await axiosClient.delete(`/api/v1/categories/groups/${groupId}`);
       await loadCategories();
@@ -91,10 +92,20 @@ export const CategoryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       console.error("Failed to remove group", error);
       throw error;
     }
-  };
+  }, [loadCategories]);
+
+  const value = useMemo(() => ({
+    categories,
+    loadCategories,
+    addService,
+    removeService,
+    addGroup,
+    removeGroup,
+    isLoading,
+  }), [categories, loadCategories, addService, removeService, addGroup, removeGroup, isLoading]);
 
   return (
-    <CategoryContext.Provider value={{ categories, loadCategories, addService, removeService, addGroup, removeGroup, isLoading }}>
+    <CategoryContext.Provider value={value}>
       {children}
     </CategoryContext.Provider>
   );

@@ -37,7 +37,7 @@ export const EditBudgetScreen = () => {
   
   const [name, setName] = useState('');
   const [amount, setAmount] = useState('');
-  const [selectedCycle, setSelectedCycle] = useState<'WEEKLY'|'MONTHLY'|'YEARLY'>('MONTHLY');
+  const [selectedCycle, setSelectedCycle] = useState<'WEEKLY' | 'MONTHLY' | 'YEARLY' | 'CUSTOM'>('MONTHLY');
   const [selectedCategory, setSelectedCategory] = useState<any>(null);
   
   const [amountError, setAmountError] = useState('');

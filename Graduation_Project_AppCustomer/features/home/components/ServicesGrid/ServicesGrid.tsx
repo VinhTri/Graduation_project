@@ -6,19 +6,24 @@ import { styles } from "./ServicesGrid.styles";
 import { friendshipService } from "../../../../shared/api/services/friendship.service";
 import { useFocusEffect } from '@react-navigation/native';
 
-const HOME_SERVICES = [
-  { id: "3", label: "Hóa đơn", icon: "receipt-outline", color: "#10B981", bgColor: "#D1FAE5", route: "/invoice" },
-  { id: "10", label: "Danh bạ", icon: "people-circle-outline", color: "#EC4899", bgColor: "#FFE4F0", route: "/contacts" },
-  { id: "budget", label: "Ngân sách", icon: "pie-chart-outline", color: "#F59E0B", bgColor: "#FEF3C7", route: "/budget" },
-] as const;
-
-const FIXED_SERVICES = [
-  { id: "danh_muc", label: "Danh mục", icon: "layers-outline", color: "#7C3AED", bgColor: "#EDE9FE", route: "/categories" },
-] as const;
+import { useLanguage, useTheme } from "../../../../shared/contexts/ThemeLanguageContext";
 
 export const ServicesGrid = () => {
   const router = useRouter();
   const [pendingRequests, setPendingRequests] = React.useState(0);
+  const { language } = useLanguage();
+  const { theme } = useTheme();
+  const isEn = language === 'en';
+
+  const homeServices = [
+    { id: "3", label: isEn ? "Invoices" : "Hóa đơn", icon: "receipt-outline", color: "#10B981", bgColor: theme.isDark ? theme.bgSoft : "#D1FAE5", route: "/invoice" },
+    { id: "10", label: isEn ? "Contacts" : "Danh bạ", icon: "people-circle-outline", color: "#EC4899", bgColor: theme.isDark ? theme.bgSoft : "#FFE4F0", route: "/contacts" },
+  ];
+
+  const fixedServices = [
+    { id: "danh_muc", label: isEn ? "Categories" : "Danh mục", icon: "layers-outline", color: "#7C3AED", bgColor: theme.isDark ? theme.bgSoft : "#EDE9FE", route: "/categories" },
+    { id: "tat_ca", label: isEn ? "All" : "Tất cả", icon: "grid-outline", color: theme.isDark ? "#94A3B8" : "#64748B", bgColor: theme.isDark ? theme.bgSoft : "#F1F5F9", route: "/all-services" },
+  ];
 
   useFocusEffect(
     React.useCallback(() => {
@@ -41,10 +46,10 @@ export const ServicesGrid = () => {
     router.push(route as any);
   };
 
-  const displayServices = [...HOME_SERVICES, ...FIXED_SERVICES];
+  const displayServices = [...homeServices, ...fixedServices];
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: theme.card, borderColor: theme.cardBorder }]}>
       <View style={styles.grid}>
         {displayServices.map((service) => (
           <TouchableOpacity
@@ -68,7 +73,7 @@ export const ServicesGrid = () => {
                   alignItems: 'center',
                   paddingHorizontal: 4,
                   borderWidth: 2,
-                  borderColor: 'white'
+                  borderColor: theme.card
                 }}>
                   <Text style={{ color: 'white', fontSize: 10, fontWeight: 'bold' }}>
                     {pendingRequests > 99 ? '99+' : pendingRequests}
@@ -76,7 +81,7 @@ export const ServicesGrid = () => {
                 </View>
               )}
             </View>
-            <Text style={styles.serviceLabel} numberOfLines={2}>{service.label}</Text>
+            <Text style={[styles.serviceLabel, { color: theme.textPrimary }]} numberOfLines={2}>{service.label}</Text>
           </TouchableOpacity>
         ))}
       </View>
