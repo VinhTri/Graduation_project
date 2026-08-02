@@ -49,6 +49,8 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
 
     void deleteAllByWalletId(Long walletId);
 
+    boolean existsByUserIdAndCreatedAtBetween(Long userId, java.time.LocalDateTime startDate, java.time.LocalDateTime endDate);
+
     java.util.List<Transaction> findByUserAndTypeAndStatusAndWallet_IsDefaultTrueAndCreatedAtBetween(
             com.project.app.user.entity.User user,
             com.project.app.transaction.enums.TransactionType type,
