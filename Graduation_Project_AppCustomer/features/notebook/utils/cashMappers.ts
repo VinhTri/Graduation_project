@@ -1,4 +1,4 @@
-import { TransactionHistoryItem } from '../../../../shared/api/services/transactionService';
+import { TransactionHistoryItem } from '@/shared/api/services/transactionService';
 import { TransactionItem } from '../components/RecentTransactions/RecentTransactions.types';
 
 const startOfDay = (d: Date) => {

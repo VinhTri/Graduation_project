@@ -6,19 +6,7 @@ import { styles } from "./ServicesGrid.styles";
 import { friendshipService } from "../../../../shared/api/services/friendship.service";
 import { useFocusEffect } from '@react-navigation/native';
 
-<<<<<<< HEAD:Graduation_Project_FE/features/home/components/ServicesGrid/ServicesGrid.tsx
 import { useLanguage, useTheme } from "../../../../shared/contexts/ThemeLanguageContext";
-=======
-const HOME_SERVICES = [
-  { id: "3", label: "Hóa đơn", icon: "receipt-outline", color: "#10B981", bgColor: "#D1FAE5", route: "/invoice" },
-  { id: "10", label: "Danh bạ", icon: "people-circle-outline", color: "#EC4899", bgColor: "#FFE4F0", route: "/contacts" },
-  { id: "budget", label: "Ngân sách", icon: "pie-chart-outline", color: "#F59E0B", bgColor: "#FEF3C7", route: "/budget" },
-] as const;
-
-const FIXED_SERVICES = [
-  { id: "danh_muc", label: "Danh mục", icon: "layers-outline", color: "#7C3AED", bgColor: "#EDE9FE", route: "/categories" },
-] as const;
->>>>>>> ddfa2a8f0341538ef5bbd5c261242d2fe2bae6d6:Graduation_Project_AppCustomer/features/home/components/ServicesGrid/ServicesGrid.tsx
 
 export const ServicesGrid = () => {
   const router = useRouter();

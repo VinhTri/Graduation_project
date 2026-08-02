@@ -4,6 +4,7 @@ import { SMARTSPEND_FUND_ICON } from '../../assets/brandAssets';
 
 interface FundIconProps {
   size?: number;
+  color?: string;
   style?: StyleProp<ImageStyle>;
   borderRadius?: number;
 }

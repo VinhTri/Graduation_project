@@ -32,11 +32,7 @@ export const NotebookHeader: React.FC<NotebookHeaderProps> = ({
           onPress={() => router.push('/(tabs)/home')}
           activeOpacity={0.75}
         >
-<<<<<<< HEAD:Graduation_Project_FE/features/notebook/components/NotebookHeader/NotebookHeader.tsx
           <Ionicons name="chevron-back" size={22} color={theme.textPrimary} />
-=======
-          <Ionicons name="chevron-back-outline" size={22} color="#7C3AED" />
->>>>>>> ddfa2a8f0341538ef5bbd5c261242d2fe2bae6d6:Graduation_Project_AppCustomer/features/notebook/components/NotebookHeader/NotebookHeader.tsx
         </TouchableOpacity>
         <View style={styles.titleBlock}>
           <Text style={[styles.title, { color: theme.isDark ? '#FFFFFF' : PASTEL_PALETTE.title }]}>{t('expenseNotebook')}</Text>

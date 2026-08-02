@@ -21,6 +21,9 @@ export const PASTEL_PALETTE = {
   gray100: '#F3F4F6',
   gray200: '#E5E7EB',
   gray400: '#9CA3AF',
+  success: '#10B981',
+  error: '#EF4444',
+  background: '#FFF8FC',
 };
 
 export const PASTEL_HEADER_GRADIENT = [

@@ -1,10 +1,6 @@
 import React, { useState, useEffect } from 'react';
-<<<<<<< HEAD:Graduation_Project_FE/shared/components/PinModal/PinModal.tsx
-import { View, Text, TouchableOpacity, Modal, Alert } from 'react-native';
+import { View, Text, TouchableOpacity, Modal, Alert, TouchableWithoutFeedback } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-=======
-import { View, Text, TouchableOpacity, Modal, SafeAreaView, Alert, TouchableWithoutFeedback } from 'react-native';
->>>>>>> ddfa2a8f0341538ef5bbd5c261242d2fe2bae6d6:Graduation_Project_AppCustomer/shared/components/PinModal/PinModal.tsx
 import { Feather, Ionicons } from '@expo/vector-icons';
 import { styles } from './PinModal.styles';
 

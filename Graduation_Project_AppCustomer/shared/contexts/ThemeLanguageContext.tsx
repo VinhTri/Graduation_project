@@ -6,6 +6,7 @@ export type ThemeMode = 'light' | 'dark' | 'system';
 export type Language = 'vi' | 'en';
 
 export interface ThemeColors {
+  isDark: boolean;
   bg: string;
   bgSoft: string;
   card: string;
@@ -25,6 +26,7 @@ export interface ThemeColors {
 }
 
 export const LIGHT_THEME: ThemeColors = {
+  isDark: false,
   bg: '#FFF8FC',
   bgSoft: '#FFF1F8',
   card: '#FFFFFF',
@@ -44,6 +46,7 @@ export const LIGHT_THEME: ThemeColors = {
 };
 
 export const DARK_THEME: ThemeColors = {
+  isDark: true,
   bg: '#0F172A',
   bgSoft: '#1E293B',
   card: '#1E293B',
@@ -112,6 +115,7 @@ export const translations = {
     invoiceManagement: 'Quản lý hóa đơn',
     invoiceSub: 'Theo dõi và thanh toán hóa đơn',
     groupFund: 'Quỹ nhóm',
+    groupFunds: 'Quỹ nhóm',
     groupFundSub: 'Quỹ chung cùng bạn bè',
 
     supportCenter: 'Trung tâm hỗ trợ',
@@ -230,6 +234,7 @@ export const translations = {
     invoiceManagement: 'Invoice Management',
     invoiceSub: 'Track & pay bills',
     groupFund: 'Group Fund',
+    groupFunds: 'Group Funds',
     groupFundSub: 'Shared pool with friends',
 
     supportCenter: 'Help Center',

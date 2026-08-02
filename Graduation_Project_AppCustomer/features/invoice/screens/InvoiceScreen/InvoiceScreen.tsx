@@ -164,24 +164,6 @@ export const InvoiceScreen = () => {
   return (
     <View style={[styles.container, { backgroundColor: theme.bg }]}>
       {/* Header */}
-<<<<<<< HEAD:Graduation_Project_FE/features/invoice/screens/InvoiceScreen/InvoiceScreen.tsx
-      <View style={styles.header}>
-        <View style={styles.headerLeft}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-            <Ionicons name="chevron-back-outline" size={22} color="#FFF" />
-          </TouchableOpacity>
-          <View style={styles.titleContainer}>
-            <Text style={styles.headerTitle}>{t('invoiceManagement')}</Text>
-            <Text style={styles.headerSubtitle}>{t('invoiceSub')}</Text>
-          </View>
-        </View>
-        <TouchableOpacity 
-          style={styles.createButton}
-          onPress={() => router.push('/invoice/create')}
-        >
-          <Text style={styles.createButtonText}>{t('createInvoice')}</Text>
-        </TouchableOpacity>
-=======
       <View style={styles.headerWrap}>
         <LinearGradient
           colors={[PALETTE.headerStart, PALETTE.headerMid, PALETTE.headerEnd]}
@@ -198,8 +180,8 @@ export const InvoiceScreen = () => {
                 <Ionicons name="chevron-back-outline" size={22} color="#7C3AED" />
               </TouchableOpacity>
               <View style={styles.titleContainer}>
-                <Text style={styles.headerTitle}>Hóa đơn</Text>
-                <Text style={styles.headerSubtitle}>Quản lý thanh toán</Text>
+                <Text style={styles.headerTitle}>{t('invoiceManagement')}</Text>
+                <Text style={styles.headerSubtitle}>{t('invoiceSub')}</Text>
               </View>
             </View>
             <TouchableOpacity 
@@ -208,11 +190,10 @@ export const InvoiceScreen = () => {
               activeOpacity={0.85}
             >
               <Ionicons name="add" size={16} color="#FFF" />
-              <Text style={styles.createButtonText}>Tạo hóa đơn</Text>
+              <Text style={styles.createButtonText}>{t('createInvoice')}</Text>
             </TouchableOpacity>
           </View>
         </LinearGradient>
->>>>>>> ddfa2a8f0341538ef5bbd5c261242d2fe2bae6d6:Graduation_Project_AppCustomer/features/invoice/screens/InvoiceScreen/InvoiceScreen.tsx
       </View>
 
       {/* Body */}
