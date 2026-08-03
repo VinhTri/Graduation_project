@@ -144,6 +144,12 @@ export default function NotificationScreen() {
       case "NOTEBOOK_REMINDER":
         router.push("/(tabs)/notebook");
         break;
+      case "SPLIT_BILL_REQUEST":
+      case "SPLIT_BILL_PAID":
+      case "SPLIT_BILL_REMINDER":
+        if (item.relatedId) router.push(`/split-bill/${item.relatedId}` as any);
+        else router.push("/split-bill" as any);
+        break;
       case "GENERAL":
       default:
         // Dự phòng cho các thông báo từ backend chưa cập nhật type cụ thể
@@ -156,6 +162,9 @@ export default function NotificationScreen() {
           router.push("/budget");
         } else if (title.includes("sổ tay")) {
           router.push("/(tabs)/notebook");
+        } else if (title.includes("chia tiền")) {
+          if (item.relatedId) router.push(`/split-bill/${item.relatedId}` as any);
+          else router.push("/split-bill" as any);
         } else {
           Alert.alert("Thông tin", "Không thể điều hướng cho thông báo này vì hệ thống chưa xác định được đích đến.");
         }
@@ -213,6 +222,7 @@ export default function NotificationScreen() {
 
     const getIconName = () => {
       if (isFundInvite) return "people";
+      if (item.type === "SPLIT_BILL_REQUEST" || item.type === "SPLIT_BILL_PAID" || item.type === "SPLIT_BILL_REMINDER") return "wallet-outline";
       if (item.type === "NOTEBOOK_REMINDER") return "book-outline";
       if (item.type === "INVOICE_REMINDER") return "receipt-outline";
       if (item.type === "BUDGET_WARNING" || item.type === "BUDGET_EXCEEDED") return "pie-chart-outline";

@@ -89,6 +89,13 @@ export const ENDPOINTS = {
   },
   AI: {
     CHAT: '/api/v1/ai/chat',
+  },
+  SPLIT_BILL: {
+    BASE: '/api/v1/split-bills',
+    DETAIL: (id: number) => `/api/v1/split-bills/${id}`,
+    PAY: (id: number) => `/api/v1/split-bills/${id}/pay`,
+    REMIND: (id: number, memberUserId: number) => `/api/v1/split-bills/${id}/remind/${memberUserId}`,
+    CANCEL: (id: number) => `/api/v1/split-bills/${id}`,
   }
 };
 
