@@ -110,6 +110,50 @@ export const styles = StyleSheet.create({
     color: PASTEL_PALETTE.title,
     backgroundColor: '#FFF',
   },
+  accountInputWrapper: {
+    position: 'relative',
+    justifyContent: 'center',
+  },
+  accountInput: {
+    paddingRight: 44,
+  },
+  clearInputButton: {
+    position: 'absolute',
+    right: 14,
+    height: '100%',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  inputSuccess: {
+    borderColor: '#10B981',
+  },
+  inputError: {
+    borderColor: '#EF4444',
+  },
+  readOnlyInput: {
+    justifyContent: 'center',
+    backgroundColor: PASTEL_PALETTE.bgSoft,
+  },
+  receiverRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  receiverNameText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: PASTEL_PALETTE.title,
+    letterSpacing: 0.5,
+  },
+  receiverPlaceholderText: {
+    fontSize: 15,
+    color: PASTEL_PALETTE.textMuted,
+  },
+  receiverErrorText: {
+    fontSize: 15,
+    color: '#EF4444',
+    fontWeight: '600',
+  },
   amountInputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
