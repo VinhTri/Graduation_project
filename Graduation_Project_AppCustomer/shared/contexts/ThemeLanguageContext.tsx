@@ -119,7 +119,7 @@ const ThemeLanguageContext = createContext<ThemeLanguageContextType | undefined>
 
 export const ThemeLanguageProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const systemColorScheme = useColorScheme();
-  const [themeMode, setThemeModeState] = useState<ThemeMode>('system');
+  const [themeMode, setThemeModeState] = useState<ThemeMode>('light');
   const [language, setLanguageState] = useState<Language>('vi');
 
   useEffect(() => {
