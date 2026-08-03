@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, StatusBar } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, StatusBar, Switch } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -44,8 +44,27 @@ export function LanguageScreen() {
       </View>
 
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        <Text style={[styles.sectionSubtitle, { color: theme.textSecondary }]}>
-          {t('languageSubtitle')}
+        {/* Quick Switch Card */}
+        <View style={[styles.quickSwitchCard, { backgroundColor: theme.card, borderColor: theme.cardBorder }]}>
+          <Text style={styles.flagEmoji}>{language === 'en' ? '🇬🇧' : '🇻🇳'}</Text>
+          <View style={styles.textContainer}>
+            <Text style={[styles.langName, { color: theme.textPrimary }]}>
+              {language === 'en' ? 'English (🇬🇧)' : 'Tiếng Việt (🇻🇳)'}
+            </Text>
+            <Text style={[styles.langNative, { color: theme.textSecondary }]}>
+              {t('languageSubtitle')}
+            </Text>
+          </View>
+          <Switch
+            value={language === 'en'}
+            onValueChange={(val) => setLanguage(val ? 'en' : 'vi')}
+            trackColor={{ false: '#EC4899', true: '#7C3AED' }}
+            thumbColor="#FFFFFF"
+          />
+        </View>
+
+        <Text style={[styles.sectionSubtitle, { color: theme.textSecondary, marginTop: 16 }]}>
+          Danh sách ngôn ngữ:
         </Text>
 
         <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.cardBorder }]}>
@@ -110,9 +129,17 @@ const styles = StyleSheet.create({
   scrollContent: {
     padding: 16,
   },
+  quickSwitchCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    borderRadius: 18,
+    borderWidth: 1,
+    marginBottom: 8,
+  },
   sectionSubtitle: {
     fontSize: 14,
-    marginBottom: 16,
+    marginBottom: 12,
     lineHeight: 20,
   },
   card: {

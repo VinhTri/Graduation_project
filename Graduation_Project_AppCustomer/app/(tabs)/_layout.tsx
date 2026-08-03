@@ -1,9 +1,10 @@
 import { Tabs } from "expo-router";
 import { CustomTabBar } from "../../shared/components";
-import { useTheme } from "../../shared/contexts/ThemeLanguageContext";
+import { useTheme, useLanguage } from "../../shared/contexts/ThemeLanguageContext";
 
 export default function TabsLayout() {
   const { theme } = useTheme();
+  const { t } = useLanguage();
 
   return (
     <Tabs
@@ -27,31 +28,31 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="home/index"
         options={{
-          title: "Trang chủ",
+          title: t('homeTab'),
         }}
       />
       <Tabs.Screen
         name="wallet/index"
         options={{
-          title: "Ví",
+          title: t('walletTab'),
         }}
       />
       <Tabs.Screen
         name="funds/index"
         options={{
-          title: "Quỹ",
+          title: t('fundsTab'),
         }}
       />
       <Tabs.Screen
         name="notebook/index"
         options={{
-          title: "Sổ tay",
+          title: t('notebookTab'),
         }}
       />
       <Tabs.Screen
         name="more/index"
         options={{
-          title: "Tài khoản",
+          title: t('moreTab'),
         }}
       />
     </Tabs>

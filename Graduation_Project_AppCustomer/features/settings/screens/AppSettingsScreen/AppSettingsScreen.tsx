@@ -7,6 +7,7 @@ import {
   StatusBar,
   ScrollView,
   StyleSheet,
+  Switch,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons, Feather } from '@expo/vector-icons';
@@ -32,9 +33,9 @@ function ThemeSubItems() {
   const { t } = useLanguage();
 
   const options: { mode: 'system' | 'light' | 'dark'; icon: string; label: string; sub: string }[] = [
-    { mode: 'system', icon: 'phone-portrait-outline', label: t('themeSystem'),  sub: t('themeSystemSub')  },
-    { mode: 'light',  icon: 'sunny-outline',          label: t('themeLight'),   sub: t('themeLightSub')   },
-    { mode: 'dark',   icon: 'moon-outline',            label: t('themeDark'),    sub: t('themeDarkSub')    },
+    { mode: 'system', icon: 'phone-portrait-outline', label: t('themeSystem'), sub: t('themeSystemSub') },
+    { mode: 'light',  icon: 'sunny-outline',          label: t('themeLight'),  sub: t('themeLightSub')  },
+    { mode: 'dark',   icon: 'moon-outline',           label: t('themeDark'),   sub: t('themeDarkSub')   },
   ];
 
   return (
@@ -85,162 +86,34 @@ function ThemeSubItems() {
   );
 }
 
-// ─── Language sub-options (collapse) ─────────────────────────────────────────
-function LanguageSubItems() {
-  const { language, setLanguage } = useLanguage();
-  const { theme } = useTheme();
+// ─── Main Screen ──────────────────────────────────────────────────────────────
+export function AppSettingsScreen() {
+  const router = useRouter();
+  const insets = useSafeAreaInsets();
+  const { theme, isDark, themeMode, setThemeMode } = useTheme();
+  const { language, setLanguage, t } = useLanguage();
 
-  const options: { code: 'vi' | 'en'; flag: string; label: string; sub: string }[] = [
-    { code: 'vi', flag: '🇻🇳', label: 'Tiếng Việt', sub: 'Vietnamese' },
-    { code: 'en', flag: '🇬🇧', label: 'English',    sub: 'Tiếng Anh'  },
-  ];
-
-  return (
-    <View style={[sharedStyles.securitySubList, { backgroundColor: theme.bgSoft, borderTopColor: theme.divider }]}>
-      {options.map((opt, idx) => {
-        const isSelected = language === opt.code;
-        return (
-          <TouchableOpacity
-            key={opt.code}
-            style={[
-              sharedStyles.securitySubItem,
-              {
-                borderBottomColor: theme.divider,
-                borderBottomWidth: idx < options.length - 1 ? StyleSheet.hairlineWidth : 0,
-              },
-            ]}
-            activeOpacity={0.75}
-            onPress={() => setLanguage(opt.code)}
-          >
-            <View
-              style={[
-                sharedStyles.securitySubIcon,
-                {
-                  backgroundColor: isSelected ? theme.primarySoft : theme.card,
-                  borderColor: isSelected ? theme.primary : theme.cardBorder,
-                },
-              ]}
-            >
-              <Text style={localStyles.flagText}>{opt.flag}</Text>
-            </View>
-            <View style={sharedStyles.itemContent}>
-              <Text style={[sharedStyles.itemTitle, { color: isSelected ? theme.primary : theme.textPrimary }]}>
-                {opt.label}
-              </Text>
-              <Text style={[sharedStyles.itemSubtitle, { color: theme.textSecondary }]}>
-                {opt.sub}
-              </Text>
-            </View>
-            {isSelected && <Feather name="check" size={16} color={theme.primary} />}
-          </TouchableOpacity>
-        );
-      })}
-    </View>
-  );
-}
-
-// ─── Collapse row wrapper ─────────────────────────────────────────────────────
-function CollapseRow({
-  icon,
-  iconBg,
-  iconColor,
-  title,
-  subtitle,
-  isLast,
-  borderTopColor,
-  children,
-}: {
-  icon: React.ReactNode;
-  iconBg: string;
-  iconColor?: string;
-  title: string;
-  subtitle: string;
-  isLast?: boolean;
-  borderTopColor: string;
-  children: React.ReactNode;
-}) {
-  const { theme } = useTheme();
-  const [expanded, setExpanded] = useState(false);
-  const [measuredHeight, setMeasuredHeight] = useState(0);
+  const [expandedTheme, setExpandedTheme] = useState(false);
+  const measuredHeight = useSharedValue(0);
   const progress = useSharedValue(0);
 
-  const toggle = () => {
-    const next = !expanded;
-    setExpanded(next);
+  const toggleThemeExpand = () => {
+    const next = !expandedTheme;
+    setExpandedTheme(next);
     progress.value = withTiming(next ? 1 : 0, ANIM_CONFIG);
   };
-
-  const panelStyle = useAnimatedStyle(() => {
-    const h = measuredHeight > 0 ? measuredHeight : 0;
-    return {
-      height: progress.value * h,
-      opacity: interpolate(progress.value, [0, 0.35, 1], [0, 0.55, 1]),
-      transform: [{ translateY: interpolate(progress.value, [0, 1], [-6, 0]) }],
-    };
-  });
 
   const chevronStyle = useAnimatedStyle(() => ({
     transform: [{ rotate: `${interpolate(progress.value, [0, 1], [0, 180])}deg` }],
   }));
 
-  return (
-    <>
-      <Pressable
-        style={[
-          sharedStyles.itemContainer,
-          {
-            borderBottomWidth: expanded || !isLast ? StyleSheet.hairlineWidth : 0,
-            borderBottomColor: theme.divider,
-          },
-        ]}
-        onPress={toggle}
-      >
-        <View style={[sharedStyles.itemIconContainer, { backgroundColor: iconBg }]}>
-          {icon}
-        </View>
-        <View style={sharedStyles.itemContent}>
-          <Text style={[sharedStyles.itemTitle, { color: theme.textPrimary }]}>{title}</Text>
-          <Text style={[sharedStyles.itemSubtitle, { color: theme.textSecondary }]}>{subtitle}</Text>
-        </View>
-        <Animated.View style={chevronStyle}>
-          <Feather name="chevron-down" size={18} color={theme.textMuted} />
-        </Animated.View>
-      </Pressable>
-
-      {/* Hidden measure ghost */}
-      <View
-        style={sharedStyles.securityMeasure}
-        pointerEvents="none"
-        onLayout={(e) => {
-          const next = Math.ceil(e.nativeEvent.layout.height);
-          if (next > 0 && next !== measuredHeight) setMeasuredHeight(next);
-        }}
-      >
-        {children}
-      </View>
-
-      {/* Animated collapse */}
-      <Animated.View style={[sharedStyles.securityCollapse, panelStyle]}>
-        {children}
-      </Animated.View>
-    </>
-  );
-}
-
-// ─── Main Screen ──────────────────────────────────────────────────────────────
-export function AppSettingsScreen() {
-  const router = useRouter();
-  const insets = useSafeAreaInsets();
-  const { theme, isDark, themeMode } = useTheme();
-  const { language, t } = useLanguage();
-
-  const getThemeLabel = () => {
-    if (themeMode === 'system') return t('themeSystem');
-    if (themeMode === 'dark') return t('themeDark');
-    return t('themeLight');
+  const handleDarkSwitch = (val: boolean) => {
+    setThemeMode(val ? 'dark' : 'light');
   };
 
-  const getLanguageLabel = () => (language === 'vi' ? 'Tiếng Việt 🇻🇳' : 'English 🇬🇧');
+  const handleLangSwitch = (val: boolean) => {
+    setLanguage(val ? 'en' : 'vi');
+  };
 
   return (
     <View style={[sharedStyles.container, { backgroundColor: theme.bg }]}>
@@ -286,29 +159,60 @@ export function AppSettingsScreen() {
           </View>
 
           <View style={[sharedStyles.sectionBody, { backgroundColor: theme.card, borderColor: theme.cardBorder }]}>
-            {/* Dark Mode row */}
-            <CollapseRow
-              iconBg={isDark ? '#312E81' : theme.primarySoft}
-              icon={<Ionicons name={isDark ? 'moon' : 'sunny'} size={19} color={theme.primary} />}
-              title={t('darkMode')}
-              subtitle={getThemeLabel()}
-              isLast={false}
-              borderTopColor={theme.divider}
+            {/* 1. Dark Mode Quick Switch Row */}
+            <View
+              style={[
+                sharedStyles.itemContainer,
+                { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: theme.divider },
+              ]}
             >
-              <ThemeSubItems />
-            </CollapseRow>
+              <View style={[sharedStyles.itemIconContainer, { backgroundColor: isDark ? '#312E81' : theme.primarySoft }]}>
+                <Ionicons name={isDark ? 'moon' : 'sunny'} size={19} color={theme.primary} />
+              </View>
+              <View style={sharedStyles.itemContent}>
+                <Text style={[sharedStyles.itemTitle, { color: theme.textPrimary }]}>{t('darkMode')}</Text>
+                <Text style={[sharedStyles.itemSubtitle, { color: theme.textSecondary }]}>
+                  {isDark ? t('themeDark') : t('themeLight')}
+                </Text>
+              </View>
 
-            {/* Language row */}
-            <CollapseRow
-              iconBg={isDark ? '#1E3A8A' : '#EDE9FE'}
-              icon={<Ionicons name="globe-outline" size={19} color={isDark ? '#818CF8' : '#7C3AED'} />}
-              title={t('language')}
-              subtitle={getLanguageLabel()}
-              isLast
-              borderTopColor={theme.divider}
-            >
-              <LanguageSubItems />
-            </CollapseRow>
+              {/* Quick Switch */}
+              <Switch
+                value={isDark}
+                onValueChange={handleDarkSwitch}
+                trackColor={{ false: '#CBD5E1', true: theme.primary }}
+                thumbColor="#FFFFFF"
+              />
+
+              <TouchableOpacity onPress={toggleThemeExpand} style={{ marginLeft: 10, padding: 4 }}>
+                <Animated.View style={chevronStyle}>
+                  <Feather name="chevron-down" size={18} color={theme.textMuted} />
+                </Animated.View>
+              </TouchableOpacity>
+            </View>
+
+            {expandedTheme && <ThemeSubItems />}
+
+            {/* 2. Language Quick Switch Row */}
+            <View style={sharedStyles.itemContainer}>
+              <View style={[sharedStyles.itemIconContainer, { backgroundColor: isDark ? '#1E3A8A' : '#EDE9FE' }]}>
+                <Text style={localStyles.flagText}>{language === 'en' ? '🇬🇧' : '🇻🇳'}</Text>
+              </View>
+              <View style={sharedStyles.itemContent}>
+                <Text style={[sharedStyles.itemTitle, { color: theme.textPrimary }]}>{t('language')}</Text>
+                <Text style={[sharedStyles.itemSubtitle, { color: theme.textSecondary }]}>
+                  {language === 'en' ? 'English (🇬🇧)' : 'Tiếng Việt (🇻🇳)'}
+                </Text>
+              </View>
+
+              {/* Quick Switch */}
+              <Switch
+                value={language === 'en'}
+                onValueChange={handleLangSwitch}
+                trackColor={{ false: '#EC4899', true: '#7C3AED' }}
+                thumbColor="#FFFFFF"
+              />
+            </View>
           </View>
         </View>
 

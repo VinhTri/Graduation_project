@@ -1,0 +1,170 @@
+import { TranslationKeys } from './vi';
+
+export const en: Record<TranslationKeys, string> = {
+  // Tabs
+  homeTab: 'Home',
+  walletTab: 'Wallet',
+  fundsTab: 'Funds',
+  notebookTab: 'Notebook',
+  moreTab: 'Account',
+
+  // Navigation & Headers
+  account: 'Account',
+  settings: 'Settings',
+  appSettings: 'App Settings',
+  darkMode: 'Theme & Dark Mode',
+  language: 'Language',
+  back: 'Back',
+  cancel: 'Cancel',
+  save: 'Save',
+  confirm: 'Confirm',
+  delete: 'Delete',
+  edit: 'Edit',
+  close: 'Close',
+  done: 'Done',
+
+  // Settings & Profile
+  finance: 'Finance',
+  utilities: 'Utilities',
+  security: 'Security',
+  accountSecurity: 'Account Security',
+  accountSecuritySub: 'Password, PIN code',
+  changePassword: 'Change Password',
+  changePasswordSub: 'Update login password',
+  changePin: 'Change PIN',
+  changePinSub: 'Update transaction security PIN',
+  supportAndSettings: 'Support & Settings',
+  appSettingsSubtitle: 'Customize theme, language, and app settings',
+  themeSubtitle: 'Change full-app light/dark mode',
+  languageSubtitle: 'Select display language',
+  themeSystem: 'System Default',
+  themeSystemSub: 'Adjust automatically based on device settings',
+  themeLight: 'Light Mode',
+  themeLightSub: 'Bright & cheerful pastel theme',
+  themeDark: 'Dark Mode',
+  themeDarkSub: 'Eye-soothing dark theme, saves battery',
+  vietnamese: 'Vietnamese',
+  english: 'English',
+  selectTheme: 'Select Theme',
+  selectLanguage: 'Select Language',
+  preview: 'Theme Preview',
+  previewText: 'SmartSpend provides a smart and modern personal finance management experience.',
+  appliedImmediately: 'Changes will be applied immediately across the entire app.',
+  logout: 'Log Out',
+  logoutConfirmTitle: 'Confirm Log Out',
+  logoutConfirmMessage: 'Are you sure you want to log out of your account?',
+  profileDetails: 'Personal Profile',
+
+  // Feature Subtitle Navigation
+  bankBinding: 'Bank Binding',
+  bankBindingSub: 'Manage bank accounts',
+  smartSpendWallet: 'SmartSpend Wallet',
+  walletSub: 'Balance & wallet settings',
+  expenseNotebook: 'Expense Notebook',
+  notebookSub: 'Daily income & expense tracking',
+  invoiceManagement: 'Invoice Management',
+  invoiceSub: 'Track & pay bills',
+  groupFund: 'Group Fund',
+  groupFunds: 'Group Funds',
+  groupFundSub: 'Shared pool with friends',
+  supportCenter: 'Help Center',
+  supportSub: 'Frequently asked questions',
+  biometrics: 'Biometric Authentication',
+
+  // Home Screen
+  welcome: 'Welcome',
+  totalBalance: 'Total Balance',
+  availableBalance: 'Available Balance',
+  services: 'Services & Features',
+  recentActivity: 'Recent Activity',
+  viewAll: 'View All',
+  aiInsights: 'AI Insights',
+  discoverMore: 'Discover More',
+  allServices: 'All Services',
+
+  // Wallet Screen
+  deposit: 'Top Up',
+  withdraw: 'Withdraw',
+  transfer: 'Transfer',
+  transactionHistory: 'Transaction History',
+  statisticsReport: 'Analytics Report',
+  allTransactions: 'All Transactions',
+  income: 'Income',
+  expense: 'Expense',
+  totalIncome: 'Total Income',
+  totalExpense: 'Total Expense',
+  walletSettings: 'Wallet Settings',
+  walletSettingsSub: 'Configure limits & notifications',
+  topUpSuccess: 'Top Up Successful',
+  withdrawSuccess: 'Withdraw Successful',
+
+  // Notebook Screen
+  monthlyOverview: 'Monthly Overview',
+  addTransaction: 'Add Record',
+  categorySpending: 'Category Spending',
+  recentRecords: 'Recent Records',
+  cashBalance: 'Cash Balance',
+  addCashBalance: 'Update Cash Balance',
+  bankWalletList: 'Wallets & Banks List',
+  createBankWallet: 'Bind New Bank/Wallet',
+
+  // Group Fund Screen
+  createFund: 'Create Fund',
+  activeFunds: 'Active Funds',
+  members: 'members',
+  contribute: 'Contribute',
+  targetAmount: 'Target',
+  fundDetail: 'Fund Detail',
+  fundName: 'Fund Name',
+  fundDescription: 'Fund Description',
+
+  // Budget Screen
+  budget: 'Expense Budget',
+  createBudget: 'Create New Budget',
+  budgetList: 'Budget List',
+  budgetDetail: 'Budget Detail',
+  spent: 'Spent',
+  remaining: 'Remaining',
+  overBudget: 'Over Budget',
+
+  // Invoice Screen
+  createInvoice: 'Create Invoice',
+  pendingInvoices: 'Unpaid Invoices',
+  paidInvoices: 'Paid Invoices',
+  overdueInvoices: 'Overdue',
+  invoiceDetail: 'Invoice Detail',
+  payInvoice: 'Pay Invoice',
+
+  // Contacts Screen
+  contacts: 'Contacts',
+  searchUser: 'Search users...',
+  addFriend: 'Add Friend',
+  friendRequests: 'Friend Requests',
+  pendingRequests: 'Pending Requests',
+
+  // Categories Screen
+  categories: 'Categories',
+  incomeCategories: 'Income Categories',
+  expenseCategories: 'Expense Categories',
+  addCategory: 'Add Category',
+  categoryName: 'Category Name',
+
+  // Split Bill Screen
+  splitBill: 'Split Bill',
+  createSplitBill: 'Create Bill Split',
+  splitBillDetail: 'Split Bill Detail',
+  payer: 'Payer',
+  splitEqually: 'Split Equally',
+
+  // Notifications
+  notifications: 'Notifications',
+  markAllAsRead: 'Mark all as read',
+  noNotifications: 'You have no new notifications',
+
+  // Common Messages
+  loading: 'Loading...',
+  success: 'Success',
+  error: 'An error occurred',
+  noData: 'No data available',
+  search: 'Search',
+};

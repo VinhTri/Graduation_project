@@ -22,13 +22,14 @@ import { budgetApi } from '../../../../shared/api/budgetApi';
 import { PASTEL_PALETTE } from '../../../../shared/constants/PastelPalette';
 import PastelHeaderShell from '../../../../shared/components/PastelHeaderShell/PastelHeaderShell';
 import { useCategoryContext } from '../../../../shared/contexts/CategoryContext';
-
+import { useTheme, useLanguage } from '../../../../shared/contexts/ThemeLanguageContext';
 import { Toast } from '../../../../shared/components/Toast/Toast';
-
 
 export const CreateBudgetScreen = () => {
   const router = useRouter();
   const { categories, isLoading: isLoadingCategories } = useCategoryContext();
+  const { theme } = useTheme();
+  const { t } = useLanguage();
   
   const [name, setName] = useState('');
   const [amount, setAmount] = useState('');

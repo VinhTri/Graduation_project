@@ -1,0 +1,170 @@
+export const vi = {
+  // Tabs
+  homeTab: 'Trang chủ',
+  walletTab: 'Ví',
+  fundsTab: 'Quỹ nhóm',
+  notebookTab: 'Sổ tay',
+  moreTab: 'Tài khoản',
+
+  // Navigation & Headers
+  account: 'Tài khoản',
+  settings: 'Cài đặt',
+  appSettings: 'Cài đặt ứng dụng',
+  darkMode: 'Giao diện & Chế độ tối',
+  language: 'Ngôn ngữ',
+  back: 'Quay lại',
+  cancel: 'Hủy',
+  save: 'Lưu',
+  confirm: 'Xác nhận',
+  delete: 'Xóa',
+  edit: 'Chỉnh sửa',
+  close: 'Đóng',
+  done: 'Hoàn tất',
+
+  // Settings & Profile
+  finance: 'Tài chính',
+  utilities: 'Tiện ích',
+  security: 'Bảo mật',
+  accountSecurity: 'Bảo mật tài khoản',
+  accountSecuritySub: 'Mật khẩu, mã PIN',
+  changePassword: 'Đổi mật khẩu',
+  changePasswordSub: 'Cập nhật mật khẩu đăng nhập',
+  changePin: 'Đổi mã PIN',
+  changePinSub: 'Cập nhật PIN bảo mật giao dịch',
+  supportAndSettings: 'Hỗ trợ & Cài đặt',
+  appSettingsSubtitle: 'Tùy chỉnh giao diện, ngôn ngữ và ứng dụng',
+  themeSubtitle: 'Thay đổi chế độ sáng/tối toàn ứng dụng',
+  languageSubtitle: 'Chọn ngôn ngữ hiển thị',
+  themeSystem: 'Tự động (Theo hệ thống)',
+  themeSystemSub: 'Điều chỉnh theo cài đặt hệ thống thiết bị',
+  themeLight: 'Chế độ Sáng',
+  themeLightSub: 'Giao diện sáng rạng rỡ với gam màu pastel',
+  themeDark: 'Chế độ Tối',
+  themeDarkSub: 'Giao diện tối dịu mắt, tiết kiệm pin',
+  vietnamese: 'Tiếng Việt',
+  english: 'English',
+  selectTheme: 'Chọn giao diện',
+  selectLanguage: 'Chọn ngôn ngữ',
+  preview: 'Xem trước giao diện',
+  previewText: 'SmartSpend mang đến trải nghiệm quản lý tài chính cá nhân thông minh và hiện đại.',
+  appliedImmediately: 'Thay đổi sẽ được áp dụng ngay lập tức trên toàn ứng dụng.',
+  logout: 'Đăng xuất',
+  logoutConfirmTitle: 'Xác nhận đăng xuất',
+  logoutConfirmMessage: 'Bạn có chắc chắn muốn đăng xuất khỏi tài khoản?',
+  profileDetails: 'Thông tin cá nhân',
+
+  // Feature Subtitle Navigation
+  bankBinding: 'Liên kết ngân hàng',
+  bankBindingSub: 'Quản lý tài khoản ngân hàng',
+  smartSpendWallet: 'Ví SmartSpend',
+  walletSub: 'Số dư và cài đặt ví',
+  expenseNotebook: 'Sổ tay chi tiêu',
+  notebookSub: 'Ghi chép thu chi hàng ngày',
+  invoiceManagement: 'Quản lý hóa đơn',
+  invoiceSub: 'Theo dõi và thanh toán hóa đơn',
+  groupFund: 'Quỹ nhóm',
+  groupFunds: 'Quỹ nhóm',
+  groupFundSub: 'Quỹ chung cùng bạn bè',
+  supportCenter: 'Trung tâm hỗ trợ',
+  supportSub: 'Câu hỏi thường gặp',
+  biometrics: 'Xác thực sinh trắc học',
+
+  // Home Screen
+  welcome: 'Xin chào',
+  totalBalance: 'Tổng số dư ví',
+  availableBalance: 'Số dư khả dụng',
+  services: 'Dịch vụ tiện ích',
+  recentActivity: 'Hoạt động gần đây',
+  viewAll: 'Xem tất cả',
+  aiInsights: 'Gợi ý từ AI',
+  discoverMore: 'Khám phá thêm',
+  allServices: 'Tất cả dịch vụ',
+
+  // Wallet Screen
+  deposit: 'Nạp tiền',
+  withdraw: 'Rút tiền',
+  transfer: 'Chuyển tiền',
+  transactionHistory: 'Lịch sử giao dịch',
+  statisticsReport: 'Báo cáo thống kê',
+  allTransactions: 'Tất cả giao dịch',
+  income: 'Thu nhập',
+  expense: 'Chi tiêu',
+  totalIncome: 'Tổng thu',
+  totalExpense: 'Tổng chi',
+  walletSettings: 'Cài đặt ví',
+  walletSettingsSub: 'Cấu hình hạn mức và thông báo',
+  topUpSuccess: 'Nạp tiền thành công',
+  withdrawSuccess: 'Rút tiền thành công',
+
+  // Notebook Screen
+  monthlyOverview: 'Tổng quan tháng này',
+  addTransaction: 'Thêm thu chi',
+  categorySpending: 'Phân loại chi tiêu',
+  recentRecords: 'Ghi chép gần đây',
+  cashBalance: 'Số dư tiền mặt',
+  addCashBalance: 'Cập nhật tiền mặt',
+  bankWalletList: 'Danh sách Ví & Ngân hàng',
+  createBankWallet: 'Liên kết thẻ/ví mới',
+
+  // Group Fund Screen
+  createFund: 'Tạo quỹ mới',
+  activeFunds: 'Quỹ đang hoạt động',
+  members: 'thành viên',
+  contribute: 'Đóng góp',
+  targetAmount: 'Mục tiêu',
+  fundDetail: 'Chi tiết quỹ',
+  fundName: 'Tên quỹ',
+  fundDescription: 'Mô tả quỹ',
+
+  // Budget Screen
+  budget: 'Ngân sách chi tiêu',
+  createBudget: 'Tạo ngân sách mới',
+  budgetList: 'Danh sách ngân sách',
+  budgetDetail: 'Chi tiết ngân sách',
+  spent: 'Đã chi',
+  remaining: 'Còn lại',
+  overBudget: 'Vượt ngân sách',
+
+  // Invoice Screen
+  createInvoice: 'Tạo hóa đơn',
+  pendingInvoices: 'Chưa thanh toán',
+  paidInvoices: 'Đã thanh toán',
+  overdueInvoices: 'Quá hạn',
+  invoiceDetail: 'Chi tiết hóa đơn',
+  payInvoice: 'Thanh toán hóa đơn',
+
+  // Contacts Screen
+  contacts: 'Danh bạ',
+  searchUser: 'Tìm kiếm người dùng...',
+  addFriend: 'Thêm bạn',
+  friendRequests: 'Lời mời kết bạn',
+  pendingRequests: 'Yêu cầu đang chờ',
+
+  // Categories Screen
+  categories: 'Danh mục thu chi',
+  incomeCategories: 'Danh mục thu',
+  expenseCategories: 'Danh mục chi',
+  addCategory: 'Thêm danh mục',
+  categoryName: 'Tên danh mục',
+
+  // Split Bill Screen
+  splitBill: 'Chia tiền nhóm',
+  createSplitBill: 'Tạo đợt chia tiền',
+  splitBillDetail: 'Chi tiết đợt chia tiền',
+  payer: 'Người trả tiền',
+  splitEqually: 'Chia đều',
+
+  // Notifications
+  notifications: 'Thông báo',
+  markAllAsRead: 'Đánh dấu đã đọc tất cả',
+  noNotifications: 'Bạn không có thông báo mới',
+
+  // Common Messages
+  loading: 'Đang tải...',
+  success: 'Thành công',
+  error: 'Có lỗi xảy ra',
+  noData: 'Chưa có dữ liệu',
+  search: 'Tìm kiếm',
+};
+
+export type TranslationKeys = keyof typeof vi;

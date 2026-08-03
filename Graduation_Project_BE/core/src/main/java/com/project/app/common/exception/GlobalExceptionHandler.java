@@ -16,11 +16,14 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(AppException.class)
     public ResponseEntity<ApiResponse<Void>> handleAppException(AppException ex) {
         ErrorCode errorCode = ex.getErrorCode();
+        String message = ex.getMessage() != null && !ex.getMessage().isEmpty()
+                ? ex.getMessage()
+                : errorCode.getMessage();
         return ResponseEntity.status(errorCode.getStatusCode())
                 .body(ApiResponse.<Void>builder()
                         .success(false)
                         .code(errorCode.getCode())
-                        .message(errorCode.getMessage())
+                        .message(message)
                         .build());
     }
 

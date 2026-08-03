@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -35,6 +35,8 @@ export const TransferScreen = () => {
 
   const [accountNumber, setAccountNumber] = useState('');
   const [receiverName, setReceiverName] = useState('');
+  const [searchError, setSearchError] = useState('');
+  const searchRequestId = useRef(0);
   const [amount, setAmount] = useState('');
   const [note, setNote] = useState('');
 
@@ -62,34 +64,73 @@ export const TransferScreen = () => {
     fetchProfile();
   }, []);
 
-  // Debounce search
-  useEffect(() => {
-    const delayDebounceFn = setTimeout(() => {
-      if (accountNumber.length >= 4) {
-        handleSearchUser(accountNumber);
-      } else {
-        setReceiverName('');
-      }
-    }, 800);
+  const resetReceiverLookup = () => {
+    searchRequestId.current += 1;
+    setReceiverName('');
+    setSearchError('');
+    setSearching(false);
+  };
 
-    return () => clearTimeout(delayDebounceFn);
+  const handleAccountNumberChange = (text: string) => {
+    setAccountNumber(text.replace(/[^0-9]/g, ''));
+  };
+
+  // Debounce tra cứu người nhận theo đúng số tài khoản (8–15 số)
+  useEffect(() => {
+    const trimmed = accountNumber.trim();
+
+    if (!trimmed || trimmed.length < 8) {
+      resetReceiverLookup();
+      return;
+    }
+
+    setSearching(true);
+    setSearchError('');
+    setReceiverName('');
+
+    const delayDebounceFn = setTimeout(() => {
+      handleSearchUser(trimmed);
+    }, 500);
+
+    return () => {
+      clearTimeout(delayDebounceFn);
+      searchRequestId.current += 1;
+    };
   }, [accountNumber]);
 
   const handleSearchUser = async (query: string) => {
+    const requestId = ++searchRequestId.current;
+
     try {
-      setSearching(true);
       const res: any = await friendshipService.searchUser(query);
-      if (res && res.success && res.data) {
+      if (requestId !== searchRequestId.current) return;
+
+      if (res?.success && res.data) {
         const user = res.data;
-        const name = user.username || user.email;
+        const matchedAccount = String(user.accountNumber || '').trim();
+
+        if (matchedAccount !== query) {
+          setReceiverName('');
+          setSearchError('Không tìm thấy tài khoản người nhận');
+          return;
+        }
+
+        const name = extractDisplayName(user.username || user.email || 'Khach').toUpperCase();
         setReceiverName(name);
+        setSearchError('');
       } else {
-        setReceiverName('Không tìm thấy người dùng');
+        setReceiverName('');
+        setSearchError(res?.message || 'Không tìm thấy tài khoản người nhận');
       }
-    } catch (error) {
+    } catch (error: any) {
+      if (requestId !== searchRequestId.current) return;
       setReceiverName('');
+      const msg = error?.message || error?.response?.data?.message || 'Không tìm thấy tài khoản người nhận';
+      setSearchError(msg);
     } finally {
-      setSearching(false);
+      if (requestId === searchRequestId.current) {
+        setSearching(false);
+      }
     }
   };
 
@@ -105,7 +146,7 @@ export const TransferScreen = () => {
   };
 
   const onTransferRequest = async () => {
-    if (!accountNumber.trim() || receiverName === 'Không tìm thấy người dùng' || !receiverName) {
+    if (!accountNumber.trim() || !receiverName.trim() || searchError) {
       setErrorMessage("Vui lòng nhập chính xác số tài khoản người nhận.");
       setErrorModalVisible(true);
       return;
@@ -128,7 +169,7 @@ export const TransferScreen = () => {
       pathname: '/transfer/confirm',
       params: {
         accountNumber: accountNumber.trim(),
-        receiverName,
+        receiverName: receiverName.trim(),
         amount: numericAmount,
         note: note.trim(),
         categoryId: selectedCategory?.id,
@@ -140,11 +181,12 @@ export const TransferScreen = () => {
     });
   };
 
-  const isFormValid = accountNumber.trim() !== '' && 
-                      receiverName !== '' && 
-                      receiverName !== 'Không tìm thấy người dùng' && 
-                      amount.trim() !== '' && 
-                      note.trim() !== '';
+  const isFormValid = accountNumber.trim() !== '' &&
+    receiverName.trim() !== '' &&
+    !searchError &&
+    !searching &&
+    amount.trim() !== '' &&
+    note.trim() !== '';
 
   const renderHeader = () => (
     <View style={styles.headerWrap}>
@@ -213,9 +255,9 @@ export const TransferScreen = () => {
                               {group.title}
                             </Text>
                           </View>
-                          
+
                           {group.items.map((item: any) => (
-                            <TouchableOpacity 
+                            <TouchableOpacity
                               key={item.id}
                               style={styles.categoryItem}
                               onPress={() => {
@@ -258,23 +300,67 @@ export const TransferScreen = () => {
           <Text style={styles.cardTitle}>Thông tin người nhận</Text>
 
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Số tài khoản</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Nhập số tài khoản..."
-              value={accountNumber}
-              onChangeText={setAccountNumber}
-              placeholderTextColor={PASTEL_PALETTE.textMuted}
-              autoCapitalize="none"
-              maxLength={15}
-            />
-            {searching ? (
-              <ActivityIndicator style={{ marginTop: 8 }} size="small" color={PASTEL_PALETTE.accentDeep} />
-            ) : receiverName ? (
-              <Text style={[styles.userNameText, { color: receiverName === 'Không tìm thấy người dùng' ? '#EF4444' : PASTEL_PALETTE.accentDeep }]}>
-                {receiverName !== 'Không tìm thấy người dùng' ? `Người nhận: ${receiverName}` : receiverName}
-              </Text>
-            ) : null}
+            <Text style={styles.label}>Số tài khoản nhận <Text style={{ color: '#EF4444' }}>*</Text></Text>
+            <View style={styles.accountInputWrapper}>
+              <TextInput
+                style={[
+                  styles.input,
+                  styles.accountInput,
+                  searchError ? styles.inputError : null,
+                  receiverName ? styles.inputSuccess : null,
+                ]}
+                placeholder="Nhập số tài khoản"
+                value={accountNumber}
+                onChangeText={handleAccountNumberChange}
+                placeholderTextColor={PASTEL_PALETTE.textMuted}
+                keyboardType="numeric"
+                maxLength={15}
+              />
+              {accountNumber.length > 0 && (
+                <TouchableOpacity
+                  style={styles.clearInputButton}
+                  onPress={() => {
+                    setAccountNumber('');
+                    resetReceiverLookup();
+                  }}
+                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                  activeOpacity={0.7}
+                >
+                  <Ionicons name="close-circle" size={20} color={PASTEL_PALETTE.textMuted} />
+                </TouchableOpacity>
+              )}
+            </View>
+          </View>
+
+          <View style={[styles.inputGroup, { marginBottom: 0 }]}>
+            <Text style={styles.label}>Tên chủ tài khoản</Text>
+            <View
+              style={[
+                styles.input,
+                styles.readOnlyInput,
+                searchError ? styles.inputError : null,
+                receiverName ? styles.inputSuccess : null,
+              ]}
+            >
+              {searching ? (
+                <View style={styles.receiverRow}>
+                  <ActivityIndicator size="small" color={PASTEL_PALETTE.accentDeep} />
+                  <Text style={styles.receiverPlaceholderText}>Đang tra cứu...</Text>
+                </View>
+              ) : receiverName ? (
+                <Text style={styles.receiverNameText} numberOfLines={1}>
+                  {receiverName}
+                </Text>
+              ) : searchError ? (
+                <Text style={styles.receiverErrorText} numberOfLines={1}>
+                  {searchError}
+                </Text>
+              ) : (
+                <Text style={styles.receiverPlaceholderText}>
+                  Tự động hiển thị sau khi nhập đúng STK
+                </Text>
+              )}
+            </View>
           </View>
         </View>
 
@@ -304,7 +390,7 @@ export const TransferScreen = () => {
 
           <View style={styles.inputGroup}>
             <Text style={styles.label}>Danh mục (Tùy chọn)</Text>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={[styles.input, { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }]}
               onPress={() => setIsCategoryModalVisible(true)}
               activeOpacity={0.7}

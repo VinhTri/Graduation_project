@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, StatusBar } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, StatusBar, Switch } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -51,8 +51,29 @@ export function DarkModeScreen() {
       </View>
 
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        <Text style={[styles.sectionSubtitle, { color: theme.textSecondary }]}>
-          {t('themeSubtitle')}
+        {/* Quick Switch Card */}
+        <View style={[styles.quickSwitchCard, { backgroundColor: theme.card, borderColor: theme.cardBorder }]}>
+          <View style={[styles.iconBox, { backgroundColor: theme.primarySoft }]}>
+            <Ionicons name={isDark ? "moon" : "sunny"} size={24} color={theme.primary} />
+          </View>
+          <View style={styles.textContainer}>
+            <Text style={[styles.optionTitle, { color: theme.textPrimary }]}>
+              {isDark ? t('themeDark') : t('themeLight')}
+            </Text>
+            <Text style={[styles.optionSub, { color: theme.textSecondary }]}>
+              {t('themeSubtitle')}
+            </Text>
+          </View>
+          <Switch
+            value={isDark}
+            onValueChange={(val) => setThemeMode(val ? 'dark' : 'light')}
+            trackColor={{ false: '#CBD5E1', true: theme.primary }}
+            thumbColor="#FFFFFF"
+          />
+        </View>
+
+        <Text style={[styles.sectionSubtitle, { color: theme.textSecondary, marginTop: 16 }]}>
+          Tùy chọn chế độ giao diện:
         </Text>
 
         {/* Theme Options */}
@@ -167,9 +188,17 @@ const styles = StyleSheet.create({
   scrollContent: {
     padding: 16,
   },
+  quickSwitchCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    borderRadius: 18,
+    borderWidth: 1,
+    marginBottom: 8,
+  },
   sectionSubtitle: {
     fontSize: 14,
-    marginBottom: 16,
+    marginBottom: 12,
     lineHeight: 20,
   },
   optionsContainer: {

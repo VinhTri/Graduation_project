@@ -82,6 +82,14 @@ public enum ErrorCode {
     // ---- LỖI HỖ TRỢ ----
     SUPPORT_TICKET_NOT_FOUND("SUP_1001", "Không tìm thấy yêu cầu hỗ trợ!", HttpStatus.NOT_FOUND),
 
+    // ---- LỖI CHIA TIỀN ----
+    SPLIT_BILL_NOT_FOUND("SPLIT_1001", "Không tìm thấy yêu cầu chia tiền!", HttpStatus.NOT_FOUND),
+    SPLIT_BILL_ALREADY_PAID("SPLIT_1002", "Bạn đã thanh toán khoản chia tiền này rồi!", HttpStatus.BAD_REQUEST),
+    SPLIT_BILL_INVALID_MEMBER("SPLIT_1003", "Bạn không thuộc danh sách người tham gia chia tiền này!", HttpStatus.FORBIDDEN),
+    SPLIT_BILL_MINIMUM_AMOUNT("SPLIT_1004", "Số tiền chia tối thiểu cho mỗi người là 2.000đ!", HttpStatus.BAD_REQUEST),
+    SPLIT_BILL_COMPLETED("SPLIT_1005", "Yêu cầu chia tiền này đã hoàn tất hoặc đã bị hủy!", HttpStatus.BAD_REQUEST),
+    SPLIT_BILL_REMINDER_COOLDOWN("SPLIT_1006", "Úi, bạn vừa nhắc nhở đây mà. Hãy đợi sau 12h nữa nha", HttpStatus.BAD_REQUEST),
+
     // ---- LỖI HỆ THỐNG CHUNG ----
     INVALID_REQUEST("SYS_4000", "Yêu cầu không hợp lệ!", HttpStatus.BAD_REQUEST),
     UNCATEGORIZED_EXCEPTION("SYS_9999", "Đã xảy ra lỗi hệ thống, vui lòng thử lại sau!", HttpStatus.INTERNAL_SERVER_ERROR);

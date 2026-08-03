@@ -1,9 +1,10 @@
 import React, { createContext, useContext, useEffect, useState, useCallback, useMemo } from 'react';
 import { useColorScheme } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { translate, Language, TranslationKeys, translations as i18nTranslations } from '../i18n';
 
 export type ThemeMode = 'light' | 'dark' | 'system';
-export type Language = 'vi' | 'en';
+export type { Language, TranslationKeys };
 
 export interface ThemeColors {
   isDark: boolean;
@@ -23,6 +24,17 @@ export interface ThemeColors {
   shadowColor: string;
   iconColor: string;
   divider: string;
+  // Extended Utility Color Tokens
+  inputBg: string;
+  inputBorder: string;
+  inputText: string;
+  subtleCard: string;
+  overlay: string;
+  badgeBg: string;
+  badgeText: string;
+  success: string;
+  error: string;
+  warning: string;
 }
 
 export const LIGHT_THEME: ThemeColors = {
@@ -43,270 +55,52 @@ export const LIGHT_THEME: ThemeColors = {
   shadowColor: 'rgba(236, 72, 153, 0.08)',
   iconColor: '#EC4899',
   divider: '#F3E8FF',
+
+  inputBg: '#FFFFFF',
+  inputBorder: '#E5E7EB',
+  inputText: '#1F2937',
+  subtleCard: '#F9FAFB',
+  overlay: 'rgba(0, 0, 0, 0.5)',
+  badgeBg: '#FCE7F3',
+  badgeText: '#BE185D',
+  success: '#10B981',
+  error: '#EF4444',
+  warning: '#F59E0B',
 };
 
 export const DARK_THEME: ThemeColors = {
   isDark: true,
-  bg: '#0F172A',
-  bgSoft: '#1E293B',
-  card: '#1E293B',
-  cardBorder: '#334155',
+  bg: '#181E2A',
+  bgSoft: '#222836',
+  card: '#222836',
+  cardBorder: '#343D52',
   textPrimary: '#F8FAFC',
   textSecondary: '#94A3B8',
   textMuted: '#64748B',
   primary: '#F472B6',
   primaryDark: '#EC4899',
-  primarySoft: '#371B2D',
-  headerGradient: ['#1E1B4B', '#31103F', '#1E293B'],
-  navHeaderBg: '#1E293B',
+  primarySoft: '#3A2033',
+  headerGradient: ['#231E48', '#381C47', '#252D40'],
+  navHeaderBg: '#222836',
   statusBarStyle: 'light-content',
-  shadowColor: 'rgba(0, 0, 0, 0.3)',
+  shadowColor: 'rgba(0, 0, 0, 0.25)',
   iconColor: '#F472B6',
-  divider: '#334155',
+  divider: '#343D52',
+
+  inputBg: '#2C3446',
+  inputBorder: '#424E66',
+  inputText: '#F8FAFC',
+  subtleCard: '#272F40',
+  overlay: 'rgba(0, 0, 0, 0.65)',
+  badgeBg: '#3A2033',
+  badgeText: '#F472B6',
+  success: '#34D399',
+  error: '#F87171',
+  warning: '#FBBF24',
 };
 
-export const translations = {
-  vi: {
-    // Tabs
-    homeTab: 'Trang chủ',
-    walletTab: 'Ví',
-    fundsTab: 'Quỹ nhóm',
-    notebookTab: 'Sổ tay',
-    moreTab: 'Tài khoản',
-
-    // Navigation / Header
-    account: 'Tài khoản',
-    settings: 'Cài đặt',
-    appSettings: 'Cài đặt ứng dụng',
-    darkMode: 'Giao diện & Chế độ tối',
-    language: 'Ngôn ngữ',
-    back: 'Quay lại',
-
-    finance: 'Tài chính',
-    utilities: 'Tiện ích',
-    security: 'Bảo mật',
-    accountSecurity: 'Bảo mật tài khoản',
-    accountSecuritySub: 'Mật khẩu, mã PIN',
-    changePasswordSub: 'Cập nhật mật khẩu đăng nhập',
-    changePin: 'Đổi mã PIN',
-    changePinSub: 'Cập nhật PIN bảo mật giao dịch',
-    supportAndSettings: 'Hỗ trợ & Cài đặt',
-
-    appSettingsSubtitle: 'Tùy chỉnh giao diện, ngôn ngữ và ứng dụng',
-    themeSubtitle: 'Thay đổi chế độ sáng/tối toàn ứng dụng',
-    languageSubtitle: 'Chọn ngôn ngữ hiển thị',
-    themeSystem: 'Tự động (Theo hệ thống)',
-    themeSystemSub: 'Điều chỉnh theo cài đặt hệ thống thiết bị',
-    themeLight: 'Chế độ Sáng',
-    themeLightSub: 'Giao diện sáng rạng rỡ với gam màu pastel',
-    themeDark: 'Chế độ Tối',
-    themeDarkSub: 'Giao diện tối dịu mắt, tiết kiệm pin',
-
-    vietnamese: 'Tiếng Việt',
-    english: 'English',
-
-    bankBinding: 'Liên kết ngân hàng',
-    bankBindingSub: 'Quản lý tài khoản ngân hàng',
-    smartSpendWallet: 'Ví SmartSpend',
-    walletSub: 'Số dư và cài đặt ví',
-    expenseNotebook: 'Sổ tay chi tiêu',
-    notebookSub: 'Ghi chép thu chi hàng ngày',
-
-    invoiceManagement: 'Quản lý hóa đơn',
-    invoiceSub: 'Theo dõi và thanh toán hóa đơn',
-    groupFund: 'Quỹ nhóm',
-    groupFunds: 'Quỹ nhóm',
-    groupFundSub: 'Quỹ chung cùng bạn bè',
-
-    supportCenter: 'Trung tâm hỗ trợ',
-    supportSub: 'Câu hỏi thường gặp',
-
-    changePassword: 'Đổi mật khẩu',
-    biometrics: 'Xác thực sinh trắc học',
-    logout: 'Đăng xuất',
-
-    selectTheme: 'Chọn giao diện',
-    selectLanguage: 'Chọn ngôn ngữ',
-    preview: 'Xem trước giao diện',
-    previewText: 'SmartSpend mang đến trải nghiệm quản lý tài chính cá nhân thông minh và hiện đại.',
-    appliedImmediately: 'Thay đổi sẽ được áp dụng ngay lập tức trên toàn ứng dụng.',
-
-    // Home Screen
-    welcome: 'Xin chào',
-    totalBalance: 'Tổng số dư ví',
-    availableBalance: 'Số dư khả dụng',
-    services: 'Dịch vụ tiện ích',
-    recentActivity: 'Hoạt động gần đây',
-    viewAll: 'Xem tất cả',
-    aiInsights: 'Gợi ý từ AI',
-    discoverMore: 'Khám phá thêm',
-
-    // Wallet Screen
-    deposit: 'Nạp tiền',
-    withdraw: 'Rút tiền',
-    transfer: 'Chuyển tiền',
-    transactionHistory: 'Lịch sử giao dịch',
-    statisticsReport: 'Báo cáo thống kê',
-    allTransactions: 'Tất cả giao dịch',
-    income: 'Thu nhập',
-    expense: 'Chi tiêu',
-    totalIncome: 'Tổng thu',
-    totalExpense: 'Tổng chi',
-
-    // Notebook Screen
-    monthlyOverview: 'Tổng quan tháng này',
-    addTransaction: 'Thêm thu chi',
-    categorySpending: 'Phân loại chi tiêu',
-    recentRecords: 'Ghi chép gần đây',
-    cashBalance: 'Số dư tiền mặt',
-
-    // Group Fund Screen
-    createFund: 'Tạo quỹ mới',
-    activeFunds: 'Quỹ đang hoạt động',
-    members: 'thành viên',
-    contribute: 'Đóng góp',
-    targetAmount: 'Mục tiêu',
-
-    // Invoice Screen
-    createInvoice: 'Tạo hóa đơn',
-    pendingInvoices: 'Chưa thanh toán',
-    paidInvoices: 'Đã thanh toán',
-    overdueInvoices: 'Quá hạn',
-
-    // Contacts Screen
-    contacts: 'Danh bạ',
-    searchUser: 'Tìm kiếm người dùng...',
-    addFriend: 'Thêm bạn',
-    friendRequests: 'Lời mời kết bạn',
-
-    // Categories Screen
-    categories: 'Danh mục thu chi',
-    incomeCategories: 'Danh mục thu',
-    expenseCategories: 'Danh mục chi',
-    addCategory: 'Thêm danh mục',
-  },
-  en: {
-    // Tabs
-    homeTab: 'Home',
-    walletTab: 'Wallet',
-    fundsTab: 'Funds',
-    notebookTab: 'Notebook',
-    moreTab: 'Account',
-
-    // Navigation / Header
-    account: 'Account',
-    settings: 'Settings',
-    appSettings: 'App Settings',
-    darkMode: 'Theme & Dark Mode',
-    language: 'Language',
-    back: 'Back',
-
-    finance: 'Finance',
-    utilities: 'Utilities',
-    security: 'Security',
-    accountSecurity: 'Account Security',
-    accountSecuritySub: 'Password, PIN code',
-    changePasswordSub: 'Update login password',
-    changePin: 'Change PIN',
-    changePinSub: 'Update transaction security PIN',
-    supportAndSettings: 'Support & Settings',
-
-    appSettingsSubtitle: 'Customize theme, language, and app settings',
-    themeSubtitle: 'Change full-app light/dark mode',
-    languageSubtitle: 'Select display language',
-    themeSystem: 'System Default',
-    themeSystemSub: 'Adjust automatically based on device settings',
-    themeLight: 'Light Mode',
-    themeLightSub: 'Bright & cheerful pastel theme',
-    themeDark: 'Dark Mode',
-    themeDarkSub: 'Eye-soothing dark theme, saves battery',
-
-    vietnamese: 'Vietnamese',
-    english: 'English',
-
-    bankBinding: 'Bank Binding',
-    bankBindingSub: 'Manage bank accounts',
-    smartSpendWallet: 'SmartSpend Wallet',
-    walletSub: 'Balance & wallet settings',
-    expenseNotebook: 'Expense Notebook',
-    notebookSub: 'Daily income & expense tracking',
-
-    invoiceManagement: 'Invoice Management',
-    invoiceSub: 'Track & pay bills',
-    groupFund: 'Group Fund',
-    groupFunds: 'Group Funds',
-    groupFundSub: 'Shared pool with friends',
-
-    supportCenter: 'Help Center',
-    supportSub: 'Frequently asked questions',
-
-    changePassword: 'Change Password',
-    biometrics: 'Biometric Authentication',
-    logout: 'Log Out',
-
-    selectTheme: 'Select Theme',
-    selectLanguage: 'Select Language',
-    preview: 'Theme Preview',
-    previewText: 'SmartSpend provides a smart and modern personal finance management experience.',
-    appliedImmediately: 'Changes will be applied immediately across the entire app.',
-
-    // Home Screen
-    welcome: 'Welcome',
-    totalBalance: 'Total Balance',
-    availableBalance: 'Available Balance',
-    services: 'Services & Features',
-    recentActivity: 'Recent Activity',
-    viewAll: 'View All',
-    aiInsights: 'AI Insights',
-    discoverMore: 'Discover More',
-
-    // Wallet Screen
-    deposit: 'Top Up',
-    withdraw: 'Withdraw',
-    transfer: 'Transfer',
-    transactionHistory: 'Transaction History',
-    statisticsReport: 'Analytics Report',
-    allTransactions: 'All Transactions',
-    income: 'Income',
-    expense: 'Expense',
-    totalIncome: 'Total Income',
-    totalExpense: 'Total Expense',
-
-    // Notebook Screen
-    monthlyOverview: 'Monthly Overview',
-    addTransaction: 'Add Record',
-    categorySpending: 'Category Spending',
-    recentRecords: 'Recent Records',
-    cashBalance: 'Cash Balance',
-
-    // Group Fund Screen
-    createFund: 'Create Fund',
-    activeFunds: 'Active Funds',
-    members: 'members',
-    contribute: 'Contribute',
-    targetAmount: 'Target',
-
-    // Invoice Screen
-    createInvoice: 'Create Invoice',
-    pendingInvoices: 'Unpaid Invoices',
-    paidInvoices: 'Paid Invoices',
-    overdueInvoices: 'Overdue',
-
-    // Contacts Screen
-    contacts: 'Contacts',
-    searchUser: 'Search users...',
-    addFriend: 'Add Friend',
-    friendRequests: 'Friend Requests',
-
-    // Categories Screen
-    categories: 'Categories',
-    incomeCategories: 'Income Categories',
-    expenseCategories: 'Expense Categories',
-    addCategory: 'Add Category',
-  },
-} as const;
-
-export type TranslationKey = keyof typeof translations['vi'];
+export const translations = i18nTranslations;
+export type TranslationKey = TranslationKeys;
 
 interface ThemeLanguageContextType {
   themeMode: ThemeMode;
@@ -315,7 +109,7 @@ interface ThemeLanguageContextType {
   theme: ThemeColors;
   language: Language;
   setLanguage: (lang: Language) => void;
-  t: (key: TranslationKey) => string;
+  t: (key: TranslationKeys, params?: Record<string, string | number>) => string;
 }
 
 const STORAGE_THEME_KEY = '@smartspend_theme_mode';
@@ -368,9 +162,8 @@ export const ThemeLanguageProvider: React.FC<{ children: React.ReactNode }> = ({
 
   const theme = isDark ? DARK_THEME : LIGHT_THEME;
 
-  const t = useCallback((key: TranslationKey): string => {
-    const langDict = translations[language];
-    return langDict[key] || translations.vi[key] || key;
+  const t = useCallback((key: TranslationKeys, params?: Record<string, string | number>): string => {
+    return translate(language, key, params);
   }, [language]);
 
   const contextValue = useMemo(() => ({
