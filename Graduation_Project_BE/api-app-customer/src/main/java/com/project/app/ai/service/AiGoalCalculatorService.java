@@ -2,6 +2,7 @@ package com.project.app.ai.service;
 
 import com.project.app.ai.dto.internal.GoalContext;
 import com.project.app.ai.dto.internal.GoalState;
+import com.project.app.ai.dto.internal.ParsedDuration;
 import com.project.app.ai.dto.request.ChatMessageHistoryDto;
 import com.project.app.ai.parser.AmountParser;
 import com.project.app.ai.parser.DurationParser;
@@ -159,8 +160,11 @@ public class AiGoalCalculatorService {
         if (state.getGoalName() == null || state.getGoalName().isEmpty()) {
             state.setGoalName("mục tiêu tài chính");
         }
-        if (state.getDurationMonths() <= 0) {
+        if (state.getDurationMonths() <= 0 && state.getDurationDays() <= 0) {
             state.setDurationMonths(24);
+            state.setDurationDays(720);
+            state.setDays(false);
+            state.setOriginalTimeText("24 tháng");
         }
 
         return state;
@@ -197,11 +201,20 @@ public class AiGoalCalculatorService {
         Integer delta = durationParser.extractRelativeMonthDelta(norm);
         if (delta != null) {
             int baseMonths = state.getDurationMonths() > 0 ? state.getDurationMonths() : 24;
-            state.setDurationMonths(Math.max(1, baseMonths + delta));
+            int newMonths = Math.max(1, baseMonths + delta);
+            state.setDurationMonths(newMonths);
+            state.setDurationDays(newMonths * 30);
+            state.setDays(false);
+            state.setOriginalTimeText(newMonths + " tháng");
         } else {
-            int explicitMonths = durationParser.parse(prompt, norm);
-            if (explicitMonths > 0) {
-                state.setDurationMonths(explicitMonths);
+            ParsedDuration pd = durationParser.parseDuration(prompt, norm);
+            if (pd != null && (pd.getDurationMonths() > 0 || pd.getDurationDays() > 0)) {
+                state.setDurationMonths(pd.getDurationMonths());
+                state.setDurationDays(pd.getDurationDays());
+                state.setDays(pd.isDays());
+                if (pd.getOriginalTimeText() != null && !pd.getOriginalTimeText().isEmpty()) {
+                    state.setOriginalTimeText(pd.getOriginalTimeText());
+                }
             }
         }
 
@@ -251,14 +264,21 @@ public class AiGoalCalculatorService {
 
         long targetAmount = state.getTargetAmount();
         int targetMonths = state.getDurationMonths();
+        int targetDays = state.getDurationDays();
+        boolean isDays = state.isDays();
+        String originalTimeText = state.getOriginalTimeText();
 
         // Option 1: dùng số dư
         long remainingWithBalance = Math.max(0, targetAmount - balanceForGoal);
         long monthlySavingWithBalance = targetMonths > 0 ? (long) Math.ceil((double) remainingWithBalance / targetMonths) : remainingWithBalance;
+        long dailySavingWithBalance = isDays && targetDays > 0 ? (long) Math.ceil((double) remainingWithBalance / targetDays)
+                : (targetMonths > 0 ? (long) Math.ceil((double) remainingWithBalance / (targetMonths * 30.0)) : remainingWithBalance);
 
         // Option 2: không dùng số dư
         long remainingWithoutBalance = targetAmount;
         long monthlySavingWithoutBalance = targetMonths > 0 ? (long) Math.ceil((double) remainingWithoutBalance / targetMonths) : remainingWithoutBalance;
+        long dailySavingWithoutBalance = isDays && targetDays > 0 ? (long) Math.ceil((double) remainingWithoutBalance / targetDays)
+                : (targetMonths > 0 ? (long) Math.ceil((double) remainingWithoutBalance / (targetMonths * 30.0)) : remainingWithoutBalance);
 
         // Custom monthly saving capacity (e.g. "nếu chỉ tiết kiệm 15 triệu/tháng")
         long customMonthlySaving = state.getMonthlySaving();
@@ -268,10 +288,17 @@ public class AiGoalCalculatorService {
         boolean isAchievable = true;
         long monthsNeededWithBalance = 0;
         long monthsNeededWithoutBalance = 0;
+        long daysNeededWithBalance = 0;
+        long daysNeededWithoutBalance = 0;
 
         if (customMonthlySaving > 0) {
             long startingAmount = state.isKeepEntireBalance() ? 0 : balanceForGoal;
-            projectedAmount = startingAmount + (customMonthlySaving * targetMonths);
+            if (isDays && targetDays > 0) {
+                long customDailySaving = (long) Math.ceil((double) customMonthlySaving / 30.0);
+                projectedAmount = startingAmount + (customDailySaving * targetDays);
+            } else {
+                projectedAmount = startingAmount + (customMonthlySaving * targetMonths);
+            }
 
             if (projectedAmount >= targetAmount) {
                 surplusAmount = projectedAmount - targetAmount;
@@ -285,6 +312,10 @@ public class AiGoalCalculatorService {
 
             monthsNeededWithBalance = (long) Math.ceil((double) remainingWithBalance / customMonthlySaving);
             monthsNeededWithoutBalance = (long) Math.ceil((double) targetAmount / customMonthlySaving);
+
+            long customDailySaving = Math.max(1, (long) Math.ceil((double) customMonthlySaving / 30.0));
+            daysNeededWithBalance = (long) Math.ceil((double) remainingWithBalance / customDailySaving);
+            daysNeededWithoutBalance = (long) Math.ceil((double) targetAmount / customDailySaving);
         }
 
         long activeRemaining = state.isKeepEntireBalance() ? remainingWithoutBalance : remainingWithBalance;
@@ -295,6 +326,9 @@ public class AiGoalCalculatorService {
         log.info("goalName = {}", state.getGoalName());
         log.info("targetAmount = {}", targetAmount);
         log.info("durationMonths = {}", targetMonths);
+        log.info("durationDays = {}", targetDays);
+        log.info("isDays = {}", isDays);
+        log.info("originalTimeText = {}", originalTimeText);
         log.info("grossBalance = {}", grossBalance);
         log.info("balanceForGoal = {}", balanceForGoal);
         log.info("usableBalance = {}", usableBalance);
@@ -311,6 +345,9 @@ public class AiGoalCalculatorService {
                 .goalName(state.getGoalName())
                 .targetAmount(targetAmount)
                 .durationMonths(targetMonths)
+                .durationDays(targetDays)
+                .isDays(isDays)
+                .originalTimeText(originalTimeText)
                 .currentBalance(BigDecimal.valueOf(grossBalance))
                 .userDeclaredBalance(state.getDeclaredBalance())
                 .emergencyFund(emergencyFund)
@@ -318,10 +355,14 @@ public class AiGoalCalculatorService {
                 .useCurrentBalance(!state.isKeepEntireBalance())
                 .remainingAmount(activeRemaining)
                 .monthlySavingWithBalance(monthlySavingWithBalance)
+                .dailySavingWithBalance(dailySavingWithBalance)
                 .monthlySavingWithoutBalance(monthlySavingWithoutBalance)
+                .dailySavingWithoutBalance(dailySavingWithoutBalance)
                 .customMonthlySaving(customMonthlySaving)
                 .monthsNeededWithBalance(monthsNeededWithBalance)
                 .monthsNeededWithoutBalance(monthsNeededWithoutBalance)
+                .daysNeededWithBalance(daysNeededWithBalance)
+                .daysNeededWithoutBalance(daysNeededWithoutBalance)
                 .projectedAmount(projectedAmount)
                 .surplusAmount(surplusAmount)
                 .shortfallAmount(shortfallAmount)
@@ -334,6 +375,17 @@ public class AiGoalCalculatorService {
     public String buildBusinessDataPrompt(GoalContext goalContext, DecimalFormat df) {
         if (goalContext == null || !goalContext.isGoalQuery()) {
             return "";
+        }
+
+        String durationDisplayInfo;
+        if (goalContext.isDays()) {
+            durationDisplayInfo = String.format("DURATION_DISPLAY = \"%s\" (TUYỆT ĐỐI GIỮ NGUYÊN CỤM NÀY KHI MÔ TẢ MỤC TIÊU NGƯỜI DÙNG)\nDURATION_CALCULATION = %d ngày",
+                    goalContext.getOriginalTimeText() != null ? goalContext.getOriginalTimeText() : goalContext.getDurationDays() + " ngày",
+                    goalContext.getDurationDays());
+        } else {
+            durationDisplayInfo = String.format("DURATION_DISPLAY = \"%s\" (TUYỆT ĐỐI GIỮ NGUYÊN CỤM NÀY KHI MÔ TẢ MỤC TIÊU NGƯỜI DÙNG)\nDURATION_CALCULATION = %d tháng",
+                    goalContext.getOriginalTimeText() != null ? goalContext.getOriginalTimeText() : goalContext.getDurationMonths() + " tháng",
+                    goalContext.getDurationMonths());
         }
 
         String customSavingInfo = "";
@@ -361,6 +413,18 @@ public class AiGoalCalculatorService {
             );
         }
 
+        String method1Text = goalContext.isDays() ?
+            String.format("Phương án 1 - Sử dụng vốn khả dụng (%s VNĐ): Tiết kiệm khoảng %s VNĐ/ngày trong %d ngày",
+                df.format(goalContext.getUsableBalance()), df.format(goalContext.getDailySavingWithBalance()), goalContext.getDurationDays()) :
+            String.format("Phương án 1 - Sử dụng vốn khả dụng (%s VNĐ): Tiết kiệm khoảng %s VNĐ/tháng trong %d tháng",
+                df.format(goalContext.getUsableBalance()), df.format(goalContext.getMonthlySavingWithBalance()), goalContext.getDurationMonths());
+
+        String method2Text = goalContext.isDays() ?
+            String.format("Phương án 2 - Giữ nguyên số dư hiện tại (%s VNĐ): Tiết kiệm khoảng %s VNĐ/ngày trong %d ngày",
+                df.format(goalContext.getCurrentBalance()), df.format(goalContext.getDailySavingWithoutBalance()), goalContext.getDurationDays()) :
+            String.format("Phương án 2 - Giữ nguyên số dư hiện tại (%s VNĐ): Tiết kiệm khoảng %s VNĐ/tháng trong %d tháng",
+                df.format(goalContext.getCurrentBalance()), df.format(goalContext.getMonthlySavingWithoutBalance()), goalContext.getDurationMonths());
+
         return String.format(
             "\n3. BUSINESS DATA - SỐ LIỆU ĐÃ ĐƯỢC BACKEND TÍNH TOÁN CHÍNH XÁC\n" +
             "Mục tiêu tài chính: %s\n" +
@@ -368,22 +432,18 @@ public class AiGoalCalculatorService {
             "USER_DECLARED_BALANCE = %s VNĐ\n" +
             "EMERGENCY_FUND = %s VNĐ\n" +
             "USABLE_BALANCE = %s VNĐ\n" +
-            "DURATION_MONTHS = %d tháng\n" +
-            "Phương án 1 - Sử dụng vốn khả dụng (%s VNĐ): Tiết kiệm khoảng %s VNĐ/tháng (Lấy %s ÷ %d)\n" +
-            "Phương án 2 - Giữ nguyên số dư hiện tại (%s VNĐ): Tiết kiệm khoảng %s VNĐ/tháng (Lấy %s ÷ %d)\n" +
+            "%s\n" +
+            "%s\n" +
+            "%s\n" +
             "%s",
             goalContext.getGoalName(),
             df.format(goalContext.getTargetAmount()),
             df.format(goalContext.getCurrentBalance()),
             df.format(goalContext.getEmergencyFund()),
             df.format(goalContext.getUsableBalance()),
-            goalContext.getDurationMonths(),
-            df.format(goalContext.getUsableBalance()),
-            df.format(goalContext.getMonthlySavingWithBalance()),
-            df.format(goalContext.getRemainingAmount()), goalContext.getDurationMonths(),
-            df.format(goalContext.getCurrentBalance()),
-            df.format(goalContext.getMonthlySavingWithoutBalance()),
-            df.format(goalContext.getTargetAmount()), goalContext.getDurationMonths(),
+            durationDisplayInfo,
+            method1Text,
+            method2Text,
             customSavingInfo
         );
     }

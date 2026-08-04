@@ -16,6 +16,9 @@ public class GoalContext {
     private String goalName;
     private long targetAmount;
     private int durationMonths;
+    private int durationDays;
+    private boolean isDays;
+    private String originalTimeText;
     private BigDecimal currentBalance;
     private long userDeclaredBalance;
     private long emergencyFund;
@@ -24,9 +27,11 @@ public class GoalContext {
     private long remainingAmount;
     // Option 1: dùng số dư
     private long monthlySavingWithBalance;
+    private long dailySavingWithBalance;
 
     // Option 2: không dùng số dư
     private long monthlySavingWithoutBalance;
+    private long dailySavingWithoutBalance;
 
     // User prompt: "nếu chỉ tiết kiệm X/tháng"
     private long customMonthlySaving;
@@ -40,6 +45,8 @@ public class GoalContext {
     // Time required with custom saving
     private long monthsNeededWithBalance;
     private long monthsNeededWithoutBalance;
+    private long daysNeededWithBalance;
+    private long daysNeededWithoutBalance;
 
     private boolean isNewGoal;
     private boolean isGoalQuery;

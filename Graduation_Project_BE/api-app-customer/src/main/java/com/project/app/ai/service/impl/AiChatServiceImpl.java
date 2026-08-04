@@ -298,14 +298,37 @@ public class AiChatServiceImpl implements AiChatService {
         );
     }
 
+    private String buildTimePhrase(String originalTimeText, boolean isDays, int months, int days) {
+        if (originalTimeText != null && !originalTimeText.trim().isEmpty()) {
+            String clean = originalTimeText.trim();
+            String lower = clean.toLowerCase();
+            if (lower.startsWith("trong ") || lower.startsWith("vào ")) {
+                return clean;
+            }
+            if (lower.contains("cuối") || lower.contains("đầu") || lower.contains("tết")) {
+                return "vào **" + clean + "**";
+            }
+            return "trong **" + clean + "**";
+        }
+        if (isDays && days > 0) {
+            return "trong **" + days + " ngày**";
+        }
+        return "trong **" + months + " tháng**";
+    }
+
     private String buildGoalFollowUpResponse(String userPrompt, String normalized, GoalContext goalContext, BigDecimal totalBal) {
         DecimalFormat df = new DecimalFormat("#,###");
         String goalName = goalContext.getGoalName();
         String actionPrefix = goalName.startsWith("tích lũy") ? "" : "mua ";
         long usableBal = goalContext.getUsableBalance();
+        boolean isDays = goalContext.isDays();
+        int months = goalContext.getDurationMonths();
+        int days = goalContext.getDurationDays();
+        String origTime = goalContext.getOriginalTimeText();
+        String timePhrase = buildTimePhrase(origTime, isDays, months, days);
 
         // 1. Duration question check ("Cần bao lâu để đạt mục tiêu", "bao lâu", "mất bao lâu")
-        boolean asksHowLong = normalized.contains("can bao lau") || normalized.contains("bao lau") || normalized.contains("mat bao lau") || normalized.contains("bao nhieu thang");
+        boolean asksHowLong = normalized.contains("can bao lau") || normalized.contains("bao lau") || normalized.contains("mat bao lau") || normalized.contains("bao nhieu thang") || normalized.contains("bao nhieu ngay");
         if (asksHowLong && goalContext.getCustomMonthlySaving() > 0) {
             long monthlySaving = goalContext.getCustomMonthlySaving();
             long monthsNeededWithBal = goalContext.getMonthsNeededWithBalance() > 0 ? goalContext.getMonthsNeededWithBalance() : 1;
@@ -350,27 +373,27 @@ public class AiChatServiceImpl implements AiChatService {
                 }
 
                 return String.format(
-                    "❌ **Chưa đủ để đạt mục tiêu trong %d tháng!**\n\n" +
-                    "Mục tiêu: %s**%s %s VNĐ** trong %d tháng.\n" +
+                    "❌ **Chưa đủ để đạt mục tiêu %s!**\n\n" +
+                    "Mục tiêu: %s**%s %s VNĐ** %s.\n" +
                     "%s" +
                     "• Tiết kiệm hàng tháng: **%s VNĐ/tháng** × %d tháng = **%s VNĐ**.\n" +
                     "• Tổng tích lũy dự kiến: **%s VNĐ** (Còn thiếu: **%s VNĐ**).\n\n" +
                     "➡️ **Thời gian thực tế cần thiết**: Bạn cần khoảng **%d tháng** (nếu dùng vốn khả dụng) hoặc **%d tháng** (nếu không dùng vốn khả dụng).\n\n" +
-                    "💡 **Giải pháp**: Để đạt mục tiêu đúng %d tháng, bạn cần tiết kiệm khoảng **%s VNĐ/tháng** (tăng thêm **%s VNĐ/tháng**).",
-                    goalContext.getDurationMonths(),
+                    "💡 **Giải pháp**: Để đạt mục tiêu đúng %s, bạn cần tiết kiệm khoảng **%s VNĐ/tháng** (tăng thêm **%s VNĐ/tháng**).",
+                    timePhrase,
                     actionPrefix,
                     goalName,
                     df.format(goalContext.getTargetAmount()),
-                    goalContext.getDurationMonths(),
+                    timePhrase,
                     balNotice,
                     df.format(customAmt),
-                    goalContext.getDurationMonths(),
-                    df.format(customAmt * goalContext.getDurationMonths()),
+                    months,
+                    df.format(customAmt * months),
                     df.format(goalContext.getProjectedAmount()),
                     df.format(goalContext.getShortfallAmount()),
                     monthsWithBal,
                     monthsFull,
-                    goalContext.getDurationMonths(),
+                    timePhrase,
                     df.format(neededMonthly),
                     df.format(gapMonthly)
                 );
@@ -380,7 +403,7 @@ public class AiChatServiceImpl implements AiChatService {
 
                 return String.format(
                     "✅ **Hoàn toàn đủ khả năng đạt mục tiêu!**\n\n" +
-                    "Mục tiêu: %s**%s %s VNĐ** trong %d tháng.\n" +
+                    "Mục tiêu: %s**%s %s VNĐ** %s.\n" +
                     "• Khả năng tiết kiệm: **%s VNĐ/tháng**.\n" +
                     "• Tổng tích lũy dự kiến sau %d tháng: **%s VNĐ**%s.\n\n" +
                     "➡️ **Phương án 1 (Sử dụng vốn khả dụng %s VNĐ)**: Bạn sẽ hoàn thành mục tiêu sau khoảng **%d tháng**.\n" +
@@ -388,9 +411,9 @@ public class AiChatServiceImpl implements AiChatService {
                     actionPrefix,
                     goalName,
                     df.format(goalContext.getTargetAmount()),
-                    goalContext.getDurationMonths(),
+                    timePhrase,
                     df.format(customAmt),
-                    goalContext.getDurationMonths(),
+                    months,
                     df.format(goalContext.getProjectedAmount()),
                     surplusText,
                     df.format(usableBal),
@@ -405,15 +428,18 @@ public class AiChatServiceImpl implements AiChatService {
                 || normalized.contains("khong su dung") || normalized.contains("khong dung so du");
 
         if (keepCurrentBalance) {
+            long savingVal = isDays ? goalContext.getDailySavingWithoutBalance() : goalContext.getMonthlySaving();
+            String unitStr = isDays ? "ngày" : "tháng";
             return String.format(
                 "💰 **Nếu không sử dụng số dư hiện tại**\n\n" +
                 "Bạn giữ nguyên số dư và không dùng khoản tiền này cho mục tiêu.\n\n" +
-                "Để đạt mục tiêu %s**%s %s VNĐ** trong %d tháng, bạn cần tự tiết kiệm khoảng **%s VNĐ/tháng**.",
+                "Để đạt mục tiêu %s**%s %s VNĐ** %s, bạn cần tự tiết kiệm khoảng **%s VNĐ/%s**.",
                 actionPrefix,
                 goalName,
                 df.format(goalContext.getTargetAmount()),
-                goalContext.getDurationMonths(),
-                df.format(goalContext.getMonthlySaving())
+                timePhrase,
+                df.format(savingVal),
+                unitStr
             );
         }
 
@@ -424,19 +450,21 @@ public class AiChatServiceImpl implements AiChatService {
                 ? Math.max(0, goalContext.getUserDeclaredBalance() - goalContext.getEmergencyFund()) 
                 : totalBal.longValue();
             long remGap = Math.max(0, goalContext.getTargetAmount() - effectiveBal);
-            long neededMonthly = goalContext.getDurationMonths() > 0 ? Math.round((double) remGap / goalContext.getDurationMonths()) : remGap;
+            long neededSaving = isDays ? goalContext.getDailySavingWithBalance() : goalContext.getMonthlyGapSaving();
+            String unitStr = isDays ? "ngày" : "tháng";
 
             return String.format(
                 "💰 **Nếu sử dụng vốn khả dụng hiện tại**\n\n" +
                 "Sử dụng số tiền khả dụng **%s VNĐ**, bạn còn thiếu **%s VNĐ** cho mục tiêu %s**%s %s VNĐ**.\n\n" +
-                "➡️ Trong %d tháng, bạn cần tiết kiệm khoảng **%s VNĐ/tháng**.",
+                "➡️ Trong %s, bạn cần tiết kiệm khoảng **%s VNĐ/%s**.",
                 df.format(effectiveBal),
                 df.format(remGap),
                 actionPrefix,
                 goalName,
                 df.format(goalContext.getTargetAmount()),
-                goalContext.getDurationMonths(),
-                df.format(neededMonthly)
+                timePhrase,
+                df.format(neededSaving),
+                unitStr
             );
         }
 
@@ -446,8 +474,9 @@ public class AiChatServiceImpl implements AiChatService {
             long emergencyFund = goalContext.getEmergencyFund();
             long targetAmt = goalContext.getTargetAmount();
             long remainingGap = goalContext.getRemainingAmount();
-            int months = goalContext.getDurationMonths() > 0 ? goalContext.getDurationMonths() : 1;
-            long neededMonthly = goalContext.getMonthlyGapSaving();
+            long neededSaving = isDays ? goalContext.getDailySavingWithBalance() : goalContext.getMonthlyGapSaving();
+            String unitStr = isDays ? "ngày" : "tháng";
+            int durationVal = isDays ? days : months;
 
             StringBuilder sb = new StringBuilder();
             sb.append(String.format("💰 **Cập nhật kế hoạch %s%s %s VNĐ**\n\n", actionPrefix, goalName, df.format(targetAmt)));
@@ -457,34 +486,33 @@ public class AiChatServiceImpl implements AiChatService {
             }
             sb.append(String.format("🎯 **Số tiền có thể dùng cho mục tiêu**: %s VNĐ\n\n", df.format(usableBal)));
             sb.append(String.format("📌 **Số tiền còn thiếu**:\n%s - %s = **%s VNĐ**\n\n", df.format(targetAmt), df.format(usableBal), df.format(remainingGap)));
-            sb.append(String.format("➡️ **Để đạt mục tiêu trong %d tháng**:\n", months));
-            sb.append(String.format("%s ÷ %d ≈ **%s VNĐ/tháng**.", df.format(remainingGap), months, df.format(neededMonthly)));
+            sb.append(String.format("➡️ **Để đạt mục tiêu %s**:\n", timePhrase));
+            sb.append(String.format("%s ÷ %d ≈ **%s VNĐ/%s**.", df.format(remainingGap), durationVal, df.format(neededSaving), unitStr));
             return sb.toString();
         }
 
         // 6. Rich Follow-up response layout
-        long monthlyWithBal = goalContext.getMonthlyGapSaving() > 0 ? goalContext.getMonthlyGapSaving() : goalContext.getMonthlySaving();
-        long monthlyWithoutBal = goalContext.getMonthlySaving();
-        double roundedMillion = Math.round((double) monthlyWithBal / 10000.0) / 100.0;
+        long savingWithBal = isDays ? goalContext.getDailySavingWithBalance() : (goalContext.getMonthlyGapSaving() > 0 ? goalContext.getMonthlyGapSaving() : goalContext.getMonthlySaving());
+        long savingWithoutBal = isDays ? goalContext.getDailySavingWithoutBalance() : goalContext.getMonthlySaving();
+        String unitStr = isDays ? "ngày" : "tháng";
+        int durationVal = isDays ? days : months;
 
         return String.format(
-            "🎯 **Kế hoạch %s%s %s VNĐ trong %d tháng**\n\n" +
+            "🎯 **Kế hoạch %s%s %s VNĐ %s**\n\n" +
             "💵 **Số dư hiện tại**: %s VNĐ\n" +
             "📌 **Số tiền còn thiếu**: %s VNĐ\n\n" +
-            "➡️ **Phương án 1 (Sử dụng số dư hiện tại)**:\nCần tiết kiệm khoảng **%s VNĐ/tháng** trong %d tháng.\n\n" +
-            "➡️ **Phương án 2 (Giữ nguyên số dư hiện tại)**:\nCần tiết kiệm khoảng **%s VNĐ/tháng** trong %d tháng.\n\n" +
-            "💡 **Gợi ý**: Bạn nên tiết kiệm khoảng **%.2f triệu VNĐ/tháng** nếu chấp nhận sử dụng số dư hiện tại cho mục tiêu này.",
+            "➡️ **Phương án 1 (Sử dụng số dư hiện tại)**:\nCần tiết kiệm khoảng **%s VNĐ/%s** trong %d %s.\n\n" +
+            "➡️ **Phương án 2 (Giữ nguyên số dư hiện tại)**:\nCần tiết kiệm khoảng **%s VNĐ/%s** trong %d %s.\n\n" +
+            "💡 **Gợi ý**: Bạn nên tiết kiệm khoảng **%s VNĐ/%s** nếu chấp nhận sử dụng số dư hiện tại cho mục tiêu này.",
             actionPrefix,
             goalName,
             df.format(goalContext.getTargetAmount()),
-            goalContext.getDurationMonths(),
+            timePhrase,
             df.format(totalBal),
             df.format(goalContext.getRemainingAmount()),
-            df.format(monthlyWithBal),
-            goalContext.getDurationMonths(),
-            df.format(monthlyWithoutBal),
-            goalContext.getDurationMonths(),
-            roundedMillion
+            df.format(savingWithBal), unitStr, durationVal, unitStr,
+            df.format(savingWithoutBal), unitStr, durationVal, unitStr,
+            df.format(savingWithBal), unitStr
         );
     }
 
@@ -494,30 +522,38 @@ public class AiChatServiceImpl implements AiChatService {
         String actionPrefix = goalName.startsWith("tích lũy") ? "" : "mua ";
         long targetAmt = goalContext.getTargetAmount();
         int months = goalContext.getDurationMonths();
+        int days = goalContext.getDurationDays();
+        boolean isDays = goalContext.isDays();
+        String origTime = goalContext.getOriginalTimeText();
+
+        String timePhrase = buildTimePhrase(origTime, isDays, months, days);
 
         // 1. If user explicitly specified NOT USING current balance (e.g. "Hiện tôi có 12 triệu nhưng không muốn dùng số tiền đó")
         if (!goalContext.isUseCurrentBalance()) {
-            long fullMonthly = months > 0 ? Math.round((double) targetAmt / months) : targetAmt;
-            double roundedMillion = Math.round((double) fullMonthly / 10000.0) / 100.0;
+            long fullSaving = isDays ? (days > 0 ? Math.round((double) targetAmt / days) : targetAmt)
+                                     : (months > 0 ? Math.round((double) targetAmt / months) : targetAmt);
+            String unitStr = isDays ? "ngày" : "tháng";
+            int durationVal = isDays ? days : months;
 
             String userBalInfo = goalContext.getUserDeclaredBalance() > 0 ?
                 String.format("💵 **Số tiền hiện có (theo câu hỏi)**: %s VNĐ\n🔒 **Lựa chọn**: Giữ nguyên số tiền này và không sử dụng cho mục tiêu.\n", df.format(goalContext.getUserDeclaredBalance())) :
                 "🔒 **Lựa chọn**: Giữ nguyên số dư hiện tại và không sử dụng cho mục tiêu này.\n";
 
             return String.format(
-                "🎯 **Kế hoạch %s%s %s VNĐ trong %d tháng**\n\n" +
+                "🎯 **Kế hoạch %s%s %s VNĐ %s**\n\n" +
                 "%s" +
                 "📌 **Số tiền cần tích lũy mới**: %s VNĐ\n\n" +
-                "➡️ **Mỗi tháng bạn cần tiết kiệm khoảng**:\n" +
-                "**%s ÷ %d = %s VNĐ/tháng** trong %d tháng.\n\n" +
-                "💡 **Gợi ý**: Bạn nên trích lập khoảng **%.2f triệu VNĐ/tháng** vào một ví riêng trên SmartSpend để bảo toàn kế hoạch %s%s đúng %d tháng.",
+                "➡️ **Mỗi %s bạn cần tiết kiệm khoảng**:\n" +
+                "**%s ÷ %d = %s VNĐ/%s** trong %d %s.\n\n" +
+                "💡 **Gợi ý**: Bạn nên trích lập khoảng **%s VNĐ/%s** vào một ví riêng trên SmartSpend để bảo toàn kế hoạch %s%s %s.",
                 actionPrefix, goalName,
-                df.format(targetAmt), months,
+                df.format(targetAmt), timePhrase,
                 userBalInfo,
                 df.format(targetAmt),
-                df.format(targetAmt), months, df.format(fullMonthly), months,
-                roundedMillion,
-                actionPrefix, goalName, months
+                unitStr,
+                df.format(targetAmt), durationVal, df.format(fullSaving), unitStr, durationVal, unitStr,
+                df.format(fullSaving), unitStr,
+                actionPrefix, goalName, timePhrase
             );
         }
 
@@ -537,30 +573,30 @@ public class AiChatServiceImpl implements AiChatService {
 
                 return String.format(
                     "💻 **Đánh giá mục tiêu %s%s**\n\n" +
-                    "Bạn muốn %s**%s %s VNĐ** trong %d tháng.\n\n" +
+                    "Bạn muốn %s**%s %s VNĐ** %s.\n\n" +
                     "📊 **Phân tích chi tiết:**\n" +
                     "%s" +
                     "- Số tiền còn thiếu: **%s VNĐ**.\n" +
                     "- Khả năng tiết kiệm: **%s VNĐ/tháng**.\n" +
-                    "- Thời gian dự định: **%d tháng**.\n\n" +
-                    "Sau %d tháng, tổng số tiền bạn có là:\n" +
+                    "- Thời gian dự định: **%s**.\n\n" +
+                    "Sau %s, tổng số tiền bạn có là:\n" +
                     "**%s + (%s × %d) = %s VNĐ**\n\n" +
                     "❌ **Kế hoạch chưa đủ để %s%s!**\n" +
                     "Bạn sẽ còn thiếu khoảng **%s VNĐ**.\n\n" +
                     "💡 **Gợi ý phương án điều chỉnh:**\n" +
-                    "1. **Để đạt mục tiêu đúng %d tháng**: Bạn cần tiết kiệm khoảng **%s VNĐ/tháng** (tăng thêm khoảng **%s VNĐ/tháng**).\n" +
+                    "1. **Để đạt mục tiêu đúng %s**: Bạn cần tiết kiệm khoảng **%s VNĐ/tháng** (tăng thêm khoảng **%s VNĐ/tháng**).\n" +
                     "2. **Nếu giữ nguyên mức tiết kiệm %s VNĐ/tháng**: Bạn cần khoảng **%d tháng** để đạt đủ mục tiêu.",
                     actionPrefix, goalName,
-                    actionPrefix, goalName, df.format(targetAmt), months,
+                    actionPrefix, goalName, df.format(targetAmt), timePhrase,
                     balNotice,
                     df.format(remainingGap),
                     df.format(customAmt),
-                    months,
-                    months,
+                    timePhrase,
+                    timePhrase,
                     df.format(effectiveBal), df.format(customAmt), months, df.format(goalContext.getProjectedAmount()),
                     actionPrefix, goalName,
                     df.format(goalContext.getShortfallAmount()),
-                    months, df.format(neededMonthly), df.format(gapMonthly),
+                    timePhrase, df.format(neededMonthly), df.format(gapMonthly),
                     df.format(customAmt), monthsWithBal > 0 ? monthsWithBal : 1
                 );
             } else {
@@ -570,12 +606,12 @@ public class AiChatServiceImpl implements AiChatService {
                     "📊 **Phân tích chi tiết:**\n" +
                     "- Số tiền hiện có: **%s VNĐ**\n" +
                     "- Khả năng tiết kiệm: **%s VNĐ/tháng** × %d tháng = **%s VNĐ**\n" +
-                    "- Tổng tiền dự kiến sau %d tháng: **%s VNĐ**\n\n" +
+                    "- Tổng tiền dự kiến %s: **%s VNĐ**\n\n" +
                     "🎯 Mục tiêu **%s VNĐ** sẽ đạt được đầy đủ!",
                     actionPrefix, goalName,
                     df.format(effectiveBal),
                     df.format(customAmt), months, df.format(customAmt * months),
-                    months, df.format(goalContext.getProjectedAmount()),
+                    timePhrase, df.format(goalContext.getProjectedAmount()),
                     df.format(targetAmt)
                 );
             }
@@ -584,8 +620,15 @@ public class AiChatServiceImpl implements AiChatService {
         // 3. Standard 3-part layout (when customMonthlySaving == 0 and useCurrentBalance == true)
         long effectiveBal = goalContext.getUserDeclaredBalance() > 0 ? goalContext.getUserDeclaredBalance() : dbTotalBal.longValue();
         long remainingGap = targetAmt > effectiveBal ? targetAmt - effectiveBal : 0;
-        long gapMonthly = months > 0 ? Math.round((double) remainingGap / months) : targetAmt;
-        long fullMonthly = months > 0 ? Math.round((double) targetAmt / months) : targetAmt;
+
+        long gapSaving = isDays ? goalContext.getDailySavingWithBalance() : goalContext.getMonthlySavingWithBalance();
+        long fullSaving = isDays ? goalContext.getDailySavingWithoutBalance() : goalContext.getMonthlySavingWithoutBalance();
+        String unitStr = isDays ? "ngày" : "tháng";
+        int durationVal = isDays ? days : months;
+
+        String durationExplanation = (!isDays && origTime != null && origTime.contains("cuối năm")) 
+                ? String.format("trong %d tháng (thời gian còn lại đến cuối năm)", months) 
+                : String.format("trong %d %s", durationVal, unitStr);
 
         String evaluationText;
         if (remainingGap == 0) {
@@ -595,8 +638,8 @@ public class AiChatServiceImpl implements AiChatService {
             );
         } else {
             evaluationText = String.format(
-                "Mục tiêu %s%s %s VNĐ trong %d tháng của bạn hoàn toàn khả thi nếu thiết lập kế hoạch tiết kiệm kỷ luật từ hôm nay.",
-                actionPrefix, goalName, df.format(targetAmt), months
+                "Mục tiêu %s%s %s VNĐ %s của bạn hoàn toàn khả thi nếu thiết lập kế hoạch tiết kiệm kỷ luật từ hôm nay.",
+                actionPrefix, goalName, df.format(targetAmt), timePhrase
             );
         }
 
@@ -607,16 +650,18 @@ public class AiChatServiceImpl implements AiChatService {
             "- Tổng số tiền cần có: %s VNĐ.\n" +
             "- Số dư hiện có: %s VNĐ.\n" +
             "- Số tiền còn thiếu: %s VNĐ.\n" +
-            "- **Phương án 1 (Sử dụng toàn bộ số dư hiện tại %s VNĐ)**: Bạn cần tiết kiệm khoảng **%s VNĐ/tháng** trong %d tháng.\n" +
-            "- **Phương án 2 (Giữ nguyên số dư hiện tại cho mục đích khác)**: Bạn cần tiết kiệm khoảng **%s VNĐ/tháng** trong %d tháng.\n\n" +
+            "- **Phương án 1 (Sử dụng toàn bộ số dư hiện tại %s VNĐ)**: Bạn cần tiết kiệm khoảng **%s VNĐ/%s** %s.\n" +
+            "- **Phương án 2 (Giữ nguyên số dư hiện tại cho mục đích khác)**: Bạn cần tiết kiệm khoảng **%s VNĐ/%s** %s.\n\n" +
             "✅ **Gợi ý**\n" +
-            "1. Ưu tiên trích lập khoản tiết kiệm cố định hàng tháng vào một ví riêng để bảo toàn nguồn vốn.\n" +
+            "1. Ưu tiên trích lập khoản tiết kiệm cố định %s vào một ví riêng để bảo toàn nguồn vốn.\n" +
             "2. Thiết lập mục tiêu tài chính %s trên ứng dụng SmartSpend để dễ dàng theo dõi tiến độ.\n" +
             "3. Kiểm soát chặt chẽ chi tiêu hàng ngày để đảm bảo duy trì hạn mức tiết kiệm đúng kế hoạch.",
             evaluationText,
             df.format(targetAmt), df.format(effectiveBal), df.format(remainingGap),
-            df.format(effectiveBal), df.format(gapMonthly), months,
-            df.format(fullMonthly), months, goalName
+            df.format(effectiveBal), df.format(gapSaving), unitStr, durationExplanation,
+            df.format(fullSaving), unitStr, durationExplanation,
+            isDays ? "hàng ngày" : "hàng tháng",
+            goalName
         );
     }
 
@@ -830,53 +875,11 @@ public class AiChatServiceImpl implements AiChatService {
             }
         } else if (goalContext != null && goalContext.isGoalQuery()) {
             if (isFollowUp) {
-                boolean mentionKeepBal = norm.contains("khong dung") || norm.contains("giu nguyen") || norm.contains("so sanh");
-                if (mentionKeepBal) {
-                    text = String.format(
-                        "Nếu giữ nguyên số dư %s VNĐ hiện có cho mục đích khác, bạn cần tiết kiệm khoảng %s VNĐ/tháng trong %d tháng.",
-                        df.format(totalBal), df.format(goalContext.getMonthlySaving()), goalContext.getDurationMonths()
-                    );
-                } else {
-                    text = String.format(
-                        "Nếu sử dụng số dư hiện tại %s VNĐ, bạn cần tiết kiệm khoảng %s VNĐ/tháng trong %d tháng để mua %s.",
-                        df.format(totalBal), df.format(goalContext.getMonthlyGapSaving() > 0 ? goalContext.getMonthlyGapSaving() : goalContext.getMonthlySaving()),
-                        goalContext.getDurationMonths(), goalContext.getGoalName()
-                    );
-                }
+                text = buildGoalFollowUpResponse(raw, norm, goalContext, totalBal);
             } else {
-                String actionPrefix = goalContext.getGoalName().startsWith("tích lũy") ? "" : "mua ";
-                String evaluationText;
-                if (goalContext.getRemainingAmount() == 0) {
-                    evaluationText = String.format(
-                        "Số dư hiện tại của bạn (%s VNĐ) đã đủ để hoàn thành mục tiêu %s%s %s VNĐ ngay hôm nay!",
-                        df.format(totalBal), actionPrefix, goalContext.getGoalName(), df.format(goalContext.getTargetAmount())
-                    );
-                } else {
-                    evaluationText = String.format(
-                        "Mục tiêu %s%s %s VNĐ trong %d tháng của bạn hoàn toàn khả thi nếu thiết lập kế hoạch tiết kiệm kỷ luật từ hôm nay.",
-                        actionPrefix, goalContext.getGoalName(), df.format(goalContext.getTargetAmount()), goalContext.getDurationMonths()
-                    );
-                }
-
-                text = String.format(
-                    "🎯 Đánh giá\n" +
-                    "%s\n\n" +
-                    "📊 Phân tích\n" +
-                    "- Tổng số tiền cần có: %s VNĐ.\n" +
-                    "- Số dư hiện có: %s VNĐ.\n" +
-                    "- Số tiền còn thiếu: %s VNĐ.\n" +
-                    "- Phương án 1 (Sử dụng toàn bộ số dư hiện tại %s VNĐ): Bạn cần tiết kiệm khoảng %s VNĐ/tháng trong %d tháng.\n" +
-                    "- Phương án 2 (Giữ nguyên số dư hiện tại cho mục đích khác): Bạn cần tiết kiệm khoảng %s VNĐ/tháng trong %d tháng.\n\n" +
-                    "✅ Gợi ý\n" +
-                    "1. Ưu tiên trích lập khoản tiết kiệm cố định hàng tháng vào một ví riêng để bảo toàn nguồn vốn.\n" +
-                    "2. Thiết lập mục tiêu tài chính %s trên ứng dụng SmartSpend để dễ dàng theo dõi tiến độ.\n" +
-                    "3. Kiểm soát chặt chẽ chi tiêu hàng ngày để đảm bảo duy trì hạn mức tiết kiệm đúng kế hoạch.",
-                    evaluationText,
-                    df.format(goalContext.getTargetAmount()), df.format(totalBal), df.format(goalContext.getRemainingAmount()),
-                    df.format(totalBal), df.format(goalContext.getMonthlyGapSaving()), goalContext.getDurationMonths(),
-                    df.format(goalContext.getMonthlySaving()), goalContext.getDurationMonths(), goalContext.getGoalName()
-                );
+                text = formatGoalCalculationResponse(goalContext, totalBal);
             }
+
         } else if ("RECOMMENDATION".equalsIgnoreCase(moduleType) || isBudgetPlanningQuery(norm)) {
             text = buildBudgetRecommendationResponse(raw, ctx);
         } else {

@@ -13,6 +13,9 @@ public class GoalState {
     private String goalName;
     private long targetAmount;
     private int durationMonths;
+    private int durationDays;
+    private boolean isDays;
+    private String originalTimeText;
     private long declaredBalance;
     private long emergencyFund;
     private long monthlySaving;

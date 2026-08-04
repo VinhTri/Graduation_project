@@ -57,6 +57,7 @@ public class AiPromptService {
                 "QUY TẮC TRẢ LỜI CÂU HỎI MỤC TIÊU MỚI / TỔNG QUAN:\n" +
                 "- Luôn trả lời bằng tiếng Việt.\n" +
                 "- BẮT BUỘC giữ nguyên tên mục tiêu từ phần 3. BUSINESS DATA (TUYỆT ĐỐI KHÔNG tự đổi tên mục tiêu thành 'mục tiêu mua sắm' hay 'ô tô').\n" +
+                "- BẮT BUỘC giữ nguyên thời gian diễn đạt DURATION_DISPLAY của người dùng (ví dụ: '2 năm', '1 năm 6 tháng', '45 ngày', 'cuối năm'). TUYỆT ĐỐI KHÔNG đổi '2 năm' thành '24 tháng' hay 'cuối năm' thành '5 tháng' khi mô tả lại mục tiêu người dùng.\n" +
                 "- BẮT BUỘC trong phần 📊 Phân tích phải trình bày ĐẦY ĐỦ CẢ 2 PHƯƠNG ÁN tính toán từ 3. BUSINESS DATA:\n" +
                 "  + Phương án 1 (Sử dụng toàn bộ số dư hiện tại): Tiết kiệm số tiền còn thiếu chia cho số tháng.\n" +
                 "  + Phương án 2 (Giữ nguyên số dư hiện tại cho mục đích khác): Tiết kiệm giá mục tiêu chia cho số tháng.\n" +

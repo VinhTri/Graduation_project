@@ -86,8 +86,11 @@ public class AmountParser {
         if (text == null || text.trim().isEmpty()) return 0;
         String norm = normalizeText(text);
 
-        Pattern pattern = Pattern.compile("(?:dang co|co san|von|dang giu|hien co|co|hien tai co|hien tai toi co|hien toi co|toi co)\\s+(\\d+(?:[.,]\\d+)?\\s*(?:trieu|tr)?\\s*\\d*)\\s*(k|nghin|ngan|trieu|tr|m|ty|cu)?", Pattern.CASE_INSENSITIVE);
-        Matcher matcher = pattern.matcher(norm);
+        // Exclude goal target statements like "muốn có", "cần có" from declared balance matching
+        String cleanNorm = norm.replaceAll("(?:muon|can|dinh|du dinh)\\s+co", "");
+
+        Pattern pattern = Pattern.compile("(?:dang co|co san|von|dang giu|hien co|hien tai co|hien tai toi co|hien toi co|toi co)\\s+(\\d+(?:[.,]\\d+)?\\s*(?:trieu|tr)?\\s*\\d*)\\s*(k|nghin|ngan|trieu|tr|m|ty|cu)?", Pattern.CASE_INSENSITIVE);
+        Matcher matcher = pattern.matcher(cleanNorm);
 
         if (matcher.find()) {
             String balSnippet = matcher.group(0);
