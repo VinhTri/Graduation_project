@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, Pressable, StyleSheet } from 'react-native';
 import { Ionicons, Feather } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
 import Animated, {
   Easing,
   interpolate,
@@ -137,6 +138,12 @@ export const AppSettingsSection = () => {
   const { theme, isDark, themeMode } = useTheme();
   const { language, t } = useLanguage();
 
+  const router = useRouter();
+  const { theme, isDark, themeMode } = useTheme();
+  const { language, t } = useLanguage();
+
+  const [expanded, setExpanded] = useState(false);
+  const [measuredHeight, setMeasuredHeight] = useState(0);
   const progress = useSharedValue(0);
 
   const toggle = () => {
@@ -178,6 +185,30 @@ export const AppSettingsSection = () => {
 
       <View style={[styles.sectionBody, { backgroundColor: theme.card, borderColor: theme.cardBorder }]}>
         {/* ── Header row (tap to expand) ── */}
+        {/* ── Item 1: Trung tâm hỗ trợ ── */}
+        <Pressable
+          style={[
+            styles.itemContainer,
+            {
+              borderBottomWidth: StyleSheet.hairlineWidth,
+              borderBottomColor: theme.divider,
+            },
+          ]}
+          onPress={() => router.push('/settings/support')}
+        >
+          <View style={[styles.itemIconContainer, { backgroundColor: isDark ? '#1E293B' : theme.primarySoft }]}>
+            <Feather name="headphones" size={19} color={theme.primary} />
+          </View>
+          <View style={styles.itemContent}>
+            <Text style={[styles.itemTitle, { color: theme.textPrimary }]}>Trung tâm hỗ trợ</Text>
+            <Text style={[styles.itemSubtitle, { color: theme.textSecondary }]} numberOfLines={1}>
+              FAQ, gửi yêu cầu hỗ trợ
+            </Text>
+          </View>
+          <Feather name="chevron-right" size={18} color={theme.textMuted} />
+        </Pressable>
+
+        {/* ── Item 2: Cài đặt ứng dụng ── */}
         <Pressable
           style={[
             styles.itemContainer,

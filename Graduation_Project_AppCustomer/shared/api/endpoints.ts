@@ -96,6 +96,12 @@ export const ENDPOINTS = {
     PAY: (id: number) => `/api/v1/split-bills/${id}/pay`,
     REMIND: (id: number, memberUserId: number) => `/api/v1/split-bills/${id}/remind/${memberUserId}`,
     CANCEL: (id: number) => `/api/v1/split-bills/${id}`,
-  }
+  },
+  SUPPORT: {
+    TICKETS: '/api/v1/support/tickets',
+    TICKET_DETAIL: (id: number) => `/api/v1/support/tickets/${id}`,
+    CREATE_TICKET: '/api/v1/support/tickets',
+    SEND_MESSAGE: (ticketId: number) => `/api/v1/support/tickets/${ticketId}/messages`,
+  },
 };
 

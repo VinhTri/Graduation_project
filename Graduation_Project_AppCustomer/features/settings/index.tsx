@@ -74,6 +74,15 @@ export function SettingsScreen() {
         <SecuritySection />
 
         <AppSettingsSection />
+        <SettingsSection title="Hỗ trợ">
+          <SettingsItem
+            icon={<Feather name="headphones" size={19} color={ICON} />}
+            title="Trung tâm hỗ trợ"
+            subtitle="Câu hỏi thường gặp & Trợ giúp trực tuyến"
+            onPress={() => router.push('/settings/support')}
+            isLast
+          />
+        </SettingsSection>
 
         <LogoutButton />
       </ScrollView>

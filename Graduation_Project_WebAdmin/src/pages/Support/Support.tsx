@@ -70,9 +70,9 @@ export const Support = () => {
   const [updatingStatus, setUpdatingStatus] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
 
-  const fetchTickets = async () => {
+  const fetchTickets = async (isSilent = false) => {
     try {
-      setLoadingList(true);
+      if (!isSilent) setLoadingList(true);
       const response = await apiClient.get('/api/v1/admin/support/tickets');
       const data = response.data?.data || response.data || [];
       const list = Array.isArray(data) ? data : [];
@@ -81,39 +81,65 @@ export const Support = () => {
         setSelectedId(list[0].id);
       }
     } catch (error: any) {
-      message.error(error?.response?.data?.message || 'Không thể tải danh sách hỗ trợ');
+      if (!isSilent) {
+        message.error(error?.response?.data?.message || 'Không thể tải danh sách hỗ trợ');
+      }
     } finally {
-      setLoadingList(false);
+      if (!isSilent) setLoadingList(false);
     }
   };
 
-  const fetchDetail = async (id: number) => {
+  const fetchDetail = async (id: number, isSilent = false) => {
     try {
-      setLoadingDetail(true);
+      if (!isSilent) setLoadingDetail(true);
       const response = await apiClient.get(`/api/v1/admin/support/tickets/${id}`);
       const data = response.data?.data || response.data;
       if (data) setDetail(data);
     } catch (error: any) {
-      message.error(error?.response?.data?.message || 'Không thể tải hội thoại');
-      setDetail(null);
+      if (!isSilent) {
+        message.error(error?.response?.data?.message || 'Không thể tải hội thoại');
+        setDetail(null);
+      }
     } finally {
-      setLoadingDetail(false);
+      if (!isSilent) setLoadingDetail(false);
     }
   };
 
   useEffect(() => {
-    fetchTickets();
+    fetchTickets(false);
   }, []);
 
   useEffect(() => {
     if (selectedId != null) {
-      fetchDetail(selectedId);
+      fetchDetail(selectedId, false);
       setReply('');
     }
   }, [selectedId]);
 
+  // Auto-polling interval every 3 seconds for real-time chat updates
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    const interval = setInterval(() => {
+      fetchTickets(true);
+      if (selectedId != null) {
+        fetchDetail(selectedId, true);
+      }
+    }, 3000);
+
+    return () => clearInterval(interval);
+  }, [selectedId]);
+
+  // Track message count so auto-polling doesn't yank admin down when reading older messages
+  const prevMsgCountRef = useRef(0);
+  useEffect(() => {
+    prevMsgCountRef.current = 0;
+  }, [selectedId]);
+
+  useEffect(() => {
+    const currentCount = detail?.messages?.length || 0;
+    if (currentCount > prevMsgCountRef.current) {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }
+    prevMsgCountRef.current = currentCount;
   }, [detail?.messages]);
 
   const filteredTickets = useMemo(() => {
