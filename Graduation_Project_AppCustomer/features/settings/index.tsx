@@ -74,7 +74,8 @@ export function SettingsScreen() {
           <SettingsItem
             icon={<Feather name="headphones" size={19} color={ICON} />}
             title="Trung tâm hỗ trợ"
-            subtitle="Câu hỏi thường gặp"
+            subtitle="FAQ, Hotline, gửi yêu cầu hỗ trợ"
+            onPress={() => router.push('/settings/support')}
           />
           <SettingsItem
             icon={<Ionicons name="settings-outline" size={20} color={ICON} />}
