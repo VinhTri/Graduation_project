@@ -1,0 +1,468 @@
+import { StyleSheet } from 'react-native';
+import { PASTEL_PALETTE } from '@/shared/constants/PastelPalette';
+
+export const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: PASTEL_PALETTE.bg,
+  },
+  headerContent: {
+    paddingBottom: 16,
+  },
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  headerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  backButton: {
+    width: 40,
+    height: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 10,
+    marginLeft: -8,
+  },
+  titleContainer: {
+    flexDirection: 'column',
+  },
+  headerTitle: {
+    color: PASTEL_PALETTE.title,
+    fontSize: 20,
+    fontWeight: 'bold',
+  },
+  headerSubtitle: {
+    fontSize: 11,
+    color: PASTEL_PALETTE.subtitle,
+    fontWeight: '600',
+    marginTop: 2,
+  },
+  addButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.7)',
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 20,
+    gap: 4,
+  },
+  addButtonText: {
+    color: PASTEL_PALETTE.title,
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  listContainer: {
+    padding: 16,
+    flexGrow: 1,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+
+  // Summary Card (Giống BudgetScreen)
+  summaryCard: {
+    backgroundColor: '#FFF',
+    borderRadius: 20,
+    padding: 18,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: PASTEL_PALETTE.border,
+    shadowColor: PASTEL_PALETTE.accentDeep,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.05,
+    shadowRadius: 10,
+    elevation: 2,
+  },
+  summaryTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: PASTEL_PALETTE.subtitle,
+    marginBottom: 12,
+  },
+  summaryRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  summaryItem: {
+    flex: 1,
+  },
+  summaryDivider: {
+    width: 1,
+    height: 32,
+    backgroundColor: PASTEL_PALETTE.border,
+    marginHorizontal: 12,
+  },
+  summaryLabel: {
+    fontSize: 12,
+    color: PASTEL_PALETTE.textGray,
+  },
+  summaryValue: {
+    fontSize: 17,
+    fontWeight: 'bold',
+    color: PASTEL_PALETTE.title,
+    marginTop: 2,
+  },
+
+  // Switcher Tabs
+  tabsContainer: {
+    flexDirection: 'row',
+    backgroundColor: 'rgba(255, 255, 255, 0.7)',
+    borderRadius: 14,
+    padding: 4,
+    marginBottom: 14,
+    borderWidth: 1,
+    borderColor: PASTEL_PALETTE.border,
+  },
+  tabButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 9,
+    borderRadius: 10,
+    gap: 6,
+  },
+  tabButtonActive: {
+    backgroundColor: '#FFFFFF',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.08,
+    shadowRadius: 3,
+    elevation: 2,
+  },
+  tabButtonText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: PASTEL_PALETTE.textGray,
+  },
+  tabButtonTextActive: {
+    color: PASTEL_PALETTE.accentDeep,
+    fontWeight: '700',
+  },
+  tabBadge: {
+    backgroundColor: PASTEL_PALETTE.accentDeep,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 10,
+    minWidth: 18,
+    alignItems: 'center',
+  },
+  tabBadgeText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+
+  // Search Container (Giống BudgetScreen)
+  searchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 14,
+    paddingHorizontal: 12,
+    height: 44,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: PASTEL_PALETTE.border,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  searchInput: {
+    flex: 1,
+    marginLeft: 8,
+    fontSize: 14,
+    color: PASTEL_PALETTE.title,
+  },
+
+  // Categories Pills
+  catScroll: {
+    marginBottom: 14,
+  },
+  catPill: {
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    borderRadius: 20,
+    backgroundColor: '#FFFFFF',
+    marginRight: 8,
+    borderWidth: 1,
+    borderColor: PASTEL_PALETTE.border,
+  },
+  catPillActive: {
+    backgroundColor: PASTEL_PALETTE.accentDeep,
+    borderColor: PASTEL_PALETTE.accentDeep,
+  },
+  catPillText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: PASTEL_PALETTE.subtitle,
+  },
+  catPillTextActive: {
+    color: '#FFFFFF',
+    fontWeight: '700',
+  },
+
+  // Card (Kiểu dáng giống BudgetCard)
+  card: {
+    backgroundColor: 'white',
+    borderRadius: 16,
+    padding: 14,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: PASTEL_PALETTE.border,
+    shadowColor: PASTEL_PALETTE.accentDeep,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    elevation: 2,
+  },
+  cardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 10,
+  },
+  cardLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    marginRight: 10,
+  },
+  iconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  cardTitleWrap: {
+    flex: 1,
+  },
+  cardTitle: {
+    fontSize: 15,
+    fontWeight: 'bold',
+    color: PASTEL_PALETTE.title,
+  },
+  cardSubtitle: {
+    fontSize: 12,
+    color: PASTEL_PALETTE.subtitle,
+    marginTop: 2,
+  },
+  statusBadge: {
+    paddingHorizontal: 9,
+    paddingVertical: 4,
+    borderRadius: 10,
+  },
+  statusBadgeText: {
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  cardMessagePreview: {
+    fontSize: 13,
+    color: '#4B5563',
+    lineHeight: 19,
+    marginBottom: 10,
+    paddingHorizontal: 2,
+  },
+  cardFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingTop: 10,
+    borderTopWidth: 1,
+    borderTopColor: PASTEL_PALETTE.border,
+  },
+  cardDateRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  cardDateText: {
+    fontSize: 11,
+    color: PASTEL_PALETTE.textGray,
+  },
+  cardActionText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: PASTEL_PALETTE.accentDeep,
+  },
+
+  // FAQ Accordion Content
+  faqAnswerContainer: {
+    marginTop: 10,
+    paddingTop: 10,
+    borderTopWidth: 1,
+    borderTopColor: PASTEL_PALETTE.border,
+  },
+  faqAnswerText: {
+    fontSize: 13,
+    color: '#4B5563',
+    lineHeight: 21,
+  },
+
+  // Empty State (Giống BudgetScreen)
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 40,
+    paddingHorizontal: 32,
+    paddingBottom: 40,
+  },
+  emptyIconContainer: {
+    marginBottom: 16,
+    width: 90,
+    height: 90,
+    borderRadius: 45,
+    backgroundColor: PASTEL_PALETTE.accentSoft,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  emptyText: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: PASTEL_PALETTE.title,
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  emptySubText: {
+    fontSize: 14,
+    color: PASTEL_PALETTE.textGray,
+    textAlign: 'center',
+    lineHeight: 20,
+  },
+  createButton: {
+    backgroundColor: PASTEL_PALETTE.accentDeep,
+    paddingHorizontal: 24,
+    paddingVertical: 14,
+    borderRadius: 16,
+    marginTop: 24,
+    shadowColor: PASTEL_PALETTE.accentDeep,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 6,
+    elevation: 3,
+  },
+  createButtonText: {
+    color: 'white',
+    fontSize: 15,
+    fontWeight: '700',
+  },
+
+  // Modal (Giống style Modal của BudgetScreen)
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(15, 23, 42, 0.45)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    paddingHorizontal: 20,
+    paddingTop: 20,
+    paddingBottom: 32,
+    maxHeight: '90%',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -6 },
+    shadowOpacity: 0.1,
+    shadowRadius: 16,
+    elevation: 8,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 18,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: PASTEL_PALETTE.title,
+  },
+  modalCloseBtn: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: '#F1F5F9',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  inputLabel: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: PASTEL_PALETTE.title,
+    marginBottom: 8,
+    marginTop: 12,
+  },
+  topicRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: 6,
+  },
+  topicChip: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 12,
+    backgroundColor: '#F1F5F9',
+    borderWidth: 1,
+    borderColor: PASTEL_PALETTE.border,
+  },
+  topicChipActive: {
+    backgroundColor: PASTEL_PALETTE.accentSoft,
+    borderColor: PASTEL_PALETTE.accentDeep,
+  },
+  topicChipText: {
+    fontSize: 12,
+    color: PASTEL_PALETTE.subtitle,
+    fontWeight: '500',
+  },
+  topicChipTextActive: {
+    color: PASTEL_PALETTE.accentDeep,
+    fontWeight: '700',
+  },
+  modalInput: {
+    backgroundColor: '#F8FAFC',
+    borderRadius: 14,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    fontSize: 14,
+    color: PASTEL_PALETTE.title,
+    borderWidth: 1,
+    borderColor: PASTEL_PALETTE.border,
+  },
+  modalTextArea: {
+    height: 110,
+    textAlignVertical: 'top',
+  },
+  modalSubmitBtn: {
+    backgroundColor: PASTEL_PALETTE.accentDeep,
+    borderRadius: 16,
+    paddingVertical: 14,
+    alignItems: 'center',
+    marginTop: 22,
+    shadowColor: PASTEL_PALETTE.accentDeep,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  modalSubmitBtnDisabled: {
+    opacity: 0.6,
+  },
+  modalSubmitBtnText: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+});

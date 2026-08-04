@@ -70,16 +70,12 @@ export function SettingsScreen() {
 
         <SecuritySection />
 
-        <SettingsSection title="Hỗ trợ & Cài đặt">
+        <SettingsSection title="Hỗ trợ">
           <SettingsItem
             icon={<Feather name="headphones" size={19} color={ICON} />}
             title="Trung tâm hỗ trợ"
-            subtitle="Câu hỏi thường gặp"
-          />
-          <SettingsItem
-            icon={<Ionicons name="settings-outline" size={20} color={ICON} />}
-            title="Cài đặt ứng dụng"
-            subtitle="Thông báo, giao diện"
+            subtitle="Câu hỏi thường gặp & Trợ giúp trực tuyến"
+            onPress={() => router.push('/settings/support')}
             isLast
           />
         </SettingsSection>
