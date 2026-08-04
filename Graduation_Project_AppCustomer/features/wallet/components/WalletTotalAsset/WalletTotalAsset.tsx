@@ -7,11 +7,12 @@ import { ENDPOINTS } from "../../../../shared/api/endpoints";
 import { Ionicons } from "@expo/vector-icons";
 import { WalletTotalAssetProps } from "./WalletTotalAsset.types";
 import { styles } from "./WalletTotalAsset.styles";
+import { useLanguage } from "../../../../shared/contexts/ThemeLanguageContext";
 
-const getLinkedBankText = (count: number) => {
-  if (count <= 0) return "Chưa liên kết ngân hàng";
-  if (count === 1) return "1 tài khoản ngân hàng đang liên kết";
-  return `${count} tài khoản ngân hàng đang liên kết`;
+const getLinkedBankText = (count: number, isEn: boolean) => {
+  if (count <= 0) return isEn ? "No bank linked" : "Chưa liên kết ngân hàng";
+  if (count === 1) return isEn ? "1 bank account linked" : "1 tài khoản ngân hàng đang liên kết";
+  return isEn ? `${count} bank accounts linked` : `${count} tài khoản ngân hàng đang liên kết`;
 };
 
 export const WalletTotalAsset: React.FC<WalletTotalAssetProps> = ({
@@ -20,6 +21,8 @@ export const WalletTotalAsset: React.FC<WalletTotalAssetProps> = ({
   const [isBalanceHidden, setIsBalanceHidden] = useState(false);
   const [balance, setBalance] = useState(totalBalance);
   const [linkedBankCount, setLinkedBankCount] = useState(0);
+  const { t, language } = useLanguage();
+  const isEn = language === 'en';
 
   useFocusEffect(
     useCallback(() => {
@@ -51,7 +54,7 @@ export const WalletTotalAsset: React.FC<WalletTotalAssetProps> = ({
       <View style={styles.balanceHeader}>
         <View style={styles.balanceLabelContainer}>
           <Ionicons name="shield-checkmark-outline" size={14} color="#7C3AED" />
-          <Text style={styles.balanceLabel}>TỔNG TÀI SẢN KHẢ DỤNG</Text>
+          <Text style={styles.balanceLabel}>{t('availableBalance').toUpperCase()}</Text>
         </View>
         <TouchableOpacity 
           onPress={() => setIsBalanceHidden(!isBalanceHidden)} 
@@ -73,12 +76,12 @@ export const WalletTotalAsset: React.FC<WalletTotalAssetProps> = ({
       <View style={styles.statsRow}>
         <View style={styles.statItem}>
           <View style={styles.statDot} />
-          <Text style={styles.statText}>1 ví đang kết nối</Text>
+          <Text style={styles.statText}>{isEn ? '1 wallet connected' : '1 ví đang kết nối'}</Text>
         </View>
         <View style={styles.verticalDivider} />
         <View style={styles.statItem}>
           <View style={[styles.statDot, linkedBankCount === 0 && styles.statDotMuted]} />
-          <Text style={styles.statText}>{getLinkedBankText(linkedBankCount)}</Text>
+          <Text style={styles.statText}>{getLinkedBankText(linkedBankCount, isEn)}</Text>
         </View>
       </View>
     </View>
@@ -86,3 +89,4 @@ export const WalletTotalAsset: React.FC<WalletTotalAssetProps> = ({
 };
 
 export default WalletTotalAsset;
+

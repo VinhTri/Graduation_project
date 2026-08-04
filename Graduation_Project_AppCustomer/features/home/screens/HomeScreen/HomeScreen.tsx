@@ -11,14 +11,17 @@ import { ServicesGrid } from "../../components/ServicesGrid";
 import { DiscoverMore } from "../../components/DiscoverMore";
 import { AIChatModal } from "../../components/AIChatModal";
 
+import { useTheme } from "@/shared/contexts/ThemeLanguageContext";
+
 export default function HomeScreen() {
   const [isChatVisible, setIsChatVisible] = useState(false);
+  const { theme } = useTheme();
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: theme.bg }]}>
       <ScrollView
         showsVerticalScrollIndicator={false}
-        style={styles.scrollView}
+        style={[styles.scrollView, { backgroundColor: theme.bg }]}
         contentContainerStyle={styles.scrollContent}
         scrollEventThrottle={16}
         directionalLockEnabled

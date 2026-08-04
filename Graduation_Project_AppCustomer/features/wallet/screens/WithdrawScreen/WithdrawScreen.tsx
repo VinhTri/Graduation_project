@@ -53,9 +53,13 @@ const getBankLogo = (bankCode: string) => {
   return bank ? bank.logo : 'https://api.vietqr.io/img/VNPAY.png';
 };
 
+import { useLanguage } from "../../../../shared/contexts/ThemeLanguageContext";
+
 export default function WithdrawScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { t, language } = useLanguage();
+  const isEn = language === 'en';
   
   const [amount, setAmount] = useState<string>("");
   const [note, setNote] = useState<string>("");
@@ -383,13 +387,13 @@ export default function WithdrawScreen() {
   const renderLimitDetails = () => (
     <>
       <View style={styles.limitRow}>
-        <Text style={styles.limitLabel}>Hạn mức mỗi lần giao dịch</Text>
+        <Text style={styles.limitLabel}>{isEn ? "Per transaction limit" : "Hạn mức mỗi lần giao dịch"}</Text>
         {hasTransactionLimit ? (
           <Text style={styles.limitValue}>
             {transactionLimit!.toLocaleString("vi-VN")} ₫
           </Text>
         ) : (
-          <Text style={styles.limitPlaceholder}>Chưa thiết lập</Text>
+          <Text style={styles.limitPlaceholder}>{isEn ? "Not set" : "Chưa thiết lập"}</Text>
         )}
       </View>
 
@@ -397,13 +401,13 @@ export default function WithdrawScreen() {
         <>
           <View style={styles.limitStatsRow}>
             <View style={styles.limitStatBlock}>
-              <Text style={styles.limitStatLabel}>Số tiền đang rút</Text>
+              <Text style={styles.limitStatLabel}>{isEn ? "Withdrawal amount" : "Số tiền đang rút"}</Text>
               <Text style={styles.limitStatValue}>
                 {parsedAmount.toLocaleString("vi-VN")} ₫
               </Text>
             </View>
             <View style={styles.limitStatBlockEnd}>
-              <Text style={styles.limitStatLabel}>Hạn mức còn lại</Text>
+              <Text style={styles.limitStatLabel}>{isEn ? "Remaining limit" : "Hạn mức còn lại"}</Text>
               <Text style={styles.limitStatValue}>
                 {transactionLimitProgress.remaining.toLocaleString("vi-VN")} ₫
               </Text>
@@ -411,19 +415,19 @@ export default function WithdrawScreen() {
           </View>
           {renderLimitProgressBar(transactionLimitProgress.progressPercentage)}
           <Text style={[styles.limitStatLabel, styles.limitStatHint]}>
-            {Math.round(transactionLimitProgress.remainingPercent)}% còn lại
+            {Math.round(transactionLimitProgress.remainingPercent)}% {isEn ? "remaining" : "còn lại"}
           </Text>
         </>
       )}
 
       <View style={[styles.limitRow, styles.limitRowSpacing]}>
-        <Text style={styles.limitLabel}>Hạn mức giao dịch / ngày</Text>
+        <Text style={styles.limitLabel}>{isEn ? "Daily transaction limit" : "Hạn mức giao dịch / ngày"}</Text>
         {hasDailyLimit ? (
           <Text style={styles.limitValue}>
             {dailyLimit!.toLocaleString("vi-VN")} ₫
           </Text>
         ) : (
-          <Text style={styles.limitPlaceholder}>Chưa thiết lập</Text>
+          <Text style={styles.limitPlaceholder}>{isEn ? "Not set" : "Chưa thiết lập"}</Text>
         )}
       </View>
 
@@ -431,13 +435,13 @@ export default function WithdrawScreen() {
         <>
           <View style={styles.limitStatsRow}>
             <View style={styles.limitStatBlock}>
-              <Text style={styles.limitStatLabel}>Đã giao dịch trong ngày</Text>
+              <Text style={styles.limitStatLabel}>{isEn ? "Transacted today" : "Đã giao dịch trong ngày"}</Text>
               <Text style={styles.limitStatValue}>
                 {dailyTransactedAmount.toLocaleString("vi-VN")} ₫
               </Text>
             </View>
             <View style={styles.limitStatBlockEnd}>
-              <Text style={styles.limitStatLabel}>Hạn mức còn lại</Text>
+              <Text style={styles.limitStatLabel}>{isEn ? "Remaining limit" : "Hạn mức còn lại"}</Text>
               <Text style={styles.limitStatValue}>
                 {dailyLimitProgress.remaining.toLocaleString("vi-VN")} ₫
               </Text>

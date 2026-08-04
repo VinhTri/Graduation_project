@@ -10,18 +10,22 @@ import {
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { PASTEL_PALETTE } from '@/shared/constants/PastelPalette';
+import PastelHeaderShell, { PASTEL_PALETTE } from '@/shared/components/PastelHeaderShell/PastelHeaderShell';
 import { splitBillService, SplitBillDetail } from '@/shared/api/services/splitBillService';
 import { resolveMediaUrl } from '@/shared/utils/resolveMediaUrl';
 import PinModal from '@/shared/components/PinModal/PinModal';
 import ConfirmModal from '@/shared/components/ConfirmModal/ConfirmModal';
 import { styles } from './SplitBillDetailScreen.styles';
+import { useTheme, useLanguage } from '@/shared/contexts/ThemeLanguageContext';
 
 export const SplitBillDetailScreen = () => {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { theme } = useTheme();
+  const { language } = useLanguage();
+  const isEn = language === 'en';
+
   const { id } = useLocalSearchParams();
   const billId = typeof id === 'string' ? parseInt(id, 10) : Number(id);
 
@@ -69,84 +73,52 @@ export const SplitBillDetailScreen = () => {
     loadBillDetail();
   };
 
-  const handleBack = () => {
-    if (router.canGoBack()) {
-      router.back();
-    } else {
-      router.replace('/split-bill' as any);
-    }
-  };
-
-  const handleOpenPay = () => {
+  const handlePay = () => {
     setPinError('');
     setIsPinModalVisible(true);
   };
 
-  const handleConfirmPin = async (pin: string) => {
-    if (!billId) return;
+  const handlePinSubmit = async (pin: string) => {
+    if (!bill) return;
     try {
       setPinLoading(true);
       setPinError('');
 
-      const res: any = await splitBillService.paySplitBill(billId, { pinCode: pin });
-
+      const res: any = await splitBillService.paySplitBill(bill.id, { pinCode: pin });
       if (res && res.success) {
         setIsPinModalVisible(false);
-        setBill(res.data);
-        setSuccessMessage(
-          `Bạn đã thanh toán thành công ${(bill?.myAmount || 0).toLocaleString('vi-VN')}đ cho khoản chia '${bill?.title}'.`
-        );
+        setSuccessMessage(isEn ? 'Split bill paid successfully!' : 'Thanh toán đợt chia tiền thành công!');
         setSuccessModalVisible(true);
+        loadBillDetail();
       } else {
-        setPinError(res?.message || 'Thanh toán thất bại.');
+        setPinError(res?.message || (isEn ? 'Incorrect PIN code.' : 'Mã PIN không chính xác.'));
       }
-    } catch (error: any) {
-      console.log('Error paying split bill:', error);
-      const msg =
-        error?.response?.data?.message || error?.message || 'Đã xảy ra lỗi khi thanh toán.';
-      if (msg.toLowerCase().includes('pin')) {
-        setPinError(msg);
-      } else {
-        setIsPinModalVisible(false);
-        setErrorMessage(msg);
-        setErrorModalVisible(true);
-      }
+    } catch (err: any) {
+      const msg = err?.response?.data?.message || err?.message || (isEn ? 'Incorrect PIN code or insufficient balance.' : 'Mã PIN không đúng hoặc số dư không đủ.');
+      setPinError(msg);
     } finally {
       setPinLoading(false);
     }
   };
 
-  const handleRemindMember = async (memberUserId: number, memberUsername: string) => {
-    if (!billId) return;
-    try {
-      setRemindingUserId(memberUserId);
-      const res: any = await splitBillService.remindMember(billId, memberUserId);
-      if (res && res.success) {
-        setSuccessMessage(`Đã gửi lời nhắc thanh toán qua Email & Chuông cho ${memberUsername}.`);
-        setSuccessModalVisible(true);
-      }
-    } catch (error: any) {
-      const msg =
-        error?.response?.data?.message || error?.message || 'Không thể gửi lời nhắc lúc này.';
-      setErrorMessage(msg);
-      setErrorModalVisible(true);
-    } finally {
-      setRemindingUserId(null);
-    }
-  };
-
   const handleCancelBill = async () => {
-    if (!billId) return;
+    if (!bill) return;
     try {
       setCancelling(true);
-      const res: any = await splitBillService.cancelSplitBill(billId);
+      const res: any = await splitBillService.cancelSplitBill(bill.id);
       if (res && res.success) {
         setCancelModalVisible(false);
+        setSuccessMessage(isEn ? 'Split bill cancelled successfully!' : 'Đã hủy đợt chia tiền thành công!');
+        setSuccessModalVisible(true);
         loadBillDetail();
+      } else {
+        setCancelModalVisible(false);
+        setErrorMessage(res?.message || (isEn ? 'Could not cancel split bill.' : 'Không thể hủy đợt chia tiền.'));
+        setErrorModalVisible(true);
       }
-    } catch (error: any) {
+    } catch (err: any) {
       setCancelModalVisible(false);
-      const msg = error?.response?.data?.message || error?.message || 'Không thể hủy yêu cầu.';
+      const msg = err?.response?.data?.message || err?.message || (isEn ? 'Could not cancel split bill.' : 'Có lỗi xảy ra khi hủy đợt chia tiền.');
       setErrorMessage(msg);
       setErrorModalVisible(true);
     } finally {
@@ -154,14 +126,44 @@ export const SplitBillDetailScreen = () => {
     }
   };
 
-  const formatDate = (dateStr: string) => {
+  const handleRemindMember = async (userId: number, memberName: string) => {
+    if (!bill) return;
+    try {
+      setRemindingUserId(userId);
+      const res: any = await splitBillService.remindMember(bill.id, userId);
+      if (res && res.success) {
+        setSuccessMessage(isEn ? `Reminder sent to ${memberName}` : `Đã gửi lời nhắc đến ${memberName}`);
+        setSuccessModalVisible(true);
+      } else {
+        setErrorMessage(res?.message || (isEn ? 'Could not send reminder.' : 'Không thể gửi nhắc nhở.'));
+        setErrorModalVisible(true);
+      }
+    } catch (err: any) {
+      const msg = err?.response?.data?.message || err?.message || (isEn ? 'Could not send reminder.' : 'Chưa thể gửi nhắc nhở lúc này.');
+      setErrorMessage(msg);
+      setErrorModalVisible(true);
+    } finally {
+      setRemindingUserId(null);
+    }
+  };
+
+  const getInitialLetter = (name?: string | null) => {
+    if (!name || !name.trim()) return 'U';
+    const parts = name.trim().split(/\s+/);
+    const lastWord = parts[parts.length - 1];
+    return lastWord.charAt(0).toUpperCase();
+  };
+
+  const formatDate = (dateStr?: string) => {
     if (!dateStr) return '';
     try {
       const d = new Date(dateStr);
       return `${d.getHours().toString().padStart(2, '0')}:${d
         .getMinutes()
         .toString()
-        .padStart(2, '0')} - ${d.getDate().toString().padStart(2, '0')}/${(d.getMonth() + 1)
+        .padStart(2, '0')} - ${d.getDate().toString().padStart(2, '0')}/${(
+        d.getMonth() + 1
+      )
         .toString()
         .padStart(2, '0')}/${d.getFullYear()}`;
     } catch {
@@ -169,294 +171,212 @@ export const SplitBillDetailScreen = () => {
     }
   };
 
-  const getStatusBadge = (status: string) => {
-    if (status === 'COMPLETED') {
-      return { text: 'Đã hoàn tất', bg: '#D1FAE5', color: '#059669' };
-    }
-    if (status === 'CANCELLED') {
-      return { text: 'Đã hủy', bg: '#FEE2E2', color: '#DC2626' };
-    }
-    return { text: 'Đang chia tiền', bg: '#EDE9FE', color: '#7C3AED' };
-  };
-
   if (loading) {
     return (
-      <View style={[styles.safeArea, { justifyContent: 'center', alignItems: 'center' }]}>
-        <ActivityIndicator size="large" color={PASTEL_PALETTE.accentDeep} />
+      <View style={[styles.container, styles.loadingContainer, { backgroundColor: theme.bg }]}>
+        <ActivityIndicator size="large" color={theme.primary} />
       </View>
     );
   }
 
   if (!bill) {
     return (
-      <View style={[styles.safeArea, { justifyContent: 'center', alignItems: 'center', padding: 20 }]}>
-        <Ionicons name="alert-circle-outline" size={48} color={PASTEL_PALETTE.textMuted} />
-        <Text style={{ fontSize: 16, color: PASTEL_PALETTE.title, marginTop: 12, fontWeight: '700' }}>
-          Không tìm thấy yêu cầu chia tiền
-        </Text>
-        <TouchableOpacity
-          style={[styles.payBtn, { marginTop: 20, paddingHorizontal: 24 }]}
-          onPress={handleBack}
-        >
-          <Text style={styles.payBtnText}>Quay lại</Text>
+      <View style={[styles.container, styles.loadingContainer, { backgroundColor: theme.bg }]}>
+        <Text style={[styles.errorText, { color: theme.textSecondary }]}>{isEn ? 'Split bill detail not found.' : 'Không tìm thấy thông tin đợt chia tiền.'}</Text>
+        <TouchableOpacity style={[styles.backBtnSolid, { backgroundColor: theme.primary }]} onPress={() => router.back()}>
+          <Text style={styles.backBtnSolidText}>{isEn ? 'Go back' : 'Quay lại'}</Text>
         </TouchableOpacity>
       </View>
     );
   }
 
-  const badge = getStatusBadge(bill.status);
-  const isPendingMember = !bill.creator && bill.myStatus === 'PENDING' && bill.status !== 'CANCELLED';
-  const isPaidMember = !bill.creator && bill.myStatus === 'PAID';
-  const progressPercent =
-    bill.totalMembersCount > 0
-      ? Math.round((bill.paidMembersCount / bill.totalMembersCount) * 100)
-      : 0;
+  const isCreator = bill.creator;
+  const isMyStatusPending = bill.myStatus === 'PENDING';
+  const isBillCancelled = bill.status === 'CANCELLED';
 
   return (
-    <View style={styles.safeArea}>
+    <View style={[styles.container, { backgroundColor: theme.bg }]}>
       {/* Header */}
-      <View style={styles.headerWrap}>
-        <LinearGradient
-          colors={[PASTEL_PALETTE.headerStart, PASTEL_PALETTE.headerMid, PASTEL_PALETTE.headerEnd]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={[styles.header, { paddingTop: insets.top + 12 }]}
-        >
-          <View style={styles.headerDecorCircleLarge} />
-          <View style={styles.headerDecorCircleSmall} />
-
-          <View style={styles.headerTopRow}>
-            <View style={styles.leftSection}>
-              <TouchableOpacity
-                onPress={handleBack}
-                style={styles.backButton}
-                activeOpacity={0.7}
-              >
-                <Ionicons name="chevron-back-outline" size={24} color={PASTEL_PALETTE.subtitle} />
-              </TouchableOpacity>
-              <View style={styles.titleContainer}>
-                <Text style={styles.headerTitle} numberOfLines={1}>
-                  Chi tiết chia tiền
-                </Text>
-                <Text style={styles.headerSubtitle} numberOfLines={1}>
-                  Mã hóa đơn #{bill.id}
-                </Text>
-              </View>
-            </View>
+      <PastelHeaderShell contentStyle={styles.headerContent}>
+        <View style={styles.headerRow}>
+          <TouchableOpacity onPress={() => router.back()} style={styles.backButton} activeOpacity={0.7}>
+            <Ionicons name="chevron-back-outline" size={22} color={theme.isDark ? theme.textPrimary : '#7C3AED'} />
+          </TouchableOpacity>
+          <View style={styles.titleContainer}>
+            <Text style={[styles.headerTitle, { color: theme.isDark ? theme.textPrimary : PASTEL_PALETTE.title }]} numberOfLines={1}>
+              {bill.title}
+            </Text>
+            <Text style={[styles.headerSubtitle, { color: theme.isDark ? theme.textSecondary : PASTEL_PALETTE.subtitle }]}>
+              {isEn ? 'Created by ' : 'Tạo bởi '}{bill.creatorUsername}
+            </Text>
           </View>
-        </LinearGradient>
-      </View>
+
+          {isCreator && bill.status === 'PENDING' && (
+            <TouchableOpacity
+              style={styles.cancelBillHeaderBtn}
+              onPress={() => setCancelModalVisible(true)}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.cancelBillHeaderBtnText}>{isEn ? 'Cancel' : 'Hủy đợt chia'}</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+      </PastelHeaderShell>
 
       <ScrollView
-        style={styles.content}
         showsVerticalScrollIndicator={false}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.primary} />}
+        contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 100 }]}
       >
-        {/* Overview Card */}
-        <View style={styles.overviewCard}>
-          <View style={styles.billTitleRow}>
-            <Text style={styles.billTitleText}>{bill.title}</Text>
-            <View style={[styles.statusBadge, { backgroundColor: badge.bg }]}>
-              <Text style={[styles.statusText, { color: badge.color }]}>{badge.text}</Text>
+        {/* Card 1: Overview Summary */}
+        <View style={[styles.summaryCard, { backgroundColor: theme.card, borderColor: theme.cardBorder, borderWidth: 1 }]}>
+          <View style={styles.summaryBadgeRow}>
+            <View style={[styles.statusTag, { backgroundColor: isBillCancelled ? '#FEE2E2' : (bill.status === 'COMPLETED' ? '#D1FAE5' : '#FEF3C7') }]}>
+              <Text style={[styles.statusTagText, { color: isBillCancelled ? '#EF4444' : (bill.status === 'COMPLETED' ? '#10B981' : '#D97706') }]}>
+                {isBillCancelled ? (isEn ? 'Cancelled' : 'Đã hủy') : (bill.status === 'COMPLETED' ? (isEn ? 'Completed' : 'Đã hoàn tất') : (isEn ? 'In Progress' : 'Đang tiến hành'))}
+              </Text>
             </View>
+            <Text style={[styles.createdAtText, { color: theme.textMuted }]}>{formatDate(bill.createdAt)}</Text>
           </View>
 
-          <Text style={styles.billDateText}>Tạo lúc: {formatDate(bill.createdAt)}</Text>
-
-          <View style={styles.totalAmountSection}>
-            <Text style={styles.totalLabel}>Tổng số tiền hóa đơn</Text>
-            <Text style={styles.totalValue}>{bill.totalAmount.toLocaleString('vi-VN')}đ</Text>
-          </View>
+          <Text style={[styles.totalAmountLabel, { color: theme.textSecondary }]}>{isEn ? 'Total Bill Amount' : 'Tổng số tiền hóa đơn'}</Text>
+          <Text style={[styles.totalAmountValue, { color: theme.textPrimary }]}>{(bill.totalAmount || 0).toLocaleString('vi-VN')}đ</Text>
 
           {bill.note ? (
-            <View style={styles.noteBox}>
-              <Text style={styles.noteLabel}>Ghi chú:</Text>
-              <Text style={styles.noteText}>{bill.note}</Text>
+            <View style={[styles.noteBox, { backgroundColor: theme.bgSoft }]}>
+              <Ionicons name="document-text-outline" size={16} color={theme.textSecondary} />
+              <Text style={[styles.noteText, { color: theme.textSecondary }]}>{bill.note}</Text>
             </View>
           ) : null}
 
-          {/* Progress */}
-          <View style={styles.progressSection}>
-            <View style={styles.progressRow}>
-              <Text style={styles.progressLabel}>Tiến độ thanh toán</Text>
-              <Text style={styles.progressCount}>
-                {bill.paidMembersCount}/{bill.totalMembersCount} người ({progressPercent}%)
-              </Text>
-            </View>
-            <View style={styles.track}>
-              <View style={[styles.fill, { width: `${progressPercent}%` }]} />
-            </View>
-          </View>
-        </View>
-
-        {/* Creator Card */}
-        <View style={styles.creatorCard}>
-          <View style={styles.creatorAvatar}>
-            {bill.creatorAvatarUrl ? (
-              <Image
-                source={{ uri: resolveMediaUrl(bill.creatorAvatarUrl) || '' }}
-                style={styles.creatorAvatarImage}
-              />
-            ) : (
-              <Text style={styles.creatorAvatarText}>
-                {(() => {
-                  if (!bill.creatorUsername || !bill.creatorUsername.trim()) return 'U';
-                  const parts = bill.creatorUsername.trim().split(/\s+/);
-                  return parts[parts.length - 1].charAt(0).toUpperCase();
-                })()}
-              </Text>
-            )}
-          </View>
-          <View style={styles.creatorInfo}>
-            <Text style={styles.creatorRoleText}>Người tạo yêu cầu</Text>
-            <Text style={styles.creatorName}>
-              {bill.creator ? `${bill.creatorUsername} (Bạn)` : bill.creatorUsername}
-            </Text>
-            <Text style={styles.creatorEmail}>{bill.creatorEmail}</Text>
-          </View>
-        </View>
-
-        {/* Participants List */}
-        <View style={styles.membersCard}>
-          <Text style={styles.membersTitle}>
-            Danh sách người tham gia ({bill.members.length})
-          </Text>
-
-          {bill.members.map((member) => {
-            const isPaid = member.status === 'PAID';
-            const isReminding = remindingUserId === member.userId;
-            const parts = (member.username || '').trim().split(/\s+/);
-            const initial = parts.length > 0 && parts[0] ? parts[parts.length - 1].charAt(0).toUpperCase() : 'U';
-
-            return (
-              <View key={member.id} style={styles.memberItem}>
-                <View style={styles.memberAvatar}>
-                  {member.avatarUrl ? (
-                    <Image
-                      source={{ uri: resolveMediaUrl(member.avatarUrl) || '' }}
-                      style={styles.memberAvatarImage}
-                    />
-                  ) : (
-                    <Text style={styles.memberAvatarText}>{initial}</Text>
-                  )}
-                </View>
-
-                <View style={styles.memberInfo}>
-                  <Text style={styles.memberName} numberOfLines={1}>
-                    {member.username}
-                  </Text>
-                  <Text style={styles.memberSubtext} numberOfLines={1}>
-                    {member.email}
-                  </Text>
-                </View>
-
-                <View style={styles.memberAmountSection}>
-                  <Text style={styles.memberAmountText}>
-                    {member.amount.toLocaleString('vi-VN')}đ
-                  </Text>
-
-                  {isPaid ? (
-                    <View style={styles.memberStatusPaid}>
-                      <Ionicons name="checkmark-circle" size={13} color="#059669" />
-                      <Text style={styles.memberStatusPaidText}>Đã trả</Text>
-                    </View>
-                  ) : (
-                    <View style={styles.memberStatusPending}>
-                      <Ionicons name="time" size={13} color="#D97706" />
-                      <Text style={styles.memberStatusPendingText}>Chưa trả</Text>
-                    </View>
-                  )}
-
-                  {/* Nhắc nhở button for Creator */}
-                  {bill.creator && !isPaid && bill.status === 'PENDING' && (
-                    <TouchableOpacity
-                      style={styles.remindBtn}
-                      onPress={() => handleRemindMember(member.userId, member.username)}
-                      disabled={isReminding}
-                      activeOpacity={0.7}
-                    >
-                      {isReminding ? (
-                        <ActivityIndicator size="small" color={PASTEL_PALETTE.accentDeep} />
-                      ) : (
-                        <>
-                          <Ionicons name="notifications-outline" size={12} color={PASTEL_PALETTE.accentDeep} />
-                          <Text style={styles.remindBtnText}>Nhắc nhở</Text>
-                        </>
-                      )}
-                    </TouchableOpacity>
-                  )}
-                </View>
+          {/* If I am a member to pay */}
+          {!isCreator && isMyStatusPending && !isBillCancelled && (
+            <View style={[styles.myPayBox, { backgroundColor: theme.primarySoft, borderColor: theme.primary }]}>
+              <View>
+                <Text style={[styles.myPayLabel, { color: theme.textSecondary }]}>{isEn ? 'Your amount to pay:' : 'Số tiền bạn cần trả:'}</Text>
+                <Text style={[styles.myPayAmount, { color: theme.primary }]}>{(bill.myAmount || 0).toLocaleString('vi-VN')}đ</Text>
               </View>
-            );
-          })}
+
+              <TouchableOpacity style={[styles.payNowBtn, { backgroundColor: theme.primary }]} onPress={handlePay} activeOpacity={0.85}>
+                <Text style={styles.payNowBtnText}>{isEn ? 'Pay Now' : 'Thanh toán ngay'}</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+
+          {!isCreator && bill.myStatus === 'PAID' && (
+            <View style={[styles.myPaidBox, { backgroundColor: theme.isDark ? theme.bgSoft : '#ECFDF5' }]}>
+              <Ionicons name="checkmark-circle" size={20} color="#10B981" />
+              <Text style={styles.myPaidText}>{isEn ? 'You have paid your portion' : 'Bạn đã thanh toán khoản chia này'}</Text>
+            </View>
+          )}
         </View>
 
-        {/* Nút Hủy yêu cầu chia tiền cho người tạo khi bill còn PENDING */}
-        {bill.creator && bill.status === 'PENDING' && (
-          <TouchableOpacity
-            style={styles.cancelBillButton}
-            onPress={() => setCancelModalVisible(true)}
-            activeOpacity={0.8}
-          >
-            <Ionicons name="trash-outline" size={18} color="#EF4444" />
-            <Text style={styles.cancelBillButtonText}>Hủy yêu cầu chia tiền</Text>
-          </TouchableOpacity>
-        )}
+        {/* Card 2: Members List */}
+        <View style={[styles.membersCard, { backgroundColor: theme.card, borderColor: theme.cardBorder, borderWidth: 1 }]}>
+          <View style={styles.membersHeaderRow}>
+            <Text style={[styles.membersCardTitle, { color: theme.textPrimary }]}>
+              {isEn ? 'Members (' : 'Danh sách thành viên ('}{bill.members.length})
+            </Text>
+            <Text style={[styles.membersPaidRatio, { color: theme.primary }]}>
+              {(bill.totalPaidAmount || 0).toLocaleString('vi-VN')}đ / {(bill.totalAmount || 0).toLocaleString('vi-VN')}đ
+            </Text>
+          </View>
 
-        <View style={{ height: 100 }} />
+          <View style={styles.membersList}>
+            {bill.members.map((member) => {
+              const isPaid = member.status === 'PAID';
+
+              return (
+                <View key={member.id} style={[styles.memberRow, { borderBottomColor: theme.divider }]}>
+                  <View style={[styles.memberAvatarCircle, { backgroundColor: theme.primarySoft }]}>
+                    {member.avatarUrl ? (
+                      <Image source={{ uri: resolveMediaUrl(member.avatarUrl) || '' }} style={styles.memberAvatarImage} />
+                    ) : (
+                      <Text style={[styles.memberAvatarText, { color: theme.primary }]}>{getInitialLetter(member.username)}</Text>
+                    )}
+                  </View>
+
+                  <View style={styles.memberInfo}>
+                    <View style={styles.memberNameRow}>
+                      <Text style={[styles.memberName, { color: theme.textPrimary }]}>{member.username}</Text>
+                      {member.userId === bill.creatorId && (
+                        <View style={[styles.creatorBadge, { backgroundColor: theme.primarySoft }]}>
+                          <Text style={[styles.creatorBadgeText, { color: theme.primary }]}>{isEn ? 'Creator' : 'Người tạo'}</Text>
+                        </View>
+                      )}
+                    </View>
+                    <Text style={[styles.memberAmountText, { color: theme.textSecondary }]}>
+                      {(member.amount || 0).toLocaleString('vi-VN')}đ
+                    </Text>
+                  </View>
+
+                  <View style={styles.memberStatusCol}>
+                    {isPaid ? (
+                      <View style={styles.paidStatusBadge}>
+                        <Ionicons name="checkmark-circle" size={14} color="#10B981" />
+                        <Text style={styles.paidStatusText}>{isEn ? 'Paid' : 'Đã trả'}</Text>
+                      </View>
+                    ) : (
+                      <View style={{ alignItems: 'flex-end', gap: 4 }}>
+                        <Text style={styles.pendingStatusText}>{isEn ? 'Unpaid' : 'Chưa trả'}</Text>
+                        {isCreator && !isBillCancelled && member.userId !== bill.creatorId && (
+                          <TouchableOpacity
+                            style={[styles.remindBtn, { borderColor: theme.primary }]}
+                            onPress={() => handleRemindMember(member.userId, member.username)}
+                            disabled={remindingUserId === member.userId}
+                            activeOpacity={0.7}
+                          >
+                            {remindingUserId === member.userId ? (
+                              <ActivityIndicator size="small" color={theme.primary} />
+                            ) : (
+                              <Text style={[styles.remindBtnText, { color: theme.primary }]}>{isEn ? 'Remind' : 'Nhắc nhở'}</Text>
+                            )}
+                          </TouchableOpacity>
+                        )}
+                      </View>
+                    )}
+                  </View>
+                </View>
+              );
+            })}
+          </View>
+        </View>
       </ScrollView>
-
-      {/* Sticky Bottom Action */}
-      {isPendingMember && bill.myAmount != null && (
-        <View style={styles.payFooter}>
-          <View style={styles.payFooterRow}>
-            <Text style={styles.payFooterLabel}>Số tiền bạn cần trả:</Text>
-            <Text style={styles.payFooterAmount}>
-              {bill.myAmount.toLocaleString('vi-VN')}đ
-            </Text>
-          </View>
-
-          <TouchableOpacity
-            style={styles.payBtn}
-            onPress={handleOpenPay}
-            activeOpacity={0.8}
-          >
-            <Text style={styles.payBtnText}>Thanh toán ngay bằng ví</Text>
-          </TouchableOpacity>
-        </View>
-      )}
-
-      {isPaidMember && (
-        <View style={styles.payFooter}>
-          <View style={styles.paidBanner}>
-            <Ionicons name="checkmark-circle" size={20} color="#059669" />
-            <Text style={styles.paidBannerText}>
-              Bạn đã thanh toán thành công {(bill.myAmount || 0).toLocaleString('vi-VN')}đ cho khoản chia này.
-            </Text>
-          </View>
-        </View>
-      )}
 
       {/* Pin Modal for Payment */}
       <PinModal
         visible={isPinModalVisible}
         onClose={() => setIsPinModalVisible(false)}
-        onConfirm={handleConfirmPin}
+        onConfirm={handlePinSubmit}
         errorMessage={pinError}
-        title="Nhập mã PIN ví"
-        subtitle="Vui lòng nhập mã PIN bảo mật để xác nhận thanh toán chia tiền."
+        title={isEn ? "Confirm Payment" : "Xác nhận thanh toán"}
+        subtitle={isEn ? `Enter PIN to pay ${(bill?.myAmount || 0).toLocaleString('vi-VN')}đ` : `Nhập mã PIN để thanh toán ${(bill?.myAmount || 0).toLocaleString('vi-VN')}đ`}
+      />
+
+      {/* Cancel Confirmation Modal */}
+      <ConfirmModal
+        visible={cancelModalVisible}
+        title={isEn ? "Cancel Split Bill?" : "Hủy đợt chia tiền?"}
+        message={isEn ? "Are you sure you want to cancel this split bill request?" : "Bạn có chắc chắn muốn hủy đợt chia tiền này? Hành động này không thể hoàn tác."}
+        iconName="trash"
+        iconColor="#EF4444"
+        confirmText={isEn ? "Cancel Bill" : "Hủy đợt chia"}
+        cancelText={isEn ? "Go back" : "Quay lại"}
+        confirmButtonColor="#EF4444"
+        onConfirm={handleCancelBill}
+        onCancel={() => setCancelModalVisible(false)}
       />
 
       {/* Error Modal */}
       <ConfirmModal
         visible={errorModalVisible}
-        title="Thông báo"
+        title={isEn ? "Notification" : "Thông báo"}
         message={errorMessage}
         iconName="alert-circle"
         iconColor="#EF4444"
-        confirmText="Đã hiểu"
+        confirmText={isEn ? "Understood" : "Đã hiểu"}
         hideCancel={true}
-        confirmButtonColor={PASTEL_PALETTE.accentDeep}
+        confirmButtonColor="#EF4444"
         onConfirm={() => setErrorModalVisible(false)}
         onCancel={() => setErrorModalVisible(false)}
       />
@@ -464,29 +384,15 @@ export const SplitBillDetailScreen = () => {
       {/* Success Modal */}
       <ConfirmModal
         visible={successModalVisible}
-        title="Thành công!"
+        title={isEn ? "Success!" : "Thành công!"}
         message={successMessage}
         iconName="checkmark-circle"
         iconColor="#10B981"
-        confirmText="Đóng"
+        confirmText={isEn ? "Understood" : "Đã hiểu"}
         hideCancel={true}
-        confirmButtonColor={PASTEL_PALETTE.accentDeep}
+        confirmButtonColor="#10B981"
         onConfirm={() => setSuccessModalVisible(false)}
         onCancel={() => setSuccessModalVisible(false)}
-      />
-
-      {/* Cancel Confirm Modal */}
-      <ConfirmModal
-        visible={cancelModalVisible}
-        title="Hủy yêu cầu chia tiền"
-        message="Bạn có chắc chắn muốn hủy yêu cầu chia tiền này không? Hành động này không thể hoàn tác."
-        iconName="trash"
-        iconColor="#EF4444"
-        confirmText={cancelling ? 'Đang hủy...' : 'Hủy yêu cầu'}
-        cancelText="Đóng"
-        confirmButtonColor="#EF4444"
-        onConfirm={handleCancelBill}
-        onCancel={() => setCancelModalVisible(false)}
       />
     </View>
   );

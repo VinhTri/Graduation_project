@@ -8,7 +8,7 @@ import Animated, {
   useSharedValue,
   withSpring,
 } from "react-native-reanimated";
-import { PASTEL_PALETTE } from "../../constants/PastelPalette";
+import { useTheme, useLanguage } from "../../contexts/ThemeLanguageContext";
 
 const TAB_ICONS: Record<string, { active: keyof typeof Ionicons.glyphMap; inactive: keyof typeof Ionicons.glyphMap }> = {
   "home/index": { active: "home", inactive: "home-outline" },
@@ -16,6 +16,14 @@ const TAB_ICONS: Record<string, { active: keyof typeof Ionicons.glyphMap; inacti
   "funds/index": { active: "briefcase", inactive: "briefcase-outline" },
   "notebook/index": { active: "book", inactive: "book-outline" },
   "more/index": { active: "person", inactive: "person-outline" },
+};
+
+const TAB_TRANSLATION_KEYS: Record<string, any> = {
+  "home/index": "homeTab",
+  "wallet/index": "walletTab",
+  "funds/index": "fundsTab",
+  "notebook/index": "notebookTab",
+  "more/index": "moreTab",
 };
 
 const SPRING = { damping: 20, stiffness: 220, mass: 0.8 };
@@ -37,6 +45,7 @@ function TabItem({
   accessibilityLabel?: string;
   testID?: string;
 }) {
+  const { theme } = useTheme();
   const scale = useSharedValue(isFocused ? 1 : 0.92);
 
   useEffect(() => {
@@ -61,13 +70,13 @@ function TabItem({
         <Ionicons
           name={iconName}
           size={22}
-          color={isFocused ? PASTEL_PALETTE.accentDeep : PASTEL_PALETTE.textMuted}
+          color={isFocused ? theme.primary : theme.textMuted}
         />
       </Animated.View>
       <Text
         style={[
           styles.tabLabel,
-          isFocused ? styles.tabLabelActive : styles.tabLabelInactive,
+          { color: isFocused ? theme.primary : theme.textMuted },
         ]}
         numberOfLines={1}
       >
@@ -81,6 +90,8 @@ export default function CustomTabBar({ state, descriptors, navigation }: BottomT
   const insets = useSafeAreaInsets();
   const barWidth = useSharedValue(0);
   const indicatorX = useSharedValue(0);
+  const { theme } = useTheme();
+  const { t } = useLanguage();
 
   const visibleRoutes = useMemo(
     () => state.routes.filter((route) => route.name !== "index"),
@@ -118,14 +129,16 @@ export default function CustomTabBar({ state, descriptors, navigation }: BottomT
 
   return (
     <View style={[styles.tabBarContainer, { paddingBottom: Math.max(insets.bottom, 10) }]}>
-      <View style={styles.tabBarShadow}>
-        <View style={styles.tabBar} onLayout={onBarLayout}>
-          <Animated.View style={[styles.activePill, indicatorStyle]} pointerEvents="none" />
+      <View style={[styles.tabBarShadow, { backgroundColor: theme.card, borderColor: theme.cardBorder, shadowColor: theme.shadowColor }]}>
+        <View style={[styles.tabBar, { backgroundColor: theme.card }]} onLayout={onBarLayout}>
+          <Animated.View style={[styles.activePill, { backgroundColor: theme.primarySoft, borderColor: theme.primarySoft }, indicatorStyle]} pointerEvents="none" />
 
           {visibleRoutes.map((route) => {
             const { options } = descriptors[route.key];
-            const label =
-              options.tabBarLabel !== undefined
+            const translationKey = TAB_TRANSLATION_KEYS[route.name];
+            const label = translationKey
+              ? t(translationKey)
+              : options.tabBarLabel !== undefined
                 ? options.tabBarLabel
                 : options.title !== undefined
                   ? options.title
@@ -188,14 +201,11 @@ const styles = StyleSheet.create({
   },
   tabBarShadow: {
     borderRadius: 28,
-    backgroundColor: PASTEL_PALETTE.white,
-    shadowColor: PASTEL_PALETTE.lavender,
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.22,
     shadowRadius: 18,
     elevation: 12,
     borderWidth: 1,
-    borderColor: PASTEL_PALETTE.border,
   },
   tabBar: {
     flexDirection: "row",
@@ -204,16 +214,13 @@ const styles = StyleSheet.create({
     paddingTop: 8,
     paddingBottom: 8,
     minHeight: 62,
-    backgroundColor: "rgba(255, 255, 255, 0.96)",
   },
   activePill: {
     position: "absolute",
     top: 6,
     bottom: 6,
     borderRadius: 20,
-    backgroundColor: PASTEL_PALETTE.accentSoft,
     borderWidth: 1,
-    borderColor: "#FBCFE8",
   },
   tabButton: {
     flex: 1,
@@ -234,10 +241,5 @@ const styles = StyleSheet.create({
     marginTop: 2,
     letterSpacing: 0.2,
   },
-  tabLabelActive: {
-    color: PASTEL_PALETTE.accentDeep,
-  },
-  tabLabelInactive: {
-    color: PASTEL_PALETTE.textMuted,
-  },
 });
+

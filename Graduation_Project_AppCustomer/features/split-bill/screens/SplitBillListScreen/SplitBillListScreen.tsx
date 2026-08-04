@@ -19,10 +19,14 @@ import { resolveMediaUrl } from '@/shared/utils/resolveMediaUrl';
 import { EmptyBoxIllustration } from '../../components/EmptyBoxIllustration';
 import ConfirmModal from '@/shared/components/ConfirmModal/ConfirmModal';
 import { styles } from './SplitBillListScreen.styles';
+import { useTheme, useLanguage } from '@/shared/contexts/ThemeLanguageContext';
 
 export const SplitBillListScreen = () => {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { theme } = useTheme();
+  const { language } = useLanguage();
+  const isEn = language === 'en';
 
   const [bills, setBills] = useState<SplitBillDetail[]>([]);
   const [loading, setLoading] = useState(true);
@@ -41,7 +45,6 @@ export const SplitBillListScreen = () => {
     });
   }, []);
 
-  // Success / Info Toast Modal
   const [infoModalVisible, setInfoModalVisible] = useState(false);
   const [infoModalTitle, setInfoModalTitle] = useState('');
   const [infoModalMessage, setInfoModalMessage] = useState('');
@@ -74,7 +77,6 @@ export const SplitBillListScreen = () => {
     loadBills();
   };
 
-  // Split bills by status and roles
   const pendingPayBills = useMemo(() => {
     return bills.filter(
       (b) => !b.creator && b.myStatus === 'PENDING' && b.status !== 'CANCELLED'
@@ -109,7 +111,6 @@ export const SplitBillListScreen = () => {
     }
   };
 
-  // Lấy chữ cái đầu của từ cuối trong tên (VD: "Giang" -> "G", "Hương Giang" -> "G", "Hậu" -> "H")
   const getInitialLetter = (name?: string | null) => {
     if (!name || !name.trim()) return 'U';
     const parts = name.trim().split(/\s+/);
@@ -120,8 +121,8 @@ export const SplitBillListScreen = () => {
   const handleRemindAll = async (bill: SplitBillDetail) => {
     const pendingMembers = bill.members.filter((m) => m.status === 'PENDING');
     if (pendingMembers.length === 0) {
-      setInfoModalTitle('Thông báo');
-      setInfoModalMessage('Tất cả bạn bè trong khoản chia này đã thanh toán đủ!');
+      setInfoModalTitle(isEn ? 'Notification' : 'Thông báo');
+      setInfoModalMessage(isEn ? 'All friends in this bill have paid!' : 'Tất cả bạn bè trong khoản chia này đã thanh toán đủ!');
       setInfoModalVisible(true);
       return;
     }
@@ -139,17 +140,17 @@ export const SplitBillListScreen = () => {
       }
 
       if (remindedCount > 0) {
-        setInfoModalTitle('Đã gửi lời nhắc');
-        setInfoModalMessage(`Đã gửi lời nhắc qua Email & Chuông thông báo đến ${remindedCount} bạn bè.`);
+        setInfoModalTitle(isEn ? 'Reminder Sent' : 'Đã gửi lời nhắc');
+        setInfoModalMessage(isEn ? `Sent reminders to ${remindedCount} friends.` : `Đã gửi lời nhắc qua Email & Chuông thông báo đến ${remindedCount} bạn bè.`);
         setInfoModalVisible(true);
       } else {
-        setInfoModalTitle('Chưa thể gửi nhắc nhở');
-        setInfoModalMessage(lastErrMsg || 'Úi, bạn vừa nhắc nhở đây mà. Hãy đợi sau 12h nữa nha');
+        setInfoModalTitle(isEn ? 'Cannot Send Reminder' : 'Chưa thể gửi nhắc nhở');
+        setInfoModalMessage(lastErrMsg || (isEn ? 'Please wait before reminding again.' : 'Úi, bạn vừa nhắc nhở đây mà. Hãy đợi sau 12h nữa nha'));
         setInfoModalVisible(true);
       }
     } catch (error: any) {
-      const msg = error?.response?.data?.message || 'Không thể gửi nhắc nhở lúc này.';
-      setInfoModalTitle('Thông báo');
+      const msg = error?.response?.data?.message || (isEn ? 'Could not send reminder now.' : 'Không thể gửi nhắc nhở lúc này.');
+      setInfoModalTitle(isEn ? 'Notification' : 'Thông báo');
       setInfoModalMessage(msg);
       setInfoModalVisible(true);
     }
@@ -158,50 +159,56 @@ export const SplitBillListScreen = () => {
   const isPendingTabEmpty = pendingPayBills.length === 0 && pendingCollectBills.length === 0;
 
   return (
-    <View style={styles.safeArea}>
-      {/* Header matching BudgetScreen */}
+    <View style={[styles.safeArea, { backgroundColor: theme.bg }]}>
+      {/* Header */}
       <PastelHeaderShell contentStyle={styles.headerContent}>
         <View style={styles.headerRow}>
           <View style={styles.headerLeft}>
             <TouchableOpacity onPress={() => router.back()} style={styles.backButton} activeOpacity={0.7}>
-              <Ionicons name="chevron-back-outline" size={22} color="#7C3AED" />
+              <Ionicons name="chevron-back-outline" size={22} color={theme.isDark ? theme.textPrimary : '#7C3AED'} />
             </TouchableOpacity>
             <View style={styles.titleContainer}>
-              <Text style={styles.headerTitle}>Chia tiền</Text>
-              <Text style={styles.headerSubtitle}>Quản lý khoản cần trả / cần thu</Text>
+              <Text style={[styles.headerTitle, { color: theme.isDark ? theme.textPrimary : PASTEL_PALETTE.title }]}>
+                {isEn ? 'Split Bill' : 'Chia tiền'}
+              </Text>
+              <Text style={[styles.headerSubtitle, { color: theme.isDark ? theme.textSecondary : PASTEL_PALETTE.subtitle }]}>
+                {isEn ? 'Manage payables & receivables' : 'Quản lý khoản cần trả / cần thu'}
+              </Text>
             </View>
           </View>
           <TouchableOpacity
-            style={styles.addButton}
+            style={[styles.addButton, { backgroundColor: theme.isDark ? theme.primary : PASTEL_PALETTE.accentDeep }]}
             onPress={() => router.push('/split-bill/create' as any)}
             activeOpacity={0.85}
           >
             <Ionicons name="add" size={16} color="#FFF" />
-            <Text style={styles.addButtonText}>Tạo mới</Text>
+            <Text style={styles.addButtonText}>{isEn ? 'New' : 'Tạo mới'}</Text>
           </TouchableOpacity>
         </View>
       </PastelHeaderShell>
 
-      {/* Main Container */}
+      {/* Main Content */}
       <ScrollView
         showsVerticalScrollIndicator={false}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.primary} />}
         contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 24 }]}
       >
-        <Text style={styles.sectionTitle}>Quản lý khoản cần trả/cần thu</Text>
+        <Text style={[styles.sectionTitle, { color: theme.textPrimary }]}>
+          {isEn ? 'Payables & Receivables' : 'Quản lý khoản cần trả/cần thu'}
+        </Text>
 
-        <View style={styles.mainCard}>
-          {/* 2 Tabs: Đang chờ | Đã xong */}
-          <View style={styles.tabBar}>
+        <View style={[styles.mainCard, { backgroundColor: theme.card, borderColor: theme.cardBorder, borderWidth: 1 }]}>
+          {/* Tabs */}
+          <View style={[styles.tabBar, { borderBottomColor: theme.divider }]}>
             <TouchableOpacity
               style={[styles.tabItem, activeTab === 'PENDING' && styles.tabItemActive]}
               onPress={() => setActiveTab('PENDING')}
               activeOpacity={0.8}
             >
-              <Text style={[styles.tabText, activeTab === 'PENDING' && styles.tabTextActive]}>
-                Đang chờ
+              <Text style={[styles.tabText, { color: theme.textSecondary }, activeTab === 'PENDING' && { color: theme.primary, fontWeight: '700' }]}>
+                {isEn ? 'Pending' : 'Đang chờ'}
               </Text>
-              {activeTab === 'PENDING' && <View style={styles.tabIndicator} />}
+              {activeTab === 'PENDING' && <View style={[styles.tabIndicator, { backgroundColor: theme.primary }]} />}
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -209,39 +216,41 @@ export const SplitBillListScreen = () => {
               onPress={() => setActiveTab('COMPLETED')}
               activeOpacity={0.8}
             >
-              <Text style={[styles.tabText, activeTab === 'COMPLETED' && styles.tabTextActive]}>
-                Đã xong
+              <Text style={[styles.tabText, { color: theme.textSecondary }, activeTab === 'COMPLETED' && { color: theme.primary, fontWeight: '700' }]}>
+                {isEn ? 'Completed' : 'Đã xong'}
               </Text>
-              {activeTab === 'COMPLETED' && <View style={styles.tabIndicator} />}
+              {activeTab === 'COMPLETED' && <View style={[styles.tabIndicator, { backgroundColor: theme.primary }]} />}
             </TouchableOpacity>
           </View>
 
           {loading ? (
-            <ActivityIndicator style={{ paddingVertical: 50 }} color={PASTEL_PALETTE.accentDeep} />
+            <ActivityIndicator style={{ paddingVertical: 50 }} color={theme.primary} />
           ) : activeTab === 'PENDING' ? (
             isPendingTabEmpty ? (
-              /* Empty State matching design */
               <View style={styles.emptyIllustrationWrap}>
                 <EmptyBoxIllustration />
-                <Text style={styles.emptyTitle}>Tất cả các lời nhắc đã được hoàn thành</Text>
-                <Text style={styles.emptySubtitle}>
-                  Bạn có thể xem lại các lời nhắc trong quá khứ ở phần 'Đã xong'
+                <Text style={[styles.emptyTitle, { color: theme.textPrimary }]}>
+                  {isEn ? 'All bill split requests are completed' : 'Tất cả các lời nhắc đã được hoàn thành'}
+                </Text>
+                <Text style={[styles.emptySubtitle, { color: theme.textSecondary }]}>
+                  {isEn ? 'Past split bills can be viewed in Completed tab' : 'Bạn có thể xem lại các lời nhắc trong quá khứ ở phần "Đã xong"'}
                 </Text>
               </View>
             ) : (
-              /* Content matching Cần trả & Cần thu */
               <View>
-                {/* 1. Cần trả Section */}
-                <Text style={styles.sectionHeading}>
-                  Cần trả {pendingPayBills.length > 0 ? `(${pendingPayBills.length})` : ''}
+                {/* 1. Cần trả */}
+                <Text style={[styles.sectionHeading, { color: theme.textPrimary }]}>
+                  {isEn ? 'To Pay ' : 'Cần trả '}{pendingPayBills.length > 0 ? `(${pendingPayBills.length})` : ''}
                 </Text>
                 {pendingPayBills.length === 0 ? (
-                  <Text style={styles.emptySectionText}>Không có khoản nào cần trả</Text>
+                  <Text style={[styles.emptySectionText, { color: theme.textMuted }]}>
+                    {isEn ? 'No payables' : 'Không có khoản nào cần trả'}
+                  </Text>
                 ) : (
                   pendingPayBills.map((bill) => (
                     <TouchableOpacity
                       key={bill.id}
-                      style={[styles.billCard, styles.billCardPay]}
+                      style={[styles.billCard, { backgroundColor: theme.isDark ? theme.bgSoft : '#FFF5F8', borderColor: theme.cardBorder }]}
                       onPress={() =>
                         router.push({
                           pathname: '/split-bill/[id]',
@@ -252,42 +261,42 @@ export const SplitBillListScreen = () => {
                     >
                       <View style={styles.billCardTopRow}>
                         <View style={styles.billCardTopLeft}>
-                          <View style={styles.tagPill}>
-                            <MaterialCommunityIcons name="account-cash-outline" size={13} color={PASTEL_PALETTE.accentDeep} />
-                            <Text style={styles.tagPillText}>Chia tiền</Text>
+                          <View style={[styles.tagPill, { backgroundColor: theme.primarySoft }]}>
+                            <MaterialCommunityIcons name="account-cash-outline" size={13} color={theme.primary} />
+                            <Text style={[styles.tagPillText, { color: theme.primary }]}>{isEn ? 'Split Bill' : 'Chia tiền'}</Text>
                           </View>
-                          <Text style={styles.billTitleText} numberOfLines={1}>
+                          <Text style={[styles.billTitleText, { color: theme.textPrimary }]} numberOfLines={1}>
                             {bill.title}
                           </Text>
                         </View>
-                        <Text style={styles.billDateText}>{formatDate(bill.createdAt)}</Text>
+                        <Text style={[styles.billDateText, { color: theme.textMuted }]}>{formatDate(bill.createdAt)}</Text>
                       </View>
 
                       <View style={styles.billMainRow}>
-                        <View style={styles.avatarCircle}>
+                        <View style={[styles.avatarCircle, { backgroundColor: theme.primarySoft }]}>
                           {bill.creatorAvatarUrl ? (
                             <Image
                               source={{ uri: resolveMediaUrl(bill.creatorAvatarUrl) || '' }}
                               style={styles.avatarImage}
                             />
                           ) : (
-                            <Text style={styles.avatarText}>
+                            <Text style={[styles.avatarText, { color: theme.primary }]}>
                               {getInitialLetter(bill.creatorUsername)}
                             </Text>
                           )}
                         </View>
 
                         <View style={styles.billMiddleCol}>
-                          <Text style={styles.billLabel}>Cần trả {bill.creatorUsername}</Text>
-                          <Text style={styles.billAmountText}>
-                            Số tiền: <Text style={styles.billAmountBold}>{(bill.myAmount || 0).toLocaleString('vi-VN')}đ</Text>
+                          <Text style={[styles.billLabel, { color: theme.textSecondary }]}>{isEn ? 'Pay to ' : 'Cần trả '}{bill.creatorUsername}</Text>
+                          <Text style={[styles.billAmountText, { color: theme.textSecondary }]}>
+                            {isEn ? 'Amount: ' : 'Số tiền: '}<Text style={[styles.billAmountBold, { color: theme.primary }]}>{(bill.myAmount || 0).toLocaleString('vi-VN')}đ</Text>
                           </Text>
                         </View>
 
                         <View style={styles.billRightCol}>
-                          <Text style={styles.statusTextOrange}>Chưa thanh toán</Text>
+                          <Text style={styles.statusTextOrange}>{isEn ? 'Unpaid' : 'Chưa thanh toán'}</Text>
                           <TouchableOpacity
-                            style={styles.paySolidBtn}
+                            style={[styles.paySolidBtn, { backgroundColor: theme.primary }]}
                             onPress={() =>
                               router.push({
                                 pathname: '/split-bill/[id]',
@@ -296,7 +305,7 @@ export const SplitBillListScreen = () => {
                             }
                             activeOpacity={0.8}
                           >
-                            <Text style={styles.paySolidBtnText}>Thanh toán</Text>
+                            <Text style={styles.paySolidBtnText}>{isEn ? 'Pay Now' : 'Thanh toán'}</Text>
                           </TouchableOpacity>
                         </View>
                       </View>
@@ -304,14 +313,16 @@ export const SplitBillListScreen = () => {
                   ))
                 )}
 
-                <View style={styles.sectionDivider} />
+                <View style={[styles.sectionDivider, { backgroundColor: theme.divider }]} />
 
-                {/* 2. Cần thu Section */}
-                <Text style={styles.sectionHeading}>
-                  Cần thu {pendingCollectBills.length > 0 ? `(${pendingCollectBills.length})` : ''}
+                {/* 2. Cần thu */}
+                <Text style={[styles.sectionHeading, { color: theme.textPrimary }]}>
+                  {isEn ? 'To Collect ' : 'Cần thu '}{pendingCollectBills.length > 0 ? `(${pendingCollectBills.length})` : ''}
                 </Text>
                 {pendingCollectBills.length === 0 ? (
-                  <Text style={styles.emptySectionText}>Không có khoản nào cần thu</Text>
+                  <Text style={[styles.emptySectionText, { color: theme.textMuted }]}>
+                    {isEn ? 'No receivables' : 'Không có khoản nào cần thu'}
+                  </Text>
                 ) : (
                   pendingCollectBills.map((bill) => {
                     const totalAmount = bill.totalAmount || 0;
@@ -322,7 +333,7 @@ export const SplitBillListScreen = () => {
                     return (
                       <TouchableOpacity
                         key={bill.id}
-                        style={styles.billCard}
+                        style={[styles.billCard, { backgroundColor: theme.bgSoft, borderColor: theme.cardBorder }]}
                         onPress={() =>
                           router.push({
                             pathname: '/split-bill/[id]',
@@ -331,55 +342,53 @@ export const SplitBillListScreen = () => {
                         }
                         activeOpacity={0.85}
                       >
-                        {/* Card Top Row */}
                         <View style={styles.billCardTopRow}>
                           <View style={styles.billCardTopLeft}>
-                            <View style={styles.tagPill}>
-                              <MaterialCommunityIcons name="account-cash-outline" size={13} color={PASTEL_PALETTE.accentDeep} />
-                              <Text style={styles.tagPillText}>Chia tiền</Text>
+                            <View style={[styles.tagPill, { backgroundColor: theme.primarySoft }]}>
+                              <MaterialCommunityIcons name="account-cash-outline" size={13} color={theme.primary} />
+                              <Text style={[styles.tagPillText, { color: theme.primary }]}>{isEn ? 'Split Bill' : 'Chia tiền'}</Text>
                             </View>
-                            <Text style={styles.billTitleText} numberOfLines={1}>
+                            <Text style={[styles.billTitleText, { color: theme.textPrimary }]} numberOfLines={1}>
                               {bill.title}
                             </Text>
                           </View>
-                          <Text style={styles.billDateText}>{formatDate(bill.createdAt)}</Text>
+                          <Text style={[styles.billDateText, { color: theme.textMuted }]}>{formatDate(bill.createdAt)}</Text>
                         </View>
 
-                        {/* Card Main Row */}
                         <View style={styles.billMainRow}>
-                          <View style={styles.avatarCircle}>
+                          <View style={[styles.avatarCircle, { backgroundColor: theme.primarySoft }]}>
                             {currentUserAvatar || bill.creatorAvatarUrl ? (
                               <Image
                                 source={{ uri: resolveMediaUrl(currentUserAvatar || bill.creatorAvatarUrl) || '' }}
                                 style={styles.avatarImage}
                               />
                             ) : (
-                              <Text style={styles.avatarText}>
+                              <Text style={[styles.avatarText, { color: theme.primary }]}>
                                 {getInitialLetter(currentUserName || bill.creatorUsername)}
                               </Text>
                             )}
                           </View>
 
                           <View style={styles.billMiddleCol}>
-                            <Text style={styles.billLabel}>Tổng cần thu</Text>
-                            <Text style={styles.billAmountText}>
-                              Nhận <Text style={styles.billAmountBold}>{paidAmount.toLocaleString('vi-VN')}đ</Text> / {totalAmount.toLocaleString('vi-VN')}đ
+                            <Text style={[styles.billLabel, { color: theme.textSecondary }]}>{isEn ? 'Total Receivable' : 'Tổng cần thu'}</Text>
+                            <Text style={[styles.billAmountText, { color: theme.textSecondary }]}>
+                              {isEn ? 'Received ' : 'Nhận '}<Text style={[styles.billAmountBold, { color: theme.textPrimary }]}>{paidAmount.toLocaleString('vi-VN')}đ</Text> / {totalAmount.toLocaleString('vi-VN')}đ
                             </Text>
-                            <View style={styles.progressTrack}>
-                              <View style={[styles.progressBar, { width: `${percent}%` }]} />
+                            <View style={[styles.progressTrack, { backgroundColor: theme.cardBorder }]}>
+                              <View style={[styles.progressBar, { width: `${percent}%`, backgroundColor: theme.primary }]} />
                             </View>
                           </View>
 
                           <View style={styles.billRightCol}>
                             <Text style={styles.statusTextOrange}>
-                              {isPartiallyPaid ? 'Đã nhận một phần' : 'Chưa nhận'}
+                              {isPartiallyPaid ? (isEn ? 'Partial Paid' : 'Đã nhận một phần') : (isEn ? 'Uncollected' : 'Chưa nhận')}
                             </Text>
                             <TouchableOpacity
-                              style={styles.remindOutlineBtn}
+                              style={[styles.remindOutlineBtn, { borderColor: theme.primary }]}
                               onPress={() => handleRemindAll(bill)}
                               activeOpacity={0.7}
                             >
-                              <Text style={styles.remindOutlineBtnText}>Nhắc nhở</Text>
+                              <Text style={[styles.remindOutlineBtnText, { color: theme.primary }]}>{isEn ? 'Remind' : 'Nhắc nhở'}</Text>
                             </TouchableOpacity>
                           </View>
                         </View>
@@ -394,21 +403,21 @@ export const SplitBillListScreen = () => {
             <View>
               {completedPayBills.length === 0 && completedCollectBills.length === 0 ? (
                 <View style={styles.emptyIllustrationWrap}>
-                  <Ionicons name="checkmark-done-circle-outline" size={54} color={PASTEL_PALETTE.textGray} />
-                  <Text style={styles.emptyTitle}>Chưa có khoản chia tiền nào đã hoàn tất</Text>
-                  <Text style={styles.emptySubtitle}>
-                    Các yêu cầu chia tiền đã thanh toán đủ hoặc đã hủy sẽ hiển thị tại đây.
+                  <Ionicons name="checkmark-done-circle-outline" size={54} color={theme.textMuted} />
+                  <Text style={[styles.emptyTitle, { color: theme.textPrimary }]}>{isEn ? 'No completed split bills' : 'Chưa có khoản chia tiền nào đã hoàn tất'}</Text>
+                  <Text style={[styles.emptySubtitle, { color: theme.textSecondary }]}>
+                    {isEn ? 'Paid or cancelled split bills will be listed here.' : 'Các yêu cầu chia tiền đã thanh toán đủ hoặc đã hủy sẽ hiển thị tại đây.'}
                   </Text>
                 </View>
               ) : (
                 <View>
                   {completedPayBills.length > 0 && (
                     <View>
-                      <Text style={styles.sectionHeading}>Khoản tôi đã trả ({completedPayBills.length})</Text>
+                      <Text style={[styles.sectionHeading, { color: theme.textPrimary }]}>{isEn ? 'Paid Bills (' : 'Khoản tôi đã trả ('}{completedPayBills.length})</Text>
                       {completedPayBills.map((bill) => (
                         <TouchableOpacity
                           key={bill.id}
-                          style={styles.billCard}
+                          style={[styles.billCard, { backgroundColor: theme.bgSoft, borderColor: theme.cardBorder }]}
                           onPress={() =>
                             router.push({
                               pathname: '/split-bill/[id]',
@@ -419,55 +428,55 @@ export const SplitBillListScreen = () => {
                         >
                           <View style={styles.billCardTopRow}>
                             <View style={styles.billCardTopLeft}>
-                              <View style={styles.tagPill}>
-                                <MaterialCommunityIcons name="account-cash-outline" size={13} color={PASTEL_PALETTE.accentDeep} />
-                                <Text style={styles.tagPillText}>Chia tiền</Text>
+                              <View style={[styles.tagPill, { backgroundColor: theme.primarySoft }]}>
+                                <MaterialCommunityIcons name="account-cash-outline" size={13} color={theme.primary} />
+                                <Text style={[styles.tagPillText, { color: theme.primary }]}>{isEn ? 'Split Bill' : 'Chia tiền'}</Text>
                               </View>
-                              <Text style={styles.billTitleText} numberOfLines={1}>
+                              <Text style={[styles.billTitleText, { color: theme.textPrimary }]} numberOfLines={1}>
                                 {bill.title}
                               </Text>
                             </View>
-                            <Text style={styles.billDateText}>{formatDate(bill.createdAt)}</Text>
+                            <Text style={[styles.billDateText, { color: theme.textMuted }]}>{formatDate(bill.createdAt)}</Text>
                           </View>
 
                           <View style={styles.billMainRow}>
-                            <View style={styles.avatarCircle}>
+                            <View style={[styles.avatarCircle, { backgroundColor: theme.primarySoft }]}>
                               {bill.creatorAvatarUrl ? (
                                 <Image
                                   source={{ uri: resolveMediaUrl(bill.creatorAvatarUrl) || '' }}
                                   style={styles.avatarImage}
                                 />
                               ) : (
-                                <Text style={styles.avatarText}>
+                                <Text style={[styles.avatarText, { color: theme.primary }]}>
                                   {getInitialLetter(bill.creatorUsername)}
                                 </Text>
                               )}
                             </View>
                             <View style={styles.billMiddleCol}>
-                              <Text style={styles.billLabel}>Đã trả {bill.creatorUsername}</Text>
-                              <Text style={styles.billAmountText}>
-                                Số tiền: <Text style={styles.billAmountBold}>{(bill.myAmount || 0).toLocaleString('vi-VN')}đ</Text>
+                              <Text style={[styles.billLabel, { color: theme.textSecondary }]}>{isEn ? 'Paid to ' : 'Đã trả '}{bill.creatorUsername}</Text>
+                              <Text style={[styles.billAmountText, { color: theme.textSecondary }]}>
+                                {isEn ? 'Amount: ' : 'Số tiền: '}<Text style={[styles.billAmountBold, { color: theme.textPrimary }]}>{(bill.myAmount || 0).toLocaleString('vi-VN')}đ</Text>
                               </Text>
                             </View>
                             <View style={styles.billRightCol}>
                               <Text style={styles.statusTextGreen}>
-                                {bill.status === 'CANCELLED' ? 'Đã hủy' : 'Đã trả'}
+                                {bill.status === 'CANCELLED' ? (isEn ? 'Cancelled' : 'Đã hủy') : (isEn ? 'Paid' : 'Đã trả')}
                               </Text>
                             </View>
                           </View>
                         </TouchableOpacity>
                       ))}
-                      <View style={styles.sectionDivider} />
+                      <View style={[styles.sectionDivider, { backgroundColor: theme.divider }]} />
                     </View>
                   )}
 
                   {completedCollectBills.length > 0 && (
                     <View>
-                      <Text style={styles.sectionHeading}>Khoản tôi đã thu ({completedCollectBills.length})</Text>
+                      <Text style={[styles.sectionHeading, { color: theme.textPrimary }]}>{isEn ? 'Collected Bills (' : 'Khoản tôi đã thu ('}{completedCollectBills.length})</Text>
                       {completedCollectBills.map((bill) => (
                         <TouchableOpacity
                           key={bill.id}
-                          style={styles.billCard}
+                          style={[styles.billCard, { backgroundColor: theme.bgSoft, borderColor: theme.cardBorder }]}
                           onPress={() =>
                             router.push({
                               pathname: '/split-bill/[id]',
@@ -478,39 +487,39 @@ export const SplitBillListScreen = () => {
                         >
                           <View style={styles.billCardTopRow}>
                             <View style={styles.billCardTopLeft}>
-                              <View style={styles.tagPill}>
-                                <MaterialCommunityIcons name="account-cash-outline" size={13} color={PASTEL_PALETTE.accentDeep} />
-                                <Text style={styles.tagPillText}>Chia tiền</Text>
+                              <View style={[styles.tagPill, { backgroundColor: theme.primarySoft }]}>
+                                <MaterialCommunityIcons name="account-cash-outline" size={13} color={theme.primary} />
+                                <Text style={[styles.tagPillText, { color: theme.primary }]}>{isEn ? 'Split Bill' : 'Chia tiền'}</Text>
                               </View>
-                              <Text style={styles.billTitleText} numberOfLines={1}>
+                              <Text style={[styles.billTitleText, { color: theme.textPrimary }]} numberOfLines={1}>
                                 {bill.title}
                               </Text>
                             </View>
-                            <Text style={styles.billDateText}>{formatDate(bill.createdAt)}</Text>
+                            <Text style={[styles.billDateText, { color: theme.textMuted }]}>{formatDate(bill.createdAt)}</Text>
                           </View>
 
                           <View style={styles.billMainRow}>
-                            <View style={styles.avatarCircle}>
+                            <View style={[styles.avatarCircle, { backgroundColor: theme.primarySoft }]}>
                               {currentUserAvatar || bill.creatorAvatarUrl ? (
                                 <Image
                                   source={{ uri: resolveMediaUrl(currentUserAvatar || bill.creatorAvatarUrl) || '' }}
                                   style={styles.avatarImage}
                                 />
                               ) : (
-                                <Text style={styles.avatarText}>
+                                <Text style={[styles.avatarText, { color: theme.primary }]}>
                                   {getInitialLetter(currentUserName || bill.creatorUsername)}
                                 </Text>
                               )}
                             </View>
                             <View style={styles.billMiddleCol}>
-                              <Text style={styles.billLabel}>Tổng đã thu</Text>
-                              <Text style={styles.billAmountText}>
-                                <Text style={styles.billAmountBold}>{(bill.totalPaidAmount || bill.totalAmount).toLocaleString('vi-VN')}đ</Text>
+                              <Text style={[styles.billLabel, { color: theme.textSecondary }]}>{isEn ? 'Total Collected' : 'Tổng đã thu'}</Text>
+                              <Text style={[styles.billAmountText, { color: theme.textSecondary }]}>
+                                <Text style={[styles.billAmountBold, { color: theme.textPrimary }]}>{(bill.totalPaidAmount || bill.totalAmount).toLocaleString('vi-VN')}đ</Text>
                               </Text>
                             </View>
                             <View style={styles.billRightCol}>
                               <Text style={bill.status === 'CANCELLED' ? styles.statusTextMuted : styles.statusTextGreen}>
-                                {bill.status === 'CANCELLED' ? 'Đã hủy' : 'Đã hoàn tất'}
+                                {bill.status === 'CANCELLED' ? (isEn ? 'Cancelled' : 'Đã hủy') : (isEn ? 'Completed' : 'Đã hoàn tất')}
                               </Text>
                             </View>
                           </View>
@@ -525,16 +534,16 @@ export const SplitBillListScreen = () => {
         </View>
       </ScrollView>
 
-      {/* Info / Toast Modal */}
+      {/* Confirm Modal */}
       <ConfirmModal
         visible={infoModalVisible}
         title={infoModalTitle}
         message={infoModalMessage}
         iconName="information-circle"
-        iconColor={PASTEL_PALETTE.accentDeep}
-        confirmText="Đã hiểu"
+        iconColor={theme.primary}
+        confirmText={isEn ? "Understood" : "Đã hiểu"}
         hideCancel={true}
-        confirmButtonColor={PASTEL_PALETTE.accentDeep}
+        confirmButtonColor={theme.primary}
         onConfirm={() => setInfoModalVisible(false)}
         onCancel={() => setInfoModalVisible(false)}
       />

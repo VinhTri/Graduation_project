@@ -1,8 +1,11 @@
 import { Tabs } from "expo-router";
 import { CustomTabBar } from "../../shared/components";
-import { PASTEL_PALETTE } from "../../shared/constants/PastelPalette";
+import { useTheme, useLanguage } from "../../shared/contexts/ThemeLanguageContext";
 
 export default function TabsLayout() {
+  const { theme } = useTheme();
+  const { t } = useLanguage();
+
   return (
     <Tabs
       detachInactiveScreens={false}
@@ -11,7 +14,7 @@ export default function TabsLayout() {
         headerShown: false,
         animation: "fade",
         sceneStyle: {
-          backgroundColor: PASTEL_PALETTE.bg,
+          backgroundColor: theme.bg,
         },
       }}
     >
@@ -25,31 +28,31 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="home/index"
         options={{
-          title: "Trang chủ",
+          title: t('homeTab'),
         }}
       />
       <Tabs.Screen
         name="wallet/index"
         options={{
-          title: "Ví",
+          title: t('walletTab'),
         }}
       />
       <Tabs.Screen
         name="funds/index"
         options={{
-          title: "Quỹ",
+          title: t('fundsTab'),
         }}
       />
       <Tabs.Screen
         name="notebook/index"
         options={{
-          title: "Sổ tay",
+          title: t('notebookTab'),
         }}
       />
       <Tabs.Screen
         name="more/index"
         options={{
-          title: "Tài khoản",
+          title: t('moreTab'),
         }}
       />
     </Tabs>

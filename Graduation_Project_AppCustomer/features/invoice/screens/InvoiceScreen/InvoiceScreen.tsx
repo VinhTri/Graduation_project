@@ -9,8 +9,12 @@ import { invoiceService, InvoiceResponse } from '@/shared/api/services/invoiceSe
 import { Swipeable, RectButton } from 'react-native-gesture-handler';
 import { ConfirmModal } from '@/shared/components';
 
+import { useLanguage, useTheme } from '@/shared/contexts/ThemeLanguageContext';
+
 export const InvoiceScreen = () => {
   const router = useRouter();
+  const { t } = useLanguage();
+  const { theme } = useTheme();
   const [invoices, setInvoices] = useState<InvoiceResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -158,7 +162,7 @@ export const InvoiceScreen = () => {
   };
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: theme.bg }]}>
       {/* Header */}
       <View style={styles.headerWrap}>
         <LinearGradient
@@ -176,8 +180,8 @@ export const InvoiceScreen = () => {
                 <Ionicons name="chevron-back-outline" size={22} color="#7C3AED" />
               </TouchableOpacity>
               <View style={styles.titleContainer}>
-                <Text style={styles.headerTitle}>Hóa đơn</Text>
-                <Text style={styles.headerSubtitle}>Quản lý thanh toán</Text>
+                <Text style={styles.headerTitle}>{t('invoiceManagement')}</Text>
+                <Text style={styles.headerSubtitle}>{t('invoiceSub')}</Text>
               </View>
             </View>
             <TouchableOpacity 
@@ -186,7 +190,7 @@ export const InvoiceScreen = () => {
               activeOpacity={0.85}
             >
               <Ionicons name="add" size={16} color="#FFF" />
-              <Text style={styles.createButtonText}>Tạo hóa đơn</Text>
+              <Text style={styles.createButtonText}>{t('createInvoice')}</Text>
             </TouchableOpacity>
           </View>
         </LinearGradient>

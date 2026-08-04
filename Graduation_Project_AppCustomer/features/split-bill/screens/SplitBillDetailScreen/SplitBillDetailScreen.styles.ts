@@ -2,47 +2,22 @@ import { StyleSheet } from 'react-native';
 import { PASTEL_PALETTE } from '@/shared/constants/PastelPalette';
 
 export const styles = StyleSheet.create({
-  safeArea: {
+  container: {
     flex: 1,
     backgroundColor: PASTEL_PALETTE.bg,
   },
-  headerWrap: {
-    borderBottomLeftRadius: 32,
-    borderBottomRightRadius: 32,
-    overflow: 'hidden',
-    marginBottom: 4,
+  headerContent: {
+    paddingBottom: 16,
   },
-  header: {
-    paddingHorizontal: 24,
-    paddingBottom: 24,
-  },
-  headerDecorCircleLarge: {
-    position: 'absolute',
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    backgroundColor: 'rgba(255, 255, 255, 0.28)',
-    top: -24,
-    right: -20,
-  },
-  headerDecorCircleSmall: {
-    position: 'absolute',
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: 'rgba(255, 255, 255, 0.22)',
-    bottom: 18,
-    left: 18,
-  },
-  headerTopRow: {
+  headerRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
   },
-  leftSection: {
-    flex: 1,
+  headerLeft: {
     flexDirection: 'row',
     alignItems: 'center',
+    flex: 1,
   },
   backButton: {
     width: 40,
@@ -56,211 +31,155 @@ export const styles = StyleSheet.create({
     flex: 1,
   },
   headerTitle: {
-    fontSize: 22,
-    fontWeight: '900',
-    color: '#5B21B6',
-    letterSpacing: 0.2,
-  },
-  headerSubtitle: {
-    fontSize: 13,
-    color: '#7C3AED',
-    fontWeight: '600',
-    marginTop: 4,
-    opacity: 0.85,
-  },
-  content: {
-    flex: 1,
-    padding: 20,
-  },
-  // Overview Card
-  overviewCard: {
-    backgroundColor: '#FFF',
-    borderRadius: 24,
-    padding: 20,
-    marginBottom: 16,
-    shadowColor: PASTEL_PALETTE.accentDeep,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.08,
-    shadowRadius: 12,
-    elevation: 3,
-  },
-  billTitleRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: 8,
-  },
-  billTitleText: {
-    fontSize: 18,
-    fontWeight: '800',
-    color: PASTEL_PALETTE.title,
-    flex: 1,
-    marginRight: 8,
-  },
-  statusBadge: {
-    paddingHorizontal: 12,
-    paddingVertical: 5,
-    borderRadius: 14,
-  },
-  statusText: {
-    fontSize: 12,
-    fontWeight: '700',
-  },
-  billDateText: {
-    fontSize: 13,
-    color: PASTEL_PALETTE.textMuted,
-    marginBottom: 14,
-  },
-  totalAmountSection: {
-    backgroundColor: '#F5F3FF',
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 16,
-    borderWidth: 1.5,
-    borderColor: '#DDD6FE',
-  },
-  totalLabel: {
-    fontSize: 13,
-    color: PASTEL_PALETTE.subtitle,
-    fontWeight: '600',
-    marginBottom: 4,
-  },
-  totalValue: {
-    fontSize: 26,
-    fontWeight: '900',
-    color: PASTEL_PALETTE.accentDeep,
-  },
-  noteBox: {
-    backgroundColor: PASTEL_PALETTE.bgSoft,
-    borderRadius: 12,
-    padding: 12,
-    marginBottom: 14,
-  },
-  noteLabel: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: PASTEL_PALETTE.subtitle,
-    marginBottom: 4,
-  },
-  noteText: {
-    fontSize: 14,
-    color: PASTEL_PALETTE.title,
-  },
-  // Progress
-  progressSection: {
-    marginTop: 6,
-  },
-  progressRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 6,
-  },
-  progressLabel: {
-    fontSize: 13,
-    color: PASTEL_PALETTE.subtitle,
-    fontWeight: '600',
-  },
-  progressCount: {
-    fontSize: 13,
-    color: PASTEL_PALETTE.title,
-    fontWeight: '700',
-  },
-  track: {
-    height: 8,
-    backgroundColor: '#E5E7EB',
-    borderRadius: 4,
-    overflow: 'hidden',
-  },
-  fill: {
-    height: '100%',
-    backgroundColor: '#10B981',
-    borderRadius: 4,
-  },
-  // Creator Card
-  creatorCard: {
-    backgroundColor: '#FFF',
-    borderRadius: 20,
-    padding: 16,
-    marginBottom: 16,
-    shadowColor: PASTEL_PALETTE.accentDeep,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    elevation: 2,
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  creatorAvatar: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: '#EDE9FE',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
-    overflow: 'hidden',
-  },
-  creatorAvatarImage: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-  },
-  creatorAvatarText: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: PASTEL_PALETTE.accentDeep,
-  },
-  creatorInfo: {
-    flex: 1,
-  },
-  creatorRoleText: {
-    fontSize: 11,
-    color: PASTEL_PALETTE.textMuted,
-    fontWeight: '700',
-    textTransform: 'uppercase',
-  },
-  creatorName: {
-    fontSize: 15,
-    fontWeight: '700',
     color: PASTEL_PALETTE.title,
   },
-  creatorEmail: {
+  headerSubtitle: {
     fontSize: 12,
     color: PASTEL_PALETTE.subtitle,
+    marginTop: 2,
   },
-  // Members Card
-  membersCard: {
-    backgroundColor: '#FFF',
-    borderRadius: 24,
-    padding: 20,
-    marginBottom: 20,
-    shadowColor: PASTEL_PALETTE.accentDeep,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.08,
-    shadowRadius: 12,
-    elevation: 3,
+  cancelBillHeaderBtn: {
+    backgroundColor: '#FEE2E2',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 12,
   },
-  membersTitle: {
-    fontSize: 16,
+  cancelBillHeaderBtnText: {
+    fontSize: 12,
     fontWeight: '700',
+    color: '#EF4444',
+  },
+  scrollContent: {
+    padding: 16,
+  },
+  summaryCard: {
+    borderRadius: 20,
+    padding: 18,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: PASTEL_PALETTE.border,
+  },
+  summaryBadgeRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  statusTag: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 10,
+  },
+  statusTagText: {
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  createdAtText: {
+    fontSize: 12,
+    color: PASTEL_PALETTE.textMuted,
+  },
+  totalAmountLabel: {
+    fontSize: 13,
+    color: PASTEL_PALETTE.textGray,
+    marginBottom: 4,
+  },
+  totalAmountValue: {
+    fontSize: 26,
+    fontWeight: '900',
     color: PASTEL_PALETTE.title,
     marginBottom: 14,
   },
-  memberItem: {
+  noteBox: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
+    gap: 8,
+    backgroundColor: PASTEL_PALETTE.bgSoft,
+    padding: 12,
+    borderRadius: 12,
+    marginBottom: 14,
   },
-  memberAvatar: {
+  noteText: {
+    fontSize: 13,
+    flex: 1,
+  },
+  myPayBox: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 14,
+    borderRadius: 16,
+    borderWidth: 1,
+    marginTop: 8,
+  },
+  myPayLabel: {
+    fontSize: 12,
+    marginBottom: 2,
+  },
+  myPayAmount: {
+    fontSize: 18,
+    fontWeight: '800',
+  },
+  payNowBtn: {
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 12,
+  },
+  payNowBtnText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  myPaidBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    padding: 12,
+    borderRadius: 12,
+    marginTop: 8,
+  },
+  myPaidText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#059669',
+  },
+  membersCard: {
+    borderRadius: 20,
+    padding: 18,
+    borderWidth: 1,
+    borderColor: PASTEL_PALETTE.border,
+  },
+  membersHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 14,
+  },
+  membersCardTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  membersPaidRatio: {
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  membersList: {
+    gap: 12,
+  },
+  memberRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+  },
+  memberAvatarCircle: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: PASTEL_PALETTE.bgSoft,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 10,
+    marginRight: 12,
     overflow: 'hidden',
   },
   memberAvatarImage: {
@@ -269,151 +188,83 @@ export const styles = StyleSheet.create({
     borderRadius: 20,
   },
   memberAvatarText: {
-    fontSize: 15,
+    fontSize: 16,
     fontWeight: 'bold',
-    color: PASTEL_PALETTE.subtitle,
   },
   memberInfo: {
     flex: 1,
   },
+  memberNameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
   memberName: {
     fontSize: 14,
     fontWeight: '700',
-    color: PASTEL_PALETTE.title,
   },
-  memberSubtext: {
-    fontSize: 12,
-    color: PASTEL_PALETTE.textMuted,
-    marginTop: 1,
+  creatorBadge: {
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
   },
-  memberAmountSection: {
-    alignItems: 'flex-end',
+  creatorBadgeText: {
+    fontSize: 10,
+    fontWeight: '700',
   },
   memberAmountText: {
-    fontSize: 15,
-    fontWeight: '800',
-    color: PASTEL_PALETTE.title,
-    marginBottom: 4,
+    fontSize: 13,
+    marginTop: 2,
   },
-  memberStatusPaid: {
+  memberStatusCol: {
+    alignItems: 'flex-end',
+  },
+  paidStatusBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
     backgroundColor: '#D1FAE5',
     paddingHorizontal: 8,
-    paddingVertical: 2,
+    paddingVertical: 4,
     borderRadius: 8,
   },
-  memberStatusPaidText: {
-    fontSize: 11,
+  paidStatusText: {
+    fontSize: 12,
     color: '#059669',
     fontWeight: '700',
   },
-  memberStatusPending: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    backgroundColor: '#FEF3C7',
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 8,
-  },
-  memberStatusPendingText: {
-    fontSize: 11,
+  pendingStatusText: {
+    fontSize: 12,
     color: '#D97706',
-    fontWeight: '700',
+    fontWeight: '600',
   },
   remindBtn: {
-    marginTop: 4,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    backgroundColor: '#EDE9FE',
+    borderWidth: 1,
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: 8,
   },
   remindBtnText: {
     fontSize: 11,
-    color: PASTEL_PALETTE.accentDeep,
     fontWeight: '700',
   },
-  // Pay Sticky Footer
-  payFooter: {
-    padding: 20,
-    paddingBottom: 36,
-    backgroundColor: '#FFF',
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: -4 },
-    shadowOpacity: 0.08,
-    shadowRadius: 10,
-    elevation: 8,
-  },
-  payFooterRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  payFooterLabel: {
-    fontSize: 14,
-    color: PASTEL_PALETTE.subtitle,
-    fontWeight: '600',
-  },
-  payFooterAmount: {
-    fontSize: 22,
-    fontWeight: '900',
-    color: PASTEL_PALETTE.accentDeep,
-  },
-  payBtn: {
-    backgroundColor: PASTEL_PALETTE.accentDeep,
-    borderRadius: 18,
-    padding: 16,
-    alignItems: 'center',
-    shadowColor: PASTEL_PALETTE.accentDeep,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  payBtnText: {
-    color: '#FFF',
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
-  paidBanner: {
-    backgroundColor: '#D1FAE5',
-    borderRadius: 16,
-    padding: 14,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  paidBannerText: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#059669',
-    flex: 1,
-  },
-  cancelBillButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  loadingContainer: {
     justifyContent: 'center',
-    gap: 8,
-    backgroundColor: '#FEF2F2',
-    borderWidth: 1.5,
-    borderColor: '#FECACA',
-    borderRadius: 18,
-    paddingVertical: 14,
-    paddingHorizontal: 20,
-    marginTop: 12,
-    marginBottom: 20,
+    alignItems: 'center',
+    padding: 30,
   },
-  cancelBillButtonText: {
+  errorText: {
     fontSize: 15,
+    marginBottom: 16,
+  },
+  backBtnSolid: {
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 12,
+  },
+  backBtnSolidText: {
+    color: '#FFF',
+    fontSize: 14,
     fontWeight: '700',
-    color: '#EF4444',
   },
 });

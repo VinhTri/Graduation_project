@@ -42,10 +42,15 @@ const SETUP_STEPS = [
   },
 ];
 
-export default function CategoriesScreen() {
+import { useLanguage, useTheme } from '../../../shared/contexts/ThemeLanguageContext';
+
+export const CategoriesScreen = () => {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { categories, removeService, removeGroup, loadCategories } = useCategoryContext();
+  const { t, language } = useLanguage();
+  const { theme } = useTheme();
+  const isEn = language === 'en';
 
   useFocusEffect(
     useCallback(() => {
@@ -167,11 +172,11 @@ export default function CategoriesScreen() {
     const isDefault = !!group.isDefault;
 
     const cardInner = (
-      <View style={styles.groupCard}>
-        <View style={[styles.groupHeader, { backgroundColor: group.bgColor }]}>
+      <View style={[styles.groupCard, { backgroundColor: theme.card, borderColor: theme.cardBorder }]}>
+        <View style={[styles.groupHeader, { backgroundColor: theme.isDark ? theme.bgSoft : group.bgColor }]}>
           <View style={styles.groupHeaderLeft}>
             <Ionicons name={group.icon as any} size={20} color={group.color} />
-            <Text style={[styles.groupTitle, { color: group.color }]}>
+            <Text style={[styles.groupTitle, { color: theme.isDark ? theme.textPrimary : group.color }]}>
               {group.title}
             </Text>
           </View>
@@ -219,7 +224,7 @@ export default function CategoriesScreen() {
 
         {group.items.length === 0 ? (
           <View style={styles.emptyGroupContainer}>
-            <Text style={styles.emptyGroupText}>Chưa có danh mục</Text>
+            <Text style={[styles.emptyGroupText, { color: theme.textMuted }]}>Chưa có danh mục</Text>
           </View>
         ) : (
           <View style={styles.gridContainer}>
@@ -231,10 +236,10 @@ export default function CategoriesScreen() {
                 delayLongPress={300}
                 activeOpacity={isDefault ? 1 : 0.7}
               >
-                <View style={styles.iconWrapper}>
+                <View style={[styles.iconWrapper, { backgroundColor: theme.isDark ? theme.bgSoft : service.bgColor }]}>
                   <Ionicons name={service.icon as any} size={28} color={service.color} />
                 </View>
-                <Text style={styles.itemLabel} numberOfLines={2}>
+                <Text style={[styles.itemLabel, { color: theme.textPrimary }]} numberOfLines={2}>
                   {service.label}
                 </Text>
               </TouchableOpacity>
@@ -279,7 +284,7 @@ export default function CategoriesScreen() {
   const renderHeader = () => (
     <View style={styles.headerWrap}>
       <LinearGradient
-        colors={[PALETTE.headerStart, PALETTE.headerMid, PALETTE.headerEnd]}
+        colors={[...theme.headerGradient]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={[styles.header, { paddingTop: insets.top + 12 }]}
@@ -300,14 +305,14 @@ export default function CategoriesScreen() {
               style={styles.backButton}
               activeOpacity={0.7}
             >
-              <Ionicons name="chevron-back-outline" size={22} color="#7C3AED" />
+              <Ionicons name="chevron-back-outline" size={22} color={theme.isDark ? "#FFFFFF" : "#7C3AED"} />
             </TouchableOpacity>
             <View style={styles.titleContainer}>
-              <Text style={styles.headerTitle} numberOfLines={1} ellipsizeMode="tail">
-                Chọn danh mục
+              <Text style={[styles.headerTitle, { color: theme.isDark ? "#FFFFFF" : "#5B21B6" }]} numberOfLines={1} ellipsizeMode="tail">
+                {t('categories')}
               </Text>
-              <Text style={styles.headerSubtitle} numberOfLines={1} ellipsizeMode="tail">
-                Quản lý phân loại
+              <Text style={[styles.headerSubtitle, { color: theme.isDark ? theme.textSecondary : "#7C3AED" }]} numberOfLines={1} ellipsizeMode="tail">
+                {isEn ? 'Manage classification' : 'Quản lý phân loại'}
               </Text>
             </View>
           </View>
@@ -321,8 +326,8 @@ export default function CategoriesScreen() {
             <Ionicons name="layers-outline" size={18} color="#FFF" />
             <Text style={styles.addButtonText}>
               {canCreateGroup
-                ? `Tạo nhóm (${customGroupCount}/${MAX_CATEGORY_GROUPS})`
-                : `Đủ ${MAX_CATEGORY_GROUPS}/${MAX_CATEGORY_GROUPS} nhóm`}
+                ? (isEn ? `Add Group (${customGroupCount}/${MAX_CATEGORY_GROUPS})` : `Tạo nhóm (${customGroupCount}/${MAX_CATEGORY_GROUPS})`)
+                : (isEn ? `Limit ${MAX_CATEGORY_GROUPS}/${MAX_CATEGORY_GROUPS} groups` : `Đủ ${MAX_CATEGORY_GROUPS}/${MAX_CATEGORY_GROUPS} nhóm`)}
             </Text>
           </TouchableOpacity>
         </View>
@@ -331,11 +336,11 @@ export default function CategoriesScreen() {
           <View style={styles.headerHintContent}>
             <View style={styles.headerHintRow}>
               <Ionicons name="hand-left-outline" size={14} color={PALETTE.lavender} />
-              <Text style={styles.headerHintText}>Nhấn giữ danh mục để xóa nhé</Text>
+              <Text style={styles.headerHintText}>{isEn ? 'Press & hold category to delete' : 'Nhấn giữ danh mục để xóa nhé'}</Text>
             </View>
             <View style={styles.headerHintRow}>
               <Ionicons name="arrow-back-outline" size={14} color={PALETTE.lavender} />
-              <Text style={styles.headerHintText}>Vuốt trái nhóm cũng xóa được nha</Text>
+              <Text style={styles.headerHintText}>{isEn ? 'Swipe left group to delete' : 'Vuốt trái nhóm cũng xóa được nha'}</Text>
             </View>
           </View>
         </View>
@@ -344,15 +349,16 @@ export default function CategoriesScreen() {
   );
 
   return (
-    <View style={styles.safeArea}>
+    <View style={[styles.safeArea, { backgroundColor: theme.bg }]}>
       {renderHeader()}
       
       <View style={styles.topActionsContainer}>
-        <View style={styles.searchContainer}>
-          <Ionicons name="search-outline" size={20} color={PALETTE.textMuted} />
+        <View style={[styles.searchContainer, { backgroundColor: theme.card, borderColor: theme.cardBorder }]}>
+          <Ionicons name="search-outline" size={20} color={theme.textMuted} />
           <TextInput
-            style={styles.searchInput}
-            placeholder="Tìm kiếm"
+            style={[styles.searchInput, { color: theme.textPrimary }]}
+            placeholder={isEn ? "Search..." : "Tìm kiếm"}
+            placeholderTextColor={theme.textMuted}
             value={searchQuery}
             onChangeText={setSearchQuery}
           />
@@ -360,7 +366,7 @@ export default function CategoriesScreen() {
       </View>
 
       <ScrollView
-        style={styles.scrollContainer}
+        style={[styles.scrollContainer, { backgroundColor: theme.bg }]}
         showsVerticalScrollIndicator={false}
       >
         {filteredCategories.length > 0 ? (
@@ -369,8 +375,8 @@ export default function CategoriesScreen() {
           <View style={styles.emptyStateContainer}>
             {searchQuery.trim() ? (
               <>
-                <Ionicons name="search-outline" size={48} color={PALETTE.lavender} />
-                <Text style={styles.emptyStateTitle}>Không tìm thấy danh mục nào</Text>
+                <Ionicons name="search-outline" size={48} color={theme.primary} />
+                <Text style={[styles.emptyStateTitle, { color: theme.textPrimary }]}>{isEn ? "No categories found" : "Không tìm thấy danh mục nào"}</Text>
               </>
             ) : (
               <>
@@ -379,22 +385,22 @@ export default function CategoriesScreen() {
                     width: 72,
                     height: 72,
                     borderRadius: 22,
-                    backgroundColor: PALETTE.lavenderSoft,
+                    backgroundColor: theme.bgSoft,
                     alignItems: 'center',
                     justifyContent: 'center',
                     marginBottom: 4,
                     borderWidth: 1,
-                    borderColor: PALETTE.border,
+                    borderColor: theme.cardBorder,
                   }}>
-                    <Ionicons name="folder-open-outline" size={36} color={PALETTE.lavender} />
+                    <Ionicons name="folder-open-outline" size={36} color={theme.primary} />
                   </View>
-                  <Text style={styles.emptyStateTitle}>Thiết lập danh mục chi tiêu</Text>
-                  <Text style={styles.emptyStateHint}>
-                    Bạn chưa có nhóm danh mục nào. Hãy tạo nhóm và thêm danh mục để phân loại giao dịch dễ dàng hơn.
+                  <Text style={[styles.emptyStateTitle, { color: theme.textPrimary }]}>{isEn ? "Setup expense categories" : "Thiết lập danh mục chi tiêu"}</Text>
+                  <Text style={[styles.emptyStateHint, { color: theme.textSecondary }]}>
+                    {isEn ? "You don't have any category groups yet. Create groups to organize expenses." : "Bạn chưa có nhóm danh mục nào. Hãy tạo nhóm và thêm danh mục để phân loại giao dịch dễ dàng hơn."}
                   </Text>
                 </View>
 
-                <View style={styles.setupStepsCard}>
+                <View style={[styles.setupStepsCard, { backgroundColor: theme.card, borderColor: theme.cardBorder }]}>
                   {SETUP_STEPS.map((item, index) => (
                     <View
                       key={item.step}
@@ -408,10 +414,10 @@ export default function CategoriesScreen() {
                       </View>
                       <View style={styles.setupStepContent}>
                         <View style={styles.setupStepTitleRow}>
-                          <Ionicons name={item.icon} size={18} color={PALETTE.accentDeep} />
-                          <Text style={styles.setupStepTitle}>{item.title}</Text>
+                          <Ionicons name={item.icon} size={18} color={theme.primary} />
+                          <Text style={[styles.setupStepTitle, { color: theme.textPrimary }]}>{item.title}</Text>
                         </View>
-                        <Text style={styles.setupStepDescription}>{item.description}</Text>
+                        <Text style={[styles.setupStepDescription, { color: theme.textSecondary }]}>{item.description}</Text>
                       </View>
                     </View>
                   ))}
@@ -420,7 +426,7 @@ export default function CategoriesScreen() {
                 {canCreateGroup && (
                   <TouchableOpacity style={styles.setupCtaBtn} onPress={handleCreateGroup}>
                     <Ionicons name="layers-outline" size={18} color={PALETTE.white} />
-                    <Text style={styles.setupCtaText}>Bắt đầu — Tạo nhóm đầu tiên</Text>
+                    <Text style={styles.setupCtaText}>{isEn ? "Start — Create First Group" : "Bắt đầu — Tạo nhóm đầu tiên"}</Text>
                   </TouchableOpacity>
                 )}
               </>
@@ -481,3 +487,5 @@ export default function CategoriesScreen() {
     </View>
   );
 };
+
+export default CategoriesScreen;
