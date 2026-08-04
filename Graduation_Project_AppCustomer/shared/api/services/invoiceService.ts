@@ -7,6 +7,11 @@ export interface InvoiceRequest {
   dueDate: string;
   reminderOption: string;
   reminderTime?: string;
+  startDate?: string;
+  endDate?: string;
+  oldReading?: number;
+  newReading?: number;
+  pricePerKwh?: number;
   isPaid: boolean;
 }
 
@@ -17,6 +22,11 @@ export interface InvoiceResponse {
   dueDate: string;
   reminderOption: string;
   reminderTime?: string;
+  startDate?: string;
+  endDate?: string;
+  oldReading?: number;
+  newReading?: number;
+  pricePerKwh?: number;
   isPaid: boolean;
   createdAt: string;
   updatedAt: string;

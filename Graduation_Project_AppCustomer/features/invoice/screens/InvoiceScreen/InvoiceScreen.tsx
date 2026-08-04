@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import { View, Text, TouchableOpacity, FlatList, ActivityIndicator, RefreshControl, Animated } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -11,6 +11,8 @@ import { ConfirmModal } from '@/shared/components';
 
 import { useLanguage, useTheme } from '@/shared/contexts/ThemeLanguageContext';
 
+type FilterTab = 'all' | 'unpaid' | 'paid';
+
 export const InvoiceScreen = () => {
   const router = useRouter();
   const { t } = useLanguage();
@@ -18,6 +20,7 @@ export const InvoiceScreen = () => {
   const [invoices, setInvoices] = useState<InvoiceResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [filterTab, setFilterTab] = useState<FilterTab>('all');
 
   const [deleteModalVisible, setDeleteModalVisible] = useState(false);
   const [itemToDelete, setItemToDelete] = useState<{ id: number, name: string } | null>(null);
@@ -78,6 +81,53 @@ export const InvoiceScreen = () => {
     }
   };
 
+  const handlePayNow = async (id: number, name: string) => {
+    try {
+      setLoading(true);
+      await invoiceService.updateInvoiceStatus(id, true);
+      fetchInvoices();
+      setSuccessMessage(`Thanh toán thành công hóa đơn "${name}"!`);
+      setSuccessModalVisible(true);
+    } catch (error) {
+      console.error(error);
+      setErrorMessage("Có lỗi xảy ra khi thanh toán.");
+      setErrorModalVisible(true);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Lọc danh sách
+  const filteredInvoices = useMemo(() => {
+    return invoices.filter(inv => {
+      if (filterTab === 'paid') return inv.isPaid;
+      if (filterTab === 'unpaid') return !inv.isPaid;
+      return true;
+    });
+  }, [invoices, filterTab]);
+
+  // Tính tổng nợ
+  const totalUnpaid = useMemo(() => {
+    return invoices.filter(inv => !inv.isPaid).reduce((acc, curr) => acc + curr.amount, 0);
+  }, [invoices]);
+
+  // Utilities for UI
+  const getServiceIcon = (name: string) => {
+    const n = name.toLowerCase();
+    if (n.includes('điện')) return { name: 'flash', color: '#F59E0B', bg: '#FEF3C7' };
+    if (n.includes('nước')) return { name: 'water', color: '#3B82F6', bg: '#DBEAFE' };
+    if (n.includes('mạng') || n.includes('wifi') || n.includes('internet')) return { name: 'wifi', color: '#8B5CF6', bg: '#EDE9FE' };
+    if (n.includes('học phí') || n.includes('trường')) return { name: 'school', color: '#10B981', bg: '#D1FAE5' };
+    return { name: 'receipt', color: '#64748B', bg: '#F1F5F9' };
+  };
+
+  const getInvoiceStatus = (item: InvoiceResponse) => {
+    if (item.isPaid) return { text: 'Đã thanh toán', color: '#10B981', bg: '#D1FAE5' };
+    const isOverdue = new Date(item.dueDate) < new Date();
+    if (isOverdue) return { text: 'Quá hạn', color: '#EF4444', bg: '#FEE2E2' };
+    return { text: 'Chưa thanh toán', color: '#F59E0B', bg: '#FEF3C7' };
+  };
+
   const renderRightActions = (
     progress: Animated.AnimatedInterpolation<number>,
     _dragX: Animated.AnimatedInterpolation<number>,
@@ -126,6 +176,9 @@ export const InvoiceScreen = () => {
     const formattedAmount = item.amount.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
     const dueDate = new Date(item.dueDate);
     const formattedDate = dueDate.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    
+    const sIcon = getServiceIcon(item.invoiceName);
+    const sStatus = getInvoiceStatus(item);
 
     return (
       <Swipeable 
@@ -137,24 +190,55 @@ export const InvoiceScreen = () => {
         <TouchableOpacity 
           style={styles.invoiceCard}
           activeOpacity={0.7}
-          onPress={() => router.push(`/invoice/${item.id}`)}
+          onPress={() => {
+            if (item.isPaid) {
+              router.push(`/invoice/${item.id}?viewOnly=true`);
+            } else if (item.invoiceName.toLowerCase().includes('điện')) {
+              router.push(`/invoice/service/electricity?editId=${item.id}`);
+            } else {
+              router.push(`/invoice/${item.id}`);
+            }
+          }}
         >
-          <View style={styles.invoiceHeader}>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.invoiceName}>{item.invoiceName}</Text>
-              <Text style={styles.invoiceAmount}>{formattedAmount} VNĐ</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'flex-start' }}>
+            <View style={[styles.serviceIconContainer, { backgroundColor: sIcon.bg }]}>
+              <Ionicons name={sIcon.name as any} size={20} color={sIcon.color} />
             </View>
-          </View>
-          <View style={styles.invoiceFooter}>
-            <View style={styles.dueDateContainer}>
-              <Ionicons name="calendar-outline" size={16} color="#64748B" />
-              <Text style={styles.dueDateText}>Đến hạn: {formattedDate}</Text>
-            </View>
-            {item.reminderOption && (
-              <View style={styles.reminderBadge}>
-                <Text style={styles.reminderText}>{item.reminderOption}</Text>
+            
+            <View style={styles.invoiceBody}>
+              <View style={styles.invoiceHeaderTop}>
+                <Text style={styles.invoiceName} numberOfLines={1}>{item.invoiceName}</Text>
+                <View style={[styles.statusBadge, { backgroundColor: sStatus.bg }]}>
+                  <Text style={[styles.statusText, { color: sStatus.color }]}>{sStatus.text}</Text>
+                </View>
               </View>
-            )}
+              <Text style={styles.invoiceAmount}>{formattedAmount} VNĐ</Text>
+              
+              <View style={styles.invoiceFooter}>
+                <View style={styles.dueDateContainer}>
+                  <Ionicons name="calendar-outline" size={16} color="#64748B" />
+                  <Text style={styles.dueDateText}>Đến hạn: {formattedDate}</Text>
+                </View>
+                {item.reminderOption && (
+                  <View style={styles.reminderBadge}>
+                    <Text style={styles.reminderText}>{item.reminderOption}</Text>
+                  </View>
+                )}
+              </View>
+
+              {!item.isPaid && (
+                <TouchableOpacity 
+                  style={[styles.payNowButton, { backgroundColor: '#EC4899' }]}
+                  activeOpacity={0.8}
+                  onPress={(e) => {
+                    e.stopPropagation();
+                    handlePayNow(item.id, item.invoiceName);
+                  }}
+                >
+                  <Text style={styles.payNowText}>Thanh toán ngay</Text>
+                </TouchableOpacity>
+              )}
+            </View>
           </View>
         </TouchableOpacity>
       </Swipeable>
@@ -184,36 +268,98 @@ export const InvoiceScreen = () => {
                 <Text style={styles.headerSubtitle}>{t('invoiceSub')}</Text>
               </View>
             </View>
-            <TouchableOpacity 
-              style={styles.createButton}
-              onPress={() => router.push('/invoice/create')}
-              activeOpacity={0.85}
-            >
-              <Ionicons name="add" size={16} color="#FFF" />
-              <Text style={styles.createButtonText}>{t('createInvoice')}</Text>
-            </TouchableOpacity>
           </View>
         </LinearGradient>
       </View>
+
+      {/* Services Grid */}
+      <View style={styles.servicesGridContainer}>
+        <TouchableOpacity style={styles.serviceGridItem} onPress={() => router.push('/invoice/create')} activeOpacity={0.7}>
+          <View style={[styles.serviceGridIconWrap, { backgroundColor: '#F1F5F9' }]}>
+            <Ionicons name="add" size={24} color="#64748B" />
+          </View>
+          <Text style={styles.serviceGridText}>Tạo mới</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity style={styles.serviceGridItem} onPress={() => router.push('/invoice/service/electricity')} activeOpacity={0.7}>
+          <View style={[styles.serviceGridIconWrap, { backgroundColor: '#FEF3C7' }]}>
+            <Ionicons name="flash" size={24} color="#F59E0B" />
+          </View>
+          <Text style={styles.serviceGridText}>Tiền điện</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity style={styles.serviceGridItem} onPress={() => router.push('/invoice/service/water')} activeOpacity={0.7}>
+          <View style={[styles.serviceGridIconWrap, { backgroundColor: '#DBEAFE' }]}>
+            <Ionicons name="water" size={24} color="#3B82F6" />
+          </View>
+          <Text style={styles.serviceGridText}>Tiền nước</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity style={styles.serviceGridItem} onPress={() => router.push('/invoice/service/internet')} activeOpacity={0.7}>
+          <View style={[styles.serviceGridIconWrap, { backgroundColor: '#EDE9FE' }]}>
+            <Ionicons name="wifi" size={24} color="#8B5CF6" />
+          </View>
+          <Text style={styles.serviceGridText}>Tiền mạng</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity style={styles.serviceGridItem} onPress={() => router.push('/invoice/service/rent')} activeOpacity={0.7}>
+          <View style={[styles.serviceGridIconWrap, { backgroundColor: '#D1FAE5' }]}>
+            <Ionicons name="home" size={24} color="#10B981" />
+          </View>
+          <Text style={styles.serviceGridText}>Tiền nhà</Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* Tabs */}
+      <View style={styles.tabsContainer}>
+        {(['all', 'unpaid', 'paid'] as FilterTab[]).map(tab => (
+          <TouchableOpacity 
+            key={tab} 
+            onPress={() => setFilterTab(tab)} 
+            style={[styles.tabItem, filterTab === tab && styles.tabItemActive]}
+          >
+            <Text style={[styles.tabText, filterTab === tab && styles.tabTextActive]}>
+              {tab === 'all' ? 'Tất cả' : tab === 'unpaid' ? 'Chưa thanh toán' : 'Đã thanh toán'}
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+
+      {/* Summary Widget */}
+      {(filterTab === 'all' || filterTab === 'unpaid') && totalUnpaid > 0 && (
+        <LinearGradient colors={['#FCE7F3', '#FBCFE8']} style={styles.summaryWidget}>
+          <View style={[styles.summaryIconWrap, { backgroundColor: '#F9A8D4' }]}>
+            <Ionicons name="wallet-outline" size={24} color="#BE185D" />
+          </View>
+          <View style={styles.summaryTextWrap}>
+            <Text style={[styles.summaryTitle, { color: '#9D174D' }]}>Tổng tiền chưa thanh toán</Text>
+            <Text style={[styles.summaryAmount, { color: '#831843' }]}>
+              {totalUnpaid.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",")} đ
+            </Text>
+          </View>
+        </LinearGradient>
+      )}
 
       {/* Body */}
       {loading && !refreshing ? (
         <View style={[styles.emptyStateContainer, { justifyContent: 'center' }]}>
           <ActivityIndicator size="large" color={Colors.primary} />
         </View>
-      ) : invoices.length === 0 ? (
+      ) : filteredInvoices.length === 0 ? (
         <View style={styles.emptyStateContainer}>
           <View style={styles.emptyIconContainer}>
             <Ionicons name="document-text-outline" size={80} color="#E2E8F0" />
           </View>
-          <Text style={styles.emptyTitle}>Chưa có hóa đơn nào</Text>
+          <Text style={styles.emptyTitle}>Không có hóa đơn nào</Text>
           <Text style={styles.emptySubtitle}>
-            Bấm &quot;Tạo hóa đơn&quot; ở góc phải bên trên để thêm hóa đơn mới và cài đặt lịch nhắc nhở.
+            {filterTab === 'unpaid' 
+              ? "Tuyệt vời! Bạn không có hóa đơn nào đang nợ." 
+              : "Bấm 'Tạo hóa đơn' ở góc phải bên trên để thêm hóa đơn mới."}
           </Text>
         </View>
       ) : (
         <FlatList
-          data={invoices}
+          data={filteredInvoices}
           keyExtractor={(item) => item.id.toString()}
           renderItem={renderInvoiceItem}
           contentContainerStyle={styles.listContainer}
