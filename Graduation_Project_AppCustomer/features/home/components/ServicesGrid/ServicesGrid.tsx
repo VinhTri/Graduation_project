@@ -2,10 +2,10 @@ import React from "react";
 import { View, Text, TouchableOpacity } from "react-native";
 import { useRouter } from "expo-router";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
-import { LinearGradient } from "expo-linear-gradient";
 import { styles } from "./ServicesGrid.styles";
 import { friendshipService } from "../../../../shared/api/services/friendship.service";
 import { useFocusEffect } from '@react-navigation/native';
+import { useLanguage, useTheme } from "../../../../shared/contexts/ThemeLanguageContext";
 
 interface ServiceDef {
   id: string;
@@ -13,70 +13,76 @@ interface ServiceDef {
   iconFamily: 'Ionicons' | 'MaterialCommunityIcons';
   icon: string;
   color: string;
-  gradient: readonly [string, string];
-  borderColor: string;
+  bgColor: string;
   route: string;
 }
-
-const HOME_SERVICES: ServiceDef[] = [
-  {
-    id: "3",
-    label: "Hóa đơn",
-    iconFamily: "Ionicons",
-    icon: "receipt-outline",
-    color: "#059669",
-    gradient: ["#ECFDF5", "#D1FAE5"],
-    borderColor: "#A7F3D0",
-    route: "/invoice",
-  },
-  {
-    id: "10",
-    label: "Danh bạ",
-    iconFamily: "Ionicons",
-    icon: "people-circle-outline",
-    color: "#DB2777",
-    gradient: ["#FDF2F8", "#FCE7F3"],
-    borderColor: "#FBCFE8",
-    route: "/contacts",
-  },
-  {
-    id: "split_bill",
-    label: "Chia tiền",
-    iconFamily: "MaterialCommunityIcons",
-    icon: "account-cash-outline",
-    color: "#7C3AED",
-    gradient: ["#F5F3FF", "#EDE9FE"],
-    borderColor: "#DDD6FE",
-    route: "/split-bill",
-  },
-  {
-    id: "budget",
-    label: "Ngân sách",
-    iconFamily: "Ionicons",
-    icon: "pie-chart-outline",
-    color: "#D97706",
-    gradient: ["#FFFBEB", "#FEF3C7"],
-    borderColor: "#FDE68A",
-    route: "/budget",
-  },
-];
-
-const FIXED_SERVICES: ServiceDef[] = [
-  {
-    id: "danh_muc",
-    label: "Danh mục",
-    iconFamily: "Ionicons",
-    icon: "layers-outline",
-    color: "#6366F1",
-    gradient: ["#EEF2FF", "#E0E7FF"],
-    borderColor: "#C7D2FE",
-    route: "/categories",
-  },
-];
 
 export const ServicesGrid = () => {
   const router = useRouter();
   const [pendingRequests, setPendingRequests] = React.useState(0);
+  const { language } = useLanguage();
+  const { theme } = useTheme();
+  const isEn = language === 'en';
+
+  const homeServices: ServiceDef[] = [
+    {
+      id: "3",
+      label: isEn ? "Invoices" : "Hóa đơn",
+      iconFamily: "Ionicons",
+      icon: "receipt-outline",
+      color: "#10B981",
+      bgColor: theme.isDark ? theme.bgSoft : "#ECFDF5",
+      route: "/invoice",
+    },
+    {
+      id: "10",
+      label: isEn ? "Contacts" : "Danh bạ",
+      iconFamily: "Ionicons",
+      icon: "people-circle-outline",
+      color: "#EC4899",
+      bgColor: theme.isDark ? theme.bgSoft : "#FDF2F8",
+      route: "/contacts",
+    },
+    {
+      id: "split_bill",
+      label: isEn ? "Split Bill" : "Chia tiền",
+      iconFamily: "MaterialCommunityIcons",
+      icon: "account-cash-outline",
+      color: "#7C3AED",
+      bgColor: theme.isDark ? theme.bgSoft : "#F5F3FF",
+      route: "/split-bill",
+    },
+    {
+      id: "budget",
+      label: isEn ? "Budget" : "Ngân sách",
+      iconFamily: "Ionicons",
+      icon: "pie-chart-outline",
+      color: "#D97706",
+      bgColor: theme.isDark ? theme.bgSoft : "#FFFBEB",
+      route: "/budget",
+    },
+  ];
+
+  const fixedServices: ServiceDef[] = [
+    {
+      id: "danh_muc",
+      label: isEn ? "Categories" : "Danh mục",
+      iconFamily: "Ionicons",
+      icon: "layers-outline",
+      color: "#6366F1",
+      bgColor: theme.isDark ? theme.bgSoft : "#EEF2FF",
+      route: "/categories",
+    },
+    {
+      id: "tat_ca",
+      label: isEn ? "All Services" : "Tất cả",
+      iconFamily: "Ionicons",
+      icon: "grid-outline",
+      color: theme.isDark ? "#94A3B8" : "#64748B",
+      bgColor: theme.isDark ? theme.bgSoft : "#F1F5F9",
+      route: "/all-services",
+    },
+  ];
 
   useFocusEffect(
     React.useCallback(() => {
@@ -99,7 +105,7 @@ export const ServicesGrid = () => {
     router.push(route as any);
   };
 
-  const displayServices = [...HOME_SERVICES, ...FIXED_SERVICES];
+  const displayServices = [...homeServices, ...fixedServices];
 
   const renderIcon = (service: ServiceDef) => {
     if (service.iconFamily === "MaterialCommunityIcons") {
@@ -109,7 +115,7 @@ export const ServicesGrid = () => {
   };
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: theme.card, borderColor: theme.cardBorder }]}>
       <View style={styles.grid}>
         {displayServices.map((service) => (
           <TouchableOpacity
@@ -118,22 +124,30 @@ export const ServicesGrid = () => {
             activeOpacity={0.7}
             onPress={() => handlePress(service.route)}
           >
-            <LinearGradient
-              colors={service.gradient}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={[styles.iconContainer, { borderColor: service.borderColor }]}
-            >
+            <View style={[styles.iconContainer, { backgroundColor: service.bgColor, borderColor: theme.cardBorder }]}>
               {renderIcon(service)}
               {service.id === "10" && pendingRequests > 0 && (
-                <View style={styles.badge}>
-                  <Text style={styles.badgeText}>
+                <View style={{
+                  position: 'absolute',
+                  top: -5,
+                  right: -5,
+                  backgroundColor: '#EF4444',
+                  borderRadius: 10,
+                  minWidth: 20,
+                  height: 20,
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                  paddingHorizontal: 4,
+                  borderWidth: 2,
+                  borderColor: theme.card
+                }}>
+                  <Text style={{ color: 'white', fontSize: 10, fontWeight: 'bold' }}>
                     {pendingRequests > 99 ? '99+' : pendingRequests}
                   </Text>
                 </View>
               )}
-            </LinearGradient>
-            <Text style={styles.serviceLabel} numberOfLines={2}>{service.label}</Text>
+            </View>
+            <Text style={[styles.serviceLabel, { color: theme.textPrimary }]} numberOfLines={2}>{service.label}</Text>
           </TouchableOpacity>
         ))}
       </View>

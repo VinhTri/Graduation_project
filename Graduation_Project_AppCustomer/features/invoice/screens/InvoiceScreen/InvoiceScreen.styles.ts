@@ -232,5 +232,139 @@ export const styles = StyleSheet.create({
     fontWeight: '800',
     fontSize: 12,
     letterSpacing: 0.2,
+  },
+  // --- NEW STYLES FOR REVAMPED UI ---
+  tabsContainer: {
+    flexDirection: 'row',
+    paddingHorizontal: 16,
+    marginTop: -8,
+    marginBottom: 8,
+  },
+  tabItem: {
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    marginRight: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderBottomWidth: 3,
+    borderBottomColor: 'transparent',
+  },
+  tabItemActive: {
+    borderBottomColor: '#EC4899',
+  },
+  tabText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#94A3B8',
+  },
+  tabTextActive: {
+    color: '#EC4899',
+    fontWeight: '700',
+  },
+  summaryWidget: {
+    marginHorizontal: 16,
+    marginBottom: 16,
+    padding: 16,
+    borderRadius: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.05,
+    shadowRadius: 10,
+    elevation: 3,
+  },
+  summaryIconWrap: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 16,
+  },
+  summaryTextWrap: {
+    flex: 1,
+  },
+  summaryTitle: {
+    fontSize: 13,
+    marginBottom: 4,
+  },
+  summaryAmount: {
+    fontSize: 22,
+    fontWeight: 'bold',
+  },
+  serviceIconContainer: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  invoiceBody: {
+    flex: 1,
+  },
+  invoiceHeaderTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  statusBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  statusText: {
+    fontSize: 10,
+    fontWeight: '700',
+  },
+  payNowButton: {
+    marginTop: 12,
+    paddingVertical: 10,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  payNowText: {
+    color: '#FFF',
+    fontSize: 14,
+    fontWeight: 'bold',
+  },
+  // --- STYLES FOR SERVICES GRID ---
+  servicesGridContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 24,
+    backgroundColor: '#FFFFFF',
+    borderBottomWidth: 1,
+    borderBottomColor: '#F1F5F9',
+    marginBottom: 16,
+  },
+  serviceGridItem: {
+    alignItems: 'center',
+    width: '18%',
+  },
+  serviceGridIconWrap: {
+    width: 48,
+    height: 48,
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  serviceGridText: {
+    fontSize: 11,
+    textAlign: 'center',
+    fontWeight: '600',
+    color: '#334155',
   }
 });
+
+

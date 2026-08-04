@@ -25,47 +25,47 @@ export interface SearchUserResult {
 }
 
 export const friendshipService = {
-  searchUser: async (query: string) => {
+  searchUser: async (query: string): Promise<any> => {
     const response = await axiosClient.get(ENDPOINTS.USER.SEARCH(query));
     return response;
   },
 
-  sendRequest: async (email: string) => {
+  sendRequest: async (email: string): Promise<any> => {
     const response = await axiosClient.post(ENDPOINTS.FRIENDSHIP.REQUEST(email));
     return response;
   },
 
-  acceptRequest: async (id: number) => {
+  acceptRequest: async (id: number): Promise<any> => {
     const response = await axiosClient.put(ENDPOINTS.FRIENDSHIP.ACCEPT(id));
     return response;
   },
 
-  rejectRequest: async (id: number) => {
+  rejectRequest: async (id: number): Promise<any> => {
     const response = await axiosClient.delete(ENDPOINTS.FRIENDSHIP.REJECT(id));
     return response;
   },
 
-  cancelRequest: async (id: number) => {
+  cancelRequest: async (id: number): Promise<any> => {
     const response = await axiosClient.delete(ENDPOINTS.FRIENDSHIP.CANCEL(id));
     return response;
   },
 
-  removeFriend: async (id: number) => {
+  removeFriend: async (id: number): Promise<any> => {
     const response = await axiosClient.delete(ENDPOINTS.FRIENDSHIP.REMOVE(id));
     return response;
   },
 
-  getFriends: async () => {
+  getFriends: async (): Promise<any> => {
     const response = await axiosClient.get(ENDPOINTS.FRIENDSHIP.LIST_FRIENDS);
     return response;
   },
 
-  getRequests: async () => {
+  getRequests: async (): Promise<any> => {
     const response = await axiosClient.get(ENDPOINTS.FRIENDSHIP.LIST_REQUESTS);
     return response;
   },
 
-  getSentRequests: async () => {
+  getSentRequests: async (): Promise<any> => {
     const response = await axiosClient.get(ENDPOINTS.FRIENDSHIP.LIST_SENT_REQUESTS);
     return response;
   },

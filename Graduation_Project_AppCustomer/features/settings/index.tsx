@@ -3,7 +3,7 @@ import { ScrollView, View } from 'react-native';
 import { Ionicons, Feather } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { PASTEL_PALETTE } from '../../shared/constants/PastelPalette';
+import { useTheme, useLanguage } from '../../shared/contexts/ThemeLanguageContext';
 import { styles } from './SettingsScreen.styles';
 
 import { ProfileHeader } from './components/ProfileHeader';
@@ -11,17 +11,20 @@ import { QuickActionCard } from './components/QuickActionCard';
 import { SettingsSection } from './components/SettingsSection';
 import { SettingsItem } from './components/SettingsItem';
 import { SecuritySection } from './components/SecuritySection';
+import { AppSettingsSection } from './components/AppSettingsSection';
 import { LogoutButton } from './components/LogoutButton';
-
-const ICON = PASTEL_PALETTE.accentDeep;
 
 export function SettingsScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const bottomPad = Math.max(insets.bottom, 10) + 90;
+  const { theme } = useTheme();
+  const { t } = useLanguage();
+
+  const ICON = theme.primary;
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: theme.bg }]}>
       <ScrollView
         contentContainerStyle={[styles.scrollContent, { paddingBottom: bottomPad }]}
         showsVerticalScrollIndicator={false}
@@ -30,39 +33,39 @@ export function SettingsScreen() {
 
         <QuickActionCard />
 
-        <SettingsSection title="Tài chính">
+        <SettingsSection title={t('finance')}>
           <SettingsItem
             icon={<Ionicons name="card-outline" size={20} color={ICON} />}
-            title="Liên kết ngân hàng"
-            subtitle="Quản lý tài khoản ngân hàng"
+            title={t('bankBinding')}
+            subtitle={t('bankBindingSub')}
             onPress={() => router.push('/settings/bank-binding')}
           />
           <SettingsItem
             icon={<Ionicons name="wallet-outline" size={20} color={ICON} />}
-            title="Ví SmartSpend"
-            subtitle="Số dư và cài đặt ví"
+            title={t('smartSpendWallet')}
+            subtitle={t('walletSub')}
             onPress={() => router.push('/(tabs)/wallet')}
           />
           <SettingsItem
             icon={<Feather name="pie-chart" size={19} color={ICON} />}
-            title="Sổ tay chi tiêu"
-            subtitle="Ghi chép thu chi hàng ngày"
+            title={t('expenseNotebook')}
+            subtitle={t('notebookSub')}
             onPress={() => router.push('/(tabs)/notebook')}
             isLast
           />
         </SettingsSection>
 
-        <SettingsSection title="Tiện ích">
+        <SettingsSection title={t('utilities')}>
           <SettingsItem
             icon={<Ionicons name="receipt-outline" size={20} color={ICON} />}
-            title="Quản lý hóa đơn"
-            subtitle="Theo dõi và thanh toán hóa đơn"
+            title={t('invoiceManagement')}
+            subtitle={t('invoiceSub')}
             onPress={() => router.push('/invoice')}
           />
           <SettingsItem
             icon={<Ionicons name="people-outline" size={20} color={ICON} />}
-            title="Quỹ nhóm"
-            subtitle="Quỹ chung cùng bạn bè"
+            title={t('groupFund')}
+            subtitle={t('groupFundSub')}
             onPress={() => router.push('/(tabs)/funds')}
             isLast
           />
@@ -70,6 +73,7 @@ export function SettingsScreen() {
 
         <SecuritySection />
 
+        <AppSettingsSection />
         <SettingsSection title="Hỗ trợ">
           <SettingsItem
             icon={<Feather name="headphones" size={19} color={ICON} />}
@@ -85,3 +89,4 @@ export function SettingsScreen() {
     </View>
   );
 }
+

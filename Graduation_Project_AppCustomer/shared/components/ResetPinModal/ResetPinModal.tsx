@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, Modal, SafeAreaView, Alert } from 'react-native';
+import { View, Text, TouchableOpacity, Modal, Alert } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather, Ionicons } from '@expo/vector-icons';
 import { styles } from '../PinModal/PinModal.styles';
 

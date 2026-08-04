@@ -23,8 +23,9 @@ import { getAvailableReminderOptions } from '../../utils/invoiceUtils';
 
 export const EditInvoiceScreen = () => {
   const router = useRouter();
-  const { id } = useLocalSearchParams();
-  
+  const { id, viewOnly } = useLocalSearchParams();
+  const isViewOnly = viewOnly === 'true';
+
   const [loading, setLoading] = useState(false);
   const [fetching, setFetching] = useState(true);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
@@ -200,7 +201,7 @@ export const EditInvoiceScreen = () => {
               <TouchableOpacity onPress={() => router.back()} style={styles.backButton} activeOpacity={0.7}>
                 <Ionicons name="chevron-back-outline" size={22} color="#7C3AED" />
               </TouchableOpacity>
-              <Text style={styles.headerTitle}>Sửa hóa đơn</Text>
+              <Text style={styles.headerTitle}>{isViewOnly ? 'Chi tiết hóa đơn' : 'Sửa hóa đơn'}</Text>
             </View>
           </View>
         </LinearGradient>
@@ -220,6 +221,7 @@ export const EditInvoiceScreen = () => {
               value={invoiceName}
               onChangeText={setInvoiceName}
               placeholderTextColor="#94A3B8"
+              editable={!isViewOnly}
             />
           </View>
 
@@ -233,6 +235,7 @@ export const EditInvoiceScreen = () => {
                 onChangeText={handleAmountChange}
                 keyboardType="numeric"
                 placeholderTextColor="#94A3B8"
+                editable={!isViewOnly}
               />
               <Text style={styles.currencySuffix}>VNĐ</Text>
             </View>
@@ -247,7 +250,8 @@ export const EditInvoiceScreen = () => {
             <Text style={styles.label}>Ngày đến hạn</Text>
             <TouchableOpacity 
               style={styles.dropdownButton}
-              onPress={() => setShowDatePicker(!showDatePicker)}
+              onPress={() => !isViewOnly && setShowDatePicker(!showDatePicker)}
+              activeOpacity={isViewOnly ? 1 : 0.7}
             >
               <Text style={styles.dropdownButtonText}>
                 {dueDate.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' })}
@@ -272,7 +276,8 @@ export const EditInvoiceScreen = () => {
             <Text style={styles.label}>Nhắc nhở tôi</Text>
             <TouchableOpacity 
               style={styles.dropdownButton}
-              onPress={() => setShowReminderPicker(true)}
+              onPress={() => !isViewOnly && setShowReminderPicker(true)}
+              activeOpacity={isViewOnly ? 1 : 0.7}
             >
               <Text style={styles.dropdownButtonText}>{reminderOption}</Text>
               <Ionicons name="chevron-down-outline" size={20} color="#64748B" />
@@ -283,7 +288,8 @@ export const EditInvoiceScreen = () => {
             <Text style={styles.label}>Giờ thông báo</Text>
             <TouchableOpacity 
               style={styles.dropdownButton}
-              onPress={() => setShowTimePicker(!showTimePicker)}
+              onPress={() => !isViewOnly && setShowTimePicker(!showTimePicker)}
+              activeOpacity={isViewOnly ? 1 : 0.7}
             >
               <Text style={styles.dropdownButtonText}>
                 {reminderTime.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}
@@ -363,19 +369,21 @@ export const EditInvoiceScreen = () => {
       </Modal>
 
       {/* Footer */}
-      <View style={styles.footer}>
-        <TouchableOpacity 
-          style={[styles.saveButton, loading && { opacity: 0.7 }]} 
-          onPress={handleSave}
-          disabled={loading}
-        >
-          {loading ? (
-            <ActivityIndicator color="#FFF" />
-          ) : (
-            <Text style={styles.saveButtonText}>Cập nhật</Text>
-          )}
-        </TouchableOpacity>
-      </View>
+      {!isViewOnly && (
+        <View style={styles.footer}>
+          <TouchableOpacity 
+            style={[styles.saveButton, loading && { opacity: 0.7 }]} 
+            onPress={handleSave}
+            disabled={loading}
+          >
+            {loading ? (
+              <ActivityIndicator color="#FFF" />
+            ) : (
+              <Text style={styles.saveButtonText}>Cập nhật</Text>
+            )}
+          </TouchableOpacity>
+        </View>
+      )}
 
       <ConfirmModal
         visible={showSuccessModal}

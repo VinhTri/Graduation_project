@@ -207,4 +207,7 @@ export const styles = StyleSheet.create({
     color: Colors.primary,
     fontWeight: 'bold',
   },
+  modalOptionSelected: {
+    backgroundColor: '#FDF2F8',
+  },
 });

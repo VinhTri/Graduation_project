@@ -133,6 +133,11 @@ const AppSettingsSubItems = () => {
 
 // ─── Main exported section (mirrors SecuritySection structure exactly) ─────────
 export const AppSettingsSection = () => {
+  const [expanded, setExpanded] = useState(false);
+  const [measuredHeight, setMeasuredHeight] = useState(0);
+  const { theme, isDark, themeMode } = useTheme();
+  const { language, t } = useLanguage();
+
   const router = useRouter();
   const { theme, isDark, themeMode } = useTheme();
   const { language, t } = useLanguage();
@@ -179,6 +184,7 @@ export const AppSettingsSection = () => {
       </View>
 
       <View style={[styles.sectionBody, { backgroundColor: theme.card, borderColor: theme.cardBorder }]}>
+        {/* ── Header row (tap to expand) ── */}
         {/* ── Item 1: Trung tâm hỗ trợ ── */}
         <Pressable
           style={[

@@ -11,7 +11,7 @@ import {
   TouchableWithoutFeedback,
   ActivityIndicator
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import DateTimePicker from '@react-native-community/datetimepicker';
@@ -29,8 +29,16 @@ export const CreateInvoiceScreen = () => {
   const [errorModalVisible, setErrorModalVisible] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
 
-  const [invoiceName, setInvoiceName] = useState('');
-  const [amount, setAmount] = useState('');
+  const params = useLocalSearchParams<{ prefillName?: string; prefillAmount?: string }>();
+
+  const [invoiceName, setInvoiceName] = useState(params.prefillName || '');
+  const [amount, setAmount] = useState(() => {
+    if (params.prefillAmount) {
+      const num = String(params.prefillAmount).replace(/[^0-9]/g, '');
+      return num.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+    }
+    return '';
+  });
   const [dueDate, setDueDate] = useState(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
   

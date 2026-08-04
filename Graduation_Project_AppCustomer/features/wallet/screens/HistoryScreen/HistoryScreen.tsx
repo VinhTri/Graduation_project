@@ -17,10 +17,14 @@ import { TransactionDetailModal } from "../../components";
 import { transactionService } from "../../../../shared/api/services/transactionService";
 import { useCategoryContext } from "../../../../shared/contexts/CategoryContext";
 
+import { useLanguage } from "../../../../shared/contexts/ThemeLanguageContext";
+
 export default function HistoryScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { categories } = useCategoryContext();
+  const { t, language } = useLanguage();
+  const isEn = language === 'en';
   
   const [transactions, setTransactions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -126,9 +130,9 @@ export default function HistoryScreen() {
 
   const getStatusText = (status: string) => {
     switch (status) {
-      case "success": return "Thành công";
-      case "pending": return "Đang xử lý";
-      case "failed": return "Thất bại";
+      case "success": return isEn ? "Success" : "Thành công";
+      case "pending": return isEn ? "Pending" : "Đang xử lý";
+      case "failed": return isEn ? "Failed" : "Thất bại";
       default: return status;
     }
   };
@@ -203,7 +207,7 @@ export default function HistoryScreen() {
             <Ionicons name="chevron-back-outline" size={22} color={PASTEL_PALETTE.subtitle} />
           </TouchableOpacity>
           <Text style={styles.headerTitle} numberOfLines={1} ellipsizeMode="tail">
-            Lịch sử giao dịch
+            {t('transactionHistory')}
           </Text>
         </View>
       </PastelHeaderShell>
@@ -228,17 +232,17 @@ export default function HistoryScreen() {
                       style={[styles.filterTab, filterMode === "all" && styles.filterTabActive]}
                       onPress={() => setFilterMode("all")}
                     >
-                      <Text style={[styles.filterTabText, filterMode === "all" && styles.filterTabTextActive]}>Tất cả</Text>
+                      <Text style={[styles.filterTabText, filterMode === "all" && styles.filterTabTextActive]}>{t('allTransactions')}</Text>
                     </TouchableOpacity>
                     <TouchableOpacity 
                       style={[styles.filterTab, filterMode === "today" && styles.filterTabActive]}
                       onPress={() => setFilterMode("today")}
                     >
-                      <Text style={[styles.filterTabText, filterMode === "today" && styles.filterTabTextActive]}>Hôm nay</Text>
+                      <Text style={[styles.filterTabText, filterMode === "today" && styles.filterTabTextActive]}>{isEn ? 'Today' : 'Hôm nay'}</Text>
                     </TouchableOpacity>
                   </View>
 
-                  <Text style={styles.sectionTitle}>Giao dịch gần đây</Text>
+                  <Text style={styles.sectionTitle}>{isEn ? 'Recent Transactions' : 'Giao dịch gần đây'}</Text>
                 </>
               )}
               ListEmptyComponent={() => (

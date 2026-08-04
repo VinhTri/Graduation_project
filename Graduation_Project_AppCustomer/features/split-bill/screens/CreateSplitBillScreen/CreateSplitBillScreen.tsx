@@ -11,32 +11,32 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { PASTEL_PALETTE } from '@/shared/constants/PastelPalette';
+import PastelHeaderShell, { PASTEL_PALETTE } from '@/shared/components/PastelHeaderShell/PastelHeaderShell';
 import { friendshipService, FriendshipResponse } from '@/shared/api/services/friendship.service';
 import { splitBillService } from '@/shared/api/services/splitBillService';
 import ConfirmModal from '@/shared/components/ConfirmModal/ConfirmModal';
 import { styles } from './CreateSplitBillScreen.styles';
+import { useTheme, useLanguage } from '@/shared/contexts/ThemeLanguageContext';
 
 export const CreateSplitBillScreen = () => {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { theme } = useTheme();
+  const { language } = useLanguage();
+  const isEn = language === 'en';
 
   const [title, setTitle] = useState('');
   const [amountStr, setAmountStr] = useState('');
   const [note, setNote] = useState('');
 
-  // Mode: 'INCLUDE_ME' (chia đều cả tôi), 'FRIENDS_ONLY' (chia đều cho bạn bè)
   const [splitMode, setSplitMode] = useState<'INCLUDE_ME' | 'FRIENDS_ONLY'>('INCLUDE_ME');
 
-  // Friends state
   const [friends, setFriends] = useState<FriendshipResponse[]>([]);
   const [loadingFriends, setLoadingFriends] = useState(true);
   const [friendSearch, setFriendSearch] = useState('');
   const [selectedFriendIds, setSelectedFriendIds] = useState<number[]>([]);
 
-  // Submitting state
   const [submitting, setSubmitting] = useState(false);
   const [errorModalVisible, setErrorModalVisible] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
@@ -96,7 +96,6 @@ export const CreateSplitBillScreen = () => {
     );
   }, [friends, friendSearch]);
 
-  // Calculations
   const numericTotalAmount = useMemo(() => {
     const raw = amountStr.replace(/\./g, '');
     const val = parseFloat(raw);
@@ -121,19 +120,19 @@ export const CreateSplitBillScreen = () => {
 
   const handleSubmit = async () => {
     if (!title.trim()) {
-      setErrorMessage('Vui lòng nhập tên khoản chia.');
+      setErrorMessage(isEn ? 'Please enter bill title.' : 'Vui lòng nhập tên khoản chia.');
       setErrorModalVisible(true);
       return;
     }
 
     if (selectedCount === 0) {
-      setErrorMessage('Vui lòng chọn ít nhất 1 người bạn để chia tiền.');
+      setErrorMessage(isEn ? 'Please select at least 1 friend to split.' : 'Vui lòng chọn ít nhất 1 người bạn để chia tiền.');
       setErrorModalVisible(true);
       return;
     }
 
     if (!isAmountValid) {
-      setErrorMessage('Số tiền chia tối thiểu mỗi người là 2.000đ.');
+      setErrorMessage(isEn ? 'Minimum split amount per person is 2,000 VND.' : 'Số tiền chia tối thiểu mỗi người là 2.000đ.');
       setErrorModalVisible(true);
       return;
     }
@@ -157,315 +156,266 @@ export const CreateSplitBillScreen = () => {
         setCreatedBillId(res.data?.id || null);
         setSuccessModalVisible(true);
       } else {
-        setErrorMessage(res?.message || 'Không thể tạo yêu cầu chia tiền. Vui lòng thử lại.');
+        setErrorMessage(res?.message || (isEn ? 'Could not create split bill.' : 'Không thể tạo đợt chia tiền.'));
         setErrorModalVisible(true);
       }
-    } catch (error: any) {
-      const msg =
-        error?.response?.data?.message ||
-        error?.message ||
-        'Đã xảy ra lỗi khi tạo yêu cầu chia tiền.';
+    } catch (err: any) {
+      const msg = err?.response?.data?.message || err?.message || (isEn ? 'An error occurred while creating split bill.' : 'Có lỗi xảy ra khi tạo đợt chia tiền.');
+      setErrorMessage(msg);
+      setErrorModalVisible(true);
     } finally {
       setSubmitting(false);
     }
   };
 
-  const handleViewDetail = () => {
-    setSuccessModalVisible(false);
-    if (createdBillId) {
-      router.replace({
-        pathname: '/split-bill/[id]',
-        params: { id: createdBillId },
-      } as any);
-    } else {
-      handleGoToList();
-    }
-  };
-
-  const handleGoToList = () => {
-    setSuccessModalVisible(false);
-    if (router.canGoBack()) {
-      router.back();
-    } else {
-      router.replace('/split-bill' as any);
-    }
-  };
-
   return (
-    <KeyboardAvoidingView
-      style={styles.safeArea}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-    >
+    <View style={[styles.container, { backgroundColor: theme.bg }]}>
       {/* Header */}
-      <View style={styles.headerWrap}>
-        <LinearGradient
-          colors={[PASTEL_PALETTE.headerStart, PASTEL_PALETTE.headerMid, PASTEL_PALETTE.headerEnd]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={[styles.header, { paddingTop: insets.top + 12 }]}
-        >
-          <View style={styles.headerDecorCircleLarge} />
-          <View style={styles.headerDecorCircleSmall} />
-
-          <View style={styles.headerTopRow}>
-            <View style={styles.leftSection}>
-              <TouchableOpacity
-                onPress={() => router.back()}
-                style={styles.backButton}
-                activeOpacity={0.7}
-              >
-                <Ionicons name="chevron-back-outline" size={24} color={PASTEL_PALETTE.subtitle} />
-              </TouchableOpacity>
-              <View style={styles.titleContainer}>
-                <Text style={styles.headerTitle} numberOfLines={1}>
-                  Tạo yêu cầu chia tiền
-                </Text>
-              </View>
-            </View>
-          </View>
-        </LinearGradient>
-      </View>
-
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        {/* Card 1: Thông tin khoản chi */}
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>1. Thông tin khoản chi</Text>
-
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>
-              Tên khoản chi <Text style={{ color: '#EF4444' }}>*</Text>
+      <PastelHeaderShell contentStyle={styles.headerContent}>
+        <View style={styles.headerRow}>
+          <TouchableOpacity onPress={() => router.back()} style={styles.backButton} activeOpacity={0.7}>
+            <Ionicons name="chevron-back-outline" size={22} color={theme.isDark ? theme.textPrimary : '#7C3AED'} />
+          </TouchableOpacity>
+          <View style={styles.titleContainer}>
+            <Text style={[styles.headerTitle, { color: theme.isDark ? theme.textPrimary : PASTEL_PALETTE.title }]}>
+              {isEn ? 'New Split Bill' : 'Tạo đợt chia tiền'}
             </Text>
-            <TextInput
-              style={styles.input}
-              placeholder="VD: Tiền ăn tối, Tiền cafe, Tiền phòng..."
-              value={title}
-              onChangeText={setTitle}
-              placeholderTextColor={PASTEL_PALETTE.textMuted}
-              maxLength={60}
-            />
-          </View>
-
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>
-              Tổng số tiền hóa đơn <Text style={{ color: '#EF4444' }}>*</Text>
+            <Text style={[styles.headerSubtitle, { color: theme.isDark ? theme.textSecondary : PASTEL_PALETTE.subtitle }]}>
+              {isEn ? 'Equal division with friends' : 'Chia đều chi tiêu với bạn bè'}
             </Text>
-            <View style={styles.amountInputContainer}>
-              <TextInput
-                style={[styles.input, styles.amountInput]}
-                placeholder="0"
-                value={amountStr}
-                onChangeText={handleAmountChange}
-                keyboardType="numeric"
-                placeholderTextColor={PASTEL_PALETTE.textMuted}
-              />
-              <Text style={styles.currencySuffix}>đ</Text>
-            </View>
-          </View>
-
-          <View style={[styles.inputGroup, { marginBottom: 0 }]}>
-            <Text style={styles.label}>Ghi chú / Lời nhắn</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Nhập lời nhắn cho bạn bè..."
-              value={note}
-              onChangeText={setNote}
-              placeholderTextColor={PASTEL_PALETTE.textMuted}
-              maxLength={100}
-            />
           </View>
         </View>
+      </PastelHeaderShell>
 
-        {/* Card 2: Chọn bạn bè */}
-        <View style={styles.card}>
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-            <Text style={[styles.cardTitle, { marginBottom: 0 }]}>
-              2. Chọn bạn bè ({selectedCount}/{friends.length})
-            </Text>
-            {friends.length > 0 && (
-              <TouchableOpacity onPress={selectAllFriends} activeOpacity={0.7}>
-                <Text style={{ fontSize: 13, color: PASTEL_PALETTE.accentDeep, fontWeight: '700' }}>
-                  {selectedFriendIds.length === filteredFriends.length ? 'Bỏ chọn tất cả' : 'Chọn tất cả'}
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      >
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 100 }]}
+        >
+          {/* Card 1: Bill Information */}
+          <View style={[styles.sectionCard, { backgroundColor: theme.card, borderColor: theme.cardBorder, borderWidth: 1 }]}>
+            <Text style={[styles.cardTitle, { color: theme.textPrimary }]}>{isEn ? 'Bill Information' : 'Thông tin đợt chia'}</Text>
+
+            <View style={styles.inputGroup}>
+              <Text style={[styles.inputLabel, { color: theme.textSecondary }]}>{isEn ? 'Title *' : 'Tên khoản chia *'}</Text>
+              <TextInput
+                style={[styles.textInput, { backgroundColor: theme.inputBg, borderColor: theme.inputBorder, color: theme.inputText }]}
+                placeholder={isEn ? 'e.g. Dinner, Coffee, Travel...' : 'Ví dụ: Ăn tối, Cà phê, Đi phượt...'}
+                placeholderTextColor={theme.textMuted}
+                value={title}
+                onChangeText={setTitle}
+              />
+            </View>
+
+            <View style={styles.inputGroup}>
+              <Text style={[styles.inputLabel, { color: theme.textSecondary }]}>{isEn ? 'Total Amount (VND) *' : 'Tổng số tiền (đ) *'}</Text>
+              <View style={[styles.amountInputWrap, { backgroundColor: theme.inputBg, borderColor: theme.inputBorder }]}>
+                <TextInput
+                  style={[styles.amountInput, { color: theme.inputText }]}
+                  placeholder="0"
+                  placeholderTextColor={theme.textMuted}
+                  keyboardType="numeric"
+                  value={amountStr}
+                  onChangeText={handleAmountChange}
+                />
+                <Text style={[styles.currencySuffix, { color: theme.primary }]}>đ</Text>
+              </View>
+            </View>
+
+            <View style={styles.inputGroup}>
+              <Text style={[styles.inputLabel, { color: theme.textSecondary }]}>{isEn ? 'Note (optional)' : 'Ghi chú (không bắt buộc)'}</Text>
+              <TextInput
+                style={[styles.textInput, styles.textArea, { backgroundColor: theme.inputBg, borderColor: theme.inputBorder, color: theme.inputText }]}
+                placeholder={isEn ? 'Write additional note...' : 'Ghi chú chi tiết thêm...'}
+                placeholderTextColor={theme.textMuted}
+                multiline
+                numberOfLines={3}
+                value={note}
+                onChangeText={setNote}
+              />
+            </View>
+          </View>
+
+          {/* Card 2: Split Mode */}
+          <View style={[styles.sectionCard, { backgroundColor: theme.card, borderColor: theme.cardBorder, borderWidth: 1 }]}>
+            <Text style={[styles.cardTitle, { color: theme.textPrimary }]}>{isEn ? 'Split Option' : 'Tùy chọn chia'}</Text>
+            <View style={styles.splitModeContainer}>
+              <TouchableOpacity
+                style={[styles.modeChip, splitMode === 'INCLUDE_ME' && [styles.modeChipActive, { backgroundColor: theme.primarySoft, borderColor: theme.primary }]]}
+                onPress={() => setSplitMode('INCLUDE_ME')}
+                activeOpacity={0.8}
+              >
+                <Ionicons
+                  name="people-outline"
+                  size={18}
+                  color={splitMode === 'INCLUDE_ME' ? theme.primary : theme.textSecondary}
+                />
+                <Text style={[styles.modeChipText, { color: theme.textSecondary }, splitMode === 'INCLUDE_ME' && { color: theme.primary, fontWeight: '700' }]}>
+                  {isEn ? 'Include me' : 'Chia cả tôi'}
                 </Text>
               </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.modeChip, splitMode === 'FRIENDS_ONLY' && [styles.modeChipActive, { backgroundColor: theme.primarySoft, borderColor: theme.primary }]]}
+                onPress={() => setSplitMode('FRIENDS_ONLY')}
+                activeOpacity={0.8}
+              >
+                <Ionicons
+                  name="person-add-outline"
+                  size={18}
+                  color={splitMode === 'FRIENDS_ONLY' ? theme.primary : theme.textSecondary}
+                />
+                <Text style={[styles.modeChipText, { color: theme.textSecondary }, splitMode === 'FRIENDS_ONLY' && { color: theme.primary, fontWeight: '700' }]}>
+                  {isEn ? 'Friends only' : 'Chỉ chia cho bạn'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          {/* Card 3: Select Friends */}
+          <View style={[styles.sectionCard, { backgroundColor: theme.card, borderColor: theme.cardBorder, borderWidth: 1 }]}>
+            <View style={styles.friendsHeaderRow}>
+              <Text style={[styles.cardTitle, { color: theme.textPrimary }]}>{isEn ? 'Select Friends ' : 'Chọn bạn bè '}({selectedCount})</Text>
+              <TouchableOpacity onPress={selectAllFriends} activeOpacity={0.7}>
+                <Text style={[styles.selectAllText, { color: theme.primary }]}>
+                  {selectedFriendIds.length === filteredFriends.length && filteredFriends.length > 0
+                    ? (isEn ? 'Deselect All' : 'Bỏ chọn tất cả')
+                    : (isEn ? 'Select All' : 'Chọn tất cả')}
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* Friend Search Input */}
+            <View style={[styles.searchBox, { backgroundColor: theme.inputBg, borderColor: theme.inputBorder }]}>
+              <Ionicons name="search-outline" size={18} color={theme.textMuted} />
+              <TextInput
+                style={[styles.searchInput, { color: theme.inputText }]}
+                placeholder={isEn ? 'Search friend name or email...' : 'Tìm kiếm bạn bè theo tên, email...'}
+                placeholderTextColor={theme.textMuted}
+                value={friendSearch}
+                onChangeText={setFriendSearch}
+              />
+              {friendSearch.length > 0 && (
+                <TouchableOpacity onPress={() => setFriendSearch('')}>
+                  <Ionicons name="close-circle" size={16} color={theme.textMuted} />
+                </TouchableOpacity>
+              )}
+            </View>
+
+            {loadingFriends ? (
+              <ActivityIndicator style={{ paddingVertical: 20 }} color={theme.primary} />
+            ) : filteredFriends.length === 0 ? (
+              <Text style={[styles.emptyFriendsText, { color: theme.textMuted }]}>
+                {friendSearch ? (isEn ? 'No matching friends found' : 'Không tìm thấy bạn bè phù hợp') : (isEn ? 'Your friends list is empty' : 'Danh sách bạn bè trống')}
+              </Text>
+            ) : (
+              <View style={styles.friendsList}>
+                {filteredFriends.map((friend) => {
+                  const isSelected = selectedFriendIds.includes(friend.friendId);
+                  return (
+                    <TouchableOpacity
+                      key={friend.friendId}
+                      style={[
+                        styles.friendRow,
+                        { backgroundColor: isSelected ? (theme.isDark ? theme.primarySoft : '#FFF0F6') : theme.bgSoft, borderColor: isSelected ? theme.primary : theme.cardBorder },
+                      ]}
+                      onPress={() => toggleSelectFriend(friend.friendId)}
+                      activeOpacity={0.7}
+                    >
+                      <View style={[styles.checkbox, { borderColor: isSelected ? theme.primary : theme.textMuted, backgroundColor: isSelected ? theme.primary : 'transparent' }]}>
+                        {isSelected && <Ionicons name="checkmark" size={14} color="#FFF" />}
+                      </View>
+                      <View style={styles.friendInfo}>
+                        <Text style={[styles.friendName, { color: theme.textPrimary }]}>{friend.friendUsername}</Text>
+                        <Text style={[styles.friendEmail, { color: theme.textSecondary }]}>{friend.friendEmail}</Text>
+                      </View>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
             )}
           </View>
 
-          {/* Search bar */}
-          <View style={styles.searchFriendInput}>
-            <Ionicons name="search-outline" size={18} color={PASTEL_PALETTE.textMuted} style={{ marginRight: 8 }} />
-            <TextInput
-              style={{ flex: 1, fontSize: 14, color: PASTEL_PALETTE.title }}
-              placeholder="Tìm kiếm bạn bè theo tên..."
-              value={friendSearch}
-              onChangeText={setFriendSearch}
-              placeholderTextColor={PASTEL_PALETTE.textMuted}
-            />
-          </View>
-
-          {loadingFriends ? (
-            <ActivityIndicator style={{ paddingVertical: 20 }} color={PASTEL_PALETTE.accentDeep} />
-          ) : filteredFriends.length === 0 ? (
-            <View style={{ paddingVertical: 20, alignItems: 'center' }}>
-              <Ionicons name="people-outline" size={36} color={PASTEL_PALETTE.textMuted} />
-              <Text style={{ color: PASTEL_PALETTE.textMuted, fontSize: 14, marginTop: 8 }}>
-                {friends.length === 0 ? 'Bạn chưa có bạn bè nào để chia tiền' : 'Không tìm thấy bạn bè phù hợp'}
-              </Text>
-            </View>
-          ) : (
-            <View style={styles.friendListWrap}>
-              {filteredFriends.map((friend) => {
-                const isSelected = selectedFriendIds.includes(friend.friendId);
-                const initial = friend.friendUsername ? friend.friendUsername.charAt(0).toUpperCase() : 'U';
-                return (
-                  <TouchableOpacity
-                    key={friend.id}
-                    style={[styles.friendItem, isSelected ? styles.friendItemSelected : null]}
-                    onPress={() => toggleSelectFriend(friend.friendId)}
-                    activeOpacity={0.7}
-                  >
-                    <View style={styles.friendAvatarCircle}>
-                      <Text style={styles.friendAvatarText}>{initial}</Text>
-                    </View>
-                    <View style={styles.friendInfo}>
-                      <Text style={styles.friendName} numberOfLines={1}>
-                        {friend.friendUsername}
-                      </Text>
-                      <Text style={styles.friendEmail} numberOfLines={1}>
-                        {friend.friendEmail}
-                      </Text>
-                    </View>
-                    <View style={[styles.friendCheckbox, isSelected ? styles.friendCheckboxSelected : null]}>
-                      {isSelected && <Ionicons name="checkmark" size={16} color="#FFF" />}
-                    </View>
-                  </TouchableOpacity>
-                );
-              })}
+          {/* Calculation Summary */}
+          {numericTotalAmount > 0 && selectedCount > 0 && (
+            <View style={[styles.summaryBox, { backgroundColor: theme.card, borderColor: theme.cardBorder, borderWidth: 1 }]}>
+              <View style={styles.summaryRow}>
+                <Text style={[styles.summaryLabel, { color: theme.textSecondary }]}>{isEn ? 'Total Amount:' : 'Tổng số tiền:'}</Text>
+                <Text style={[styles.summaryVal, { color: theme.textPrimary }]}>{numericTotalAmount.toLocaleString('vi-VN')}đ</Text>
+              </View>
+              <View style={styles.summaryRow}>
+                <Text style={[styles.summaryLabel, { color: theme.textSecondary }]}>{isEn ? 'Divided By:' : 'Chia cho:'}</Text>
+                <Text style={[styles.summaryVal, { color: theme.textPrimary }]}>
+                  {splitMode === 'INCLUDE_ME' ? `${selectedCount} bạn + Tôi` : `${selectedCount} bạn`}
+                </Text>
+              </View>
+              <View style={[styles.summaryDivider, { backgroundColor: theme.divider }]} />
+              <View style={styles.summaryRow}>
+                <Text style={[styles.summaryLabelBold, { color: theme.textPrimary }]}>{isEn ? 'Each Person Pays:' : 'Mỗi người trả:'}</Text>
+                <Text style={[styles.summaryAmountHighlight, { color: theme.primary }]}>
+                  {perPersonAmount.toLocaleString('vi-VN')}đ
+                </Text>
+              </View>
             </View>
           )}
-        </View>
 
-        {/* Card 3: Phương thức chia & Tổng kết */}
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>3. Phương thức chia tiền</Text>
+          {/* Submit Button */}
+          <TouchableOpacity
+            style={[styles.submitButton, { backgroundColor: isFormValid ? theme.primary : (theme.isDark ? theme.bgSoft : '#CBD5E1') }]}
+            onPress={handleSubmit}
+            disabled={!isFormValid}
+            activeOpacity={0.85}
+          >
+            {submitting ? (
+              <ActivityIndicator color="#FFF" size="small" />
+            ) : (
+              <Text style={styles.submitButtonText}>{isEn ? 'Create Bill Split' : 'Tạo đợt chia tiền'}</Text>
+            )}
+          </TouchableOpacity>
+        </ScrollView>
+      </KeyboardAvoidingView>
 
-          <View style={styles.modeSelector}>
-            <TouchableOpacity
-              style={[styles.modeBtn, splitMode === 'INCLUDE_ME' ? styles.modeBtnActive : null]}
-              onPress={() => setSplitMode('INCLUDE_ME')}
-              activeOpacity={0.8}
-            >
-              <Text style={[styles.modeBtnText, splitMode === 'INCLUDE_ME' ? styles.modeBtnTextActive : null]}>
-                Chia đều (Bao gồm tôi)
-              </Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[styles.modeBtn, splitMode === 'FRIENDS_ONLY' ? styles.modeBtnActive : null]}
-              onPress={() => setSplitMode('FRIENDS_ONLY')}
-              activeOpacity={0.8}
-            >
-              <Text style={[styles.modeBtnText, splitMode === 'FRIENDS_ONLY' ? styles.modeBtnTextActive : null]}>
-                Chia đều (Chỉ bạn bè)
-              </Text>
-            </TouchableOpacity>
-          </View>
-
-          {/* Summary Box */}
-          <View style={styles.summaryBox}>
-            <View style={styles.summaryRow}>
-              <Text style={styles.summaryLabel}>Tổng hóa đơn:</Text>
-              <Text style={styles.summaryValue}>
-                {numericTotalAmount > 0 ? `${numericTotalAmount.toLocaleString('vi-VN')}đ` : '0đ'}
-              </Text>
-            </View>
-
-            <View style={styles.summaryRow}>
-              <Text style={styles.summaryLabel}>
-                Số người cùng chia:
-              </Text>
-              <Text style={styles.summaryValue}>
-                {splitMode === 'INCLUDE_ME'
-                  ? `${selectedCount + 1} người (Tôi + ${selectedCount} bạn)`
-                  : `${selectedCount} người`}
-              </Text>
-            </View>
-
-            <View style={[styles.summaryRow, { marginBottom: 0, paddingTop: 6, borderTopWidth: 1, borderTopColor: '#DDD6FE' }]}>
-              <Text style={[styles.summaryLabel, { fontWeight: '700', color: PASTEL_PALETTE.title }]}>
-                Mỗi người cần trả:
-              </Text>
-              <Text style={styles.perPersonHighlight}>
-                {perPersonAmount > 0 ? `${perPersonAmount.toLocaleString('vi-VN')}đ` : '0đ'}
-              </Text>
-            </View>
-          </View>
-
-          {/* Condition Warning */}
-          {selectedCount > 0 && numericTotalAmount > 0 && !isAmountValid && (
-            <View style={styles.warningBadge}>
-              <Ionicons name="alert-circle" size={18} color="#EF4444" />
-              <Text style={styles.warningText}>
-                Số tiền chia cho mỗi người phải từ 2.000đ trở lên.
-              </Text>
-            </View>
-          )}
-        </View>
-
-        <View style={{ height: 20 }} />
-      </ScrollView>
-
-      {/* Footer */}
-      <View style={styles.footer}>
-        <TouchableOpacity
-          style={styles.backBtnFooter}
-          onPress={() => router.back()}
-          activeOpacity={0.7}
-        >
-          <Text style={styles.backBtnText}>Quay lại</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[styles.submitBtnFooter, !isFormValid ? { opacity: 0.5 } : null]}
-          onPress={handleSubmit}
-          disabled={!isFormValid}
-          activeOpacity={0.7}
-        >
-          {submitting ? (
-            <ActivityIndicator color="#FFF" size="small" />
-          ) : (
-            <Text style={styles.submitBtnText}>Gửi yêu cầu chia tiền</Text>
-          )}
-        </TouchableOpacity>
-      </View>
-
-      {/* Modals */}
+      {/* Error Modal */}
       <ConfirmModal
         visible={errorModalVisible}
-        title="Thông báo"
+        title={isEn ? "Notification" : "Thông báo"}
         message={errorMessage}
         iconName="alert-circle"
         iconColor="#EF4444"
-        confirmText="Đã hiểu"
+        confirmText={isEn ? "Understood" : "Đã hiểu"}
         hideCancel={true}
-        confirmButtonColor={PASTEL_PALETTE.accentDeep}
+        confirmButtonColor="#EF4444"
         onConfirm={() => setErrorModalVisible(false)}
         onCancel={() => setErrorModalVisible(false)}
       />
 
+      {/* Success Modal */}
       <ConfirmModal
         visible={successModalVisible}
-        title="Gửi yêu cầu thành công!"
-        message={`Đã gửi yêu cầu chia tiền '${title}' đến ${selectedCount} người bạn. Hệ thống đã gửi thông báo chuông và email qua Gmail cho bạn bè.`}
+        title={isEn ? "Created Successfully!" : "Tạo đợt chia thành công!"}
+        message={isEn ? "Bill split request created. Selected friends have been notified." : "Đợt chia tiền đã được tạo. Bạn bè đã nhận được lời nhắc thanh toán."}
         iconName="checkmark-circle"
         iconColor="#10B981"
-        confirmText="Xem chi tiết"
-        cancelText="Về danh sách"
-        hideCancel={false}
-        confirmButtonColor={PASTEL_PALETTE.accentDeep}
-        onConfirm={handleViewDetail}
-        onCancel={handleGoToList}
+        confirmText={isEn ? "View Detail" : "Xem chi tiết"}
+        hideCancel={true}
+        confirmButtonColor="#10B981"
+        onConfirm={() => {
+          setSuccessModalVisible(false);
+          if (createdBillId) {
+            router.replace({
+              pathname: '/split-bill/[id]',
+              params: { id: createdBillId },
+            } as any);
+          } else {
+            router.replace('/split-bill' as any);
+          }
+        }}
+        onCancel={() => setSuccessModalVisible(false)}
       />
-    </KeyboardAvoidingView>
+    </View>
   );
 };
 

@@ -116,9 +116,9 @@ export function CategorySelectModal({
                     <Ionicons
                       name={(group.icon as any) || 'folder'}
                       size={18}
-                      color={group.color || Colors.title}
+                      color={group.color || PASTEL_PALETTE.title}
                     />
-                    <Text style={[styles.listGroupTitle, { color: group.color || Colors.title }]}>
+                    <Text style={[styles.listGroupTitle, { color: group.color || PASTEL_PALETTE.title }]}>
                       {group.title}
                     </Text>
                   </View>
@@ -130,8 +130,8 @@ export function CategorySelectModal({
                       onPress={() => onSelect(item, group.title)}
                       activeOpacity={0.7}
                     >
-                      <View style={[styles.listIconContainer, { backgroundColor: item.bgColor || Colors.lavenderSoft }]}>
-                        <Ionicons name={item.icon as any} size={22} color={item.color || Colors.accentDeep} />
+                      <View style={[styles.listIconContainer, { backgroundColor: item.bgColor || PASTEL_PALETTE.lavenderSoft }]}>
+                        <Ionicons name={item.icon as any} size={22} color={item.color || PASTEL_PALETTE.accentDeep} />
                       </View>
                       <Text style={styles.listItemLabel}>{item.label}</Text>
                     </TouchableOpacity>

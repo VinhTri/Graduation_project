@@ -328,7 +328,7 @@ export const BankWalletDetailScreen = ({ walletId }: Props) => {
         initialData={selectedTransaction || undefined}
         onClose={() => setBalanceModalVisible(false)}
         onConfirm={handleCashBalanceChange}
-        onDelete={() => selectedTransaction && handleDeleteTransaction(selectedTransaction)}
+        onDelete={() => { if (selectedTransaction) handleDeleteTransaction(selectedTransaction); }}
       />
 
       <ConfirmModal

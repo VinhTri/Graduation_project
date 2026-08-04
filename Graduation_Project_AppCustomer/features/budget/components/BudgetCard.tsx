@@ -2,7 +2,7 @@ import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { BudgetResponse } from '../../../shared/api/budgetApi';
-import { PASTEL_PALETTE } from '../../../shared/constants/PastelPalette';
+import { useTheme, useLanguage } from '../../../shared/contexts/ThemeLanguageContext';
 
 interface BudgetCardProps {
   budget: BudgetResponse;
@@ -10,15 +10,19 @@ interface BudgetCardProps {
 }
 
 export const BudgetCard: React.FC<BudgetCardProps> = ({ budget, onPress }) => {
+  const { theme } = useTheme();
+  const { language } = useLanguage();
+  const isEn = language === 'en';
+
   const percentage = Math.min(100, Math.max(0, (budget.spentAmount / budget.amount) * 100));
-  
-  let progressColor = '#10B981'; // Green < 50%
+
+  let progressColor = '#10B981';
   if (percentage >= 100) {
-    progressColor = '#EF4444'; // Red = 100%
+    progressColor = '#EF4444';
   } else if (percentage >= 80) {
-    progressColor = '#F97316'; // Orange 80-99%
+    progressColor = '#F97316';
   } else if (percentage >= 50) {
-    progressColor = '#F59E0B'; // Yellow 50-79%
+    progressColor = '#F59E0B';
   }
 
   const formatCurrency = (amount: number) => {
@@ -36,31 +40,35 @@ export const BudgetCard: React.FC<BudgetCardProps> = ({ budget, onPress }) => {
   };
 
   const getStatusText = () => {
-    if (percentage >= 100) return '🔴 Đã vượt';
-    if (percentage >= 80) return '🟠 Sắp vượt';
-    return '🟢 Bình thường';
+    if (percentage >= 100) return isEn ? '🔴 Exceeded' : '🔴 Đã vượt';
+    if (percentage >= 80) return isEn ? '🟠 Near Limit' : '🟠 Sắp vượt';
+    return isEn ? '🟢 Normal' : '🟢 Bình thường';
   };
 
   return (
-    <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.7}>
+    <TouchableOpacity
+      style={[styles.card, { backgroundColor: theme.card, borderColor: theme.cardBorder }]}
+      onPress={onPress}
+      activeOpacity={0.7}
+    >
       <View style={styles.header}>
         <View style={styles.categoryInfo}>
-          <View style={[styles.iconContainer, { backgroundColor: budget.categoryBgColor }]}>
-            <Ionicons name={budget.categoryIcon as any} size={20} color={budget.categoryColor} />
+          <View style={[styles.iconContainer, { backgroundColor: theme.isDark ? theme.bgSoft : (budget.categoryBgColor || theme.primarySoft) }]}>
+            <Ionicons name={(budget.categoryIcon as any) || 'pie-chart-outline'} size={20} color={budget.categoryColor || theme.primary} />
           </View>
           <View>
-            <Text style={styles.budgetName}>{budget.name}</Text>
-            <Text style={styles.categoryName}>{budget.categoryName}</Text>
+            <Text style={[styles.budgetName, { color: theme.textPrimary }]}>{budget.name}</Text>
+            <Text style={[styles.categoryName, { color: theme.textSecondary }]}>{budget.categoryName}</Text>
           </View>
         </View>
         <View style={{ alignItems: 'flex-end' }}>
-          <View style={styles.statusBadge}>
-            <Text style={styles.cycleText}>
-              {budget.cycle === 'WEEKLY' ? 'Tuần' : budget.cycle === 'MONTHLY' ? 'Tháng' : 'Năm'}
+          <View style={[styles.statusBadge, { backgroundColor: theme.bgSoft }]}>
+            <Text style={[styles.cycleText, { color: theme.textSecondary }]}>
+              {budget.cycle === 'WEEKLY' ? (isEn ? 'Weekly' : 'Tuần') : budget.cycle === 'MONTHLY' ? (isEn ? 'Monthly' : 'Tháng') : (isEn ? 'Yearly' : 'Năm')}
             </Text>
           </View>
           {(budget.startDate && budget.endDate) && (
-            <Text style={styles.dateRangeText}>
+            <Text style={[styles.dateRangeText, { color: theme.textMuted }]}>
               {formatDate(budget.startDate)} - {formatDate(budget.endDate)}
             </Text>
           )}
@@ -69,25 +77,25 @@ export const BudgetCard: React.FC<BudgetCardProps> = ({ budget, onPress }) => {
 
       <View style={styles.amountInfo}>
         <View>
-          <Text style={styles.label}>Đã chi</Text>
-          <Text style={styles.spentText}>{formatCurrency(budget.spentAmount)}</Text>
+          <Text style={[styles.label, { color: theme.textSecondary }]}>{isEn ? 'Spent' : 'Đã chi'}</Text>
+          <Text style={[styles.spentText, { color: theme.textPrimary }]}>{formatCurrency(budget.spentAmount)}</Text>
         </View>
         <View style={{ alignItems: 'flex-end' }}>
-          <Text style={styles.label}>Còn lại</Text>
-          <Text style={[styles.remainingText, remaining < 0 && { color: '#EF4444' }]}>
+          <Text style={[styles.label, { color: theme.textSecondary }]}>{isEn ? 'Remaining' : 'Còn lại'}</Text>
+          <Text style={[styles.remainingText, { color: remaining < 0 ? '#EF4444' : (theme.isDark ? '#34D399' : '#10B981') }]}>
             {formatCurrency(Math.max(0, remaining))}
           </Text>
         </View>
       </View>
 
-      <View style={styles.progressContainer}>
+      <View style={[styles.progressContainer, { backgroundColor: theme.bgSoft }]}>
         <View style={[styles.progressBar, { width: `${percentage}%`, backgroundColor: progressColor }]} />
       </View>
-      
+
       <View style={styles.footer}>
-        <Text style={styles.statusIndicatorText}>{getStatusText()}</Text>
-        <Text style={styles.percentageText}>{percentage.toFixed(1)}%</Text>
-        <Text style={styles.limitText}>Hạn mức: {formatCurrency(budget.amount)}</Text>
+        <Text style={[styles.statusIndicatorText, { color: theme.textPrimary }]}>{getStatusText()}</Text>
+        <Text style={[styles.percentageText, { color: theme.textSecondary }]}>{percentage.toFixed(1)}%</Text>
+        <Text style={[styles.limitText, { color: theme.textMuted }]}>{isEn ? 'Limit: ' : 'Hạn mức: '}{formatCurrency(budget.amount)}</Text>
       </View>
     </TouchableOpacity>
   );
@@ -95,17 +103,10 @@ export const BudgetCard: React.FC<BudgetCardProps> = ({ budget, onPress }) => {
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: 'white',
     borderRadius: 16,
-    padding: 12,
+    padding: 14,
     marginBottom: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
     borderWidth: 1,
-    borderColor: PASTEL_PALETTE.gray100,
   },
   header: {
     flexDirection: 'row',
@@ -128,52 +129,23 @@ const styles = StyleSheet.create({
   budgetName: {
     fontSize: 16,
     fontWeight: '600',
-    color: PASTEL_PALETTE.textDark,
   },
   categoryName: {
     fontSize: 13,
-    color: PASTEL_PALETTE.textGray,
     marginTop: 2,
   },
   statusBadge: {
-    backgroundColor: PASTEL_PALETTE.gray100,
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 8,
   },
   cycleText: {
     fontSize: 12,
-    color: PASTEL_PALETTE.textGray,
     fontWeight: '500',
   },
   dateRangeText: {
     fontSize: 10,
-    color: PASTEL_PALETTE.textGray,
     marginTop: 4,
-  },
-  editButton: {
-    width: 32,
-    height: 32,
-    borderRadius: 8,
-    backgroundColor: '#DBEAFE',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  cheatButton: {
-    width: 32,
-    height: 32,
-    borderRadius: 8,
-    backgroundColor: '#FEF3C7',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  deleteButton: {
-    width: 32,
-    height: 32,
-    borderRadius: 8,
-    backgroundColor: '#FEE2E2',
-    justifyContent: 'center',
-    alignItems: 'center',
   },
   amountInfo: {
     flexDirection: 'row',
@@ -182,22 +154,18 @@ const styles = StyleSheet.create({
   },
   label: {
     fontSize: 12,
-    color: PASTEL_PALETTE.textGray,
     marginBottom: 4,
   },
   spentText: {
     fontSize: 16,
     fontWeight: '700',
-    color: PASTEL_PALETTE.textDark,
   },
   remainingText: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#10B981',
   },
   progressContainer: {
     height: 8,
-    backgroundColor: PASTEL_PALETTE.gray100,
     borderRadius: 4,
     overflow: 'hidden',
     marginBottom: 8,
@@ -214,17 +182,14 @@ const styles = StyleSheet.create({
   percentageText: {
     fontSize: 12,
     fontWeight: '600',
-    color: PASTEL_PALETTE.textGray,
     marginLeft: 'auto',
     marginRight: 8,
   },
   statusIndicatorText: {
     fontSize: 12,
     fontWeight: '600',
-    color: PASTEL_PALETTE.textDark,
   },
   limitText: {
     fontSize: 12,
-    color: PASTEL_PALETTE.textGray,
   },
 });

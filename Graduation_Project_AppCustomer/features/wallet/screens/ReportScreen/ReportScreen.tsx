@@ -24,9 +24,13 @@ const renderCategoryIcon = (iconName: string | undefined, color: string, size: n
   />
 );
 
+import { useLanguage } from "../../../../shared/contexts/ThemeLanguageContext";
+
 export default function ReportScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { t, language } = useLanguage();
+  const isEn = language === 'en';
   
   // States for toggles
   const [viewMode, setViewMode] = useState<"pie" | "bar">("pie");
@@ -421,7 +425,7 @@ export default function ReportScreen() {
             <Ionicons name="chevron-back-outline" size={22} color={PASTEL_PALETTE.subtitle} />
           </TouchableOpacity>
           <Text style={styles.headerTitle} numberOfLines={1} ellipsizeMode="tail">
-            Báo cáo
+            {t('statisticsReport')}
           </Text>
         </View>
       </PastelHeaderShell>
@@ -430,7 +434,7 @@ export default function ReportScreen() {
           
           {/* Section Header */}
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Tình hình thu chi</Text>
+            <Text style={styles.sectionTitle}>{isEn ? 'Income & Expense Overview' : 'Tình hình thu chi'}</Text>
             
             <View style={styles.toggleContainer}>
               <TouchableOpacity 
@@ -438,7 +442,7 @@ export default function ReportScreen() {
                 onPress={() => setViewMode("pie")}
               >
                 <Ionicons name="pie-chart" size={16} color={viewMode === "pie" ? Colors.primary : Colors.textMuted} />
-                <Text style={[styles.toggleText, viewMode === "pie" && styles.toggleTextActive]}>Phân bổ</Text>
+                <Text style={[styles.toggleText, viewMode === "pie" && styles.toggleTextActive]}>{isEn ? 'Distribution' : 'Phân bổ'}</Text>
               </TouchableOpacity>
               
               <TouchableOpacity 
@@ -446,7 +450,7 @@ export default function ReportScreen() {
                 onPress={() => setViewMode("bar")}
               >
                 <Ionicons name="bar-chart" size={16} color={viewMode === "bar" ? Colors.primary : Colors.textMuted} />
-                <Text style={[styles.toggleText, viewMode === "bar" && styles.toggleTextActive]}>Xu hướng</Text>
+                <Text style={[styles.toggleText, viewMode === "bar" && styles.toggleTextActive]}>{isEn ? 'Trend' : 'Xu hướng'}</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -474,7 +478,7 @@ export default function ReportScreen() {
             >
               <View style={styles.summaryLabelRow}>
                 <Feather name="trending-up" size={16} color={activeTab === "expense" ? Colors.primary : Colors.error} />
-                <Text style={[styles.summaryLabel, activeTab === "expense" && styles.summaryLabelActive]}>Chi tiêu</Text>
+                <Text style={[styles.summaryLabel, activeTab === "expense" && styles.summaryLabelActive]}>{t('expense')}</Text>
               </View>
               <Text style={styles.summaryValue}>{activeTab === "expense" ? formatCurrency(totalAmount) : "******"}</Text>
             </TouchableOpacity>
@@ -487,7 +491,7 @@ export default function ReportScreen() {
             >
               <View style={styles.summaryLabelRow}>
                 <Feather name="trending-down" size={16} color={activeTab === "income" ? Colors.primary : Colors.textMuted} />
-                <Text style={[styles.summaryLabel, activeTab === "income" && styles.summaryLabelActive]}>Thu nhập</Text>
+                <Text style={[styles.summaryLabel, activeTab === "income" && styles.summaryLabelActive]}>{t('income')}</Text>
               </View>
               <Text style={styles.summaryValue}>{activeTab === "income" ? formatCurrency(totalAmount) : "******"}</Text>
             </TouchableOpacity>
@@ -506,7 +510,7 @@ export default function ReportScreen() {
                     }}
                   >
                     <Text style={[styles.distributionTabText, distributionPage === 0 && styles.distributionTabTextActive]}>
-                      Danh mục
+                      {t('categories')}
                     </Text>
                   </TouchableOpacity>
                   <TouchableOpacity
