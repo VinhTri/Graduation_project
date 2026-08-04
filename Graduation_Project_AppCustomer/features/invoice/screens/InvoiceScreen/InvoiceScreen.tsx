@@ -195,6 +195,8 @@ export const InvoiceScreen = () => {
               router.push(`/invoice/${item.id}?viewOnly=true`);
             } else if (item.invoiceName.toLowerCase().includes('điện')) {
               router.push(`/invoice/service/electricity?editId=${item.id}`);
+            } else if (item.invoiceName.toLowerCase().includes('nước')) {
+              router.push(`/invoice/service/water?editId=${item.id}`);
             } else {
               router.push(`/invoice/${item.id}`);
             }
