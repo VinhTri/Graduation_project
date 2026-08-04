@@ -133,11 +133,6 @@ const AppSettingsSubItems = () => {
 
 // ─── Main exported section (mirrors SecuritySection structure exactly) ─────────
 export const AppSettingsSection = () => {
-  const [expanded, setExpanded] = useState(false);
-  const [measuredHeight, setMeasuredHeight] = useState(0);
-  const { theme, isDark, themeMode } = useTheme();
-  const { language, t } = useLanguage();
-
   const router = useRouter();
   const { theme, isDark, themeMode } = useTheme();
   const { language, t } = useLanguage();
