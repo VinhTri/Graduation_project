@@ -39,6 +39,21 @@ public class Invoice {
     @Column
     private LocalTime reminderTime;
 
+    @Column
+    private LocalDate startDate;
+
+    @Column
+    private LocalDate endDate;
+
+    @Column
+    private Integer oldReading;
+
+    @Column
+    private Integer newReading;
+
+    @Column
+    private Integer pricePerKwh;
+
     @Column(nullable = false)
     @Builder.Default
     private boolean isPaid = false;

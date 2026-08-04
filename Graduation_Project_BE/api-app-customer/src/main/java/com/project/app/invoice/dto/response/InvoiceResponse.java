@@ -22,6 +22,11 @@ public class InvoiceResponse {
     private LocalDate dueDate;
     private String reminderOption;
     private LocalTime reminderTime;
+    private LocalDate startDate;
+    private LocalDate endDate;
+    private Integer oldReading;
+    private Integer newReading;
+    private Integer pricePerKwh;
     @JsonProperty("isPaid")
     private boolean isPaid;
     private LocalDateTime createdAt;

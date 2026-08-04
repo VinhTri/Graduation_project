@@ -30,6 +30,11 @@ public class InvoiceServiceImpl implements InvoiceService {
                 .dueDate(request.getDueDate())
                 .reminderOption(request.getReminderOption())
                 .reminderTime(request.getReminderTime())
+                .startDate(request.getStartDate())
+                .endDate(request.getEndDate())
+                .oldReading(request.getOldReading())
+                .newReading(request.getNewReading())
+                .pricePerKwh(request.getPricePerKwh())
                 .isPaid(request.isPaid())
                 .user(user)
                 .build();
@@ -69,6 +74,11 @@ public class InvoiceServiceImpl implements InvoiceService {
         invoice.setDueDate(request.getDueDate());
         invoice.setReminderOption(request.getReminderOption());
         invoice.setReminderTime(request.getReminderTime());
+        invoice.setStartDate(request.getStartDate());
+        invoice.setEndDate(request.getEndDate());
+        invoice.setOldReading(request.getOldReading());
+        invoice.setNewReading(request.getNewReading());
+        invoice.setPricePerKwh(request.getPricePerKwh());
         invoice.setPaid(request.isPaid());
         
         if (reminderChanged) {
@@ -113,6 +123,11 @@ public class InvoiceServiceImpl implements InvoiceService {
                 .dueDate(invoice.getDueDate())
                 .reminderOption(invoice.getReminderOption())
                 .reminderTime(invoice.getReminderTime())
+                .startDate(invoice.getStartDate())
+                .endDate(invoice.getEndDate())
+                .oldReading(invoice.getOldReading())
+                .newReading(invoice.getNewReading())
+                .pricePerKwh(invoice.getPricePerKwh())
                 .isPaid(invoice.isPaid())
                 .createdAt(invoice.getCreatedAt())
                 .updatedAt(invoice.getUpdatedAt())
