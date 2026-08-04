@@ -35,6 +35,16 @@ public class InvoiceRequest {
     
     private LocalTime reminderTime;
     
+    private LocalDate startDate;
+    
+    private LocalDate endDate;
+    
+    private Integer oldReading;
+    
+    private Integer newReading;
+    
+    private Integer pricePerKwh;
+    
     @JsonProperty("isPaid")
     @Builder.Default
     private boolean isPaid = false;
