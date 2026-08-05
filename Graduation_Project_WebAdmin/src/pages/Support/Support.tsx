@@ -68,7 +68,16 @@ export const Support = () => {
   const [reply, setReply] = useState('');
   const [sending, setSending] = useState(false);
   const [updatingStatus, setUpdatingStatus] = useState(false);
-  const messagesEndRef = useRef<HTMLDivElement | null>(null);
+  const chatBodyRef = useRef<HTMLDivElement | null>(null);
+
+  const scrollToBottom = (smooth = true) => {
+    if (chatBodyRef.current) {
+      chatBodyRef.current.scrollTo({
+        top: chatBodyRef.current.scrollHeight,
+        behavior: smooth ? 'smooth' : 'auto',
+      });
+    }
+  };
 
   const fetchTickets = async (isSilent = false) => {
     try {
@@ -137,7 +146,10 @@ export const Support = () => {
   useEffect(() => {
     const currentCount = detail?.messages?.length || 0;
     if (currentCount > prevMsgCountRef.current) {
-      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+      const isInitial = prevMsgCountRef.current === 0;
+      setTimeout(() => {
+        scrollToBottom(!isInitial);
+      }, 50);
     }
     prevMsgCountRef.current = currentCount;
   }, [detail?.messages]);
@@ -299,7 +311,7 @@ export const Support = () => {
                 </Space>
               </div>
 
-              <div className="support-chat-body">
+              <div ref={chatBodyRef} className="support-chat-body">
                 {loadingDetail ? (
                   <div className="support-empty">Đang tải tin nhắn...</div>
                 ) : (detail?.messages || []).length === 0 ? (
@@ -328,7 +340,6 @@ export const Support = () => {
                     );
                   })
                 )}
-                <div ref={messagesEndRef} />
               </div>
 
               <div className="support-chat-composer">

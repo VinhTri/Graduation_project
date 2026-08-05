@@ -5,6 +5,7 @@ import { axiosClient } from '../api/axiosClient';
 type CategoryContextType = {
   categories: CategoryGroup[];
   loadCategories: () => Promise<void>;
+  resetCategories: () => void;
   addService: (categoryId: string, newService: Omit<ServiceItem, 'id'>) => Promise<void>;
   removeService: (serviceId: string) => Promise<void>;
   addGroup: (group: { title: string; icon: string; color: string; bgColor: string }) => Promise<string>;
@@ -17,6 +18,11 @@ const CategoryContext = createContext<CategoryContextType | undefined>(undefined
 export const CategoryProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [categories, setCategories] = useState<CategoryGroup[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+
+  const resetCategories = useCallback(() => {
+    setCategories([]);
+    setIsLoading(true);
+  }, []);
 
   const loadCategories = useCallback(async () => {
     try {
@@ -97,12 +103,13 @@ export const CategoryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const value = useMemo(() => ({
     categories,
     loadCategories,
+    resetCategories,
     addService,
     removeService,
     addGroup,
     removeGroup,
     isLoading,
-  }), [categories, loadCategories, addService, removeService, addGroup, removeGroup, isLoading]);
+  }), [categories, loadCategories, resetCategories, addService, removeService, addGroup, removeGroup, isLoading]);
 
   return (
     <CategoryContext.Provider value={value}>

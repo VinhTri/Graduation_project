@@ -585,7 +585,7 @@ export const SupportCenterScreen = () => {
               {renderCategoryPills()}
             </View>
           }
-          renderItem={activeTab === 'FAQ' ? renderFAQItem : renderTicketItem}
+          renderItem={activeTab === 'FAQ' ? (renderFAQItem as any) : (renderTicketItem as any)}
           contentContainerStyle={[styles.listContainer, { paddingBottom: insets.bottom + 30 }]}
           ListEmptyComponent={renderEmpty}
           showsVerticalScrollIndicator={false}

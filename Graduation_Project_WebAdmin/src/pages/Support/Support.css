@@ -1,12 +1,15 @@
 .support-page {
-  height: calc(100vh - 72px - 48px);
+  height: calc(100vh - 120px);
   min-height: 560px;
+  display: flex;
+  flex-direction: column;
 }
 
 .support-shell {
   display: grid;
   grid-template-columns: 340px 1fr;
   height: 100%;
+  min-height: 0;
   border-radius: 18px;
   border: 1px solid #f1e7f6;
   background: #fff;
@@ -20,6 +23,9 @@
   border-right: 1px solid #f3e8ff;
   background: #fcfaff;
   min-width: 0;
+  min-height: 0;
+  height: 100%;
+  overflow: hidden;
 }
 
 .support-list-head {
@@ -28,6 +34,7 @@
   flex-direction: column;
   gap: 10px;
   border-bottom: 1px solid #f3e8ff;
+  flex-shrink: 0;
 }
 
 .support-list-title {
@@ -54,8 +61,10 @@
 }
 
 .support-list-body {
-  flex: 1;
+  flex: 1 1 0;
+  min-height: 0;
   overflow-y: auto;
+  overflow-x: hidden;
   padding: 8px;
 }
 
@@ -224,9 +233,10 @@
 }
 
 .support-chat-body {
-  flex: 1;
+  flex: 1 1 0;
   min-height: 0;
   overflow-y: auto;
+  overflow-x: hidden;
   padding: 18px;
   display: flex;
   flex-direction: column;
@@ -234,6 +244,30 @@
   background:
     radial-gradient(ellipse 40% 30% at 100% 0%, rgba(244, 114, 182, 0.06), transparent 60%),
     #f8fafc;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e1 transparent;
+}
+
+.support-chat-body::-webkit-scrollbar,
+.support-list-body::-webkit-scrollbar {
+  width: 6px;
+}
+
+.support-chat-body::-webkit-scrollbar-track,
+.support-list-body::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.support-chat-body::-webkit-scrollbar-thumb,
+.support-list-body::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 999px;
+}
+
+.support-chat-body::-webkit-scrollbar-thumb:hover,
+.support-list-body::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
 }
 
 .support-bubble-row {

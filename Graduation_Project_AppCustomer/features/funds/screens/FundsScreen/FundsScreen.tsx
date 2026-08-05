@@ -144,8 +144,6 @@ export function FundsScreen() {
   const toggleCollapse = toggleTotalExpanded;
   const isCollapsed = !totalExpanded;
 
-  const handleJoin = () => router.push('/funds/join');
-
   const onBannerScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
     const x = e.nativeEvent.contentOffset.x;
     const next = Math.round(x / (BANNER_WIDTH + BANNER_GAP));
@@ -186,11 +184,6 @@ export function FundsScreen() {
               <Text style={[styles.createBtnText, !canCreateMore && styles.createBtnTextDisabled]}>
                 {canCreateMore ? (isEn ? 'Create' : 'Tạo quỹ') : (isEn ? 'Limit' : 'Đạt Hạn')}
               </Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity style={[styles.joinBtn, { backgroundColor: theme.card, borderColor: theme.cardBorder }]} onPress={handleJoin} activeOpacity={0.85}>
-              <Feather name="user-plus" size={15} color={theme.primary} />
-              <Text style={[styles.joinBtnText, { color: theme.primary }]}>{isEn ? 'Join' : 'Tham gia'}</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -333,7 +326,7 @@ export function FundsScreen() {
             <Text style={[styles.emptySubtitle, { color: theme.textSecondary }]}>
               {tab === 'mine'
                 ? (isEn ? 'Create your first fund to start saving with friends' : 'Tạo quỹ đầu tiên để bắt đầu góp tiền cùng bạn bè')
-                : (isEn ? 'Click Join and enter invite code to join a fund' : 'Nhấn "Tham gia" và nhập mã mời để vào quỹ của bạn bè')}
+                : (isEn ? 'You have not joined any group funds yet' : 'Bạn chưa tham gia vào quỹ nhóm nào')}
             </Text>
           </View>
         ) : (
