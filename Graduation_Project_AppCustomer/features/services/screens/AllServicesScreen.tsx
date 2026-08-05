@@ -23,8 +23,23 @@ export const AllServicesScreen = () => {
   const isEn = language === 'en';
 
   const handleServicePress = (service: any) => {
-    // Navigate to specific service later
-    console.log("Pressed service:", service.label);
+    switch (service.id) {
+      case "1": // Chuyển tiền
+        router.push("/transfer");
+        break;
+      case "3": // Tiền Điện
+        router.push("/invoice/service/electricity" as any);
+        break;
+      case "8": // Tiền Nước
+        router.push("/invoice/service/water" as any);
+        break;
+      case "10": // Danh bạ
+        router.push("/contacts");
+        break;
+      default:
+        console.log("Pressed service:", service.label);
+        break;
+    }
   };
 
   const renderHeader = () => (

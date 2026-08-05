@@ -141,7 +141,7 @@ export const vi = {
   pendingRequests: 'Yêu cầu đang chờ',
 
   // Categories Screen
-  categories: 'Danh mục thu chi',
+  categories: 'Danh mục',
   incomeCategories: 'Danh mục thu',
   expenseCategories: 'Danh mục chi',
   addCategory: 'Thêm danh mục',

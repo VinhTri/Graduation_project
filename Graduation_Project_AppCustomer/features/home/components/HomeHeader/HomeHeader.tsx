@@ -10,38 +10,6 @@ import { useRouter } from "expo-router";
 import { notificationService } from "@/shared/api/services/notification.service";
 import { useFocusEffect } from "@react-navigation/native";
 
-const QUICK_ACTIONS = [
-  {
-    id: "topup",
-    label: "Nạp/Rút",
-    route: "/wallet/action?initialTab=topup",
-    type: "logo" as const,
-    bgColor: PASTEL_PALETTE.accentSoft,
-  },
-  {
-    id: "transfer",
-    label: "Chuyển tiền",
-    icon: "paper-plane-outline" as const,
-    color: PASTEL_PALETTE.lavender,
-    bgColor: PASTEL_PALETTE.lavenderSoft,
-    route: "/transfer",
-  },
-  {
-    id: "qr",
-    label: "Quét mã QR",
-    icon: "qr-code-outline" as const,
-    color: PASTEL_PALETTE.accentDeep,
-    bgColor: PASTEL_PALETTE.accentSoft,
-  },
-  {
-    id: "utilities",
-    label: "Ví tiện ích",
-    icon: "grid-outline" as const,
-    color: PASTEL_PALETTE.subtitle,
-    bgColor: "rgba(255, 255, 255, 0.72)",
-  },
-];
-
 import { useLanguage, useTheme } from "@/shared/contexts/ThemeLanguageContext";
 
 export const HomeHeader = () => {
@@ -66,6 +34,7 @@ export const HomeHeader = () => {
       icon: "paper-plane-outline" as const,
       color: theme.isDark ? theme.primary : PASTEL_PALETTE.lavender,
       bgColor: theme.isDark ? theme.bgSoft : PASTEL_PALETTE.lavenderSoft,
+      route: "/transfer",
     },
     {
       id: "qr",
@@ -80,6 +49,7 @@ export const HomeHeader = () => {
       icon: "grid-outline" as const,
       color: theme.textSecondary,
       bgColor: theme.isDark ? theme.bgSoft : "rgba(255, 255, 255, 0.72)",
+      route: "/all-services",
     },
   ];
 

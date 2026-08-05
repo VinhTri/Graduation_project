@@ -4,18 +4,22 @@ import { Feather } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useLanguage, useTheme } from '../../../shared/contexts/ThemeLanguageContext';
+import { useCategoryContext } from '../../../shared/contexts/CategoryContext';
 import { styles } from '../SettingsScreen.styles';
 
 export const LogoutButton = () => {
   const router = useRouter();
   const { t } = useLanguage();
   const { theme } = useTheme();
+  const { resetCategories } = useCategoryContext();
 
   const handleLogout = async () => {
     try {
-      await AsyncStorage.multiRemove(['token', 'userAvatarUrl']);
+      resetCategories();
+      await AsyncStorage.multiRemove(['token', 'userAvatarUrl', 'userName', 'userEmail']);
       router.replace('/(auth)/login' as any);
     } catch {
+      resetCategories();
       router.replace('/(auth)/login' as any);
     }
   };

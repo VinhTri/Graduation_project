@@ -73,15 +73,6 @@ export const ServicesGrid = () => {
       bgColor: theme.isDark ? theme.bgSoft : "#EEF2FF",
       route: "/categories",
     },
-    {
-      id: "tat_ca",
-      label: isEn ? "All Services" : "Tất cả",
-      iconFamily: "Ionicons",
-      icon: "grid-outline",
-      color: theme.isDark ? "#94A3B8" : "#64748B",
-      bgColor: theme.isDark ? theme.bgSoft : "#F1F5F9",
-      route: "/all-services",
-    },
   ];
 
   useFocusEffect(

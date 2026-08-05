@@ -32,9 +32,15 @@ export function CategorySelectModal({
   onSelect,
   onAddCategory,
 }: CategorySelectModalProps) {
-  const { categories } = useCategoryContext();
+  const { categories, loadCategories } = useCategoryContext();
   const [activeIndex, setActiveIndex] = useState(0);
   const pagerRef = useRef<ScrollView>(null);
+
+  useEffect(() => {
+    if (visible) {
+      loadCategories();
+    }
+  }, [visible, loadCategories]);
 
   const groupsWithItems = useMemo(
     () => categories.filter((g) => (g.items?.length ?? 0) > 0),

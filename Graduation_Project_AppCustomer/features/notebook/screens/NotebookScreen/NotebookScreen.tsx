@@ -39,6 +39,7 @@ const FILTERS: { key: FilterChip; label: string }[] = [
 ];
 
 import { useLanguage, useTheme } from '../../../../shared/contexts/ThemeLanguageContext';
+import { useCategoryContext } from '../../../../shared/contexts/CategoryContext';
 
 export default function NotebookScreen() {
   const [topTab, setTopTab] = useState<'cash' | 'bank'>('cash');
@@ -55,6 +56,7 @@ export default function NotebookScreen() {
   const [txToDelete, setTxToDelete] = useState<InitialCashData | null>(null);
   const { language } = useLanguage();
   const { theme } = useTheme();
+  const { loadCategories } = useCategoryContext();
   const isEn = language === 'en';
 
   const filters = useMemo(() => [
@@ -83,7 +85,7 @@ export default function NotebookScreen() {
       (async () => {
         try {
           setLoading(true);
-          await loadCashData();
+          await Promise.all([loadCashData(), loadCategories()]);
         } catch (e: any) {
           if (active) {
             Alert.alert('Lỗi', e?.message || 'Không tải được dữ liệu sổ tay tiền mặt');
@@ -95,13 +97,13 @@ export default function NotebookScreen() {
       return () => {
         active = false;
       };
-    }, [loadCashData])
+    }, [loadCashData, loadCategories])
   );
 
   const onRefresh = async () => {
     try {
       setRefreshing(true);
-      await loadCashData();
+      await Promise.all([loadCashData(), loadCategories()]);
     } catch (e: any) {
       Alert.alert('Lỗi', e?.message || 'Không làm mới được dữ liệu');
     } finally {
@@ -186,131 +188,137 @@ export default function NotebookScreen() {
         onSpendCashBalance={() => openBalanceModal('spend')}
       />
 
-      <View style={[styles.content, { backgroundColor: theme.bg }]}>
-        <View style={[styles.tabBar, { backgroundColor: theme.card, borderColor: theme.cardBorder, borderWidth: 1 }]}>
-          <TouchableOpacity
-            style={[styles.tab, tab === 'history' && [styles.tabActive, { backgroundColor: theme.isDark ? theme.bgSoft : PASTEL_PALETTE.white }]]}
-            onPress={() => setTab('history')}
-            activeOpacity={0.85}
-          >
-            <Text style={[styles.tabText, { color: tab === 'history' ? theme.primary : theme.textMuted }]}>
-              {isEn ? 'History' : 'Lịch sử'}
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.tab, tab === 'report' && [styles.tabActive, { backgroundColor: theme.isDark ? theme.bgSoft : PASTEL_PALETTE.white }]]}
-            onPress={() => setTab('report')}
-            activeOpacity={0.85}
-          >
-            <Text style={[styles.tabText, { color: tab === 'report' ? theme.primary : theme.textMuted }]}>
-              {isEn ? 'Report' : 'Báo cáo'}
-            </Text>
-          </TouchableOpacity>
-        </View>
-
-        {loading ? (
-          <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingTop: 40 }}>
-            <ActivityIndicator size="large" color={theme.primary} />
-          </View>
-        ) : tab === 'history' ? (
-          <>
-            <View style={styles.filterRow}>
-              {filters.map((item) => {
-                const active = filter === item.key;
-                return (
-                  <TouchableOpacity
-                    key={item.key}
-                    style={[styles.chip, { backgroundColor: active ? (theme.isDark ? theme.bgSoft : PASTEL_PALETTE.accentSoft) : theme.card, borderColor: active ? theme.primary : theme.cardBorder }]}
-                    onPress={() => setFilter(item.key)}
-                    activeOpacity={0.8}
-                  >
-                    <Text style={[styles.chipText, { color: active ? theme.primary : theme.textSecondary }]}>
-                      {item.label}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })}
+      {topTab === 'cash' ? (
+        <>
+          <View style={[styles.content, { backgroundColor: theme.bg }]}>
+            <View style={[styles.tabBar, { backgroundColor: theme.card, borderColor: theme.cardBorder, borderWidth: 1 }]}>
+              <TouchableOpacity
+                style={[styles.tab, tab === 'history' && [styles.tabActive, { backgroundColor: theme.isDark ? theme.bgSoft : PASTEL_PALETTE.white }]]}
+                onPress={() => setTab('history')}
+                activeOpacity={0.85}
+              >
+                <Text style={[styles.tabText, { color: tab === 'history' ? theme.primary : theme.textMuted }]}>
+                  {isEn ? 'History' : 'Lịch sử'}
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.tab, tab === 'report' && [styles.tabActive, { backgroundColor: theme.isDark ? theme.bgSoft : PASTEL_PALETTE.white }]]}
+                onPress={() => setTab('report')}
+                activeOpacity={0.85}
+              >
+                <Text style={[styles.tabText, { color: tab === 'report' ? theme.primary : theme.textMuted }]}>
+                  {isEn ? 'Report' : 'Báo cáo'}
+                </Text>
+              </TouchableOpacity>
             </View>
 
-            <ScrollView
-              showsVerticalScrollIndicator={false}
-              contentContainerStyle={{ paddingBottom: 120 }}
-              refreshControl={
-                <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={PASTEL_PALETTE.accentDeep} />
-              }
-            >
-              <RecentTransactions 
-                transactions={visibleTransactions} 
-                onPressItem={(tx) => {
-                  if (!tx.id) return; // Ensure it's a valid manual transaction with a code
-                  openBalanceModal(
-                    tx.type === 'INCOME' ? 'add' : 'spend',
-                    {
-                      transactionCode: tx.id,
-                      amount: tx.amount,
-                      note: tx.note,
-                      category: {
-                        id: tx.categoryId || 0,
-                        label: tx.categoryLabel || 'Chưa phân loại',
-                        icon: tx.categoryIcon || 'list',
-                        color: tx.categoryColor || PASTEL_PALETTE.accentDeep,
-                      },
-                    }
-                  );
-                }}
-                onDeleteItem={(tx) => {
-                  if (!tx.id) return;
-                  handleDeleteTransaction({
-                    transactionCode: tx.id,
-                    amount: tx.amount,
-                    note: tx.note,
-                    category: {
-                      id: tx.categoryId || 0,
-                      label: tx.categoryLabel || 'Chưa phân loại',
-                      icon: tx.categoryIcon || 'list',
-                      color: tx.categoryColor || PASTEL_PALETTE.accentDeep,
-                    },
-                  });
-                }}
-              />
-            </ScrollView>
-          </>
-        ) : (
-          <ScrollView
-            showsVerticalScrollIndicator={false}
-            contentContainerStyle={{ paddingBottom: 120 }}
-            refreshControl={
-              <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={PASTEL_PALETTE.accentDeep} />
-            }
-          >
-            <NotebookReport transactions={transactions} />
-          </ScrollView>
-        )}
-      </View>
+            {loading ? (
+              <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingTop: 40 }}>
+                <ActivityIndicator size="large" color={theme.primary} />
+              </View>
+            ) : tab === 'history' ? (
+              <>
+                <View style={styles.filterRow}>
+                  {filters.map((item) => {
+                    const active = filter === item.key;
+                    return (
+                      <TouchableOpacity
+                        key={item.key}
+                        style={[styles.chip, { backgroundColor: active ? (theme.isDark ? theme.bgSoft : PASTEL_PALETTE.accentSoft) : theme.card, borderColor: active ? theme.primary : theme.cardBorder }]}
+                        onPress={() => setFilter(item.key)}
+                        activeOpacity={0.8}
+                      >
+                        <Text style={[styles.chipText, { color: active ? theme.primary : theme.textSecondary }]}>
+                          {item.label}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
 
-      <AddCashBalanceModal
-        visible={balanceModalVisible}
-        mode={balanceMode}
-        currentBalance={cashBalance}
-        saving={saving}
-        initialData={selectedTransaction || undefined}
-        onClose={() => setBalanceModalVisible(false)}
-        onConfirm={handleCashBalanceChange}
-        onDelete={() => { if (selectedTransaction) handleDeleteTransaction(selectedTransaction); }}
-      />
+                <ScrollView
+                  showsVerticalScrollIndicator={false}
+                  contentContainerStyle={{ paddingBottom: 120 }}
+                  refreshControl={
+                    <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={PASTEL_PALETTE.accentDeep} />
+                  }
+                >
+                  <RecentTransactions 
+                    transactions={visibleTransactions} 
+                    onPressItem={(tx) => {
+                      if (!tx.id) return; // Ensure it's a valid manual transaction with a code
+                      openBalanceModal(
+                        tx.type === 'INCOME' ? 'add' : 'spend',
+                        {
+                          transactionCode: tx.id,
+                          amount: tx.amount,
+                          note: tx.note,
+                          category: {
+                            id: tx.categoryId || 0,
+                            label: tx.categoryLabel || 'Chưa phân loại',
+                            icon: tx.categoryIcon || 'list',
+                            color: tx.categoryColor || PASTEL_PALETTE.accentDeep,
+                          },
+                        }
+                      );
+                    }}
+                    onDeleteItem={(tx) => {
+                      if (!tx.id) return;
+                      handleDeleteTransaction({
+                        transactionCode: tx.id,
+                        amount: tx.amount,
+                        note: tx.note,
+                        category: {
+                          id: tx.categoryId || 0,
+                          label: tx.categoryLabel || 'Chưa phân loại',
+                          icon: tx.categoryIcon || 'list',
+                          color: tx.categoryColor || PASTEL_PALETTE.accentDeep,
+                        },
+                      });
+                    }}
+                  />
+                </ScrollView>
+              </>
+            ) : (
+              <ScrollView
+                showsVerticalScrollIndicator={false}
+                contentContainerStyle={{ paddingBottom: 120 }}
+                refreshControl={
+                  <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={PASTEL_PALETTE.accentDeep} />
+                }
+              >
+                <NotebookReport transactions={transactions} />
+              </ScrollView>
+            )}
+          </View>
 
-      <ConfirmModal
-        visible={!!txToDelete}
-        title="Xóa giao dịch"
-        message="Bạn có chắc chắn muốn xóa giao dịch này không? Số dư sổ tay và ngân sách sẽ được hoàn lại tự động."
-        iconName="trash-outline"
-        iconColor={Colors.error}
-        confirmText="Xóa"
-        cancelText="Hủy"
-        isDestructive={true}
-        onConfirm={confirmDeleteTransaction}
-        onCancel={() => setTxToDelete(null)}
-      />
+          <AddCashBalanceModal
+            visible={balanceModalVisible}
+            mode={balanceMode}
+            currentBalance={cashBalance}
+            saving={saving}
+            initialData={selectedTransaction || undefined}
+            onClose={() => setBalanceModalVisible(false)}
+            onConfirm={handleCashBalanceChange}
+            onDelete={() => { if (selectedTransaction) handleDeleteTransaction(selectedTransaction); }}
+          />
+
+          <ConfirmModal
+            visible={!!txToDelete}
+            title="Xóa giao dịch"
+            message="Bạn có chắc chắn muốn xóa giao dịch này không? Số dư sổ tay và ngân sách sẽ được hoàn lại tự động."
+            iconName="trash-outline"
+            iconColor={Colors.error}
+            confirmText="Xóa"
+            cancelText="Hủy"
+            isDestructive={true}
+            onConfirm={confirmDeleteTransaction}
+            onCancel={() => setTxToDelete(null)}
+          />
+        </>
+      ) : (
+        <BankNotebookList />
+      )}
     </View>
   );
 }
