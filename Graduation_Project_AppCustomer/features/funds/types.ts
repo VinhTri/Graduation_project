@@ -49,3 +49,18 @@ export interface Fund {
   members: FundMember[];
   transactions: FundTransaction[];
 }
+
+export interface FundInvitation {
+  id: number;
+  fundId: number;
+  fundName: string;
+  balance: number;
+  targetAmount?: number;
+  coverColorSeed: number;
+  ownerId: number;
+  ownerName: string;
+  ownerAvatar?: string;
+  memberCount: number;
+  invitedAt: string;
+}
+

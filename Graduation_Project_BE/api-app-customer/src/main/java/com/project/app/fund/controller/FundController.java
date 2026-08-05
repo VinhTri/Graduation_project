@@ -7,6 +7,7 @@ import com.project.app.fund.dto.request.FundAmountRequest;
 import com.project.app.fund.dto.request.InviteFundRequest;
 import com.project.app.fund.dto.request.UpdateFundNoteRequest;
 import com.project.app.fund.dto.response.FundDetailResponse;
+import com.project.app.fund.dto.response.FundInvitationResponse;
 import com.project.app.fund.dto.response.FundSummaryResponse;
 import com.project.app.fund.dto.response.FundTransactionResponse;
 import com.project.app.fund.service.FundService;
@@ -32,6 +33,17 @@ public class FundController {
         return ResponseEntity.ok(ApiResponse.<List<FundSummaryResponse>>builder()
                 .success(true)
                 .message("Lấy danh sách quỹ thành công")
+                .data(data)
+                .build());
+    }
+
+    @GetMapping("/invitations")
+    public ResponseEntity<ApiResponse<List<FundInvitationResponse>>> listPendingInvitations(
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+        List<FundInvitationResponse> data = fundService.listPendingInvitations(userDetails.getUser());
+        return ResponseEntity.ok(ApiResponse.<List<FundInvitationResponse>>builder()
+                .success(true)
+                .message("Lấy danh sách lời mời quỹ thành công")
                 .data(data)
                 .build());
     }

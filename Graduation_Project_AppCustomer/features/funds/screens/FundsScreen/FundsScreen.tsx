@@ -3,15 +3,18 @@ import {
   View, Text, ScrollView, TouchableOpacity, StatusBar,
   Animated, Easing, LayoutAnimation, Platform, UIManager,
   FlatList, Dimensions, NativeSyntheticEvent, NativeScrollEvent,
+  RefreshControl, Alert,
 } from 'react-native';
 import { Feather, Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Image } from 'expo-image';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { FundHeaderShell, FundCard } from '../../components';
+import { FundHeaderShell, FundCard, FundInvitationCard } from '../../components';
 import { FundIcon } from '../../../../shared/components/FundIcon';
-import { fundStore, useFunds } from '../../store/fundStore';
+import { ConfirmModal, SuccessModal } from '../../../../shared/components';
+import { fundStore, useFunds, useFundInvitations } from '../../store/fundStore';
+import { FundInvitation } from '../../types';
 import { formatCurrency } from '../../utils';
 import { FUND_PALETTE, FUND_TOTAL_GRADIENT } from '../../theme';
 import { MAX_OWNED_FUNDS, MAX_JOINED_FUNDS } from '../../constants';
@@ -55,6 +58,7 @@ export function FundsScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const funds = useFunds();
+  const invitations = useFundInvitations();
   const { t, language } = useLanguage();
   const { theme } = useTheme();
   const isEn = language === 'en';
@@ -62,12 +66,30 @@ export function FundsScreen() {
   const [totalExpanded, setTotalExpanded] = useState(false);
   const [contentHeight, setContentHeight] = useState(110);
   const [bannerIndex, setBannerIndex] = useState(0);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const [selectedInvitation, setSelectedInvitation] = useState<FundInvitation | null>(null);
+  const [rejectModalVisible, setRejectModalVisible] = useState(false);
+  const [acceptModalVisible, setAcceptModalVisible] = useState(false);
+  const [successModalVisible, setSuccessModalVisible] = useState(false);
+  const [joinedFundInfo, setJoinedFundInfo] = useState<{ id: number; name: string } | null>(null);
 
   useFocusEffect(
     useCallback(() => {
       fundStore.refreshFunds().catch(() => {});
     }, [])
   );
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      await fundStore.refreshFunds();
+    } catch {
+      // Handled in store
+    } finally {
+      setRefreshing(false);
+    }
+  }, []);
 
   // Tab bar nổi (~78) + khoảng trống thêm để thẻ cuối không bị đè
   const bottomPad = Math.max(insets.bottom, 10) + 90;
@@ -144,6 +166,59 @@ export function FundsScreen() {
   const toggleCollapse = toggleTotalExpanded;
   const isCollapsed = !totalExpanded;
 
+  const handleOpenAcceptModal = (inv: FundInvitation) => {
+    setSelectedInvitation(inv);
+    setAcceptModalVisible(true);
+  };
+
+  const handleOpenRejectModal = (inv: FundInvitation) => {
+    setSelectedInvitation(inv);
+    setRejectModalVisible(true);
+  };
+
+  const handleConfirmAccept = async () => {
+    if (!selectedInvitation) return;
+    const inv = selectedInvitation;
+    setAcceptModalVisible(false);
+    try {
+      await fundStore.acceptInvite(inv.fundId);
+      setJoinedFundInfo({ id: inv.fundId, name: inv.fundName });
+      setSuccessModalVisible(true);
+      setTab('joined');
+    } catch (err: any) {
+      const msg = err?.message || '';
+      const code = err?.code || '';
+      if (code === 'FUND_8001' || msg.includes('Không tìm thấy quỹ') || msg.includes('không tồn tại')) {
+        Alert.alert('Thông báo', 'Quỹ này đã bị chủ quỹ xóa hoặc không còn tồn tại.');
+        await fundStore.refreshFunds().catch(() => {});
+      } else {
+        Alert.alert('Lỗi', msg || 'Không thể tham gia quỹ');
+      }
+    } finally {
+      setSelectedInvitation(null);
+    }
+  };
+
+  const handleConfirmReject = async () => {
+    if (!selectedInvitation) return;
+    const inv = selectedInvitation;
+    setRejectModalVisible(false);
+    try {
+      await fundStore.rejectInvite(inv.fundId);
+    } catch (err: any) {
+      const msg = err?.message || '';
+      const code = err?.code || '';
+      if (code === 'FUND_8001' || msg.includes('Không tìm thấy quỹ') || msg.includes('không tồn tại')) {
+        Alert.alert('Thông báo', 'Quỹ này đã bị chủ quỹ xóa hoặc không còn tồn tại.');
+        await fundStore.refreshFunds().catch(() => {});
+      } else {
+        Alert.alert('Lỗi', msg || 'Không thể từ chối lời mời');
+      }
+    } finally {
+      setSelectedInvitation(null);
+    }
+  };
+
   const onBannerScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
     const x = e.nativeEvent.contentOffset.x;
     const next = Math.round(x / (BANNER_WIDTH + BANNER_GAP));
@@ -169,9 +244,9 @@ export function FundsScreen() {
             style={styles.backButton}
             activeOpacity={0.7}
           >
-            <Feather name="chevron-left" size={24} color={theme.isDark ? '#FFFFFF' : '#1E1B4B'} />
+            <Ionicons name="chevron-back-outline" size={24} color={theme.isDark ? '#FFFFFF' : '#7C3AED'} />
           </TouchableOpacity>
-          <Text style={[styles.headerTitle, { color: theme.isDark ? '#FFFFFF' : '#1E1B4B' }]}>{t('groupFunds')}</Text>
+          <Text style={[styles.headerTitle, { color: theme.isDark ? '#FFFFFF' : '#5B21B6' }]}>{t('groupFunds')}</Text>
 
           <View style={styles.headerActions}>
             <TouchableOpacity
@@ -242,6 +317,14 @@ export function FundsScreen() {
         style={[styles.content, { backgroundColor: theme.bg }]}
         contentContainerStyle={[styles.contentContainer, { paddingBottom: bottomPad }]}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={[theme.primary]}
+            tintColor={theme.primary}
+          />
+        }
       >
         <View style={styles.bannerSection}>
           <FlatList
@@ -284,6 +367,34 @@ export function FundsScreen() {
           </View>
         </View>
 
+        {invitations.length > 0 && (
+          <View style={styles.invitationSection}>
+            <View style={styles.invitationHeader}>
+              <View style={styles.invitationHeaderLeft}>
+                <View style={styles.invitationBadgeIcon}>
+                  <Feather name="mail" size={14} color={theme.primary} />
+                </View>
+                <Text style={[styles.sectionTitle, { color: theme.textPrimary }]}>
+                  {isEn ? 'Fund Invitations' : 'Lời mời tham gia quỹ'}
+                </Text>
+              </View>
+              <View style={styles.invitationCountBadge}>
+                <Text style={styles.invitationCountText}>{invitations.length}</Text>
+              </View>
+            </View>
+
+            {invitations.map((inv) => (
+              <FundInvitationCard
+                key={inv.id || inv.fundId}
+                invitation={inv}
+                onAccept={handleOpenAcceptModal}
+                onReject={handleOpenRejectModal}
+                isDark={theme.isDark}
+              />
+            ))}
+          </View>
+        )}
+
         <View style={styles.sectionHeader}>
           <Text style={[styles.sectionTitle, { color: theme.textPrimary }]}>{isEn ? 'Fund List' : 'Danh sách quỹ'}</Text>
           <View style={[styles.limitBadge, { backgroundColor: theme.bgSoft, borderColor: theme.cardBorder }]}>
@@ -307,9 +418,14 @@ export function FundsScreen() {
             onPress={() => setTab('joined')}
             activeOpacity={0.8}
           >
-            <Text style={[styles.tabText, { color: tab === 'joined' ? theme.primary : theme.textMuted }]}>
-              {isEn ? `Joined Funds (${joinedFunds.length})` : `Quỹ tham gia (${joinedFunds.length})`}
-            </Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <Text style={[styles.tabText, { color: tab === 'joined' ? theme.primary : theme.textMuted }]}>
+                {isEn ? `Joined Funds (${joinedFunds.length})` : `Quỹ tham gia (${joinedFunds.length})`}
+              </Text>
+              {invitations.length > 0 && (
+                <View style={styles.tabNotificationDot} />
+              )}
+            </View>
           </TouchableOpacity>
         </View>
 
@@ -339,6 +455,55 @@ export function FundsScreen() {
           ))
         )}
       </ScrollView>
+
+      <ConfirmModal
+        visible={acceptModalVisible}
+        title={isEn ? "Join Fund Confirmation" : "Xác nhận tham gia quỹ"}
+        message={isEn 
+          ? `Do you want to join the fund "${selectedInvitation?.fundName}" owned by ${selectedInvitation?.ownerName}?`
+          : `Bạn có đồng ý tham gia quỹ "${selectedInvitation?.fundName}" do ${selectedInvitation?.ownerName} làm chủ quỹ không?`}
+        iconName="people"
+        confirmText={isEn ? "Join Now" : "Tham gia ngay"}
+        cancelText={isEn ? "Later" : "Để sau"}
+        isDestructive={false}
+        onCancel={() => {
+          setAcceptModalVisible(false);
+          setSelectedInvitation(null);
+        }}
+        onConfirm={handleConfirmAccept}
+      />
+
+      <ConfirmModal
+        visible={rejectModalVisible}
+        title={isEn ? "Decline Invitation?" : "Từ chối lời mời?"}
+        message={isEn
+          ? `Are you sure you want to decline the invitation to join "${selectedInvitation?.fundName}" from ${selectedInvitation?.ownerName}?`
+          : `Bạn có chắc muốn từ chối lời mời tham gia quỹ "${selectedInvitation?.fundName}" từ chủ quỹ ${selectedInvitation?.ownerName}?`}
+        iconName="close-circle-outline"
+        confirmText={isEn ? "Decline" : "Từ chối"}
+        cancelText={isEn ? "Back" : "Quay lại"}
+        isDestructive
+        onCancel={() => {
+          setRejectModalVisible(false);
+          setSelectedInvitation(null);
+        }}
+        onConfirm={handleConfirmReject}
+      />
+
+      <SuccessModal
+        visible={successModalVisible}
+        title={isEn ? "Joined Fund Successfully!" : "Tham gia quỹ thành công!"}
+        message={isEn
+          ? `Congratulations! You are now a member of "${joinedFundInfo?.name}". Let's start managing funds together!`
+          : `Chúc mừng bạn đã gia nhập quỹ "${joinedFundInfo?.name}". Hãy cùng các thành viên tích lũy và quản lý tài chính hiệu quả nhé!`}
+        variant="pastel"
+        onClose={() => {
+          setSuccessModalVisible(false);
+          if (joinedFundInfo?.id) {
+            router.push(`/funds/${joinedFundInfo.id}`);
+          }
+        }}
+      />
     </View>
   );
 }

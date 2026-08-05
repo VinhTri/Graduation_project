@@ -97,11 +97,12 @@ export function CreateFundScreen() {
       >
         <FundHeaderShell contentStyle={styles.header}>
           <View style={styles.headerTopRow}>
-            <TouchableOpacity style={styles.iconBtn} onPress={() => router.back()} activeOpacity={0.7}>
-              <Ionicons name="chevron-back" size={22} color={FUND_PALETTE.subtitle} />
-            </TouchableOpacity>
-            <Text style={styles.headerTitle}>Tạo quỹ mới</Text>
-            <View style={styles.iconBtn} />
+            <View style={styles.headerLeft}>
+              <TouchableOpacity style={styles.backButton} onPress={() => router.back()} activeOpacity={0.7}>
+                <Ionicons name="chevron-back-outline" size={24} color="#7C3AED" />
+              </TouchableOpacity>
+              <Text style={styles.headerTitle}>Tạo quỹ mới</Text>
+            </View>
           </View>
 
           <View style={styles.previewCard}>

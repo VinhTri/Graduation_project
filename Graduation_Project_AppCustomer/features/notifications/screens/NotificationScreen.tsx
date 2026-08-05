@@ -26,6 +26,7 @@ import {
 } from "../../../shared/api/services/notification.service";
 import { fundService } from "../../../shared/api/services/fundService";
 import { fundStore } from "../../funds/store/fundStore";
+import { ConfirmModal, SuccessModal } from "../../../shared/components";
 
 import { Swipeable, RectButton } from "react-native-gesture-handler";
 
@@ -59,6 +60,12 @@ export default function NotificationScreen() {
   const [loading, setLoading] = useState(true);
   const [actingId, setActingId] = useState<number | null>(null);
 
+  const [selectedNotification, setSelectedNotification] = useState<NotificationResponse | null>(null);
+  const [acceptModalVisible, setAcceptModalVisible] = useState(false);
+  const [rejectModalVisible, setRejectModalVisible] = useState(false);
+  const [successModalVisible, setSuccessModalVisible] = useState(false);
+  const [joinedFundId, setJoinedFundId] = useState<number | null>(null);
+
   useEffect(() => {
     loadNotifications();
   }, []);
@@ -89,34 +96,67 @@ export default function NotificationScreen() {
     }
   };
 
-  const handleAcceptFundInvite = async (item: NotificationResponse) => {
-    if (!item.relatedId) return;
+  const handleOpenAcceptModal = (item: NotificationResponse) => {
+    setSelectedNotification(item);
+    setAcceptModalVisible(true);
+  };
+
+  const handleOpenRejectModal = (item: NotificationResponse) => {
+    setSelectedNotification(item);
+    setRejectModalVisible(true);
+  };
+
+  const handleConfirmAccept = async () => {
+    if (!selectedNotification || !selectedNotification.relatedId) return;
+    const item = selectedNotification;
+    const fundId = item.relatedId;
+    setAcceptModalVisible(false);
     setActingId(item.id);
     try {
-      await fundService.acceptInvite(item.relatedId);
+      await fundService.acceptInvite(fundId);
       await fundStore.refreshFunds().catch(() => {});
       setNotifications((prev) => prev.filter((n) => n.id !== item.id));
       await notificationService.delete(item.id).catch(() => {});
-      Alert.alert("Thành công", "Bạn đã tham gia quỹ.");
-      router.push(`/funds/${item.relatedId}`);
+      setJoinedFundId(fundId);
+      setSuccessModalVisible(true);
     } catch (err: any) {
-      Alert.alert("Không thể tham gia", err?.message || "Vui lòng thử lại");
+      const msg = err?.message || "";
+      const code = err?.code || "";
+      if (code === "FUND_8001" || msg.includes("Không tìm thấy quỹ") || msg.includes("không tồn tại")) {
+        setNotifications((prev) => prev.filter((n) => n.id !== item.id));
+        await notificationService.delete(item.id).catch(() => {});
+        Alert.alert("Thông báo", "Quỹ này đã bị chủ quỹ xóa hoặc không còn tồn tại.");
+      } else {
+        Alert.alert("Không thể tham gia", msg || "Vui lòng thử lại");
+      }
     } finally {
       setActingId(null);
+      setSelectedNotification(null);
     }
   };
 
-  const handleRejectFundInvite = async (item: NotificationResponse) => {
-    if (!item.relatedId) return;
+  const handleConfirmReject = async () => {
+    if (!selectedNotification || !selectedNotification.relatedId) return;
+    const item = selectedNotification;
+    const fundId = item.relatedId;
+    setRejectModalVisible(false);
     setActingId(item.id);
     try {
-      await fundService.rejectInvite(item.relatedId);
+      await fundService.rejectInvite(fundId);
       setNotifications((prev) => prev.filter((n) => n.id !== item.id));
       await notificationService.delete(item.id).catch(() => {});
     } catch (err: any) {
-      Alert.alert("Lỗi", err?.message || "Không thể từ chối lời mời");
+      const msg = err?.message || "";
+      const code = err?.code || "";
+      if (code === "FUND_8001" || code === "FUND_8014" || msg.includes("Không tìm thấy quỹ") || msg.includes("không tồn tại")) {
+        setNotifications((prev) => prev.filter((n) => n.id !== item.id));
+        await notificationService.delete(item.id).catch(() => {});
+      } else {
+        Alert.alert("Lỗi", msg || "Không thể từ chối lời mời");
+      }
     } finally {
       setActingId(null);
+      setSelectedNotification(null);
     }
   };
 
@@ -256,21 +296,22 @@ export default function NotificationScreen() {
             {isFundInvite && (
               <View style={styles.actionRow}>
                 <TouchableOpacity
-                  style={[styles.rejectBtn, busy && styles.btnDisabled]}
-                  disabled={busy}
-                  onPress={() => handleRejectFundInvite(item)}
-                  activeOpacity={0.85}
+                  style={[styles.rejectBtn, actingId === item.id && styles.btnDisabled]}
+                  onPress={() => handleOpenRejectModal(item)}
+                  disabled={actingId === item.id}
+                  activeOpacity={0.8}
                 >
                   <Text style={styles.rejectText}>Từ chối</Text>
                 </TouchableOpacity>
+
                 <TouchableOpacity
-                  style={[styles.acceptBtn, busy && styles.btnDisabled]}
-                  disabled={busy}
-                  onPress={() => handleAcceptFundInvite(item)}
-                  activeOpacity={0.85}
+                  style={[styles.acceptBtn, actingId === item.id && styles.btnDisabled]}
+                  onPress={() => handleOpenAcceptModal(item)}
+                  disabled={actingId === item.id}
+                  activeOpacity={0.8}
                 >
-                  {busy ? (
-                    <ActivityIndicator size="small" color={Colors.white} />
+                  {actingId === item.id ? (
+                    <ActivityIndicator size="small" color="#FFFFFF" />
                   ) : (
                     <Text style={styles.acceptText}>Chấp nhận</Text>
                   )}
@@ -332,6 +373,49 @@ export default function NotificationScreen() {
             />
           )}
         </View>
+
+        <ConfirmModal
+          visible={acceptModalVisible}
+          title="Xác nhận tham gia quỹ"
+          message={`Bạn có đồng ý tham gia quỹ nhóm này không?`}
+          iconName="people"
+          confirmText="Tham gia ngay"
+          cancelText="Để sau"
+          isDestructive={false}
+          onCancel={() => {
+            setAcceptModalVisible(false);
+            setSelectedNotification(null);
+          }}
+          onConfirm={handleConfirmAccept}
+        />
+
+        <ConfirmModal
+          visible={rejectModalVisible}
+          title="Từ chối lời mời?"
+          message={`Bạn có chắc chắn muốn từ chối lời mời tham gia quỹ này?`}
+          iconName="close-circle-outline"
+          confirmText="Từ chối"
+          cancelText="Quay lại"
+          isDestructive
+          onCancel={() => {
+            setRejectModalVisible(false);
+            setSelectedNotification(null);
+          }}
+          onConfirm={handleConfirmReject}
+        />
+
+        <SuccessModal
+          visible={successModalVisible}
+          title="Tham gia quỹ thành công!"
+          message="Chúc mừng bạn đã gia nhập quỹ. Hãy cùng các thành viên tích lũy và quản lý tài chính hiệu quả nhé!"
+          variant="pastel"
+          onClose={() => {
+            setSuccessModalVisible(false);
+            if (joinedFundId) {
+              router.push(`/funds/${joinedFundId}`);
+            }
+          }}
+        />
     </View>
   );
 }

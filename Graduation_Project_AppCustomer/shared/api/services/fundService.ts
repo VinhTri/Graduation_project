@@ -2,6 +2,7 @@ import { ENDPOINTS } from '../endpoints';
 import { axiosClient } from '../axiosClient';
 import {
   Fund,
+  FundInvitation,
   FundMember,
   FundTransaction,
   FundTransactionType,
@@ -10,6 +11,20 @@ import {
   FUND_DEPOSIT_CATEGORY,
   FUND_WITHDRAW_CATEGORY,
 } from '../../constants/defaultCategories';
+
+export interface FundInvitationDto {
+  id: number;
+  fundId: number;
+  fundName: string;
+  balance: number;
+  targetAmount?: number;
+  coverColorSeed: number;
+  ownerId: number;
+  ownerName: string;
+  ownerAvatar?: string;
+  memberCount: number;
+  invitedAt: string;
+}
 
 export interface FundSummaryDto {
   id: number;
@@ -119,6 +134,24 @@ export const fundService = {
     const response = await axiosClient.get(ENDPOINTS.FUND.LIST);
     const list = (response.data || []) as FundSummaryDto[];
     return list.map(mapSummary);
+  },
+
+  listPendingInvitations: async (): Promise<FundInvitation[]> => {
+    const response = await axiosClient.get(ENDPOINTS.FUND.INVITATIONS);
+    const list = (response.data || []) as FundInvitationDto[];
+    return list.map((inv) => ({
+      id: inv.id,
+      fundId: inv.fundId,
+      fundName: inv.fundName,
+      balance: Number(inv.balance) || 0,
+      targetAmount: inv.targetAmount != null ? Number(inv.targetAmount) : undefined,
+      coverColorSeed: inv.coverColorSeed,
+      ownerId: inv.ownerId,
+      ownerName: inv.ownerName,
+      ownerAvatar: inv.ownerAvatar,
+      memberCount: Number(inv.memberCount) || 0,
+      invitedAt: typeof inv.invitedAt === 'string' ? inv.invitedAt : String(inv.invitedAt),
+    }));
   },
 
   getFundDetail: async (id: number): Promise<Fund> => {

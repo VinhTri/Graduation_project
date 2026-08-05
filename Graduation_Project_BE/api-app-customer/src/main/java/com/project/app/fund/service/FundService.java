@@ -5,6 +5,7 @@ import com.project.app.fund.dto.request.FundAmountRequest;
 import com.project.app.fund.dto.request.InviteFundRequest;
 import com.project.app.fund.dto.request.UpdateFundNoteRequest;
 import com.project.app.fund.dto.response.FundDetailResponse;
+import com.project.app.fund.dto.response.FundInvitationResponse;
 import com.project.app.fund.dto.response.FundSummaryResponse;
 import com.project.app.fund.dto.response.FundTransactionResponse;
 import com.project.app.user.entity.User;
@@ -14,6 +15,8 @@ import java.util.List;
 public interface FundService {
 
     List<FundSummaryResponse> listMyFunds(User user);
+
+    List<FundInvitationResponse> listPendingInvitations(User user);
 
     FundDetailResponse getFundDetail(User user, Long fundId);
 
