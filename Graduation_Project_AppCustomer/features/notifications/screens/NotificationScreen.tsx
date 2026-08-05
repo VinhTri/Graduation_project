@@ -162,9 +162,11 @@ export default function NotificationScreen() {
 
   const handleNotificationPress = (item: NotificationResponse) => {
     console.log("Notification Pressed:", item);
-    if (item.type === "FUND_INVITE") return;
     
     switch (item.type) {
+      case "FUND_INVITE":
+        router.push("/funds");
+        break;
       case "INVOICE_REMINDER":
         if (item.relatedId) router.push(`/invoice/${item.relatedId}`);
         else router.push("/invoice");
@@ -205,6 +207,8 @@ export default function NotificationScreen() {
         } else if (title.includes("chia tiền")) {
           if (item.relatedId) router.push(`/split-bill/${item.relatedId}` as any);
           else router.push("/split-bill" as any);
+        } else if (title.includes("quỹ")) {
+          router.push("/funds");
         } else {
           Alert.alert("Thông tin", "Không thể điều hướng cho thông báo này vì hệ thống chưa xác định được đích đến.");
         }
@@ -258,7 +262,6 @@ export default function NotificationScreen() {
   const renderItem = ({ item }: { item: NotificationResponse }) => {
     const isFundInvite = item.type === "FUND_INVITE" && !!item.relatedId;
     const busy = actingId === item.id;
-    const CardContainer = item.type === "FUND_INVITE" ? View : TouchableOpacity;
 
     const getIconName = () => {
       if (isFundInvite) return "people";
@@ -277,9 +280,10 @@ export default function NotificationScreen() {
         friction={2}
         rightThreshold={36}
       >
-        <CardContainer 
+        <TouchableOpacity 
           style={[styles.notificationCard, !item.isRead && styles.unreadCard]}
-          {...(item.type !== "FUND_INVITE" ? { onPress: () => handleNotificationPress(item), activeOpacity: 0.7 } : {})}
+          onPress={() => handleNotificationPress(item)}
+          activeOpacity={0.7}
         >
           <View style={styles.iconContainer}>
             <Ionicons
@@ -320,7 +324,7 @@ export default function NotificationScreen() {
             )}
           </View>
           {!item.isRead && <View style={styles.unreadDot} />}
-        </CardContainer>
+        </TouchableOpacity>
       </Swipeable>
     );
   };
