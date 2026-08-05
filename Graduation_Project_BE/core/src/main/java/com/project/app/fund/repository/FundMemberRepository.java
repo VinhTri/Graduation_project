@@ -38,6 +38,17 @@ public interface FundMemberRepository extends JpaRepository<FundMember, Long> {
             @Param("ownerRole") FundMemberRole ownerRole
     );
 
+    @Query("""
+            SELECT m FROM FundMember m
+            JOIN FETCH m.fund f
+            JOIN FETCH f.owner o
+            WHERE m.user.id = :userId
+              AND m.status = com.project.app.fund.enums.FundMemberStatus.INVITED
+              AND f.status = com.project.app.fund.enums.FundStatus.ACTIVE
+            ORDER BY m.id DESC
+            """)
+    List<FundMember> findPendingInvitationsForUser(@Param("userId") Long userId);
+
     @Modifying
     @Transactional
     void deleteByFundId(Long fundId);

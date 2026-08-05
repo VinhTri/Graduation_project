@@ -12,6 +12,7 @@ import com.project.app.fund.dto.request.FundAmountRequest;
 import com.project.app.fund.dto.request.InviteFundRequest;
 import com.project.app.fund.dto.request.UpdateFundNoteRequest;
 import com.project.app.fund.dto.response.FundDetailResponse;
+import com.project.app.fund.dto.response.FundInvitationResponse;
 import com.project.app.fund.dto.response.FundMemberResponse;
 import com.project.app.fund.dto.response.FundSummaryResponse;
 import com.project.app.fund.dto.response.FundTransactionResponse;
@@ -27,6 +28,7 @@ import com.project.app.fund.repository.FundRepository;
 import com.project.app.fund.repository.FundTransactionRepository;
 import com.project.app.fund.service.FundService;
 import com.project.app.notification.enums.NotificationType;
+import com.project.app.notification.repository.NotificationRepository;
 import com.project.app.notification.service.NotificationService;
 import com.project.app.transaction.entity.Transaction;
 import com.project.app.transaction.enums.TransactionStatus;
@@ -69,12 +71,37 @@ public class FundServiceImpl implements FundService {
     private final UserRepository userRepository;
     private final FriendshipRepository friendshipRepository;
     private final NotificationService notificationService;
+    private final NotificationRepository notificationRepository;
 
     @Override
     @Transactional(readOnly = true)
     public List<FundSummaryResponse> listMyFunds(User user) {
         return fundRepository.findActiveFundsForUser(user.getId()).stream()
                 .map(fund -> toSummary(fund, user.getId()))
+                .toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<FundInvitationResponse> listPendingInvitations(User user) {
+        return fundMemberRepository.findPendingInvitationsForUser(user.getId()).stream()
+                .map(m -> {
+                    Fund f = m.getFund();
+                    long memberCount = fundMemberRepository.countByFundIdAndStatus(f.getId(), FundMemberStatus.ACTIVE);
+                    return FundInvitationResponse.builder()
+                            .id(m.getId())
+                            .fundId(f.getId())
+                            .fundName(f.getName())
+                            .balance(f.getBalance())
+                            .targetAmount(f.getTargetAmount())
+                            .coverColorSeed(f.getCoverColorSeed())
+                            .ownerId(f.getOwner().getId())
+                            .ownerName(f.getOwner().getUsername())
+                            .ownerAvatar(f.getOwner().getAvatarUrl())
+                            .memberCount(memberCount)
+                            .invitedAt(m.getJoinedAt())
+                            .build();
+                })
                 .toList();
     }
 
@@ -133,6 +160,8 @@ public class FundServiceImpl implements FundService {
             throw new AppException(ErrorCode.FUND_HAS_BALANCE);
         }
 
+        notificationRepository.deleteByTypeAndRelatedId(NotificationType.FUND_INVITE, fundId);
+        notificationRepository.deleteByTypeAndRelatedId(NotificationType.FUND_INVITE_ACCEPTED, fundId);
         fundTransactionRepository.deleteByFundId(fundId);
         fundMemberRepository.deleteByFundId(fundId);
         fundRepository.delete(fund);
@@ -357,6 +386,10 @@ public class FundServiceImpl implements FundService {
         // Chấp nhận tham gia quỹ → đảm bảo trở thành bạn bè với chủ quỹ
         ensureFriendship(user, fund.getOwner());
 
+        notificationRepository.deleteByUserIdAndTypeAndRelatedId(
+                user.getId(), NotificationType.FUND_INVITE, fund.getId()
+        );
+
         notificationService.createNotification(
                 fund.getOwner(),
                 "Đã tham gia quỹ",
@@ -379,6 +412,10 @@ public class FundServiceImpl implements FundService {
         }
 
         fundMemberRepository.delete(member);
+
+        notificationRepository.deleteByUserIdAndTypeAndRelatedId(
+                user.getId(), NotificationType.FUND_INVITE, fundId
+        );
     }
 
     private void ensureFundHasMemberSlot(Long fundId) {
