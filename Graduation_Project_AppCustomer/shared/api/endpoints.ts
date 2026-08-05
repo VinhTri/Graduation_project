@@ -68,6 +68,7 @@ export const ENDPOINTS = {
   },
   FUND: {
     LIST: '/api/v1/funds',
+    INVITATIONS: '/api/v1/funds/invitations',
     CREATE: '/api/v1/funds',
     DETAIL: (id: number) => `/api/v1/funds/${id}`,
     DELETE: (id: number) => `/api/v1/funds/${id}`,

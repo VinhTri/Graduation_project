@@ -12,20 +12,25 @@ export const styles = StyleSheet.create({
   headerTopRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
   },
-  iconBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255,255,255,0.6)',
-    justifyContent: 'center',
+  headerLeft: {
+    flex: 1,
+    flexDirection: 'row',
     alignItems: 'center',
   },
+  backButton: {
+    width: 40,
+    height: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 6,
+    marginLeft: -8,
+  },
   headerTitle: {
-    fontSize: 18,
-    fontWeight: '800',
-    color: FUND_PALETTE.title,
+    fontSize: 22,
+    fontWeight: '900',
+    color: '#5B21B6',
+    letterSpacing: 0.2,
   },
   previewCard: {
     marginTop: 22,

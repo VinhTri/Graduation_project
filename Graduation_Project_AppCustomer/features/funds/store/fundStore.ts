@@ -1,8 +1,9 @@
 import { useSyncExternalStore } from 'react';
-import { Fund } from '../types';
+import { Fund, FundInvitation } from '../types';
 import { fundService } from '../../../shared/api/services/fundService';
 
 let funds: Fund[] = [];
+let invitations: FundInvitation[] = [];
 let loading = false;
 let error: string | null = null;
 const listeners = new Set<() => void>();
@@ -35,6 +36,10 @@ export const fundStore = {
     return funds;
   },
 
+  getInvitationsSnapshot() {
+    return invitations;
+  },
+
   getLoading() {
     return loading;
   },
@@ -52,22 +57,38 @@ export const fundStore = {
     error = null;
     emit();
     try {
-      const list = await fundService.listMyFunds();
-      // Giữ lại chi tiết (members/transactions) đã tải nếu còn trong list
-      funds = list.map((summary) => {
-        const prev = funds.find((f) => f.id === summary.id);
-        if (prev && (prev.members.length > 0 || prev.transactions.length > 0)) {
-          return {
-            ...summary,
-            members: prev.members,
-            transactions: prev.transactions,
-          };
-        }
-        return summary;
-      });
+      const [fundsResult, invitesResult] = await Promise.allSettled([
+        fundService.listMyFunds(),
+        fundService.listPendingInvitations(),
+      ]);
+
+      if (fundsResult.status === 'fulfilled') {
+        const list = fundsResult.value;
+        funds = list.map((summary) => {
+          const prev = funds.find((f) => f.id === summary.id);
+          if (prev && (prev.members.length > 0 || prev.transactions.length > 0)) {
+            return {
+              ...summary,
+              members: prev.members,
+              transactions: prev.transactions,
+            };
+          }
+          return summary;
+        });
+      } else {
+        error = getErrorMessage(fundsResult.reason, 'Không tải được danh sách quỹ');
+        funds = [];
+      }
+
+      if (invitesResult.status === 'fulfilled') {
+        invitations = invitesResult.value;
+      } else {
+        invitations = [];
+      }
     } catch (err: any) {
       error = getErrorMessage(err, 'Không tải được danh sách quỹ');
       funds = [];
+      invitations = [];
       throw err;
     } finally {
       loading = false;
@@ -153,6 +174,20 @@ export const fundStore = {
     return updated;
   },
 
+  async acceptInvite(fundId: number): Promise<Fund> {
+    const joined = await fundService.acceptInvite(fundId);
+    invitations = invitations.filter((i) => i.fundId !== fundId);
+    upsertFund(joined);
+    emit();
+    return joined;
+  },
+
+  async rejectInvite(fundId: number): Promise<void> {
+    await fundService.rejectInvite(fundId);
+    invitations = invitations.filter((i) => i.fundId !== fundId);
+    emit();
+  },
+
   async leaveFund(id: number): Promise<{ ok: true } | { ok: false; message: string }> {
     try {
       await fundService.leaveFund(id);
@@ -167,6 +202,10 @@ export const fundStore = {
 
 export function useFunds(): Fund[] {
   return useSyncExternalStore(fundStore.subscribe, fundStore.getSnapshot, fundStore.getSnapshot);
+}
+
+export function useFundInvitations(): FundInvitation[] {
+  return useSyncExternalStore(fundStore.subscribe, fundStore.getInvitationsSnapshot, fundStore.getInvitationsSnapshot);
 }
 
 export function useFund(id: number): Fund | undefined {
