@@ -3,6 +3,7 @@ import { ServiceLookupScreen } from '../../../features/invoice/screens/ServiceLo
 import { ElectricityInvoiceScreen } from '../../../features/invoice/screens/ElectricityInvoiceScreen/ElectricityInvoiceScreen';
 import { WaterInvoiceScreen } from '../../../features/invoice/screens/WaterInvoiceScreen/WaterInvoiceScreen';
 import { InternetInvoiceScreen } from '../../../features/invoice/screens/InternetInvoiceScreen/InternetInvoiceScreen';
+import { RentInvoiceScreen } from '../../../features/invoice/screens/RentInvoiceScreen/RentInvoiceScreen';
 
 export default function ServiceLookupRoute() {
   const { type } = useLocalSearchParams<{ type: string }>();
@@ -17,6 +18,10 @@ export default function ServiceLookupRoute() {
 
   if (type === 'internet') {
     return <InternetInvoiceScreen />;
+  }
+
+  if (type === 'rent') {
+    return <RentInvoiceScreen />;
   }
 
   return <ServiceLookupScreen />;

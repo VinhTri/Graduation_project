@@ -117,7 +117,8 @@ export const InvoiceScreen = () => {
     if (n.includes('điện')) return { name: 'flash', color: '#F59E0B', bg: '#FEF3C7' };
     if (n.includes('nước')) return { name: 'water', color: '#3B82F6', bg: '#DBEAFE' };
     if (n.includes('mạng') || n.includes('wifi') || n.includes('internet')) return { name: 'wifi', color: '#8B5CF6', bg: '#EDE9FE' };
-    if (n.includes('học phí') || n.includes('trường')) return { name: 'school', color: '#10B981', bg: '#D1FAE5' };
+    if (n.includes('học phí') || n.includes('trường')) return { name: 'school', color: '#F43F5E', bg: '#FFE4E6' }; // Changed school color to distinguish from rent
+    if (n.includes('nhà') || n.includes('phòng')) return { name: 'home', color: '#10B981', bg: '#D1FAE5' };
     return { name: 'receipt', color: '#64748B', bg: '#F1F5F9' };
   };
 
@@ -199,6 +200,8 @@ export const InvoiceScreen = () => {
               router.push(`/invoice/service/water?editId=${item.id}`);
             } else if (item.invoiceName.toLowerCase().includes('mạng') || item.invoiceName.toLowerCase().includes('internet')) {
               router.push(`/invoice/service/internet?editId=${item.id}`);
+            } else if (item.invoiceName.toLowerCase().includes('nhà') || item.invoiceName.toLowerCase().includes('phòng')) {
+              router.push(`/invoice/service/rent?editId=${item.id}`);
             } else {
               router.push(`/invoice/${item.id}`);
             }
