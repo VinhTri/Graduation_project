@@ -41,6 +41,12 @@ public class AmountParser {
             return Long.parseLong(clean);
         }
 
+        // 4. Plain number format without separators (e.g. "3000000", "25000000")
+        Matcher mPlain = Pattern.compile("\\b(\\d{4,12})\\b").matcher(norm);
+        if (mPlain.find()) {
+            return Long.parseLong(mPlain.group(1));
+        }
+
         return 0;
     }
 
@@ -69,7 +75,7 @@ public class AmountParser {
         String norm = normalizeText(text);
 
         // Explicit purchase target snippet matcher
-        Pattern pattern = Pattern.compile("(?:mua|sam|mua sam|tiet kiem|tich luy|muon co|can co|tri gia|gia)\\s+.*?(\\d+(?:[.,]\\d+)?\\s*(?:trieu|tr)?\\s*\\d*)\\s*(k|nghin|ngan|trieu|tr|m|ty|cu)?", Pattern.CASE_INSENSITIVE);
+        Pattern pattern = Pattern.compile("(?:mua|sam|mua sam|tiet kiem|tich luy|muon co|can co|tri gia|gia)\\s+.*?(\\d{1,3}(?:[.,]\\d{3})+|\\d+(?:[.,]\\d+)?(?:\\s*(?:trieu|tr))?\\s*\\d*)\\s*(k|nghin|ngan|trieu|tr|m|ty|cu)?", Pattern.CASE_INSENSITIVE);
         Matcher matcher = pattern.matcher(norm);
 
         if (matcher.find()) {
@@ -89,7 +95,19 @@ public class AmountParser {
         // Exclude goal target statements like "muốn có", "cần có" from declared balance matching
         String cleanNorm = norm.replaceAll("(?:muon|can|dinh|du dinh)\\s+co", "");
 
-        Pattern pattern = Pattern.compile("(?:dang co|co san|von|dang giu|hien co|hien tai co|hien tai toi co|hien toi co|toi co)\\s+(\\d+(?:[.,]\\d+)?\\s*(?:trieu|tr)?\\s*\\d*)\\s*(k|nghin|ngan|trieu|tr|m|ty|cu)?", Pattern.CASE_INSENSITIVE);
+        Pattern pattern = Pattern.compile(
+                "(?:" +
+                        "so\\s*du(?:\\s*hien\\s*tai)?(?:\\s*la|\\s*chi\\s*la|\\s*co|\\s*bang|\\s*con|\\s*khoang)?" +
+                        "|neu(?:\\s*toi)?(?:\\s*chi)?(?:\\s*la|\\s*co|\\s*dang\\s*co|\\s*hien\\s*co|\\s*so\\s*du(?:\\s*hien\\s*tai)?(?:\\s*la|\\s*co|\\s*bang|\\s*con)?)" +
+                        "|so\\s*tien(?:\\s*hien\\s*co|\\s*co|\\s*dang\\s*co|\\s*hien\\s*tai\\s*la)?" +
+                        "|hien\\s*tai\\s*toi\\s*co|hien\\s*toi\\s*co|hien\\s*tai\\s*co|hien\\s*co|toi\\s*co|dang\\s*co|co\\s*san" +
+                        "|von(?:\\s*hien\\s*tai)?(?:\\s*la|\\s*co)?" +
+                        "|dang\\s*giu|(?:vi|tai\\s*khoan)(?:\\s*hien\\s*tai)?(?:\\s*co|\\s*la)?" +
+                ")" +
+                "\\s+" +
+                "(\\d{1,3}(?:[.,]\\d{3})+|\\d+(?:[.,]\\d+)?(?:\\s*(?:trieu|tr))?\\s*\\d*)\\s*(k|nghin|ngan|trieu|tr|m|ty|cu)?",
+                Pattern.CASE_INSENSITIVE
+        );
         Matcher matcher = pattern.matcher(cleanNorm);
 
         if (matcher.find()) {

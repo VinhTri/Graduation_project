@@ -80,6 +80,10 @@ public class AiChatServiceImpl implements AiChatService {
                             || normalized.contains("moi thang")
                             || normalized.contains("hang thang")
                             || normalized.contains("von")
+                            || normalized.contains("neu co")
+                            || normalized.contains("chi co")
+                            || normalized.contains("tai khoan")
+                            || normalized.contains("vi co")
                         );
 
         String initialGoalName = goalNameParser.extractGoalName(userPrompt, normalized);
@@ -474,26 +478,33 @@ public class AiChatServiceImpl implements AiChatService {
             long emergencyFund = goalContext.getEmergencyFund();
             long targetAmt = goalContext.getTargetAmount();
             long remainingGap = goalContext.getRemainingAmount();
-            long neededSaving = isDays ? goalContext.getDailySavingWithBalance() : goalContext.getMonthlyGapSaving();
+            long savingWithBal = isDays ? goalContext.getDailySavingWithBalance() : (goalContext.getMonthlyGapSaving() > 0 ? goalContext.getMonthlyGapSaving() : goalContext.getMonthlySavingWithBalance());
+            long savingWithoutBal = isDays ? goalContext.getDailySavingWithoutBalance() : goalContext.getMonthlySavingWithoutBalance();
             String unitStr = isDays ? "ngày" : "tháng";
             int durationVal = isDays ? days : months;
 
             StringBuilder sb = new StringBuilder();
-            sb.append(String.format("💰 **Cập nhật kế hoạch %s%s %s VNĐ**\n\n", actionPrefix, goalName, df.format(targetAmt)));
-            sb.append(String.format("💵 **Số tiền hiện có**: %s VNĐ\n", df.format(declaredBal)));
+            sb.append(String.format("🎯 **Kế hoạch %s%s %s VNĐ %s**\n\n", actionPrefix, goalName, df.format(targetAmt), timePhrase));
+            sb.append(String.format("💵 **Số dư hiện tại**: %s VNĐ\n", df.format(declaredBal)));
             if (emergencyFund > 0) {
                 sb.append(String.format("🛡️ **Quỹ dự phòng giữ lại**: %s VNĐ\n", df.format(emergencyFund)));
+                sb.append(String.format("🎯 **Số tiền có thể dùng cho mục tiêu**: %s VNĐ\n", df.format(usableBal)));
             }
-            sb.append(String.format("🎯 **Số tiền có thể dùng cho mục tiêu**: %s VNĐ\n\n", df.format(usableBal)));
-            sb.append(String.format("📌 **Số tiền còn thiếu**:\n%s - %s = **%s VNĐ**\n\n", df.format(targetAmt), df.format(usableBal), df.format(remainingGap)));
-            sb.append(String.format("➡️ **Để đạt mục tiêu %s**:\n", timePhrase));
-            sb.append(String.format("%s ÷ %d ≈ **%s VNĐ/%s**.", df.format(remainingGap), durationVal, df.format(neededSaving), unitStr));
+            sb.append(String.format("📌 **Số tiền còn thiếu**: %s VNĐ\n\n", df.format(remainingGap)));
+            sb.append(String.format("➡️ **Phương án 1 (Sử dụng %s)**:\nCần tiết kiệm khoảng **%s VNĐ/%s** trong %d %s.\n\n",
+                    emergencyFund > 0 ? "vốn khả dụng " + df.format(usableBal) + " VNĐ" : "số dư hiện tại",
+                    df.format(savingWithBal), unitStr, durationVal, unitStr));
+            sb.append(String.format("➡️ **Phương án 2 (Giữ nguyên số dư hiện tại)**:\nCần tiết kiệm khoảng **%s VNĐ/%s** trong %d %s.\n\n",
+                    df.format(savingWithoutBal), unitStr, durationVal, unitStr));
+            sb.append(String.format("💡 **Gợi ý**: Bạn nên tiết kiệm khoảng **%s VNĐ/%s** nếu chấp nhận sử dụng số dư hiện tại cho mục tiêu này.",
+                    df.format(savingWithBal), unitStr));
             return sb.toString();
         }
 
         // 6. Rich Follow-up response layout
-        long savingWithBal = isDays ? goalContext.getDailySavingWithBalance() : (goalContext.getMonthlyGapSaving() > 0 ? goalContext.getMonthlyGapSaving() : goalContext.getMonthlySaving());
-        long savingWithoutBal = isDays ? goalContext.getDailySavingWithoutBalance() : goalContext.getMonthlySaving();
+        long currentBal = goalContext.getCurrentBalance() != null ? goalContext.getCurrentBalance().longValue() : totalBal.longValue();
+        long savingWithBal = isDays ? goalContext.getDailySavingWithBalance() : (goalContext.getMonthlyGapSaving() > 0 ? goalContext.getMonthlyGapSaving() : goalContext.getMonthlySavingWithBalance());
+        long savingWithoutBal = isDays ? goalContext.getDailySavingWithoutBalance() : goalContext.getMonthlySavingWithoutBalance();
         String unitStr = isDays ? "ngày" : "tháng";
         int durationVal = isDays ? days : months;
 
@@ -508,7 +519,7 @@ public class AiChatServiceImpl implements AiChatService {
             goalName,
             df.format(goalContext.getTargetAmount()),
             timePhrase,
-            df.format(totalBal),
+            df.format(currentBal),
             df.format(goalContext.getRemainingAmount()),
             df.format(savingWithBal), unitStr, durationVal, unitStr,
             df.format(savingWithoutBal), unitStr, durationVal, unitStr,
@@ -688,6 +699,10 @@ public class AiChatServiceImpl implements AiChatService {
                 || norm.contains("hien tai toi co")
                 || norm.contains("toi co")
                 || norm.contains("dang co")
+                || norm.contains("so du")
+                || norm.contains("thi sao")
+                || norm.contains("neu co")
+                || norm.contains("chi co")
                 || norm.contains("quy du phong");
     }
 

@@ -26,6 +26,10 @@ public class AiPromptService {
 
         String businessDataStr = aiGoalCalculatorService.buildBusinessDataPrompt(goalContext, df);
 
+        BigDecimal activeBal = (goalContext != null && goalContext.getCurrentBalance() != null)
+                ? goalContext.getCurrentBalance()
+                : (totalBal != null ? totalBal : BigDecimal.ZERO);
+
         if (isFollowUp) {
             return String.format(
                 "1. SYSTEM PROMPT & QUY TẮC BẮT BUỘC CHO CÂU HỎI FOLLOW-UP TRỰC TIẾP\n" +
@@ -43,11 +47,11 @@ public class AiPromptService {
                 "- Tổng số dư hiện tại: %s VNĐ\n" +
                 "%s\n" +
                 "Hãy xuất đúng 1 câu trả lời trực tiếp ngắn gọn.\n",
-                df.format(totalBal),
-                df.format(totalBal),
+                df.format(activeBal),
+                df.format(activeBal),
                 email,
                 username,
-                df.format(totalBal),
+                df.format(activeBal),
                 businessDataStr
             );
         } else {
