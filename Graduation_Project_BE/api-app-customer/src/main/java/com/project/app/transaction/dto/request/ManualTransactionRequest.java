@@ -6,6 +6,8 @@ import jakarta.validation.constraints.NotNull;
 
 import java.math.BigDecimal;
 
+import java.time.LocalDateTime;
+
 public record ManualTransactionRequest(
         @NotNull(message = "Số tiền là bắt buộc")
         @DecimalMin(value = "1", message = "Số tiền phải lớn hơn 0")
@@ -19,6 +21,8 @@ public record ManualTransactionRequest(
 
         String note,
         
-        Long walletId
+        Long walletId,
+
+        LocalDateTime createdAt
 ) {
 }
