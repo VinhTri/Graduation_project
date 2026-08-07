@@ -13,4 +13,5 @@ public interface InvoiceService {
     InvoiceResponse updateInvoice(Long id, User user, InvoiceRequest request);
     void deleteInvoice(Long id, User user);
     InvoiceResponse updateInvoiceStatus(Long id, User user, boolean isPaid);
+    InvoiceResponse payInvoiceWithCash(Long id, User user);
 }
