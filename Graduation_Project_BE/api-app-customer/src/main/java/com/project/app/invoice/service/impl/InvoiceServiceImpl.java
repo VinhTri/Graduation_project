@@ -11,6 +11,15 @@ import com.project.app.user.entity.User;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.project.app.wallet.service.WalletService;
+import com.project.app.wallet.repository.WalletRepository;
+import com.project.app.transaction.repository.TransactionRepository;
+import com.project.app.transaction.entity.Transaction;
+import com.project.app.transaction.enums.TransactionType;
+import com.project.app.transaction.enums.TransactionStatus;
+import com.project.app.wallet.entity.Wallet;
+import java.math.BigDecimal;
+import java.util.UUID;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -20,6 +29,9 @@ import java.util.stream.Collectors;
 public class InvoiceServiceImpl implements InvoiceService {
 
     private final InvoiceRepository invoiceRepository;
+    private final WalletService walletService;
+    private final WalletRepository walletRepository;
+    private final TransactionRepository transactionRepository;
 
     @Override
     @Transactional
@@ -101,6 +113,42 @@ public class InvoiceServiceImpl implements InvoiceService {
     public InvoiceResponse updateInvoiceStatus(Long id, User user, boolean isPaid) {
         Invoice invoice = getInvoice(id, user);
         invoice.setPaid(isPaid);
+        Invoice updatedInvoice = invoiceRepository.save(invoice);
+        return mapToResponse(updatedInvoice);
+    }
+    
+    @Override
+    @Transactional
+    public InvoiceResponse payInvoiceWithCash(Long id, User user) {
+        Invoice invoice = getInvoice(id, user);
+        if (invoice.isPaid()) {
+            throw new AppException(ErrorCode.INVALID_REQUEST); // Already paid
+        }
+
+        Wallet cashWallet = walletService.getOrCreateCashWallet(user.getId());
+        BigDecimal amount = invoice.getAmount();
+        
+        if (cashWallet.getBalance().compareTo(amount) < 0) {
+            throw new AppException(ErrorCode.INSUFFICIENT_BALANCE);
+        }
+
+        // Deduct balance
+        cashWallet.setBalance(cashWallet.getBalance().subtract(amount));
+        walletRepository.save(cashWallet);
+
+        // Create transaction history
+        Transaction transaction = new Transaction();
+        transaction.setUser(user);
+        transaction.setWallet(cashWallet);
+        transaction.setAmount(amount);
+        transaction.setType(TransactionType.EXPENSE);
+        transaction.setStatus(TransactionStatus.SUCCESS);
+        transaction.setTransactionCode("INV-" + invoice.getId() + "-" + System.currentTimeMillis());
+        transaction.setNote("Thanh toán hóa đơn: " + invoice.getInvoiceName());
+        transactionRepository.save(transaction);
+
+        // Mark as paid
+        invoice.setPaid(true);
         Invoice updatedInvoice = invoiceRepository.save(invoice);
         return mapToResponse(updatedInvoice);
     }
