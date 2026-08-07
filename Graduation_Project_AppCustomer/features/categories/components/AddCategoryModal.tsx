@@ -9,6 +9,7 @@ import Colors from '../../../shared/constants/Colors';
 import { useCategoryContext } from '../../../shared/contexts/CategoryContext';
 import { IconPicker } from './IconPicker';
 import { AddGroupModal } from './AddGroupModal';
+import { Toast } from '../../../shared/components/Toast/Toast';
 import { ColorTheme, getAvailableCategoryColors, CATEGORY_COLORS } from '../constants/categoryTheme';
 import { MAX_ITEMS_PER_GROUP, MAX_CATEGORY_NAME_LENGTH, MAX_CATEGORY_GROUPS } from '../constants/categoryLimits';
 
@@ -32,10 +33,16 @@ export const AddCategoryModal: React.FC<AddCategoryModalProps> = ({ visible, onC
   const { categories, addService } = useCategoryContext();
 
   const [label, setLabel] = useState("");
+  const [nameError, setNameError] = useState("");
   const [selectedIcon, setSelectedIcon] = useState("apps");
   const [selectedColor, setSelectedColor] = useState<ColorTheme | null>(null);
   const [selectedGroup, setSelectedGroup] = useState<string>("");
   const [isGroupModalVisible, setIsGroupModalVisible] = useState(false);
+  const [toast, setToast] = useState<{ visible: boolean; message: string; type?: 'error' | 'success' | 'info' }>({
+    visible: false,
+    message: '',
+    type: 'error',
+  });
   const [alertConfig, setAlertConfig] = useState<AlertConfig>({
     visible: false,
     title: "",
@@ -84,9 +91,12 @@ export const AddCategoryModal: React.FC<AddCategoryModalProps> = ({ visible, onC
   React.useEffect(() => {
     if (!visible) {
       setIsGroupModalVisible(false);
+      setNameError('');
+      setToast({ visible: false, message: '', type: 'error' });
       return;
     }
     setLabel('');
+    setNameError('');
     setSelectedIcon('apps');
     const colors = getAvailableCategoryColors(
       categories.flatMap((g) => 
@@ -121,8 +131,8 @@ export const AddCategoryModal: React.FC<AddCategoryModalProps> = ({ visible, onC
           setSelectedGroup(matchedGroup.id);
           setSelectedIcon(suggestion.icon);
           if (availableColors[0]) setSelectedColor(availableColors[0]);
+          break;
         }
-        break;
       }
     }
   }, [label, customGroups, availableColors, defaultGroupId]);
@@ -137,25 +147,29 @@ export const AddCategoryModal: React.FC<AddCategoryModalProps> = ({ visible, onC
     });
 
     setLabel("");
+    setNameError("");
     onClose();
   };
 
   const handleSave = () => {
     const trimmedLabel = label.trim();
     if (!trimmedLabel) {
-      alert("Vui lòng nhập tên danh mục!");
+      setNameError('Vui lòng nhập tên danh mục');
       return;
     }
     if (!selectedGroup) {
-      alert("Vui lòng chọn nhóm!");
+      setToast({
+        visible: true,
+        message: 'Vui lòng chọn một nhóm danh mục',
+        type: 'error',
+      });
       return;
     }
     if (!selectedColor) {
-      setAlertConfig({
+      setToast({
         visible: true,
-        title: "Hết màu danh mục",
-        message: "Tất cả 24 màu danh mục đã được sử dụng. Hãy xóa danh mục cũ để lấy lại màu.",
-        type: "error",
+        message: 'Vui lòng chọn một màu sắc',
+        type: 'error',
       });
       return;
     }
@@ -236,13 +250,25 @@ export const AddCategoryModal: React.FC<AddCategoryModalProps> = ({ visible, onC
               </Text>
             </View>
             <TextInput
-              style={styles.input}
+              style={[
+                styles.input,
+                !!nameError && styles.inputError,
+              ]}
               placeholder={`VD: Quà tặng, Vé máy bay... (tối đa ${MAX_CATEGORY_NAME_LENGTH} ký tự)`}
               placeholderTextColor={Colors.textMuted || '#9CA3AF'}
               value={label}
-              onChangeText={(text) => setLabel(text.slice(0, MAX_CATEGORY_NAME_LENGTH))}
+              onChangeText={(text) => {
+                setLabel(text.slice(0, MAX_CATEGORY_NAME_LENGTH));
+                if (nameError) setNameError('');
+              }}
               maxLength={MAX_CATEGORY_NAME_LENGTH}
             />
+            {!!nameError && (
+              <View style={styles.inlineErrorRow}>
+                <Ionicons name="alert-circle" size={15} color="#EF4444" />
+                <Text style={styles.inlineErrorText}>{nameError}</Text>
+              </View>
+            )}
 
             {defaultGroupId ? (
               <>
@@ -418,6 +444,13 @@ export const AddCategoryModal: React.FC<AddCategoryModalProps> = ({ visible, onC
           </View>
         </Modal>
 
+        <Toast
+          visible={toast.visible}
+          message={toast.message}
+          type={toast.type}
+          onClose={() => setToast(prev => ({ ...prev, visible: false }))}
+        />
+
       </KeyboardAvoidingView>
     </Modal>
 
@@ -503,6 +536,22 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: Colors.text,
     marginBottom: 20,
+  },
+  inputError: {
+    borderColor: '#EF4444',
+    backgroundColor: '#FEF2F2',
+  },
+  inlineErrorRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    marginTop: -14,
+    marginBottom: 16,
+  },
+  inlineErrorText: {
+    fontSize: 12.5,
+    color: '#EF4444',
+    fontWeight: '600',
   },
   groupContainer: {
     flexDirection: 'row',

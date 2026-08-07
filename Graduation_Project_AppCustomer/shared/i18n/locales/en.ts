@@ -161,6 +161,17 @@ export const en: Record<TranslationKeys, string> = {
   markAllAsRead: 'Mark all as read',
   noNotifications: 'You have no new notifications',
 
+  // Quick Notebook Calendar
+  quickNotebook: 'Quick Notebook',
+  quickNotebookSubtitle: 'Tap a date to log income / expense',
+  notRecorded: 'Not logged',
+  recorded: 'Logged',
+  recordIncome: 'Log Income',
+  recordExpense: 'Log Expense',
+  viewNotebookDetail: 'View All Notebook',
+  dayTransactions: 'Day Transactions',
+  noDayTransactions: 'No transactions logged for this day',
+
   // Common Messages
   loading: 'Loading...',
   success: 'Success',

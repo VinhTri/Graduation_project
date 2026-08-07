@@ -159,6 +159,17 @@ export const vi = {
   markAllAsRead: 'Đánh dấu đã đọc tất cả',
   noNotifications: 'Bạn không có thông báo mới',
 
+  // Quick Notebook Calendar
+  quickNotebook: 'Sổ tay nhanh',
+  quickNotebookSubtitle: 'Chạm ngày để ghi thu / chi',
+  notRecorded: 'Chưa ghi chép',
+  recorded: 'Đã ghi chép',
+  recordIncome: 'Ghi thu nhập',
+  recordExpense: 'Ghi chi tiêu',
+  viewNotebookDetail: 'Xem tất cả sổ tay',
+  dayTransactions: 'Giao dịch trong ngày',
+  noDayTransactions: 'Chưa có giao dịch nào trong ngày này',
+
   // Common Messages
   loading: 'Đang tải...',
   success: 'Thành công',
