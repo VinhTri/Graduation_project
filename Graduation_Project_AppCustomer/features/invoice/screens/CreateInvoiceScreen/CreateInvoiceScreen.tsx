@@ -347,9 +347,9 @@ export const CreateInvoiceScreen = () => {
       <ConfirmModal
         visible={showSuccessModal}
         title="Thành công"
-        message="Đã lưu hóa đơn thành công!"
+        message="Hóa đơn mới đã được lưu thành công!"
         iconName="checkmark-circle"
-        iconColor={Colors.success || "#10B981"}
+        iconColor="#EC4899"
         confirmText="Hoàn tất"
         isDestructive={false}
         hideCancel={true}

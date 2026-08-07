@@ -36,7 +36,7 @@ export default function ConfirmModal({
   confirmButtonColor
 }: ConfirmModalProps) {
   const activeIconColor = iconColor || (isDestructive ? '#EC4899' : Colors.primary);
-  const activeConfirmColor = confirmButtonColor || (isDestructive ? '#EC4899' : Colors.primary);
+  const activeConfirmColor = confirmButtonColor || iconColor || (isDestructive ? '#EC4899' : Colors.primary);
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onCancel}>

@@ -25,6 +25,9 @@ export const InvoiceScreen = () => {
   const [deleteModalVisible, setDeleteModalVisible] = useState(false);
   const [itemToDelete, setItemToDelete] = useState<{ id: number, name: string } | null>(null);
 
+  const [payModalVisible, setPayModalVisible] = useState(false);
+  const [itemToPay, setItemToPay] = useState<{ id: number, name: string } | null>(null);
+
   const [errorModalVisible, setErrorModalVisible] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
 
@@ -81,18 +84,26 @@ export const InvoiceScreen = () => {
     }
   };
 
-  const handlePayNow = async (id: number, name: string) => {
+  const openPayModal = (id: number, name: string) => {
+    setItemToPay({ id, name });
+    setPayModalVisible(true);
+  };
+
+  const confirmPay = async () => {
+    if (!itemToPay) return;
     try {
       setLoading(true);
-      await invoiceService.updateInvoiceStatus(id, true);
+      setPayModalVisible(false);
+      await invoiceService.payInvoiceWithCash(itemToPay.id);
       fetchInvoices();
-      setSuccessMessage(`Thanh toán thành công hóa đơn "${name}"!`);
+      setSuccessMessage(`Thanh toán thành công hóa đơn "${itemToPay.name}"!`);
       setSuccessModalVisible(true);
-    } catch (error) {
+    } catch (error: any) {
       console.error(error);
-      setErrorMessage("Có lỗi xảy ra khi thanh toán.");
+      setErrorMessage(error?.response?.data?.message || "Có lỗi xảy ra khi thanh toán.");
       setErrorModalVisible(true);
     } finally {
+      setItemToPay(null);
       setLoading(false);
     }
   };
@@ -220,7 +231,6 @@ export const InvoiceScreen = () => {
                 </View>
               </View>
               <Text style={styles.invoiceAmount}>{formattedAmount} VNĐ</Text>
-              
               <View style={styles.invoiceFooter}>
                 <View style={styles.dueDateContainer}>
                   <Ionicons name="calendar-outline" size={16} color="#64748B" />
@@ -239,7 +249,7 @@ export const InvoiceScreen = () => {
                   activeOpacity={0.8}
                   onPress={(e) => {
                     e.stopPropagation();
-                    handlePayNow(item.id, item.invoiceName);
+                    openPayModal(item.id, item.invoiceName);
                   }}
                 >
                   <Text style={styles.payNowText}>Thanh toán ngay</Text>
@@ -394,13 +404,30 @@ export const InvoiceScreen = () => {
         }}
       />
 
+      {/* Pay Confirmation Modal */}
+      <ConfirmModal
+        visible={payModalVisible}
+        title="Thanh toán hóa đơn"
+        message={itemToPay ? `Bạn có chắc chắn muốn thanh toán hóa đơn "${itemToPay.name}" bằng Sổ tay tiền mặt không?` : ""}
+        iconName="wallet-outline"
+        iconColor="#EC4899"
+        confirmText="Thanh toán"
+        cancelText="Hủy"
+        isDestructive={false}
+        onConfirm={confirmPay}
+        onCancel={() => {
+          setPayModalVisible(false);
+          setItemToPay(null);
+        }}
+      />
+
       {/* Success Modal */}
       <ConfirmModal
         visible={successModalVisible}
         title="Thành công"
         message={successMessage}
         iconName="checkmark-circle"
-        iconColor={Colors.success || "#10B981"}
+        iconColor="#EC4899"
         confirmText="Hoàn tất"
         isDestructive={false}
         hideCancel={true}

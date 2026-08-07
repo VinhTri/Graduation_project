@@ -60,6 +60,11 @@ export const invoiceService = {
     return response;
   },
 
+  payInvoiceWithCash: async (id: number) => {
+    const response = await axiosClient.post(`${ENDPOINTS.INVOICE.BASE}/${id}/pay`);
+    return response;
+  },
+
   deleteInvoice: async (id: number) => {
     const response = await axiosClient.delete(ENDPOINTS.INVOICE.DETAIL(id));
     return response;
