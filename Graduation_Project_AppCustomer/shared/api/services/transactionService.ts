@@ -53,6 +53,7 @@ export interface ManualTransactionRequest {
   categoryId: number;
   note?: string;
   walletId?: number;
+  createdAt?: string;
 }
 
 export interface ManualTransactionResponse {

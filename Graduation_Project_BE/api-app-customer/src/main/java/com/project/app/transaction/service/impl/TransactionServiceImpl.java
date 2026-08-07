@@ -501,10 +501,14 @@ public class TransactionServiceImpl implements TransactionService {
         transaction.setTransactionCode(transactionCode);
         transaction.setNote(request.note());
         transaction.setCategoryId(category.getId());
+        if (request.createdAt() != null) {
+            transaction.setCreatedAt(request.createdAt());
+        }
         transaction = transactionRepository.save(transaction);
 
         if (type == TransactionType.EXPENSE) {
-            adjustBudgetForExpense(user, category.getId(), targetWallet.getId(), amount, LocalDate.now());
+            LocalDate expenseDate = request.createdAt() != null ? request.createdAt().toLocalDate() : LocalDate.now();
+            adjustBudgetForExpense(user, category.getId(), targetWallet.getId(), amount, expenseDate);
         }
 
         return new ManualTransactionResponse(
@@ -569,6 +573,9 @@ public class TransactionServiceImpl implements TransactionService {
         transaction.setType(newType);
         transaction.setCategoryId(category.getId());
         transaction.setNote(request.note());
+        if (request.createdAt() != null) {
+            transaction.setCreatedAt(request.createdAt());
+        }
         
         transaction = transactionRepository.save(transaction);
 

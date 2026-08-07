@@ -8,6 +8,7 @@ import { HomeHeader } from "../../components/HomeHeader";
 import { HomeWalletSummary } from "../../components/HomeWalletSummary";
 import { HomeInsightCarousel } from "../../components/HomeInsightCarousel";
 import { ServicesGrid } from "../../components/ServicesGrid";
+import { HomeNotebookCalendar } from "../../components/HomeNotebookCalendar";
 import { DiscoverMore } from "../../components/DiscoverMore";
 import { AIChatModal } from "../../components/AIChatModal";
 
@@ -36,6 +37,10 @@ export default function HomeScreen() {
 
         <View style={styles.sectionContainer}>
           <ServicesGrid />
+        </View>
+
+        <View style={styles.sectionContainer}>
+          <HomeNotebookCalendar />
         </View>
 
         <View style={styles.sectionContainer}>

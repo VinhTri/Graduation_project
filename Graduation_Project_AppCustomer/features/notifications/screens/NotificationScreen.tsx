@@ -107,9 +107,9 @@ export default function NotificationScreen() {
   };
 
   const handleConfirmAccept = async () => {
-    if (!selectedNotification || !selectedNotification.relatedId) return;
+    if (!selectedNotification || selectedNotification.relatedId == null) return;
     const item = selectedNotification;
-    const fundId = item.relatedId;
+    const fundId = selectedNotification.relatedId;
     setAcceptModalVisible(false);
     setActingId(item.id);
     try {
@@ -136,9 +136,9 @@ export default function NotificationScreen() {
   };
 
   const handleConfirmReject = async () => {
-    if (!selectedNotification || !selectedNotification.relatedId) return;
+    if (!selectedNotification || selectedNotification.relatedId == null) return;
     const item = selectedNotification;
-    const fundId = item.relatedId;
+    const fundId = selectedNotification.relatedId;
     setRejectModalVisible(false);
     setActingId(item.id);
     try {

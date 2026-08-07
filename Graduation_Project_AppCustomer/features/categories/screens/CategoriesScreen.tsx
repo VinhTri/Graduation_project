@@ -5,7 +5,6 @@ import {
   TouchableOpacity, 
   ScrollView, 
   TextInput,
-  Alert,
   Animated,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -31,22 +30,22 @@ const SETUP_STEPS = [
   {
     step: '2',
     title: 'Thêm danh mục',
-    description: 'Trong mỗi nhóm, nhấn "Tạo danh mục" để thêm danh mục con (tối đa 4, màu không trùng). Danh mục không thể sửa — muốn đổi thì xóa và tạo lại.',
-    icon: 'grid-outline' as const,
+    description: 'Bấm dấu "+" bên phải tên nhóm hoặc nút "Thêm danh mục" phía dưới để tạo danh mục con thuộc nhóm đó.',
+    icon: 'add-circle-outline' as const,
   },
   {
     step: '3',
-    title: 'Phân loại giao dịch',
-    description: 'Dùng danh mục khi rút tiền hoặc xem báo cáo chi tiêu theo nhóm và danh mục.',
-    icon: 'pie-chart-outline' as const,
+    title: 'Sử dụng ngay',
+    description: 'Danh mục bạn tạo sẽ xuất hiện ngay trong màn Sổ tay, Ghi chép thu chi và Quản lý ngân sách.',
+    icon: 'wallet-outline' as const,
   },
 ];
 
 import { useLanguage, useTheme } from '../../../shared/contexts/ThemeLanguageContext';
 
-export const CategoriesScreen = () => {
-  const router = useRouter();
+export const CategoriesScreen: React.FC = () => {
   const insets = useSafeAreaInsets();
+  const router = useRouter();
   const { categories, removeService, removeGroup, loadCategories } = useCategoryContext();
   const { t, language } = useLanguage();
   const { theme } = useTheme();
@@ -55,7 +54,7 @@ export const CategoriesScreen = () => {
   useFocusEffect(
     useCallback(() => {
       loadCategories();
-    }, [])
+    }, [loadCategories])
   );
   const [searchQuery, setSearchQuery] = useState("");
   const [isModalVisible, setModalVisible] = useState(false);
@@ -63,6 +62,12 @@ export const CategoriesScreen = () => {
   const [defaultGroupId, setDefaultGroupId] = useState<string | undefined>();
   const [itemToDelete, setItemToDelete] = useState<{ id: string; label: string } | null>(null);
   const [groupToDelete, setGroupToDelete] = useState<{ id: string; title: string; itemCount: number } | null>(null);
+  const [infoModal, setInfoModal] = useState<{
+    title: string;
+    message: string;
+    iconName?: keyof typeof Ionicons.glyphMap;
+    iconColor?: string;
+  } | null>(null);
 
   const handleLongPress = (service: { id: string; label: string }) => {
     setItemToDelete({ id: service.id, label: service.label });
@@ -72,10 +77,12 @@ export const CategoriesScreen = () => {
 
   const handleCreateGroup = () => {
     if (customGroupCount >= MAX_CATEGORY_GROUPS) {
-      Alert.alert(
-        'Giới hạn nhóm',
-        `Bạn chỉ có thể tạo tối đa ${MAX_CATEGORY_GROUPS} nhóm danh mục.`
-      );
+      setInfoModal({
+        title: 'Giới hạn nhóm',
+        message: `Bạn chỉ có thể tạo tối đa ${MAX_CATEGORY_GROUPS} nhóm danh mục.`,
+        iconName: 'warning',
+        iconColor: '#F59E0B',
+      });
       return;
     }
     setGroupModalVisible(true);
@@ -85,10 +92,12 @@ export const CategoriesScreen = () => {
     if (itemCount >= MAX_ITEMS_PER_GROUP) {
       const group = categories.find((g) => g.id === groupId);
       const names = group?.items?.map((i) => i.label).join(', ') || '';
-      Alert.alert(
-        'Giới hạn danh mục',
-        `Nhóm "${group?.title || ''}" đã đủ ${MAX_ITEMS_PER_GROUP} danh mục${names ? `: ${names}` : ''}.\n\nHãy xóa bớt danh mục trong nhóm này, hoặc thêm vào nhóm khác / tạo nhóm mới.`
-      );
+      setInfoModal({
+        title: 'Giới hạn danh mục',
+        message: `Nhóm "${group?.title || ''}" đã đủ ${MAX_ITEMS_PER_GROUP} danh mục${names ? `: ${names}` : ''}.\n\nHãy xóa bớt danh mục trong nhóm này, hoặc thêm vào nhóm khác / tạo nhóm mới.`,
+        iconName: 'warning',
+        iconColor: '#F59E0B',
+      });
       return;
     }
     setDefaultGroupId(groupId);
@@ -109,7 +118,12 @@ export const CategoriesScreen = () => {
       try {
         await removeGroup(groupToDelete.id);
       } catch (error) {
-        Alert.alert('Lỗi', 'Không thể xóa nhóm danh mục. Vui lòng thử lại.');
+        setInfoModal({
+          title: 'Lỗi',
+          message: 'Không thể xóa nhóm danh mục. Vui lòng thử lại.',
+          iconName: 'close-circle',
+          iconColor: '#EF4444',
+        });
       } finally {
         setGroupToDelete(null);
       }
@@ -482,6 +496,19 @@ export const CategoriesScreen = () => {
         isDestructive={true}
         onConfirm={confirmDeleteGroup}
         onCancel={() => setGroupToDelete(null)}
+      />
+
+      <ConfirmModal
+        visible={!!infoModal}
+        title={infoModal?.title || ''}
+        message={infoModal?.message || ''}
+        iconName={infoModal?.iconName || 'alert-circle'}
+        iconColor={infoModal?.iconColor || '#EC4899'}
+        confirmText="Đã hiểu"
+        hideCancel={true}
+        isDestructive={false}
+        onConfirm={() => setInfoModal(null)}
+        onCancel={() => setInfoModal(null)}
       />
 
     </View>

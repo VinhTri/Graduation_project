@@ -37,6 +37,7 @@ export type CashBalancePayload = {
   amount: number;
   note?: string;
   category: CashCategory;
+  date?: string;
 };
 
 export type InitialCashData = {
@@ -44,6 +45,7 @@ export type InitialCashData = {
   amount: number;
   note?: string;
   category: CashCategory;
+  createdAt?: string;
 };
 
 type Props = {
@@ -52,6 +54,8 @@ type Props = {
   currentBalance?: number;
   saving?: boolean;
   initialData?: InitialCashData;
+  targetDate?: string;
+  displayDate?: string;
   onClose: () => void;
   onConfirm: (payload: CashBalancePayload) => void | Promise<void>;
   onDelete?: () => void | Promise<void>;
@@ -87,6 +91,8 @@ export const AddCashBalanceModal = ({
   currentBalance = 0,
   saving = false,
   initialData,
+  targetDate,
+  displayDate,
   onClose,
   onConfirm,
   onDelete,
@@ -162,6 +168,7 @@ export const AddCashBalanceModal = ({
         amount,
         note: note.trim() || undefined,
         category,
+        date: targetDate,
       });
       onClose();
     } catch {
@@ -194,7 +201,14 @@ export const AddCashBalanceModal = ({
                     />
                   </View>
                   <Text style={styles.title}>
-                    {isEditMode ? (isSpend ? 'Sửa Chi tiêu' : 'Sửa Thu nhập') : (isSpend ? 'Chi tiêu' : 'Thu nhập')}
+                    {isEditMode
+                      ? isSpend
+                        ? 'Sửa Chi tiêu'
+                        : 'Sửa Thu nhập'
+                      : isSpend
+                      ? 'Chi tiêu'
+                      : 'Thu nhập'}
+                    {displayDate ? ` (${displayDate})` : ''}
                   </Text>
                 </View>
                 <TouchableOpacity style={styles.closeBtn} onPress={onClose} activeOpacity={0.75}>

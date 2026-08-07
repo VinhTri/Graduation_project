@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { View, Text, TouchableOpacity, ActivityIndicator, Image, Linking } from "react-native";
+import { useRouter } from "expo-router";
 import { styles } from "./DiscoverMore.styles";
 import { postService, PostResponse } from "../../../../shared/api/services/post.service";
 import { getApiBaseUrl } from "../../../../shared/api/axiosClient";
@@ -16,6 +17,7 @@ const getValidImageUrl = (url: string) => {
 };
 
 export const DiscoverMore = () => {
+  const router = useRouter();
   const [banners, setBanners] = useState<PostResponse[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -34,6 +36,69 @@ export const DiscoverMore = () => {
 
     fetchBanners();
   }, []);
+
+  const handleBannerPress = async (targetLink?: string) => {
+    if (!targetLink) return;
+    const link = targetLink.trim().toLowerCase();
+
+    // 1. Phân tích các liên kết nội bộ của ứng dụng (In-app routing)
+    if (link.includes('topup') || link.includes('nap-tien')) {
+      router.push('/wallet/action' as any);
+      return;
+    }
+    if (link.includes('withdraw') || link.includes('rut-tien')) {
+      router.push({ pathname: '/wallet/action', params: { initialTab: 'withdraw' } } as any);
+      return;
+    }
+    if (link.includes('transfer') || link.includes('chuyen-tien')) {
+      router.push('/transfer' as any);
+      return;
+    }
+    if (link.includes('wallet') || link.includes('vi')) {
+      router.push('/(tabs)/wallet' as any);
+      return;
+    }
+    if (link.includes('notebook') || link.includes('so-tay')) {
+      router.push('/(tabs)/notebook' as any);
+      return;
+    }
+    if (link.includes('budget') || link.includes('ngan-sach')) {
+      router.push('/budget' as any);
+      return;
+    }
+    if (link.includes('funds') || link.includes('quy')) {
+      router.push('/funds' as any);
+      return;
+    }
+    if (link.includes('categories') || link.includes('danh-muc')) {
+      router.push('/categories' as any);
+      return;
+    }
+    if (link.includes('split-bill') || link.includes('chia-tien')) {
+      router.push('/split-bill' as any);
+      return;
+    }
+
+    // 2. Nếu là đường dẫn nội bộ dạng /...
+    if (targetLink.startsWith('/')) {
+      try {
+        router.push(targetLink as any);
+        return;
+      } catch {
+        // Fallback
+      }
+    }
+
+    // 3. Mở liên kết ngoài an toàn
+    try {
+      const supported = await Linking.canOpenURL(targetLink);
+      if (supported) {
+        await Linking.openURL(targetLink);
+      }
+    } catch {
+      // Bỏ qua lỗi nếu link demo không mở được trên trình duyệt thật
+    }
+  };
 
   if (loading) {
     return (
@@ -56,11 +121,7 @@ export const DiscoverMore = () => {
             key={banner.id} 
             style={styles.card} 
             activeOpacity={0.8}
-            onPress={() => {
-              if (banner.targetLink) {
-                Linking.openURL(banner.targetLink).catch(err => console.error("Couldn't load page", err));
-              }
-            }}
+            onPress={() => handleBannerPress(banner.targetLink)}
           >
             <Image 
               source={{ uri: getValidImageUrl(banner.imageUrl) }} 

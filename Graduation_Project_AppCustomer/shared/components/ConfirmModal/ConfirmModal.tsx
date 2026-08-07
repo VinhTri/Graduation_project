@@ -25,7 +25,7 @@ export default function ConfirmModal({
   title,
   message,
   iconName = "alert-circle",
-  iconColor = Colors.error,
+  iconColor,
   confirmText = "Đồng ý",
   cancelText = "Hủy",
   onConfirm,
@@ -35,12 +35,15 @@ export default function ConfirmModal({
   hideCancel = false,
   confirmButtonColor
 }: ConfirmModalProps) {
+  const activeIconColor = iconColor || (isDestructive ? '#EC4899' : Colors.primary);
+  const activeConfirmColor = confirmButtonColor || (isDestructive ? '#EC4899' : Colors.primary);
+
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onCancel}>
       <KeyboardAvoidingView style={styles.overlay} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <View style={styles.modalContainer}>
-          <View style={[styles.iconContainer, { backgroundColor: '#EC48991A' }]}>
-            <Ionicons name={iconName} size={32} color="#EC4899" />
+          <View style={[styles.iconContainer, { backgroundColor: `${activeIconColor}1A` }]}>
+            <Ionicons name={iconName} size={32} color={activeIconColor} />
           </View>
           <Text style={styles.title}>{title}</Text>
           {message ? <Text style={styles.message}>{message}</Text> : null}
@@ -52,7 +55,7 @@ export default function ConfirmModal({
               </TouchableOpacity>
             )}
             <TouchableOpacity 
-              style={[styles.confirmButton, { backgroundColor: '#EC4899' }]} 
+              style={[styles.confirmButton, { backgroundColor: activeConfirmColor }]} 
               onPress={onConfirm} 
               activeOpacity={0.8}
             >
