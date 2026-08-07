@@ -164,6 +164,16 @@ export const ElectricityInvoiceScreen = () => {
       return;
     }
 
+    const now = new Date();
+    const reminderDate = new Date(dueDate);
+    reminderDate.setHours(reminderTime.getHours(), reminderTime.getMinutes(), 0, 0);
+    
+    if (reminderDate <= now) {
+      setErrorMessage("Thời gian nhắc nhở không được nằm trong quá khứ.");
+      setErrorModalVisible(true);
+      return;
+    }
+
     try {
       setLoading(true);
       
@@ -406,7 +416,7 @@ export const ElectricityInvoiceScreen = () => {
         title="Thành công"
         message={editId ? "Hóa đơn đã được cập nhật!" : "Hóa đơn tiền điện đã được tạo!"}
         iconName="checkmark-circle"
-        iconColor="#10B981"
+        iconColor="#EC4899"
         confirmText="Hoàn tất"
         hideCancel={true}
         onConfirm={() => {
