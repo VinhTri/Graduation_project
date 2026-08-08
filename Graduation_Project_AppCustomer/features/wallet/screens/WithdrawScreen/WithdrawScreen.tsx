@@ -827,6 +827,10 @@ export default function WithdrawScreen() {
           setIsAddCategoryModalVisible(false);
           setTimeout(() => setIsCategoryModalVisible(true), 350);
         }}
+        onCreated={(category, groupName) => {
+          setSelectedCategory({ ...category, groupName });
+          setIsAddCategoryModalVisible(false);
+        }}
       />
     </View>
   );

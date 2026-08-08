@@ -502,7 +502,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   alertConfirmBtn: {
-    backgroundColor: Colors.primary,
+    backgroundColor: '#EC4899',
   },
   alertErrorBtn: {
     backgroundColor: '#FEE2E2',

@@ -6,7 +6,7 @@ type CategoryContextType = {
   categories: CategoryGroup[];
   loadCategories: () => Promise<void>;
   resetCategories: () => void;
-  addService: (categoryId: string, newService: Omit<ServiceItem, 'id'>) => Promise<void>;
+  addService: (categoryId: string, newService: Omit<ServiceItem, 'id'>) => Promise<any>;
   removeService: (serviceId: string) => Promise<void>;
   addGroup: (group: { title: string; icon: string; color: string; bgColor: string }) => Promise<string>;
   removeGroup: (groupId: string) => Promise<void>;
@@ -50,7 +50,7 @@ export const CategoryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   const addService = useCallback(async (categoryId: string, newService: Omit<ServiceItem, 'id'>) => {
     try {
-      await axiosClient.post('/api/v1/categories/items', {
+      const response = await axiosClient.post('/api/v1/categories/items', {
         groupId: categoryId,
         label: newService.label,
         icon: newService.icon,
@@ -58,6 +58,7 @@ export const CategoryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         bgColor: newService.bgColor
       });
       await loadCategories();
+      return response?.data?.data || response?.data;
     } catch (error) {
       console.error("Failed to add service", error);
       throw error;

@@ -94,7 +94,9 @@ export function CategorySelectModal({
 
           {!hasAnyCategory ? (
             <View style={styles.emptyWrap}>
-              <Ionicons name="pricetags-outline" size={48} color={Colors.textMuted} />
+              <View style={styles.emptyIconContainer}>
+                <Ionicons name="pricetags-outline" size={40} color={PASTEL_PALETTE.accentDeep} />
+              </View>
               <Text style={styles.emptyTitle}>Chưa có danh mục</Text>
               <Text style={styles.emptySubtitle}>
                 Tạo nhóm và danh mục đầu tiên để phân loại giao dịch tiền mặt.
@@ -191,16 +193,6 @@ const styles = StyleSheet.create({
   closeBtn: {
     padding: 4,
   },
-  addBtn: {
-    width: 32,
-    height: 32,
-    borderRadius: 10,
-    backgroundColor: PASTEL_PALETTE.white,
-    borderWidth: 1,
-    borderColor: PASTEL_PALETTE.border,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
   listContent: {
     paddingHorizontal: 16,
     paddingVertical: 16,
@@ -246,35 +238,49 @@ const styles = StyleSheet.create({
   },
   emptyWrap: {
     alignItems: 'center',
-    paddingVertical: 48,
+    paddingVertical: 36,
     paddingHorizontal: 24,
   },
+  emptyIconContainer: {
+    width: 76,
+    height: 76,
+    borderRadius: 38,
+    backgroundColor: PASTEL_PALETTE.accentSoft,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 6,
+  },
   emptyTitle: {
-    marginTop: 14,
+    marginTop: 10,
     fontSize: 16,
     fontWeight: '700',
-    color: Colors.text,
+    color: PASTEL_PALETTE.title,
   },
   emptySubtitle: {
-    marginTop: 8,
+    marginTop: 6,
     fontSize: 13,
     color: Colors.textMuted,
     textAlign: 'center',
     lineHeight: 18,
   },
   emptyCta: {
-    marginTop: 20,
+    marginTop: 22,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    backgroundColor: Colors.primary,
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    backgroundColor: PASTEL_PALETTE.accentDeep,
+    borderRadius: 14,
+    paddingHorizontal: 22,
+    paddingVertical: 13,
+    shadowColor: PASTEL_PALETTE.accentDeep,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.28,
+    shadowRadius: 8,
+    elevation: 4,
   },
   emptyCtaText: {
     color: Colors.white,
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: '700',
   },
 });

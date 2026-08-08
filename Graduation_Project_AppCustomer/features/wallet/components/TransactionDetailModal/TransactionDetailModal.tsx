@@ -477,6 +477,10 @@ export default function TransactionDetailModal({
           setIsAddCategoryModalVisible(false);
           setTimeout(() => setIsCategoryModalVisible(true), 350);
         }}
+        onCreated={(category, groupName) => {
+          setSelectedCategory({ ...category, groupName });
+          setIsAddCategoryModalVisible(false);
+        }}
       />
     </Modal>
   );

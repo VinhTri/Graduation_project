@@ -359,6 +359,18 @@ export const AddCashBalanceModal = ({
         visible={visible && step === 'create'}
         onClose={() => setStep('form')}
         onBack={() => goToStepAfterClose('select')}
+        onCreated={(newItem, groupName) => {
+          setCategory({
+            id: newItem.id,
+            label: newItem.label,
+            icon: newItem.icon,
+            color: newItem.color,
+            bgColor: newItem.bgColor,
+            groupName,
+          });
+          setError('');
+          setStep('form');
+        }}
       />
     </>
   );
