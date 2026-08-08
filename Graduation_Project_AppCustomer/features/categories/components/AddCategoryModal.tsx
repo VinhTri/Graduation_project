@@ -6,12 +6,15 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import Colors from '../../../shared/constants/Colors';
+import { PASTEL_PALETTE } from '../../../shared/constants/PastelPalette';
 import { useCategoryContext } from '../../../shared/contexts/CategoryContext';
 import { IconPicker } from './IconPicker';
 import { AddGroupModal } from './AddGroupModal';
 import { Toast } from '../../../shared/components/Toast/Toast';
 import { ColorTheme, getAvailableCategoryColors, CATEGORY_COLORS } from '../constants/categoryTheme';
 import { MAX_ITEMS_PER_GROUP, MAX_CATEGORY_NAME_LENGTH, MAX_CATEGORY_GROUPS } from '../constants/categoryLimits';
+
+import { ServiceItem } from '../data/mockData';
 
 interface AlertConfig {
   visible: boolean;
@@ -26,10 +29,17 @@ type AddCategoryModalProps = {
   visible: boolean;
   onClose: () => void;
   onBack?: () => void;
+  onCreated?: (category: ServiceItem, groupName: string) => void;
   defaultGroupId?: string;
 };
 
-export const AddCategoryModal: React.FC<AddCategoryModalProps> = ({ visible, onClose, onBack, defaultGroupId }) => {
+export const AddCategoryModal: React.FC<AddCategoryModalProps> = ({
+  visible,
+  onClose,
+  onBack,
+  onCreated,
+  defaultGroupId,
+}) => {
   const { categories, addService } = useCategoryContext();
 
   const [label, setLabel] = useState("");
@@ -38,6 +48,7 @@ export const AddCategoryModal: React.FC<AddCategoryModalProps> = ({ visible, onC
   const [selectedColor, setSelectedColor] = useState<ColorTheme | null>(null);
   const [selectedGroup, setSelectedGroup] = useState<string>("");
   const [isGroupModalVisible, setIsGroupModalVisible] = useState(false);
+  const [isSelfHidden, setIsSelfHidden] = useState(false);
   const [toast, setToast] = useState<{ visible: boolean; message: string; type?: 'error' | 'success' | 'info' }>({
     visible: false,
     message: '',
@@ -91,6 +102,7 @@ export const AddCategoryModal: React.FC<AddCategoryModalProps> = ({ visible, onC
   React.useEffect(() => {
     if (!visible) {
       setIsGroupModalVisible(false);
+      setIsSelfHidden(false);
       setNameError('');
       setToast({ visible: false, message: '', type: 'error' });
       return;
@@ -110,9 +122,6 @@ export const AddCategoryModal: React.FC<AddCategoryModalProps> = ({ visible, onC
       setSelectedGroup(customGroups[0].id);
     } else {
       setSelectedGroup('');
-      // Chưa có nhóm → mở tạo nhóm ngay (tránh form đơ / không biết làm gì)
-      const t = setTimeout(() => setIsGroupModalVisible(true), 350);
-      return () => clearTimeout(t);
     }
   }, [visible, defaultGroupId]);
 
@@ -137,21 +146,78 @@ export const AddCategoryModal: React.FC<AddCategoryModalProps> = ({ visible, onC
     }
   }, [label, customGroups, availableColors, defaultGroupId]);
 
-  const executeSave = async () => {
-    if (!selectedColor) return;
-    await addService(selectedGroup, {
-      label: label.trim(),
-      icon: selectedIcon,
-      color: selectedColor.color,
-      bgColor: selectedColor.bgColor,
-    });
-
-    setLabel("");
-    setNameError("");
-    onClose();
+  const handleOpenAddGroup = () => {
+    setIsSelfHidden(true);
+    setTimeout(() => {
+      setIsGroupModalVisible(true);
+    }, 300);
   };
 
+  const handleCloseAddGroup = (newGroupId?: string) => {
+    setIsGroupModalVisible(false);
+    setTimeout(() => {
+      setIsSelfHidden(false);
+      if (newGroupId) {
+        setSelectedGroup(newGroupId);
+      }
+    }, 300);
+  };
+
+  const executeSave = async () => {
+    if (!selectedColor) return;
+    try {
+      const createdItem = await addService(selectedGroup, {
+        label: label.trim(),
+        icon: selectedIcon,
+        color: selectedColor.color,
+        bgColor: selectedColor.bgColor,
+      });
+
+      const groupObj = customGroups.find(c => c.id === selectedGroup);
+      const groupName = groupObj?.title || '';
+
+      setLabel("");
+      setNameError("");
+
+      if (onCreated && createdItem) {
+        onCreated(
+          {
+            id: String(createdItem.id),
+            label: createdItem.label || label.trim(),
+            icon: createdItem.icon || selectedIcon,
+            color: createdItem.color || selectedColor.color,
+            bgColor: createdItem.bgColor || selectedColor.bgColor,
+            isCustom: true,
+          },
+          groupName
+        );
+      } else {
+        onClose();
+      }
+    } catch (error: any) {
+      setToast({
+        visible: true,
+        message: error?.message || 'Không thể tạo danh mục',
+        type: 'error',
+      });
+    }
+  };
+
+  const previewItemColor = selectedColor?.color || PASTEL_PALETTE.accentDeep;
+  const previewItemBg = selectedColor?.bgColor || PASTEL_PALETTE.accentSoft;
+  const currentGroupName = customGroups.find(c => c.id === selectedGroup)?.title || (defaultGroupId ? categories.find(c => c.id === defaultGroupId)?.title : '');
+
   const handleSave = () => {
+    if (customGroups.length === 0 && !defaultGroupId) {
+      setToast({
+        visible: true,
+        message: 'Bạn cần tạo nhóm danh mục trước!',
+        type: 'info',
+      });
+      handleOpenAddGroup();
+      return;
+    }
+
     const trimmedLabel = label.trim();
     if (!trimmedLabel) {
       setNameError('Vui lòng nhập tên danh mục');
@@ -206,261 +272,311 @@ export const AddCategoryModal: React.FC<AddCategoryModalProps> = ({ visible, onC
       return;
     }
 
-
     executeSave();
   };
 
   return (
     <>
-    <Modal
-      visible={visible && !isGroupModalVisible}
-      animationType="slide"
-      transparent={true}
-      onRequestClose={onClose}
-    >
-      <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-        style={styles.overlay}
+      <Modal
+        visible={visible && !isSelfHidden && !isGroupModalVisible}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={onClose}
       >
-        <View style={styles.modalContainer}>
-          <View style={styles.header}>
-            {onBack ? (
-              <TouchableOpacity onPress={onBack} style={styles.backBtn}>
-                <Ionicons name="arrow-back" size={24} color={Colors.text} />
-              </TouchableOpacity>
-            ) : <View style={{ width: 32 }} />}
-            <Text style={[styles.headerTitle, { flex: 1, textAlign: 'center' }]}>
-              Thêm Danh Mục Mới
-            </Text>
-            <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
-              <Ionicons name="close" size={24} color={Colors.text} />
-            </TouchableOpacity>
-          </View>
-
-          <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-            <View style={styles.labelRow}>
-              <Text style={[styles.label, { marginTop: 0, marginBottom: 0 }]}>Tên danh mục</Text>
-              <Text
-                style={[
-                  styles.charCount,
-                  label.length >= MAX_CATEGORY_NAME_LENGTH && styles.charCountLimit,
-                ]}
-              >
-                {label.length}/{MAX_CATEGORY_NAME_LENGTH}
+        <KeyboardAvoidingView
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+          style={styles.overlay}
+        >
+          <View style={styles.modalContainer}>
+            {/* Header */}
+            <View style={styles.header}>
+              {onBack ? (
+                <TouchableOpacity onPress={onBack} style={styles.backBtn} activeOpacity={0.7}>
+                  <Ionicons name="arrow-back" size={24} color={PASTEL_PALETTE.title} />
+                </TouchableOpacity>
+              ) : <View style={{ width: 32 }} />}
+              <Text style={styles.headerTitle}>
+                Thêm Danh Mục Mới
               </Text>
+              <TouchableOpacity onPress={onClose} style={styles.closeBtn} activeOpacity={0.7}>
+                <Ionicons name="close" size={24} color={PASTEL_PALETTE.title} />
+              </TouchableOpacity>
             </View>
-            <TextInput
-              style={[
-                styles.input,
-                !!nameError && styles.inputError,
-              ]}
-              placeholder={`VD: Quà tặng, Vé máy bay... (tối đa ${MAX_CATEGORY_NAME_LENGTH} ký tự)`}
-              placeholderTextColor={Colors.textMuted || '#9CA3AF'}
-              value={label}
-              onChangeText={(text) => {
-                setLabel(text.slice(0, MAX_CATEGORY_NAME_LENGTH));
-                if (nameError) setNameError('');
-              }}
-              maxLength={MAX_CATEGORY_NAME_LENGTH}
-            />
-            {!!nameError && (
-              <View style={styles.inlineErrorRow}>
-                <Ionicons name="alert-circle" size={15} color="#EF4444" />
-                <Text style={styles.inlineErrorText}>{nameError}</Text>
-              </View>
-            )}
 
-            {defaultGroupId ? (
-              <>
-                <Text style={styles.label}>Nhóm</Text>
-                <View style={styles.lockedGroupRow}>
-                  <Ionicons
-                    name={(categories.find(c => c.id === defaultGroupId)?.icon as any) || 'layers'}
-                    size={18}
-                    color={categories.find(c => c.id === defaultGroupId)?.color || Colors.primary}
-                  />
-                  <Text style={styles.lockedGroupText}>
-                    {categories.find(c => c.id === defaultGroupId)?.title || 'Nhóm đã chọn'}
-                  </Text>
+            <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+              {/* Live Preview Card */}
+              <View style={styles.previewCard}>
+                <View style={styles.previewContent}>
+                  <View style={[styles.previewIconBox, { backgroundColor: previewItemBg }]}>
+                    <Ionicons
+                      name={selectedIcon as keyof typeof Ionicons.glyphMap}
+                      size={28}
+                      color={previewItemColor}
+                    />
+                  </View>
+                  <View style={styles.previewTextCol}>
+                    <Text style={styles.previewLabel} numberOfLines={1}>
+                      {label.trim() || 'Tên danh mục mới'}
+                    </Text>
+                    <View style={styles.previewGroupBadge}>
+                      <Ionicons
+                        name="folder-outline"
+                        size={12}
+                        color={currentGroupName ? PASTEL_PALETTE.accentDeep : Colors.textMuted}
+                      />
+                      <Text
+                        style={[
+                          styles.previewGroupText,
+                          currentGroupName ? styles.previewGroupTextActive : null,
+                        ]}
+                      >
+                        {currentGroupName ? `Nhóm: ${currentGroupName}` : 'Chưa chọn nhóm'}
+                      </Text>
+                    </View>
+                  </View>
                 </View>
-              </>
-            ) : customGroups.length === 0 ? (
-              <>
-                <Text style={styles.label}>Nhóm</Text>
-                <View style={styles.emptyGroupBox}>
-                  <Text style={styles.emptyGroupText}>
-                    Bạn cần tạo nhóm trước khi thêm danh mục.
-                  </Text>
-                  <TouchableOpacity
-                    style={styles.emptyGroupBtn}
-                    onPress={() => setIsGroupModalVisible(true)}
-                    activeOpacity={0.85}
-                  >
-                    <Ionicons name="layers-outline" size={18} color={Colors.white} />
-                    <Text style={styles.emptyGroupBtnText}>Tạo nhóm đầu tiên</Text>
-                  </TouchableOpacity>
+                <Text style={styles.previewHint}>Xem trước cách hiển thị danh mục trong giao dịch</Text>
+              </View>
+
+              {/* Nhóm danh mục */}
+              {defaultGroupId ? (
+                <>
+                  <Text style={styles.label}>Nhóm danh mục</Text>
+                  <View style={styles.lockedGroupRow}>
+                    <Ionicons
+                      name={(categories.find(c => c.id === defaultGroupId)?.icon as any) || 'layers'}
+                      size={18}
+                      color={categories.find(c => c.id === defaultGroupId)?.color || PASTEL_PALETTE.accentDeep}
+                    />
+                    <Text style={styles.lockedGroupText}>
+                      {categories.find(c => c.id === defaultGroupId)?.title || 'Nhóm đã chọn'}
+                    </Text>
+                  </View>
+                </>
+              ) : customGroups.length === 0 ? (
+                <>
+                  <Text style={styles.label}>Nhóm danh mục</Text>
+                  <View style={styles.emptyGroupBox}>
+                    <View style={styles.emptyGroupIconBg}>
+                      <Ionicons name="layers-outline" size={28} color={PASTEL_PALETTE.accentDeep} />
+                    </View>
+                    <Text style={styles.emptyGroupTitle}>Bạn chưa có nhóm danh mục</Text>
+                    <Text style={styles.emptyGroupText}>
+                      Mỗi danh mục cần thuộc về một nhóm (VD: Ăn uống, Mua sắm...). Hãy tạo nhóm đầu tiên để bắt đầu!
+                    </Text>
+                    <TouchableOpacity
+                      style={styles.emptyGroupBtn}
+                      onPress={handleOpenAddGroup}
+                      activeOpacity={0.85}
+                    >
+                      <Ionicons name="add-circle" size={18} color={Colors.white} />
+                      <Text style={styles.emptyGroupBtnText}>Tạo nhóm đầu tiên</Text>
+                    </TouchableOpacity>
+                  </View>
+                </>
+              ) : (
+                <>
+                  <View style={styles.labelRow}>
+                    <Text style={[styles.label, { marginTop: 0, marginBottom: 0 }]}>Chọn Nhóm</Text>
+                    <Text style={styles.groupCountText}>
+                      {customGroups.length}/{MAX_CATEGORY_GROUPS} nhóm
+                    </Text>
+                  </View>
+                  <View style={styles.groupContainer}>
+                    {customGroups.map((group) => {
+                      const isSelected = selectedGroup === group.id;
+                      return (
+                        <TouchableOpacity
+                          key={group.id}
+                          style={[
+                            styles.groupChip,
+                            {
+                              borderColor: isSelected ? group.color : `${group.color}40`,
+                              backgroundColor: isSelected ? group.color : `${group.color}15`,
+                            },
+                          ]}
+                          onPress={() => setSelectedGroup(group.id)}
+                          activeOpacity={0.75}
+                        >
+                          <View
+                            style={[
+                              styles.groupChipDot,
+                              { backgroundColor: isSelected ? Colors.white : group.color },
+                            ]}
+                          />
+                          <Text
+                            style={[
+                              styles.groupChipText,
+                              { color: isSelected ? Colors.white : group.color },
+                              isSelected && styles.groupChipTextSelected,
+                            ]}
+                          >
+                            {group.title}
+                          </Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                    {customGroups.length < MAX_CATEGORY_GROUPS ? (
+                      <TouchableOpacity
+                        style={[styles.groupChip, styles.groupChipAdd]}
+                        onPress={handleOpenAddGroup}
+                        activeOpacity={0.75}
+                      >
+                        <Ionicons name="add" size={16} color={PASTEL_PALETTE.accentDeep} />
+                        <Text style={styles.groupChipAddText}>
+                          + Nhóm mới
+                        </Text>
+                      </TouchableOpacity>
+                    ) : null}
+                  </View>
+                </>
+              )}
+
+              {/* Tên danh mục */}
+              <View style={styles.labelRow}>
+                <Text style={[styles.label, { marginTop: 0, marginBottom: 0 }]}>Tên danh mục</Text>
+                <Text
+                  style={[
+                    styles.charCount,
+                    label.length >= MAX_CATEGORY_NAME_LENGTH && styles.charCountLimit,
+                  ]}
+                >
+                  {label.length}/{MAX_CATEGORY_NAME_LENGTH}
+                </Text>
+              </View>
+              <TextInput
+                style={[
+                  styles.input,
+                  !!nameError && styles.inputError,
+                ]}
+                placeholder={`VD: Quà tặng, Vé máy bay... (tối đa ${MAX_CATEGORY_NAME_LENGTH} ký tự)`}
+                placeholderTextColor="#94A3B8"
+                value={label}
+                onChangeText={(text) => {
+                  setLabel(text.slice(0, MAX_CATEGORY_NAME_LENGTH));
+                  if (nameError) setNameError('');
+                }}
+                maxLength={MAX_CATEGORY_NAME_LENGTH}
+              />
+              {!!nameError && (
+                <View style={styles.inlineErrorRow}>
+                  <Ionicons name="alert-circle" size={15} color="#EF4444" />
+                  <Text style={styles.inlineErrorText}>{nameError}</Text>
                 </View>
-              </>
-            ) : (
-              <>
-                <Text style={styles.label}>Chọn Nhóm</Text>
-                <View style={styles.groupContainer}>
-                  {customGroups.map((group) => {
-                    const isSelected = selectedGroup === group.id;
+              )}
+
+              {/* Chọn Biểu Tượng */}
+              <Text style={styles.label}>Chọn Biểu Tượng</Text>
+              <IconPicker
+                selectedIcon={selectedIcon}
+                onSelect={setSelectedIcon}
+                color={selectedColor?.color || PASTEL_PALETTE.accentDeep}
+              />
+
+              {/* Chọn Màu Sắc */}
+              <Text style={styles.label}>Chọn Màu Sắc</Text>
+              <Text style={styles.colorHint}>
+                Mỗi danh mục một màu riêng ({availableColors.length}/{CATEGORY_COLORS.length} còn trống). Màu đã dùng sẽ bị ẩn.
+              </Text>
+              {availableColors.length === 0 ? (
+                <Text style={styles.emptyColors}>Không còn màu danh mục trống</Text>
+              ) : (
+                <View style={styles.colorGrid}>
+                  {availableColors.map((item) => {
+                    const active = selectedColor?.color === item.color;
                     return (
                       <TouchableOpacity
-                        key={group.id}
+                        key={item.color}
                         style={[
-                          styles.groupChip,
-                          {
-                            borderColor: group.color,
-                            backgroundColor: isSelected ? group.color : `${group.color}18`,
-                          },
+                          styles.colorCircle,
+                          { backgroundColor: item.color },
+                          active && styles.colorCircleSelected,
                         ]}
-                        onPress={() => setSelectedGroup(group.id)}
+                        onPress={() => setSelectedColor(item)}
+                        activeOpacity={0.8}
                       >
-                        <View style={[styles.groupChipDot, { backgroundColor: group.color }]} />
-                        <Text
-                          style={[
-                            styles.groupChipText,
-                            { color: isSelected ? Colors.white : group.color },
-                            isSelected && styles.groupChipTextSelected,
-                          ]}
-                        >
-                          {group.title}
-                        </Text>
+                        {active && <Ionicons name="checkmark" size={22} color="#FFF" />}
                       </TouchableOpacity>
                     );
                   })}
-                  {customGroups.length < MAX_CATEGORY_GROUPS ? (
-                    <TouchableOpacity
-                      style={[styles.groupChip, styles.groupChipAdd]}
-                      onPress={() => setIsGroupModalVisible(true)}
-                    >
-                      <Ionicons name="add" size={16} color={Colors.primary} />
-                      <Text style={styles.groupChipAddText}>
-                        Nhóm mới ({customGroups.length}/{MAX_CATEGORY_GROUPS})
-                      </Text>
-                    </TouchableOpacity>
-                  ) : (
-                    <View style={[styles.groupChip, styles.groupChipAdd, { opacity: 0.5 }]}>
-                      <Text style={styles.groupChipAddText}>
-                        Đủ {MAX_CATEGORY_GROUPS}/{MAX_CATEGORY_GROUPS} nhóm
-                      </Text>
-                    </View>
-                  )}
                 </View>
-              </>
-            )}
+              )}
 
-            <Text style={styles.label}>Chọn Biểu Tượng</Text>
-            <IconPicker
-              selectedIcon={selectedIcon}
-              onSelect={setSelectedIcon}
-              color={selectedColor?.color || Colors.primary}
-            />
+              <Text style={styles.createHint}>
+                Sau khi tạo, danh mục không thể chỉnh sửa. Muốn đổi tên/icon thì xóa và tạo lại.
+              </Text>
 
-            <Text style={styles.label}>Chọn Màu Sắc</Text>
-            <Text style={styles.colorHint}>
-              Mỗi danh mục một màu riêng ({availableColors.length}/{CATEGORY_COLORS.length} còn trống). Màu đã dùng sẽ bị ẩn.
-            </Text>
-            {availableColors.length === 0 ? (
-              <Text style={styles.emptyColors}>Không còn màu danh mục trống</Text>
-            ) : (
-              <View style={styles.colorGrid}>
-                {availableColors.map((item) => {
-                  const active = selectedColor?.color === item.color;
-                  return (
-                    <TouchableOpacity
-                      key={item.color}
-                      style={[
-                        styles.colorCircle,
-                        { backgroundColor: item.color },
-                        active && styles.colorCircleSelected
-                      ]}
-                      onPress={() => setSelectedColor(item)}
-                    >
-                      {active && <Ionicons name="checkmark" size={20} color="#FFF" />}
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
-            )}
+              <View style={{ height: 30 }} />
+            </ScrollView>
 
-            <Text style={styles.createHint}>
-              Sau khi tạo, danh mục không thể chỉnh sửa. Muốn đổi tên/icon thì xóa và tạo lại.
-            </Text>
-
-            <View style={{ height: 40 }} />
-          </ScrollView>
-
-          <View style={styles.footer}>
-            <TouchableOpacity style={styles.saveBtn} onPress={handleSave}>
-              <Text style={styles.saveBtnText}>Lưu & Thêm</Text>
-            </TouchableOpacity>
+            {/* Footer */}
+            <View style={styles.footer}>
+              <TouchableOpacity
+                style={styles.saveBtn}
+                onPress={handleSave}
+                activeOpacity={0.85}
+              >
+                <Text style={styles.saveBtnText}>Lưu & Thêm</Text>
+              </TouchableOpacity>
+            </View>
           </View>
-        </View>
 
-        <Modal transparent visible={alertConfig.visible} animationType="fade">
-          <View style={styles.alertOverlay}>
-            <View style={styles.alertBox}>
-              <View style={[styles.alertIconBg, { backgroundColor: alertConfig.type === 'error' ? '#FEE2E2' : '#FEF3C7' }]}>
-                <Ionicons
-                  name={alertConfig.type === 'error' ? "close-circle" : "warning"}
-                  size={36}
-                  color={alertConfig.type === 'error' ? "#EF4444" : "#F59E0B"}
-                />
-              </View>
-              <Text style={styles.alertTitle}>{alertConfig.title}</Text>
-              <Text style={styles.alertMessage}>{alertConfig.message}</Text>
+          <Modal transparent visible={alertConfig.visible} animationType="fade">
+            <View style={styles.alertOverlay}>
+              <View style={styles.alertBox}>
+                <View style={[styles.alertIconBg, { backgroundColor: alertConfig.type === 'error' ? '#FEE2E2' : '#FEF3C7' }]}>
+                  <Ionicons
+                    name={alertConfig.type === 'error' ? "close-circle" : "warning"}
+                    size={36}
+                    color={alertConfig.type === 'error' ? "#EF4444" : "#F59E0B"}
+                  />
+                </View>
+                <Text style={styles.alertTitle}>{alertConfig.title}</Text>
+                <Text style={styles.alertMessage}>{alertConfig.message}</Text>
 
-              <View style={styles.alertActions}>
-                {alertConfig.type === 'warning' && (
+                <View style={styles.alertActions}>
+                  {alertConfig.type === 'warning' && (
+                    <TouchableOpacity
+                      style={[styles.alertBtn, styles.alertCancelBtn]}
+                      onPress={() => {
+                        setAlertConfig(prev => ({...prev, visible: false}));
+                        if (alertConfig.onCancel) alertConfig.onCancel();
+                      }}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={styles.alertCancelText}>Sửa lại</Text>
+                    </TouchableOpacity>
+                  )}
                   <TouchableOpacity
-                    style={[styles.alertBtn, styles.alertCancelBtn]}
+                    style={[styles.alertBtn, alertConfig.type === 'error' ? styles.alertErrorBtn : styles.alertConfirmBtn]}
                     onPress={() => {
                       setAlertConfig(prev => ({...prev, visible: false}));
-                      if (alertConfig.onCancel) alertConfig.onCancel();
+                      if (alertConfig.onConfirm) alertConfig.onConfirm();
                     }}
                     activeOpacity={0.7}
                   >
-                    <Text style={styles.alertCancelText}>Sửa lại</Text>
+                    <Text style={[styles.alertConfirmText, alertConfig.type === 'error' && { color: '#EF4444' }]}>
+                      {alertConfig.type === 'error' ? 'Đã hiểu' : 'Vẫn lưu'}
+                    </Text>
                   </TouchableOpacity>
-                )}
-                <TouchableOpacity
-                  style={[styles.alertBtn, alertConfig.type === 'error' ? styles.alertErrorBtn : styles.alertConfirmBtn]}
-                  onPress={() => {
-                    setAlertConfig(prev => ({...prev, visible: false}));
-                    if (alertConfig.onConfirm) alertConfig.onConfirm();
-                  }}
-                  activeOpacity={0.7}
-                >
-                  <Text style={[styles.alertConfirmText, alertConfig.type === 'error' && { color: '#EF4444' }]}>
-                    {alertConfig.type === 'error' ? 'Đã hiểu' : 'Vẫn lưu'}
-                  </Text>
-                </TouchableOpacity>
+                </View>
               </View>
             </View>
-          </View>
-        </Modal>
+          </Modal>
 
-        <Toast
-          visible={toast.visible}
-          message={toast.message}
-          type={toast.type}
-          onClose={() => setToast(prev => ({ ...prev, visible: false }))}
-        />
-
-      </KeyboardAvoidingView>
-    </Modal>
+          <Toast
+            visible={toast.visible}
+            message={toast.message}
+            type={toast.type}
+            onClose={() => setToast(prev => ({ ...prev, visible: false }))}
+          />
+        </KeyboardAvoidingView>
+      </Modal>
 
       <AddGroupModal
         visible={visible && isGroupModalVisible}
-        onClose={() => setIsGroupModalVisible(false)}
-        onCreated={(groupId) => {
-          if (groupId) setSelectedGroup(groupId);
-          setIsGroupModalVisible(false);
-        }}
+        onClose={() => handleCloseAddGroup()}
+        onCreated={(groupId) => handleCloseAddGroup(groupId)}
       />
     </>
   );
@@ -473,51 +589,115 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   modalContainer: {
-    backgroundColor: Colors.background,
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    height: '85%',
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    height: '88%',
+    overflow: 'hidden',
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    padding: 20,
+    paddingHorizontal: 20,
+    paddingVertical: 18,
     borderBottomWidth: 1,
-    borderBottomColor: Colors.border,
+    borderBottomColor: '#F1F5F9',
+    backgroundColor: '#FFFFFF',
   },
   headerTitle: {
+    flex: 1,
+    textAlign: 'center',
     fontSize: 18,
     fontWeight: '700',
-    color: Colors.text,
+    color: PASTEL_PALETTE.title,
   },
   backBtn: {
-    padding: 4,
-    width: 32,
+    padding: 6,
+    width: 36,
     alignItems: 'center',
+    justifyContent: 'center',
   },
   closeBtn: {
-    padding: 4,
-    width: 32,
+    padding: 6,
+    width: 36,
     alignItems: 'center',
+    justifyContent: 'center',
   },
   content: {
     flex: 1,
-    padding: 20,
+    paddingHorizontal: 20,
+    paddingTop: 16,
+  },
+  previewCard: {
+    backgroundColor: '#FFF7FB',
+    borderRadius: 18,
+    borderWidth: 1.5,
+    borderColor: '#FCE7F3',
+    padding: 16,
+    marginBottom: 20,
+  },
+  previewContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+  },
+  previewIconBox: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  previewTextCol: {
+    flex: 1,
+    gap: 5,
+  },
+  previewLabel: {
+    fontSize: 17,
+    fontWeight: '700',
+    color: PASTEL_PALETTE.title,
+  },
+  previewGroupBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingHorizontal: 8,
+    paddingVertical: 3.5,
+    borderRadius: 8,
+    backgroundColor: '#FFFFFF',
+    alignSelf: 'flex-start',
+    borderWidth: 1,
+    borderColor: '#F3E8FF',
+  },
+  previewGroupText: {
+    fontSize: 12,
+    color: Colors.textMuted,
+    fontWeight: '600',
+  },
+  previewGroupTextActive: {
+    color: PASTEL_PALETTE.accentDeep,
+  },
+  previewHint: {
+    fontSize: 11.5,
+    color: '#9CA3AF',
+    marginTop: 10,
+    textAlign: 'center',
+    fontStyle: 'italic',
   },
   label: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: Colors.text,
-    marginBottom: 12,
-    marginTop: 8,
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#1E293B',
+    marginBottom: 10,
+    marginTop: 6,
   },
   labelRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 12,
-    marginTop: 8,
+    marginBottom: 10,
+    marginTop: 6,
   },
   charCount: {
     fontSize: 12,
@@ -527,15 +707,21 @@ const styles = StyleSheet.create({
   charCountLimit: {
     color: Colors.error,
   },
+  groupCountText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: Colors.textMuted,
+  },
   input: {
-    backgroundColor: Colors.white,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    borderRadius: 12,
-    padding: 16,
-    fontSize: 16,
-    color: Colors.text,
-    marginBottom: 20,
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1.5,
+    borderColor: '#E2E8F0',
+    borderRadius: 14,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    fontSize: 15,
+    color: '#0F172A',
+    marginBottom: 18,
   },
   inputError: {
     borderColor: '#EF4444',
@@ -545,7 +731,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 5,
-    marginTop: -14,
+    marginTop: -12,
     marginBottom: 16,
   },
   inlineErrorText: {
@@ -553,11 +739,79 @@ const styles = StyleSheet.create({
     color: '#EF4444',
     fontWeight: '600',
   },
+  lockedGroupRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingHorizontal: 16,
+    paddingVertical: 13,
+    borderRadius: 14,
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1.5,
+    borderColor: '#E2E8F0',
+    marginBottom: 18,
+  },
+  lockedGroupText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#1E293B',
+  },
+  emptyGroupBox: {
+    backgroundColor: '#FFF7FB',
+    borderRadius: 18,
+    borderWidth: 1.5,
+    borderColor: '#FCE7F3',
+    padding: 20,
+    marginBottom: 20,
+    alignItems: 'center',
+  },
+  emptyGroupIconBg: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: '#FCE7F3',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  emptyGroupTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: PASTEL_PALETTE.title,
+    marginBottom: 4,
+  },
+  emptyGroupText: {
+    fontSize: 13,
+    color: '#64748B',
+    textAlign: 'center',
+    marginBottom: 14,
+    lineHeight: 18,
+    paddingHorizontal: 10,
+  },
+  emptyGroupBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: PASTEL_PALETTE.accentDeep, // Pink #EC4899
+    borderRadius: 12,
+    paddingHorizontal: 18,
+    paddingVertical: 11,
+    shadowColor: PASTEL_PALETTE.accentDeep,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.25,
+    shadowRadius: 6,
+    elevation: 3,
+  },
+  emptyGroupBtnText: {
+    color: Colors.white,
+    fontSize: 14,
+    fontWeight: '700',
+  },
   groupContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 8,
-    marginBottom: 20,
+    marginBottom: 18,
   },
   groupChip: {
     flexDirection: 'row',
@@ -566,9 +820,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 10,
     borderRadius: 20,
-    backgroundColor: Colors.white,
+    backgroundColor: '#FFFFFF',
     borderWidth: 1.5,
-    borderColor: Colors.border,
   },
   groupChipDot: {
     width: 8,
@@ -576,7 +829,6 @@ const styles = StyleSheet.create({
     borderRadius: 4,
   },
   groupChipText: {
-    color: Colors.text,
     fontSize: 14,
     fontWeight: '600',
   },
@@ -588,73 +840,19 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    borderColor: Colors.primary,
+    borderColor: PASTEL_PALETTE.accentDeep,
     borderStyle: 'dashed',
+    backgroundColor: '#FFF7FB',
   },
   groupChipAddText: {
-    color: Colors.primary,
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  lockedGroupRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderRadius: 12,
-    backgroundColor: Colors.white,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    marginBottom: 20,
-  },
-  lockedGroupText: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: Colors.text,
-  },
-  emptyGroupBox: {
-    backgroundColor: Colors.white,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    borderStyle: 'dashed',
-    padding: 16,
-    marginBottom: 20,
-    alignItems: 'center',
-  },
-  emptyGroupText: {
-    fontSize: 13,
-    color: Colors.textMuted,
-    textAlign: 'center',
-    marginBottom: 12,
-    lineHeight: 18,
-  },
-  emptyGroupBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    backgroundColor: Colors.primary,
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-  },
-  emptyGroupBtnText: {
-    color: Colors.white,
-    fontSize: 14,
+    color: PASTEL_PALETTE.accentDeep,
+    fontSize: 13.5,
     fontWeight: '700',
-  },
-  createHint: {
-    fontSize: 13,
-    color: Colors.textMuted,
-    lineHeight: 19,
-    fontStyle: 'italic',
-    marginTop: 4,
   },
   colorHint: {
     fontSize: 12,
     color: Colors.textMuted,
-    marginTop: -6,
+    marginTop: -4,
     marginBottom: 12,
     lineHeight: 18,
   },
@@ -668,36 +866,50 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'flex-start',
-    gap: 16,
-    marginBottom: 20,
+    gap: 14,
+    marginBottom: 18,
   },
   colorCircle: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     justifyContent: 'center',
     alignItems: 'center',
   },
   colorCircleSelected: {
     borderWidth: 3,
-    borderColor: Colors.text,
+    borderColor: '#0F172A',
+  },
+  createHint: {
+    fontSize: 12.5,
+    color: Colors.textMuted,
+    lineHeight: 18,
+    fontStyle: 'italic',
+    marginTop: 4,
   },
   footer: {
-    padding: 20,
+    paddingHorizontal: 20,
+    paddingTop: 14,
     borderTopWidth: 1,
-    borderTopColor: Colors.border,
-    paddingBottom: Platform.OS === 'ios' ? 30 : 20,
+    borderTopColor: '#F1F5F9',
+    backgroundColor: '#FFFFFF',
+    paddingBottom: Platform.OS === 'ios' ? 32 : 18,
   },
   saveBtn: {
     width: '100%',
-    paddingVertical: 14,
+    paddingVertical: 15,
     alignItems: 'center',
-    borderRadius: 12,
-    backgroundColor: '#EC4899', // Pink PASTEL_PALETTE.accentDeep
+    borderRadius: 14,
+    backgroundColor: PASTEL_PALETTE.accentDeep, // Pink #EC4899
+    shadowColor: PASTEL_PALETTE.accentDeep,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
   },
   saveBtnText: {
     fontSize: 16,
-    fontWeight: 'bold',
+    fontWeight: '700',
     color: Colors.white,
   },
   alertOverlay: {
@@ -762,7 +974,7 @@ const styles = StyleSheet.create({
     color: Colors.text,
   },
   alertConfirmBtn: {
-    backgroundColor: Colors.primary,
+    backgroundColor: PASTEL_PALETTE.accentDeep,
   },
   alertErrorBtn: {
     backgroundColor: '#FEE2E2',
