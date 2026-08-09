@@ -28,15 +28,9 @@ import { PASTEL_PALETTE } from '../../../../shared/constants/PastelPalette';
 import { ConfirmModal } from '../../../../shared/components';
 import Colors from '../../../../shared/constants/Colors';
 import { filterCashTransactions, mapCashHistoryToItem } from '../../utils/cashMappers';
+import { DateRangeSelector, DateFilterType } from '../../components/DateRangeSelector/DateRangeSelector';
 
 type MainTab = 'history' | 'report';
-type FilterChip = 'TODAY' | 'WEEK' | 'MONTH';
-
-const FILTERS: { key: FilterChip; label: string }[] = [
-  { key: 'TODAY', label: 'Hôm nay' },
-  { key: 'WEEK', label: 'Tuần' },
-  { key: 'MONTH', label: 'Tháng' },
-];
 
 interface Props {
   walletId: number;
@@ -45,7 +39,8 @@ interface Props {
 export const BankWalletDetailScreen = ({ walletId }: Props) => {
   const router = useRouter();
   const [tab, setTab] = useState<MainTab>('history');
-  const [filter, setFilter] = useState<FilterChip>('MONTH');
+  const [dateFilter, setDateFilter] = useState<DateFilterType>('month');
+  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   
   const [wallet, setWallet] = useState<WalletData | null>(null);
   const [transactions, setTransactions] = useState<TransactionItem[]>([]);
@@ -58,6 +53,7 @@ export const BankWalletDetailScreen = ({ walletId }: Props) => {
   const [balanceMode, setBalanceMode] = useState<CashBalanceMode>('add');
   const [selectedTransaction, setSelectedTransaction] = useState<InitialCashData | null>(null);
   const [txToDelete, setTxToDelete] = useState<InitialCashData | null>(null);
+  const [confirmDeleteWalletVisible, setConfirmDeleteWalletVisible] = useState(false);
 
   const loadData = useCallback(async () => {
     const [wallets, history] = await Promise.all([
@@ -108,8 +104,8 @@ export const BankWalletDetailScreen = ({ walletId }: Props) => {
   };
 
   const visibleTransactions = useMemo(
-    () => filterCashTransactions(transactions, filter),
-    [filter, transactions]
+    () => filterCashTransactions(transactions, dateFilter, selectedDate),
+    [dateFilter, selectedDate, transactions]
   );
 
   const openBalanceModal = (mode: CashBalanceMode, txData?: InitialCashData) => {
@@ -174,6 +170,19 @@ export const BankWalletDetailScreen = ({ walletId }: Props) => {
     }
   };
 
+  const confirmDeleteWallet = async () => {
+    try {
+      setSaving(true);
+      await walletService.deleteManualBank(walletId);
+      setConfirmDeleteWalletVisible(false);
+      router.back();
+    } catch (e: any) {
+      Alert.alert('Lỗi', e?.message || 'Không thể xóa sổ tay');
+    } finally {
+      setSaving(false);
+    }
+  };
+
   return (
     <View style={styles.container}>
       <PastelHeaderShell contentStyle={{ paddingBottom: 24 }}>
@@ -186,6 +195,11 @@ export const BankWalletDetailScreen = ({ walletId }: Props) => {
               {wallet ? wallet.name : 'Chi tiết sổ tay'}
             </Text>
           </View>
+          {wallet?.walletType === 'MANUAL' && (
+            <TouchableOpacity onPress={() => setConfirmDeleteWalletVisible(true)} style={styles.deleteWalletBtn}>
+              <Ionicons name="trash-outline" size={24} color="#DC2626" />
+            </TouchableOpacity>
+          )}
         </View>
 
         <View style={styles.balanceWrap}>
@@ -243,23 +257,12 @@ export const BankWalletDetailScreen = ({ walletId }: Props) => {
           </View>
         ) : tab === 'history' ? (
           <>
-            <View style={styles.filterRow}>
-              {FILTERS.map((item) => {
-                const active = filter === item.key;
-                return (
-                  <TouchableOpacity
-                    key={item.key}
-                    style={[styles.chip, active && styles.chipActive]}
-                    onPress={() => setFilter(item.key)}
-                    activeOpacity={0.8}
-                  >
-                    <Text style={[styles.chipText, active && styles.chipTextActive]}>
-                      {item.label}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
+            <DateRangeSelector
+              dateFilter={dateFilter}
+              selectedDate={selectedDate}
+              onChangeFilter={setDateFilter}
+              onChangeDate={setSelectedDate}
+            />
 
             <ScrollView
               showsVerticalScrollIndicator={false}
@@ -342,6 +345,19 @@ export const BankWalletDetailScreen = ({ walletId }: Props) => {
         isDestructive={true}
         onConfirm={confirmDeleteTransaction}
         onCancel={() => setTxToDelete(null)}
+      />
+
+      <ConfirmModal
+        visible={confirmDeleteWalletVisible}
+        title="Xóa sổ tay"
+        message={wallet ? `Bạn có chắc chắn muốn xóa sổ tay ngân hàng "${wallet.name}" không?` : ''}
+        iconName="trash-outline"
+        iconColor={Colors.error}
+        confirmText="Xóa"
+        cancelText="Hủy"
+        isDestructive={true}
+        onConfirm={confirmDeleteWallet}
+        onCancel={() => setConfirmDeleteWalletVisible(false)}
       />
     </View>
   );

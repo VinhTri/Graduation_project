@@ -186,6 +186,19 @@ export const DayActionModal: React.FC<DayActionModalProps> = ({
               transactions.map((tx) => {
                 const isIncome = tx.type === 'INCOME';
                 const iconColor = tx.categoryColor || (isIncome ? '#059669' : '#DC2626');
+                
+                let timeString = '';
+                if (tx.createdAt) {
+                  const dateObj = new Date(tx.createdAt);
+                  if (!Number.isNaN(dateObj.getTime())) {
+                    const hours = dateObj.getHours().toString().padStart(2, '0');
+                    const minutes = dateObj.getMinutes().toString().padStart(2, '0');
+                    timeString = `${hours}:${minutes} | `;
+                  }
+                }
+                
+                const hasNoteOrTime = !!tx.note || !!timeString;
+
                 return (
                   <TouchableOpacity
                     key={tx.id}
@@ -218,12 +231,13 @@ export const DayActionModal: React.FC<DayActionModalProps> = ({
                       >
                         {tx.categoryLabel || tx.title}
                       </Text>
-                      {!!tx.note && (
+                      {hasNoteOrTime && (
                         <Text
                           style={[styles.txNote, { color: theme.textSecondary }]}
                           numberOfLines={1}
                         >
-                          {tx.note}
+                          <Text style={{ fontWeight: '500' }}>{timeString}</Text>
+                          {tx.note || (isIncome ? 'Thu nhập' : 'Chi tiêu')}
                         </Text>
                       )}
                     </View>

@@ -103,6 +103,16 @@ export const RecentTransactions: React.FC<RecentTransactionsProps> = ({
               const isIncome = tx.type === 'INCOME';
               const tone = isIncome ? INCOME_COLOR : EXPENSE_COLOR;
               
+              let timeString = '';
+              if (tx.createdAt) {
+                const dateObj = new Date(tx.createdAt);
+                if (!Number.isNaN(dateObj.getTime())) {
+                  const hours = dateObj.getHours().toString().padStart(2, '0');
+                  const minutes = dateObj.getMinutes().toString().padStart(2, '0');
+                  timeString = `${hours}:${minutes} | `;
+                }
+              }
+              
               const itemContent = (
                 <RectButton
                   style={[
@@ -124,7 +134,7 @@ export const RecentTransactions: React.FC<RecentTransactionsProps> = ({
                       {tx.categoryLabel || tx.title}
                     </Text>
                     <Text style={styles.subtitle} numberOfLines={1}>
-                      {tx.note || (isIncome ? 'Thu nhập' : 'Chi tiêu')}
+                      <Text style={{ fontWeight: '500' }}>{timeString}</Text>{tx.note || (isIncome ? 'Thu nhập' : 'Chi tiêu')}
                     </Text>
                   </View>
                   <Text

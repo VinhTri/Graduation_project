@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, Dimensions, Platform, Modal, TouchableWithoutFeedback } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { Ionicons, Feather } from '@expo/vector-icons';
@@ -11,10 +11,10 @@ import { styles } from './NotebookReport.styles';
 type Props = {
   transactions: TransactionItem[];
 };
+import { DateRangeSelector, DateFilterType } from '../DateRangeSelector/DateRangeSelector';
 
 type ViewMode = 'pie' | 'bar';
 type ActiveTab = 'expense' | 'income';
-type DateFilter = 'week' | 'month' | 'year';
 
 type DistRow = {
   key: string;
@@ -28,6 +28,7 @@ type DistRow = {
 type TrendPoint = {
   value: number;
   label: string;
+  fullLabel: string;
   isCurrent?: boolean;
 };
 
@@ -64,7 +65,7 @@ const startOfWeek = (d: Date) => {
   return start;
 };
 
-const getRange = (filter: DateFilter, selected: Date) => {
+const getRange = (filter: DateFilterType, selected: Date) => {
   const d = new Date(selected);
   let start: Date;
   let end: Date;
@@ -120,7 +121,7 @@ const buildDistribution = (
 const buildTrend = (
   txs: TransactionItem[],
   type: 'EXPENSE' | 'INCOME',
-  filter: DateFilter,
+  filter: DateFilterType,
   selected: Date
 ): TrendPoint[] => {
   const { start, end } = getRange(filter, selected);
@@ -148,7 +149,7 @@ const buildTrend = (
         dayStart.getFullYear() === today.getFullYear() &&
         dayStart.getMonth() === today.getMonth() &&
         dayStart.getDate() === today.getDate();
-      return { value, label, isCurrent };
+      return { value, label, fullLabel: label, isCurrent };
     });
   }
 
@@ -160,6 +161,7 @@ const buildTrend = (
       return {
         value,
         label: `T${m + 1}`,
+        fullLabel: `T${m + 1}`,
         isCurrent: m === selected.getMonth() && selected.getFullYear() === new Date().getFullYear(),
       };
     });
@@ -177,6 +179,7 @@ const buildTrend = (
     return {
       value,
       label: showLabel ? String(day) : '',
+      fullLabel: String(day),
       isCurrent:
         day === today.getDate() &&
         selected.getMonth() === today.getMonth() &&
@@ -188,9 +191,10 @@ const buildTrend = (
 export const NotebookReport = ({ transactions }: Props) => {
   const [viewMode, setViewMode] = useState<ViewMode>('pie');
   const [activeTab, setActiveTab] = useState<ActiveTab>('expense');
-  const [dateFilter, setDateFilter] = useState<DateFilter>('month');
+  const [dateFilter, setDateFilter] = useState<DateFilterType>('month');
   const [selectedDate, setSelectedDate] = useState(new Date());
-  const [showPicker, setShowPicker] = useState(false);
+  const [selectedCategoryKey, setSelectedCategoryKey] = useState<string | null>(null);
+  const [selectedBarIndex, setSelectedBarIndex] = useState<number | null>(null);
 
   const txType = activeTab === 'expense' ? 'EXPENSE' : 'INCOME';
 
@@ -207,6 +211,14 @@ export const NotebookReport = ({ transactions }: Props) => {
     [rangedTransactions, txType]
   );
 
+  useEffect(() => {
+    setSelectedCategoryKey(null);
+  }, [distribution]);
+
+  useEffect(() => {
+    setSelectedBarIndex(null);
+  }, [dateFilter, selectedDate, activeTab]);
+
   const trendData = useMemo(
     () => buildTrend(transactions, txType, dateFilter, selectedDate),
     [transactions, txType, dateFilter, selectedDate]
@@ -214,27 +226,16 @@ export const NotebookReport = ({ transactions }: Props) => {
 
   const pieChartData = useMemo(
     () =>
-      distribution.map((item) => ({
-        value: item.percentage,
-        color: item.color || Colors.primary,
-      })),
-    [distribution]
-  );
-
-  const barChartData = useMemo(
-    () =>
-      trendData.map((item) => ({
-        value: item.value,
-        label: item.label,
-        frontColor: item.isCurrent ? Colors.primary : undefined,
-        labelTextStyle: {
-          color: item.isCurrent ? Colors.primary : Colors.textMuted,
-          fontSize: 10,
-          width: dateFilter === 'month' ? 22 : 28,
-          textAlign: 'center' as const,
-        },
-      })),
-    [trendData, dateFilter]
+      distribution.map((item) => {
+        const isSelected = selectedCategoryKey === item.key;
+        return {
+          value: item.percentage,
+          color: item.color || Colors.primary,
+          focused: isSelected,
+          onPress: () => setSelectedCategoryKey(isSelected ? null : item.key),
+        };
+      }),
+    [distribution, selectedCategoryKey]
   );
 
   const trendColor = useMemo(() => {
@@ -243,6 +244,29 @@ export const NotebookReport = ({ transactions }: Props) => {
     const lastVal = trendData[trendData.length - 1]?.value ?? 0;
     return lastVal >= firstVal ? '#10B981' : '#EF4444';
   }, [trendData]);
+
+  const barChartData = useMemo(
+    () =>
+      trendData.map((item, index) => {
+        const isSelected = selectedBarIndex === index;
+        const hasSelection = selectedBarIndex !== null;
+        const defaultColor = item.isCurrent ? Colors.primary : trendColor;
+        
+        return {
+          value: item.value,
+          label: item.label,
+          frontColor: hasSelection ? (isSelected ? defaultColor : '#E2E8F0') : defaultColor,
+          onPress: () => setSelectedBarIndex(isSelected ? null : index),
+          labelTextStyle: {
+            color: hasSelection ? (isSelected ? Colors.primary : Colors.textMuted) : (item.isCurrent ? Colors.primary : Colors.textMuted),
+            fontSize: 10,
+            width: dateFilter === 'month' ? 22 : 28,
+            textAlign: 'center' as const,
+          },
+        };
+      }),
+    [trendData, dateFilter, selectedBarIndex, trendColor]
+  );
 
   const totalAmount = useMemo(() => {
     if (viewMode === 'pie') {
@@ -255,47 +279,6 @@ export const NotebookReport = ({ transactions }: Props) => {
     const spacing = dateFilter === 'month' ? 22 : dateFilter === 'week' ? 44 : 34;
     return Math.max(SCREEN_WIDTH - 56, trendData.length * spacing + 48);
   }, [trendData.length, dateFilter]);
-
-  const getDateLabel = () => {
-    const currentYear = new Date().getFullYear();
-    const currentMonth = new Date().getMonth();
-    if (dateFilter === 'week') {
-      const start = startOfWeek(selectedDate);
-      const end = new Date(start);
-      end.setDate(end.getDate() + 6);
-      return `${start.getDate()}/${start.getMonth() + 1} - ${end.getDate()}/${end.getMonth() + 1}`;
-    }
-    if (dateFilter === 'month') {
-      if (selectedDate.getMonth() === currentMonth && selectedDate.getFullYear() === currentYear) {
-        return 'Tháng này';
-      }
-      return `Tháng ${selectedDate.getMonth() + 1}/${selectedDate.getFullYear()}`;
-    }
-    if (selectedDate.getFullYear() === currentYear) return 'Năm nay';
-    return `Năm ${selectedDate.getFullYear()}`;
-  };
-
-  const shiftPeriod = (dir: -1 | 1) => {
-    const next = new Date(selectedDate);
-    if (dateFilter === 'week') {
-      next.setDate(next.getDate() + dir * 7);
-    } else if (dateFilter === 'month') {
-      next.setMonth(next.getMonth() + dir);
-    } else {
-      next.setFullYear(next.getFullYear() + dir);
-    }
-    const now = new Date();
-    if (next > now) return;
-    setSelectedDate(next);
-  };
-
-  const canGoNext = () => {
-    const probe = new Date(selectedDate);
-    if (dateFilter === 'week') probe.setDate(probe.getDate() + 7);
-    else if (dateFilter === 'month') probe.setMonth(probe.getMonth() + 1);
-    else probe.setFullYear(probe.getFullYear() + 1);
-    return probe <= new Date();
-  };
 
   const renderCategoryIcon = (iconName: string | undefined, color: string, size: number) => (
     <Ionicons
@@ -339,121 +322,12 @@ export const NotebookReport = ({ transactions }: Props) => {
         </View>
       </View>
 
-      <View style={styles.periodChips}>
-        {(
-          [
-            { key: 'week', label: 'Tuần' },
-            { key: 'month', label: 'Tháng' },
-            { key: 'year', label: 'Năm' },
-          ] as const
-        ).map((item) => {
-          const active = dateFilter === item.key;
-          return (
-            <TouchableOpacity
-              key={item.key}
-              style={[styles.periodChip, active && styles.periodChipActive]}
-              onPress={() => setDateFilter(item.key)}
-              activeOpacity={0.8}
-            >
-              <Text style={[styles.periodChipText, active && styles.periodChipTextActive]}>
-                {item.label}
-              </Text>
-            </TouchableOpacity>
-          );
-        })}
-      </View>
-
-      <View style={styles.dateSelector}>
-        <TouchableOpacity style={styles.dateNavBtn} onPress={() => shiftPeriod(-1)} activeOpacity={0.7}>
-          <Ionicons name="chevron-back" size={18} color={PASTEL_PALETTE.title} />
-        </TouchableOpacity>
-        
-        <TouchableOpacity 
-          style={styles.dateTextContainer} 
-          onPress={() => setShowPicker(true)}
-          activeOpacity={0.7}
-        >
-          <Ionicons name="calendar-outline" size={18} color={PASTEL_PALETTE.title} />
-          <Text style={styles.dateText}>{getDateLabel()}</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[styles.dateNavBtn, !canGoNext() && { opacity: 0.4 }]}
-          onPress={() => shiftPeriod(1)}
-          disabled={!canGoNext()}
-          activeOpacity={0.7}
-        >
-          <Ionicons name="chevron-forward" size={18} color={PASTEL_PALETTE.title} />
-        </TouchableOpacity>
-      </View>
-
-      {showPicker && Platform.OS !== 'ios' && (
-        <DateTimePicker
-          value={selectedDate}
-          mode="date"
-          display="default"
-          onChange={(event, date) => {
-            setShowPicker(false);
-            if (date) {
-              const now = new Date();
-              if (date > now) {
-                setSelectedDate(now);
-              } else {
-                setSelectedDate(date);
-              }
-            }
-          }}
-          maximumDate={new Date()}
-        />
-      )}
-
-      {Platform.OS === 'ios' && (
-        <Modal
-          visible={showPicker}
-          transparent={true}
-          animationType="slide"
-        >
-          <TouchableOpacity 
-            style={{ flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.4)' }}
-            activeOpacity={1}
-            onPress={() => setShowPicker(false)}
-          >
-            <TouchableWithoutFeedback>
-              <View style={{ backgroundColor: 'white', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 16, paddingBottom: 32 }}>
-                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderBottomWidth: 1, borderBottomColor: '#E2E8F0', paddingBottom: 12, marginBottom: 12 }}>
-                  <Text style={{ fontSize: 16, fontWeight: '600', color: PASTEL_PALETTE.title }}>
-                    Chọn ngày báo cáo
-                  </Text>
-                  <TouchableOpacity onPress={() => setShowPicker(false)}>
-                    <Text style={{ fontSize: 16, fontWeight: 'bold', color: PASTEL_PALETTE.accentDeep }}>Xong</Text>
-                  </TouchableOpacity>
-                </View>
-                <View style={{ alignItems: 'center' }}>
-                  <DateTimePicker
-                    value={selectedDate}
-                    mode="date"
-                    display="inline"
-                    onChange={(event, date) => {
-                      if (date) {
-                        const now = new Date();
-                        if (date > now) {
-                          setSelectedDate(now);
-                        } else {
-                          setSelectedDate(date);
-                        }
-                      }
-                    }}
-                    maximumDate={new Date()}
-                    locale="vi-VN"
-                    themeVariant="light"
-                    style={{ alignSelf: 'center' }}
-                  />
-                </View>
-              </View>
-            </TouchableWithoutFeedback>
-          </TouchableOpacity>
-        </Modal>
-      )}
+      <DateRangeSelector
+        dateFilter={dateFilter}
+        selectedDate={selectedDate}
+        onChangeFilter={setDateFilter}
+        onChangeDate={setSelectedDate}
+      />
 
       <View style={styles.summaryRow}>
         <TouchableOpacity
@@ -506,8 +380,27 @@ export const NotebookReport = ({ transactions }: Props) => {
                   data={pieChartData as any}
                   donut
                   radius={100}
-                  innerRadius={55}
+                  innerRadius={65}
                   innerCircleColor={Colors.white}
+                  focusOnPress={true}
+                  toggleFocusOnPress={true}
+                  centerLabelComponent={() => {
+                    const selected = distribution.find(d => d.key === selectedCategoryKey);
+                    if (!selected) {
+                      return (
+                        <View style={{justifyContent: 'center', alignItems: 'center'}}>
+                          <Text style={{fontSize: 12, color: PASTEL_PALETTE.textMuted, textAlign: 'center'}}>Tổng cộng</Text>
+                          <Text style={{fontSize: 16, fontWeight: '800', color: PASTEL_PALETTE.title}}>{formatCurrency(totalAmount)}</Text>
+                        </View>
+                      );
+                    }
+                    return (
+                      <View style={{justifyContent: 'center', alignItems: 'center', paddingHorizontal: 4}}>
+                        <Text style={{fontSize: 22, color: selected.color, fontWeight: '800'}}>{selected.percentage.toFixed(1)}%</Text>
+                        <Text style={{fontSize: 12, color: PASTEL_PALETTE.title, textAlign: 'center'}} numberOfLines={1}>{selected.categoryName}</Text>
+                      </View>
+                    );
+                  }}
                 />
               ) : (
                 <Text style={styles.emptyChartText}>
@@ -516,21 +409,29 @@ export const NotebookReport = ({ transactions }: Props) => {
               )}
             </View>
             <View style={styles.legendContainer}>
-              {distribution.map((item, index) => (
-                <View key={`${item.key}-${index}`} style={styles.legendItem}>
-                  <View style={[styles.legendIconBox, { backgroundColor: `${item.color}33` }]}>
-                    {renderCategoryIcon(item.icon, item.color, 20)}
-                  </View>
-                  <View style={{ marginLeft: 8, flex: 1 }}>
-                    <Text style={[styles.legendValue, { color: item.color }]}>
-                      {item.percentage.toFixed(1)}%
-                    </Text>
-                    <Text style={styles.legendLabel} numberOfLines={1}>
-                      {item.categoryName}
-                    </Text>
-                  </View>
-                </View>
-              ))}
+              {distribution.map((item, index) => {
+                const isSelected = selectedCategoryKey === item.key;
+                return (
+                  <TouchableOpacity 
+                    key={`${item.key}-${index}`} 
+                    style={[styles.legendItem, isSelected && { opacity: 1 }, !isSelected && selectedCategoryKey && { opacity: 0.4 }]}
+                    onPress={() => setSelectedCategoryKey(isSelected ? null : item.key)}
+                    activeOpacity={0.8}
+                  >
+                    <View style={[styles.legendIconBox, { backgroundColor: `${item.color}33` }]}>
+                      {renderCategoryIcon(item.icon, item.color, 20)}
+                    </View>
+                    <View style={{ marginLeft: 8, flex: 1 }}>
+                      <Text style={[styles.legendValue, { color: item.color }]}>
+                        {item.percentage.toFixed(1)}%
+                      </Text>
+                      <Text style={styles.legendLabel} numberOfLines={1}>
+                        {item.categoryName}
+                      </Text>
+                    </View>
+                  </TouchableOpacity>
+                );
+              })}
             </View>
           </View>
         ) : (
@@ -538,11 +439,25 @@ export const NotebookReport = ({ transactions }: Props) => {
             {trendData.some((d) => d.value > 0) ? (
               <>
                 <View style={styles.lineChartLegend}>
-                  <View style={[styles.lineTrendDot, { backgroundColor: trendColor }]} />
-                  <Text style={styles.lineChartLegendText}>
-                    {trendColor === '#10B981' ? 'Xu hướng tăng' : 'Xu hướng giảm'}
-                  </Text>
-                  <Text style={styles.lineChartHint}>Vuốt ngang để xem thêm</Text>
+                  {selectedBarIndex !== null ? (
+                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                      <Text style={{ fontWeight: '700', fontSize: 14, color: PASTEL_PALETTE.title }}>
+                        {dateFilter === 'week' ? 'Thứ ' : dateFilter === 'year' ? 'Tháng ' : 'Ngày '} 
+                        {trendData[selectedBarIndex].fullLabel}: 
+                      </Text>
+                      <Text style={{ fontWeight: '800', fontSize: 16, color: trendData[selectedBarIndex].isCurrent ? Colors.primary : trendColor, marginLeft: 4 }}>
+                        {formatCurrency(trendData[selectedBarIndex].value)}
+                      </Text>
+                    </View>
+                  ) : (
+                    <>
+                      <View style={[styles.lineTrendDot, { backgroundColor: trendColor }]} />
+                      <Text style={styles.lineChartLegendText}>
+                        {trendColor === '#10B981' ? 'Xu hướng tăng' : 'Xu hướng giảm'}
+                      </Text>
+                    </>
+                  )}
+                  <Text style={styles.lineChartHint}>{selectedBarIndex !== null ? 'Nhấn lại để hủy' : 'Vuốt ngang để xem'}</Text>
                 </View>
                 <View style={styles.lineChartPanel}>
                   <ScrollView
@@ -551,10 +466,7 @@ export const NotebookReport = ({ transactions }: Props) => {
                     contentContainerStyle={styles.lineChartScroll}
                   >
                     <BarChart
-                      data={barChartData.map((d) => ({
-                        ...d,
-                        frontColor: d.frontColor || trendColor,
-                      })) as any}
+                      data={barChartData as any}
                       width={chartWidth}
                       height={220}
                       barWidth={dateFilter === 'month' ? 10 : dateFilter === 'week' ? 22 : 16}
@@ -596,22 +508,30 @@ export const NotebookReport = ({ transactions }: Props) => {
             </Text>
             <Ionicons name="chevron-down" size={16} color={Colors.primary} />
           </View>
-          {distribution.map((item, index) => (
-            <View key={`${item.key}-${index}`} style={styles.categoryItem}>
-              <View style={[styles.categoryIconContainer, { backgroundColor: `${item.color}22` }]}>
-                {renderCategoryIcon(item.icon, item.color, 20)}
-              </View>
-              <View style={styles.categoryDetails}>
-                <Text style={styles.categoryItemTitle} numberOfLines={1}>
-                  {item.categoryName}
-                </Text>
-                <Text style={styles.categoryItemSubtitle}>
-                  {item.percentage.toFixed(1)}% tổng {activeTab === 'expense' ? 'chi' : 'thu'}
-                </Text>
-              </View>
-              <Text style={styles.categoryAmount}>{formatCurrency(item.totalAmount)}</Text>
-            </View>
-          ))}
+          {distribution.map((item, index) => {
+            const isSelected = selectedCategoryKey === item.key;
+            return (
+              <TouchableOpacity 
+                key={`${item.key}-${index}`} 
+                style={[styles.categoryItem, isSelected && { borderColor: item.color, borderWidth: 2 }]}
+                onPress={() => setSelectedCategoryKey(isSelected ? null : item.key)}
+                activeOpacity={0.8}
+              >
+                <View style={[styles.categoryIconContainer, { backgroundColor: `${item.color}22` }]}>
+                  {renderCategoryIcon(item.icon, item.color, 20)}
+                </View>
+                <View style={styles.categoryDetails}>
+                  <Text style={styles.categoryItemTitle} numberOfLines={1}>
+                    {item.categoryName}
+                  </Text>
+                  <Text style={styles.categoryItemSubtitle}>
+                    {item.percentage.toFixed(1)}% tổng {activeTab === 'expense' ? 'chi' : 'thu'}
+                  </Text>
+                </View>
+                <Text style={styles.categoryAmount}>{formatCurrency(item.totalAmount)}</Text>
+              </TouchableOpacity>
+            );
+          })}
         </>
       ) : null}
     </View>

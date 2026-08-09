@@ -11,38 +11,6 @@ export const styles = StyleSheet.create({
     marginBottom: 20,
     justifyContent: 'space-between',
   },
-  segmentedControl: {
-    flexDirection: 'row',
-    backgroundColor: 'rgba(255, 255, 255, 0.4)',
-    borderRadius: 24,
-    padding: 4,
-    alignSelf: 'center',
-    marginBottom: 20,
-    width: '100%',
-  },
-  segmentBtn: {
-    flex: 1,
-    paddingVertical: 10,
-    alignItems: 'center',
-    borderRadius: 20,
-  },
-  segmentBtnActive: {
-    backgroundColor: PASTEL_PALETTE.white,
-    shadowColor: PASTEL_PALETTE.lavender,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  segmentText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: PASTEL_PALETTE.title,
-  },
-  segmentTextActive: {
-    fontWeight: '800',
-    color: PASTEL_PALETTE.accentDeep,
-  },
   backBtn: {
     width: 40,
     height: 40,

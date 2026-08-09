@@ -53,24 +53,29 @@ export const mapCashHistoryToItem = (tx: TransactionHistoryItem): TransactionIte
 
 export const filterCashTransactions = (
   transactions: TransactionItem[],
-  filter: 'TODAY' | 'WEEK' | 'MONTH'
+  filter: 'week' | 'month' | 'year',
+  selectedDate: Date
 ): TransactionItem[] => {
-  if (filter === 'TODAY') {
-    return transactions.filter((t) => t.date === 'Hôm nay');
+  const d = new Date(selectedDate);
+  let start: Date;
+  let end: Date;
+
+  if (filter === 'week') {
+    start = startOfWeek(d);
+    end = new Date(start);
+    end.setDate(end.getDate() + 6);
+    end.setHours(23, 59, 59, 999);
+  } else if (filter === 'year') {
+    start = new Date(d.getFullYear(), 0, 1, 0, 0, 0, 0);
+    end = new Date(d.getFullYear(), 11, 31, 23, 59, 59, 999);
+  } else {
+    start = new Date(d.getFullYear(), d.getMonth(), 1, 0, 0, 0, 0);
+    end = new Date(d.getFullYear(), d.getMonth() + 1, 0, 23, 59, 59, 999);
   }
 
-  const now = new Date();
-  if (filter === 'WEEK') {
-    const weekStart = startOfWeek(now);
-    return transactions.filter((t) => {
-      if (!t.createdAt) return true;
-      return new Date(t.createdAt) >= weekStart;
-    });
-  }
-
-  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
   return transactions.filter((t) => {
     if (!t.createdAt) return true;
-    return new Date(t.createdAt) >= monthStart;
+    const txDate = new Date(t.createdAt);
+    return txDate >= start && txDate <= end;
   });
 };

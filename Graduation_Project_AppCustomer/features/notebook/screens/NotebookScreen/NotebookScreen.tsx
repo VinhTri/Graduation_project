@@ -26,25 +26,18 @@ import { PASTEL_PALETTE } from '../../../../shared/constants/PastelPalette';
 import { ConfirmModal } from '../../../../shared/components';
 import Colors from '../../../../shared/constants/Colors';
 import { filterCashTransactions, mapCashHistoryToItem } from '../../utils/cashMappers';
-import { BankNotebookList } from '../../components/BankNotebookList/BankNotebookList';
+import { DateRangeSelector, DateFilterType } from '../../components/DateRangeSelector/DateRangeSelector';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 type MainTab = 'history' | 'report';
-type FilterChip = 'TODAY' | 'WEEK' | 'MONTH';
-
-const FILTERS: { key: FilterChip; label: string }[] = [
-  { key: 'TODAY', label: 'Hôm nay' },
-  { key: 'WEEK', label: 'Tuần' },
-  { key: 'MONTH', label: 'Tháng' },
-];
 
 import { useLanguage, useTheme } from '../../../../shared/contexts/ThemeLanguageContext';
 import { useCategoryContext } from '../../../../shared/contexts/CategoryContext';
 
 export default function NotebookScreen() {
-  const [topTab, setTopTab] = useState<'cash' | 'bank'>('cash');
   const [tab, setTab] = useState<MainTab>('history');
-  const [filter, setFilter] = useState<FilterChip>('MONTH');
+  const [dateFilter, setDateFilter] = useState<DateFilterType>('month');
+  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [cashBalance, setCashBalance] = useState(0);
   const [transactions, setTransactions] = useState<TransactionItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -58,12 +51,6 @@ export default function NotebookScreen() {
   const { theme } = useTheme();
   const { loadCategories } = useCategoryContext();
   const isEn = language === 'en';
-
-  const filters = useMemo(() => [
-    { key: 'TODAY' as FilterChip, label: isEn ? 'Today' : 'Hôm nay' },
-    { key: 'WEEK' as FilterChip, label: isEn ? 'Week' : 'Tuần' },
-    { key: 'MONTH' as FilterChip, label: isEn ? 'Month' : 'Tháng' },
-  ], [isEn]);
 
   const loadCashData = useCallback(async () => {
     const [wallet, history] = await Promise.all([
@@ -112,8 +99,8 @@ export default function NotebookScreen() {
   };
 
   const visibleTransactions = useMemo(
-    () => filterCashTransactions(transactions, filter),
-    [filter, transactions]
+    () => filterCashTransactions(transactions, dateFilter, selectedDate),
+    [dateFilter, selectedDate, transactions]
   );
 
   const openBalanceModal = (mode: CashBalanceMode, txData?: InitialCashData) => {
@@ -181,16 +168,12 @@ export default function NotebookScreen() {
   return (
     <View style={[styles.container, { backgroundColor: theme.bg }]}>
       <NotebookHeader
-        topTab={topTab}
-        setTopTab={setTopTab}
         totalBalance={cashBalance}
         onAddCashBalance={() => openBalanceModal('add')}
         onSpendCashBalance={() => openBalanceModal('spend')}
       />
 
-      {topTab === 'cash' ? (
-        <>
-          <View style={[styles.content, { backgroundColor: theme.bg }]}>
+      <View style={[styles.content, { backgroundColor: theme.bg }]}>
             <View style={[styles.tabBar, { backgroundColor: theme.card, borderColor: theme.cardBorder, borderWidth: 1 }]}>
               <TouchableOpacity
                 style={[styles.tab, tab === 'history' && [styles.tabActive, { backgroundColor: theme.isDark ? theme.bgSoft : PASTEL_PALETTE.white }]]}
@@ -218,23 +201,12 @@ export default function NotebookScreen() {
               </View>
             ) : tab === 'history' ? (
               <>
-                <View style={styles.filterRow}>
-                  {filters.map((item) => {
-                    const active = filter === item.key;
-                    return (
-                      <TouchableOpacity
-                        key={item.key}
-                        style={[styles.chip, { backgroundColor: active ? (theme.isDark ? theme.bgSoft : PASTEL_PALETTE.accentSoft) : theme.card, borderColor: active ? theme.primary : theme.cardBorder }]}
-                        onPress={() => setFilter(item.key)}
-                        activeOpacity={0.8}
-                      >
-                        <Text style={[styles.chipText, { color: active ? theme.primary : theme.textSecondary }]}>
-                          {item.label}
-                        </Text>
-                      </TouchableOpacity>
-                    );
-                  })}
-                </View>
+                <DateRangeSelector
+                  dateFilter={dateFilter}
+                  selectedDate={selectedDate}
+                  onChangeFilter={setDateFilter}
+                  onChangeDate={setSelectedDate}
+                />
 
                 <ScrollView
                   showsVerticalScrollIndicator={false}
@@ -303,22 +275,18 @@ export default function NotebookScreen() {
             onDelete={() => { if (selectedTransaction) handleDeleteTransaction(selectedTransaction); }}
           />
 
-          <ConfirmModal
-            visible={!!txToDelete}
-            title="Xóa giao dịch"
-            message="Bạn có chắc chắn muốn xóa giao dịch này không? Số dư sổ tay và ngân sách sẽ được hoàn lại tự động."
-            iconName="trash-outline"
-            iconColor={Colors.error}
-            confirmText="Xóa"
-            cancelText="Hủy"
-            isDestructive={true}
-            onConfirm={confirmDeleteTransaction}
-            onCancel={() => setTxToDelete(null)}
-          />
-        </>
-      ) : (
-        <BankNotebookList />
-      )}
+      <ConfirmModal
+        visible={!!txToDelete}
+        title="Xóa giao dịch"
+        message="Bạn có chắc chắn muốn xóa giao dịch này không? Số dư sổ tay và ngân sách sẽ được hoàn lại tự động."
+        iconName="trash-outline"
+        iconColor={Colors.error}
+        confirmText="Xóa"
+        cancelText="Hủy"
+        isDestructive={true}
+        onConfirm={confirmDeleteTransaction}
+        onCancel={() => setTxToDelete(null)}
+      />
     </View>
   );
 }

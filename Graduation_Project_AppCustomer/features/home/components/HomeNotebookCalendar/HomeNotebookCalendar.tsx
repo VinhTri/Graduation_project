@@ -188,7 +188,13 @@ export const HomeNotebookCalendar: React.FC = () => {
     const dayOfWeek = isEn ? dayOfWeekNamesEn[dateObj.getDay()] : dayOfWeekNamesVi[dateObj.getDay()];
     const displayDateText = `${dayOfWeek}, ${String(d).padStart(2, '0')}/${String(m).padStart(2, '0')}/${y}`;
     const displayShortDate = `${String(d).padStart(2, '0')}/${String(m).padStart(2, '0')}`;
-    const targetIsoDate = new Date(y, m - 1, d, 12, 0, 0).toISOString();
+    
+    const isToday = selectedDayKey === todayKey;
+    const now = new Date();
+    const targetIsoDate = isToday 
+      ? `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}T${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`
+      : `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}T12:00:00`;
+      
     const isFuture = selectedDayKey > todayKey;
 
     const dayTxs = txByDateMap[selectedDayKey] || [];
