@@ -550,7 +550,8 @@ public class TransactionServiceImpl implements TransactionService {
         CategoryItem category = categoryItemRepository.findById(request.categoryId())
                 .orElseThrow(() -> new AppException(ErrorCode.CATEGORY_ITEM_NOT_FOUND));
 
-        if (category.getUser() == null || !category.getUser().getId().equals(user.getId()) || category.isDeleted()) {
+        boolean isSameCategory = category.getId().equals(transaction.getCategoryId());
+        if (category.getUser() == null || !category.getUser().getId().equals(user.getId()) || (category.isDeleted() && !isSameCategory)) {
             throw new AppException(ErrorCode.CATEGORY_INVALID_FOR_CASH);
         }
 

@@ -9,8 +9,6 @@ import { styles } from './NotebookHeader.styles';
 import { useLanguage, useTheme } from '../../../../shared/contexts/ThemeLanguageContext';
 
 export const NotebookHeader: React.FC<NotebookHeaderProps> = ({
-  topTab,
-  setTopTab,
   totalBalance,
   onAddCashBalance,
   onSpendCashBalance,
@@ -41,29 +39,7 @@ export const NotebookHeader: React.FC<NotebookHeaderProps> = ({
         </View>
       </View>
 
-      <View style={[styles.segmentedControl, { backgroundColor: theme.isDark ? theme.bgSoft : 'rgba(255, 255, 255, 0.4)' }]}>
-        <TouchableOpacity
-          style={[styles.segmentBtn, topTab === 'cash' && [styles.segmentBtnActive, { backgroundColor: theme.isDark ? theme.card : PASTEL_PALETTE.white }]]}
-          onPress={() => setTopTab('cash')}
-          activeOpacity={0.8}
-        >
-          <Text style={[styles.segmentText, { color: topTab === 'cash' ? theme.primary : theme.textMuted }, topTab === 'cash' && styles.segmentTextActive]}>
-            {isEn ? 'Cash Notebook' : 'Sổ tay tiền mặt'}
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.segmentBtn, topTab === 'bank' && [styles.segmentBtnActive, { backgroundColor: theme.isDark ? theme.card : PASTEL_PALETTE.white }]]}
-          onPress={() => setTopTab('bank')}
-          activeOpacity={0.8}
-        >
-          <Text style={[styles.segmentText, { color: topTab === 'bank' ? theme.primary : theme.textMuted }, topTab === 'bank' && styles.segmentTextActive]}>
-            {isEn ? 'Bank Notebook' : 'Sổ tay ngân hàng'}
-          </Text>
-        </TouchableOpacity>
-      </View>
-
-      {topTab === 'cash' && (
-        <View style={[styles.balanceCard, { backgroundColor: theme.card, borderColor: theme.cardBorder }]}>
+      <View style={[styles.balanceCard, { backgroundColor: theme.card, borderColor: theme.cardBorder }]}>
           <View style={styles.balanceHeader}>
             <Text style={[styles.balanceLabel, { color: theme.textSecondary }]}>{t('cashBalance').toUpperCase()}</Text>
             <TouchableOpacity
@@ -105,7 +81,6 @@ export const NotebookHeader: React.FC<NotebookHeaderProps> = ({
             </View>
           )}
         </View>
-      )}
     </PastelHeaderShell>
   );
 };

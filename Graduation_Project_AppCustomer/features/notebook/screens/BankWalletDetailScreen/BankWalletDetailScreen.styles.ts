@@ -23,6 +23,13 @@ export const styles = StyleSheet.create({
     marginRight: 10,
     marginLeft: -8,
   },
+  deleteWalletBtn: {
+    width: 40,
+    height: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: -8,
+  },
   title: {
     fontSize: 20,
     fontWeight: '800',
@@ -116,30 +123,5 @@ export const styles = StyleSheet.create({
     color: PASTEL_PALETTE.title,
     fontWeight: '800',
   },
-  filterRow: {
-    flexDirection: 'row',
-    gap: 8,
-    marginBottom: 14,
-  },
-  chip: {
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 999,
-    backgroundColor: PASTEL_PALETTE.white,
-    borderWidth: 1,
-    borderColor: PASTEL_PALETTE.border,
-  },
-  chipActive: {
-    backgroundColor: PASTEL_PALETTE.accentSoft,
-    borderColor: PASTEL_PALETTE.accent,
-  },
-  chipText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: PASTEL_PALETTE.textMuted,
-  },
-  chipTextActive: {
-    color: PASTEL_PALETTE.accentDeep,
-    fontWeight: '800',
-  },
+
 });
