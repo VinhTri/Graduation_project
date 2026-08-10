@@ -4,8 +4,6 @@ import com.project.app.ai.dto.internal.ParsedDuration;
 import com.project.app.ai.dto.request.ChatMessageHistoryDto;
 import org.springframework.stereotype.Component;
 
-import java.time.LocalDate;
-import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -13,6 +11,10 @@ import java.util.regex.Pattern;
 @Component
 public class DurationParser {
 
+    /**
+     * Parses explicit numeric durations (e.g., "1 năm 6 tháng", "45 ngày", "2 năm", "6 tháng").
+     * Relative semantic milestones ("Tết", "cuối năm", "cuối tháng") are handled by DateResolverService.
+     */
     public ParsedDuration parseDuration(String rawText, String normalizedText) {
         if (rawText == null || rawText.trim().isEmpty()) {
             return ParsedDuration.builder()
@@ -82,88 +84,6 @@ public class DurationParser {
                         .isDays(false)
                         .build();
             }
-        }
-
-        // 5. Dynamic Natural Time Expressions relative to current date
-        LocalDate now = LocalDate.now();
-
-        if (normText.contains("cuoi nam") || normText.contains("trong nam nay")) {
-            LocalDate endOfYear = LocalDate.of(now.getYear(), 12, 31);
-            long days = ChronoUnit.DAYS.between(now, endOfYear);
-            if (days <= 0) days = 365;
-            int months = (int) Math.max(1, Math.round((double) days / 30.4375));
-            String origText = normText.contains("trong nam nay") ? "trong năm nay" : "cuối năm";
-            return ParsedDuration.builder()
-                    .originalTimeText(origText)
-                    .durationMonths(months)
-                    .durationDays((int) days)
-                    .isDays(false)
-                    .build();
-        }
-
-        if (normText.contains("dau nam sau") || normText.contains("sang nam") || normText.contains("nam sau")) {
-            LocalDate targetDate = LocalDate.of(now.getYear() + 1, 1, 31);
-            long days = ChronoUnit.DAYS.between(now, targetDate);
-            int months = (int) Math.max(1, Math.round((double) days / 30.4375));
-            String origText = normText.contains("dau nam sau") ? "đầu năm sau" : (normText.contains("sang nam") ? "sang năm" : "năm sau");
-            return ParsedDuration.builder()
-                    .originalTimeText(origText)
-                    .durationMonths(months)
-                    .durationDays((int) days)
-                    .isDays(false)
-                    .build();
-        }
-
-        if (normText.contains("truoc tet") || normText.contains("don tet") || normText.contains("tet")) {
-            int targetYear = now.getMonthValue() > 2 ? now.getYear() + 1 : now.getYear();
-            LocalDate tetDate = LocalDate.of(targetYear, 2, 10);
-            long days = ChronoUnit.DAYS.between(now, tetDate);
-            int months = (int) Math.max(1, Math.round((double) days / 30.4375));
-            String origText = normText.contains("truoc tet") ? "trước Tết" : "Tết";
-            return ParsedDuration.builder()
-                    .originalTimeText(origText)
-                    .durationMonths(months)
-                    .durationDays((int) days)
-                    .isDays(false)
-                    .build();
-        }
-
-        if (normText.contains("cuoi thang sau")) {
-            return ParsedDuration.builder()
-                    .originalTimeText("cuối tháng sau")
-                    .durationMonths(2)
-                    .durationDays(60)
-                    .isDays(false)
-                    .build();
-        }
-
-        if (normText.contains("thang sau")) {
-            return ParsedDuration.builder()
-                    .originalTimeText("tháng sau")
-                    .durationMonths(1)
-                    .durationDays(30)
-                    .isDays(false)
-                    .build();
-        }
-
-        if (normText.contains("cuoi thang")) {
-            LocalDate endOfMonth = now.withDayOfMonth(now.lengthOfMonth());
-            long days = Math.max(1, ChronoUnit.DAYS.between(now, endOfMonth));
-            return ParsedDuration.builder()
-                    .originalTimeText("cuối tháng")
-                    .durationMonths(1)
-                    .durationDays((int) days)
-                    .isDays(days < 30)
-                    .build();
-        }
-
-        if (normText.contains("sinh nhat")) {
-            return ParsedDuration.builder()
-                    .originalTimeText("sinh nhật")
-                    .durationMonths(6)
-                    .durationDays(180)
-                    .isDays(false)
-                    .build();
         }
 
         return ParsedDuration.builder()
@@ -251,18 +171,19 @@ public class DurationParser {
 
         int currentMonths = parse(currentText, currentNorm);
         if (currentMonths > 0) return currentMonths;
-        
+
         if (!isNewGoal) {
             int historyMonths = parseLatestDurationFromHistory(history);
             if (historyMonths > 0) return historyMonths;
         }
 
-        return 6;
+        return 0;
     }
 
     private String normalizeText(String text) {
         if (text == null) return "";
-        return text.toLowerCase()
+        String clean = com.project.app.ai.util.TextNormalizer.normalizeWhitespace(text);
+        return clean.toLowerCase()
                 .replaceAll("[àáạảãâầấậẩẫăằắặẳẵ]", "a")
                 .replaceAll("[èéẹẻẽêềếệểễ]", "e")
                 .replaceAll("[ìíịỉĩ]", "i")

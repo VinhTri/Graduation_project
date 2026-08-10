@@ -291,7 +291,14 @@ public class ReportServiceImpl implements ReportService {
 
     private LocalDateTime[] getDateRange(String filter, LocalDate date) {
         LocalDateTime start, end;
-        if ("YEAR".equalsIgnoreCase(filter)) {
+        if ("DAY".equalsIgnoreCase(filter) || "TODAY".equalsIgnoreCase(filter)) {
+            start = date.atStartOfDay();
+            end = date.atTime(LocalTime.MAX);
+        } else if ("YESTERDAY".equalsIgnoreCase(filter)) {
+            LocalDate yesterday = date.minusDays(1);
+            start = yesterday.atStartOfDay();
+            end = yesterday.atTime(LocalTime.MAX);
+        } else if ("YEAR".equalsIgnoreCase(filter)) {
             start = date.with(TemporalAdjusters.firstDayOfYear()).atStartOfDay();
             end = date.with(TemporalAdjusters.lastDayOfYear()).atTime(LocalTime.MAX);
         } else if ("MONTH".equalsIgnoreCase(filter)) {

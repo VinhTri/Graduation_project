@@ -1,5 +1,6 @@
 package com.project.app.ai.dto.response;
 
+import com.project.app.ai.enums.AiModuleType;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -14,7 +15,7 @@ import java.util.List;
 public class AiChatResponse {
     private String id;
     private String text;
-    private String moduleType; // RAG, ANALYTICS, RECOMMENDATION
+    private AiModuleType moduleType;
     private String timestamp;
     private List<AiCardDto> cards;
     private AiActionPromptDto actionPrompt;

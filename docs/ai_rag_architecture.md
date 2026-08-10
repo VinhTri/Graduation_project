@@ -1,36 +1,39 @@
-# Kiến Trúc Hợp Nhất Trợ Lý AI SmartSpend (Modules 1, 3, 4)
+# Kiến Trúc Hợp Nhất Trợ Lý AI SmartSpend (RAG vs Tools)
 
-Tài liệu này mô tả chi tiết kiến trúc triển khai cho hệ thống **Trợ lý AI SmartSpend**, tích hợp 3 module phân tích và tư vấn thông minh dựa trên mô hình Gemini AI và RAG Vector Database.
+Tài liệu này mô tả chi tiết kiến trúc phân định nhiệm vụ giữa **RAG Engine** (Tri thức tĩnh ứng dụng) và **Tools & Math Engine** (Dữ liệu động người dùng & Thuật toán tính toán tài chính) dựa trên Gemini AI và Vector Database.
+
+---
+
+## 1. Nguyên Tắc Phân Định Kiến Trúc (RAG vs Tools)
+
+```
+                       ┌─────────────────────────────────────────┐
+                       │           USER PROMPT INGESTION         │
+                       └────────────────────┬────────────────────┘
+                                            │
+                                            ▼
+                                   [Gemini Orchestrator]
+                                            │
+               ┌────────────────────────────┴────────────────────────────┐
+               ▼                                                         ▼
+    [RAG: KIẾN THỨC TĨNH ỨNG DỤNG]                           [TOOLS: DỮ LIỆU ĐỘNG & THUẬT TOÁN]
+  - PostgreSQL + pgvector (Embedding)                      - Database (Ví, Giao dịch, Ngân sách)
+  - Trợ lý Hướng dẫn App (get_app_guide)                   - Engine Tính toán Tài chính (Saving/Budget Math)
+  - FAQ, User Guide, Mã PIN, Nạp/Rút                       - Lấy số dư, báo cáo chi tiêu, phân bổ ngân sách
+```
+
+### Phân Định Trách Nhiệm Chi Tiết:
+
+| Loại câu hỏi | Cơ chế xử lý | Thành phần chịu trách nhiệm |
+| :--- | :--- | :--- |
+| *"Cách tạo ngân sách?"*, *"Cách nạp/rút tiền?"*, *"Quên mã PIN làm sao?"* | **RAG (Static Knowledge)** | `get_app_guide` $\rightarrow$ Gemini Embedding $\rightarrow$ pgvector (`app_knowledge_chunks`) |
+| *"Tôi còn bao nhiêu tiền?"*, *"Ví nào nhiều tiền nhất?"* | **Tool + DB (Dynamic Data)** | `get_wallets_and_balance` $\rightarrow$ User Database Query |
+| *"Tháng này tôi tiêu bao nhiêu?"*, *"Khoản nào nên cắt giảm?"* | **Tool + DB (Dynamic Data)** | `get_monthly_spending` $\rightarrow$ Transaction Analytics Engine |
+| *"Lương 12tr, thuê nhà 3tr, nên chia ngân sách thế nào?"* | **Tool + Math Engine** | `recommend_budget_allocation` $\rightarrow$ Budget Math Engine (50/30/20 & Fixed Expenses) |
+| *"Tôi muốn mua ô tô 300tr trong 9 tháng"* | **Tool + Calculator + DB** | `calculate_saving_plan` $\rightarrow$ Goal Calculator Engine (Trừ số dư ví thực tế) |
 
 ---
 
-## 1. Tổng Quan Kiến Trúc (Architecture Overview)
-
-```
-[User Interface (React Native App)]
-          │
-          ▼  HTTP REST / WebSocket
-[Spring Boot Backend / AI Gateway Service]
-          │
-  ┌───────┴─────────────────────────────────────────┐
-  │                                                 │
-  ▼                                                 ▼
-[Module 1: RAG Engine]             [Module 3 & 4: Analytics & Advisor]
-  │                                                 │
-  ├─ 1. Vector Search (Qdrant / pgvector)           ├─ 1. Fetch User Data (GET /report)
-  ├─ 2. Top-5 Context Retriever                     ├─ 2. Financial Metrics Math Engine
-  └─ 3. Gemini Prompt Ingestion                     └─ 3. Gemini Function Calling / Advisory
-  │                                                 │
-  └───────────────────────┬─────────────────────────┘
-                          │
-                          ▼
-             [Gemini 1.5 Pro / 2.0 Flash]
-                          │
-                          ▼
-            [Structured Answer & Step Engine]
-```
-
----
 
 ## 2. Chi Tiết Các Module
 

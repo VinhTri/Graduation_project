@@ -1,18 +1,19 @@
-package com.project.app.ai.dto.request;
+package com.project.app.ai.tool.dto;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.util.List;
+import java.util.Map;
 
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class AiChatRequest {
-    private String conversationId;
+public class ToolResultDto {
+    private String toolName;
+    private boolean success;
     private String message;
-    private List<ChatMessageHistoryDto> history;
+    private Map<String, Object> data;
 }

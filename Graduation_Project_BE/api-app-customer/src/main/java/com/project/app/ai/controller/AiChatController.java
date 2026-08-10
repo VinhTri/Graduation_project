@@ -2,7 +2,7 @@ package com.project.app.ai.controller;
 
 import com.project.app.ai.dto.request.AiChatRequest;
 import com.project.app.ai.dto.response.AiChatResponse;
-import com.project.app.ai.service.AiChatService;
+import com.project.app.ai.orchestration.AiChatService;
 import com.project.app.auth.security.CustomUserDetails;
 import com.project.app.common.dto.ApiResponse;
 import lombok.RequiredArgsConstructor;

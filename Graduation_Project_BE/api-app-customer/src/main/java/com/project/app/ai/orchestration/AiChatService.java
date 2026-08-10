@@ -1,4 +1,4 @@
-package com.project.app.ai.service;
+package com.project.app.ai.orchestration;
 
 import com.project.app.ai.dto.request.AiChatRequest;
 import com.project.app.ai.dto.response.AiChatResponse;

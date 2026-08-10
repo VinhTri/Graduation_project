@@ -10,8 +10,8 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class ParsedDuration {
-    private String originalTimeText;
     private int durationMonths;
     private int durationDays;
     private boolean isDays;
+    private String originalTimeText;
 }

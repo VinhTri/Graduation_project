@@ -1,4 +1,4 @@
-package com.project.app.ai.dto.request;
+package com.project.app.ai.rag;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -11,8 +11,9 @@ import java.util.List;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class AiChatRequest {
-    private String conversationId;
-    private String message;
-    private List<ChatMessageHistoryDto> history;
+public class DocumentChunk {
+    private String topic;
+    private String type;
+    private String content;
+    private List<String> keywords;
 }

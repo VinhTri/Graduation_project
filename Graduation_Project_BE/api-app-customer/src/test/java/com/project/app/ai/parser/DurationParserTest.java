@@ -1,18 +1,24 @@
 package com.project.app.ai.parser;
 
+import com.project.app.ai.dto.internal.DurationInfo;
 import com.project.app.ai.dto.internal.ParsedDuration;
+import com.project.app.ai.service.DateResolverService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+
+import java.time.LocalDate;
 
 import static org.junit.jupiter.api.Assertions.*;
 
 public class DurationParserTest {
 
     private DurationParser durationParser;
+    private DateResolverService dateResolverService;
 
     @BeforeEach
     public void setUp() {
         durationParser = new DurationParser();
+        dateResolverService = new DateResolverService(durationParser);
     }
 
     @Test
@@ -73,11 +79,10 @@ public class DurationParserTest {
     @Test
     public void testEndOfYear() {
         String prompt = "Tôi muốn có 100 triệu vào cuối năm.";
-        ParsedDuration pd = durationParser.parseDuration(prompt, null);
+        DurationInfo info = dateResolverService.resolveDuration(prompt, LocalDate.of(2026, 8, 9));
 
-        assertNotNull(pd);
-        assertEquals("cuối năm", pd.getOriginalTimeText());
-        assertTrue(pd.getDurationMonths() >= 1);
-        assertFalse(pd.isDays());
+        assertNotNull(info);
+        assertEquals("cuối năm", info.getOriginalText());
+        assertTrue(info.getMonths() >= 1);
     }
 }
