@@ -55,12 +55,16 @@ export default function HistoryScreen() {
         const typeLower = t.type.toLowerCase().replace('_', ''); // TOP_UP -> topup, WITHDRAW -> withdraw, others -> payment
         const isTopUp = t.type === 'TOP_UP';
         const isWithdraw = t.type === 'WITHDRAW';
+        const isReceiveTransfer = t.type === 'RECEIVE_TRANSFER';
+        const isIncome = t.type === 'INCOME';
+        const isPositiveAmount = isTopUp || isReceiveTransfer || isIncome;
+        
         const isFundDeposit = t.categoryLabel === 'Nạp quỹ';
         const isFundWithdraw = t.categoryLabel === 'Rút quỹ';
         
         // Find category details
-        let catLabel = isTopUp ? 'Nạp tiền' : (isWithdraw ? 'Rút tiền' : 'Giao dịch');
-        let icon = isTopUp ? 'add-circle' : (isWithdraw ? 'cash' : 'receipt-outline');
+        let catLabel = isTopUp ? 'Nạp tiền' : (isWithdraw ? 'Rút tiền' : (isReceiveTransfer ? 'Nhận tiền' : 'Giao dịch'));
+        let icon = isTopUp ? 'add-circle' : (isWithdraw ? 'cash' : (isReceiveTransfer ? 'arrow-down-circle' : 'receipt-outline'));
         
         if (t.categoryId) {
           if (t.categoryLabel) {
@@ -81,7 +85,7 @@ export default function HistoryScreen() {
           title,
           type: typeLower,
           typeOriginal: t.type,
-          amount: isTopUp ? t.amount : -t.amount,
+          amount: isPositiveAmount ? t.amount : -t.amount,
           date: formatDate(t.createdAt),
           dateRaw: t.createdAt,
           status: t.status.toLowerCase(),

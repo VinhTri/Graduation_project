@@ -315,7 +315,8 @@ public class TransactionServiceImpl implements TransactionService {
             throw new AppException(ErrorCode.INSUFFICIENT_BALANCE);
         }
 
-        String transactionCode = "TF" + System.currentTimeMillis() + UUID.randomUUID().toString().substring(0, 4).toUpperCase();
+        String senderTxCode = "TF_OUT_" + System.currentTimeMillis() + UUID.randomUUID().toString().substring(0, 4).toUpperCase();
+        String receiverTxCode = "TF_IN_" + System.currentTimeMillis() + UUID.randomUUID().toString().substring(0, 4).toUpperCase();
 
         // 1. Trừ tiền người gửi
         senderWallet.setBalance(senderWallet.getBalance().subtract(request.getAmount()));
@@ -327,7 +328,7 @@ public class TransactionServiceImpl implements TransactionService {
         senderTx.setAmount(request.getAmount());
         senderTx.setType(TransactionType.TRANSFER);
         senderTx.setStatus(TransactionStatus.SUCCESS);
-        senderTx.setTransactionCode(transactionCode);
+        senderTx.setTransactionCode(senderTxCode);
         senderTx.setNote(request.getNote() != null && !request.getNote().trim().isEmpty() 
             ? request.getNote().trim() 
             : "Chuyển tiền đến " + receiverWallet.getUser().getUsername());
@@ -348,14 +349,14 @@ public class TransactionServiceImpl implements TransactionService {
         receiverTx.setAmount(request.getAmount());
         receiverTx.setType(TransactionType.RECEIVE_TRANSFER);
         receiverTx.setStatus(TransactionStatus.SUCCESS);
-        receiverTx.setTransactionCode(transactionCode); // Có thể dùng chung transactionCode hoặc tạo riêng. Dùng chung dễ đối soát.
+        receiverTx.setTransactionCode(receiverTxCode);
         receiverTx.setNote(request.getNote() != null && !request.getNote().trim().isEmpty() 
             ? request.getNote().trim() 
             : "Nhận tiền từ " + user.getUsername());
         transactionRepository.save(receiverTx);
 
         return new TransferResponse(
-                transactionCode,
+                senderTxCode,
                 senderTx.getStatus(),
                 senderTx.getAmount(),
                 receiverWallet.getUser().getUsername(),
