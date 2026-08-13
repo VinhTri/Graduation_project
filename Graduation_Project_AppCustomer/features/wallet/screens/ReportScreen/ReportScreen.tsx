@@ -12,6 +12,7 @@ import { styles } from "./ReportScreen.styles";
 import { reportService, ReportDistributionResponse, ReportTrendResponse } from "../../../../shared/api/services/reportService";
 import { transactionService } from "../../../../shared/api/services/transactionService";
 import { CategorySelectModal } from "../../../categories/components/CategorySelectModal";
+import { AddCategoryModal } from "../../../categories/components/AddCategoryModal";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 const PIE_PAGE_WIDTH = SCREEN_WIDTH - 40;
@@ -208,8 +209,10 @@ export default function ReportScreen() {
   const distributionPagerRef = useRef<ScrollView>(null);
   const [trendData, setTrendData] = useState<ReportTrendResponse[]>([]);
   const [unclassified, setUnclassified] = useState<any[]>([]);
-  const [classifyingCode, setClassifyingCode] = useState<string | null>(null);
+  const [selectedCategoryKey, setSelectedCategoryKey] = useState<number | null>(null);
   const [isCategoryModalVisible, setIsCategoryModalVisible] = useState(false);
+  const [isAddCategoryModalVisible, setIsAddCategoryModalVisible] = useState(false);
+  const [classifyingCode, setClassifyingCode] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
 
   // Khoảng thời gian khớp với backend (Tuần: T2-CN, Tháng: đầu-cuối tháng, Năm: cả năm).
@@ -251,16 +254,16 @@ export default function ReportScreen() {
       setTrendData(data);
     }
 
-    // Giao dịch rút tiền chưa phân loại trong kỳ (chỉ tab Chi tiêu).
-    if (activeTab !== "expense") {
-      setUnclassified([]);
-      return;
-    }
     try {
       const history = await transactionService.getTransactionHistory();
       const { start, end } = getRange();
       const pending = (history || []).filter((t: any) => {
-        if (t?.type !== "WITHDRAW") return false;
+        const isExpense = ["WITHDRAW", "TRANSFER", "PAYMENT", "BANK_LINK_FEE"].includes(t?.type);
+        const isIncome = ["TOP_UP", "RECEIVE_TRANSFER", "INCOME"].includes(t?.type);
+        
+        if (activeTab === "expense" && !isExpense) return false;
+        if (activeTab === "income" && !isIncome) return false;
+        
         if (t?.categoryId) return false;
         if (String(t?.status).toUpperCase() !== "SUCCESS") return false;
         const created = new Date(t.createdAt);
@@ -271,6 +274,10 @@ export default function ReportScreen() {
       setUnclassified([]);
     }
   }, [activeTab, dateFilter, selectedDate, viewMode, getRange]);
+
+  useEffect(() => {
+    setSelectedCategoryKey(null);
+  }, [activeTab, dateFilter, selectedDate, viewMode, distributionPage]);
 
   useEffect(() => {
     setDistributionPage(0);
@@ -310,19 +317,29 @@ export default function ReportScreen() {
 
   const pieChartData = React.useMemo(() => {
     if (!distributionData || distributionData.length === 0) return [];
-    return distributionData.map(item => ({
-      value: item.percentage,
-      color: item.color || Colors.primary
-    }));
-  }, [distributionData]);
+    return distributionData.map((item, index) => {
+      const key = item.categoryId || index;
+      return {
+        value: item.percentage,
+        color: item.color || Colors.primary,
+        focused: selectedCategoryKey === key,
+        onPress: () => setSelectedCategoryKey(selectedCategoryKey === key ? null : key)
+      };
+    });
+  }, [distributionData, selectedCategoryKey]);
 
   const groupPieChartData = React.useMemo(() => {
     if (!groupDistributionData || groupDistributionData.length === 0) return [];
-    return groupDistributionData.map(item => ({
-      value: item.percentage,
-      color: item.color || Colors.primary
-    }));
-  }, [groupDistributionData]);
+    return groupDistributionData.map((item, index) => {
+      const key = item.categoryId || index;
+      return {
+        value: item.percentage,
+        color: item.color || Colors.primary,
+        focused: selectedCategoryKey === key,
+        onPress: () => setSelectedCategoryKey(selectedCategoryKey === key ? null : key)
+      };
+    });
+  }, [groupDistributionData, selectedCategoryKey]);
 
   const activeDistributionData = distributionPage === 0 ? distributionData : groupDistributionData;
 
@@ -332,19 +349,24 @@ export default function ReportScreen() {
       value: Number(item.value),
       label: item.label,
       labelTextStyle: {
-        color: item.isCurrent ? "#2563EB" : Colors.textMuted,
+        color: item.isCurrent ? Colors.primary : Colors.textMuted,
         fontSize: 10,
         width: 36,
         textAlign: "center" as const,
+        fontWeight: item.isCurrent ? "bold" : "normal",
       },
     }));
   }, [trendData]);
 
   const lineTrendColor = React.useMemo(() => {
-    if (lineChartData.length < 2) return "#2563EB";
-    const firstVal = lineChartData.find((d) => d.value > 0)?.value ?? lineChartData[0].value;
+    return Colors.primary;
+  }, [lineChartData]);
+
+  const isTrendUp = React.useMemo(() => {
+    if (lineChartData.length < 2) return true;
+    const firstVal = lineChartData.find((d) => d.value > 0)?.value ?? lineChartData[0]?.value ?? 0;
     const lastVal = lineChartData[lineChartData.length - 1]?.value ?? 0;
-    return lastVal >= firstVal ? "#10B981" : "#EF4444";
+    return lastVal >= firstVal;
   }, [lineChartData]);
 
   const lineChartWidth = React.useMemo(() => {
@@ -379,8 +401,27 @@ export default function ReportScreen() {
             data={pieData as any}
             donut
             radius={100}
-            innerRadius={55}
+            innerRadius={65}
             innerCircleColor={Colors.white}
+            focusOnPress={true}
+            toggleFocusOnPress={true}
+            centerLabelComponent={() => {
+              const selected = data.find((d, i) => (d.categoryId || i) === selectedCategoryKey);
+              if (!selected) {
+                return (
+                  <View style={{justifyContent: 'center', alignItems: 'center'}}>
+                    <Text style={{fontSize: 12, color: Colors.textMuted, textAlign: 'center'}}>Tổng cộng</Text>
+                    <Text style={{fontSize: 14, fontWeight: '800', color: PASTEL_PALETTE.title}}>{formatCurrency(data.reduce((sum, item) => sum + Number(item.totalAmount), 0))}</Text>
+                  </View>
+                );
+              }
+              return (
+                <View style={{justifyContent: 'center', alignItems: 'center', paddingHorizontal: 4}}>
+                  <Text style={{fontSize: 22, color: selected.color, fontWeight: '800'}}>{selected.percentage.toFixed(1)}%</Text>
+                  <Text style={{fontSize: 12, color: PASTEL_PALETTE.title, textAlign: 'center'}} numberOfLines={1}>{selected.categoryName}</Text>
+                </View>
+              );
+            }}
           />
         ) : (
           <Text style={{ color: Colors.textMuted, textAlign: "center", paddingHorizontal: 24 }}>
@@ -390,21 +431,35 @@ export default function ReportScreen() {
       </View>
 
       <View style={styles.legendContainer}>
-        {data.map((item, index) => (
-          <View key={`${item.categoryId}-${index}`} style={styles.legendItem}>
-            <View style={[styles.legendIconBox, { backgroundColor: item.color + '33' }]}>
-              {renderCategoryIcon(item.icon, item.color, 20)}
-            </View>
-            <View style={{ marginLeft: 8, flex: 1 }}>
-              <Text style={[styles.legendValue, { color: item.color, fontSize: 16 }]}>
-                {item.percentage.toFixed(1)}%
-              </Text>
-              <Text style={[styles.legendLabel, { marginTop: 0, fontSize: 12 }]} numberOfLines={1}>
-                {item.categoryName}
-              </Text>
-            </View>
-          </View>
-        ))}
+        {data.map((item, index) => {
+          const key = item.categoryId || index;
+          const isSelected = selectedCategoryKey === key;
+          
+          return (
+            <TouchableOpacity 
+              key={`${key}-${index}`} 
+              style={[
+                styles.legendItem, 
+                isSelected && { opacity: 1 }, 
+                !isSelected && selectedCategoryKey !== null && { opacity: 0.4 }
+              ]}
+              onPress={() => setSelectedCategoryKey(isSelected ? null : key)}
+              activeOpacity={0.8}
+            >
+              <View style={[styles.legendIconBox, { backgroundColor: item.color + '33' }]}>
+                {renderCategoryIcon(item.icon, item.color, 20)}
+              </View>
+              <View style={{ marginLeft: 8, flex: 1 }}>
+                <Text style={[styles.legendValue, { color: item.color, fontSize: 16 }]}>
+                  {item.percentage.toFixed(1)}%
+                </Text>
+                <Text style={[styles.legendLabel, { marginTop: 0, fontSize: 12 }]} numberOfLines={1}>
+                  {item.categoryName}
+                </Text>
+              </View>
+            </TouchableOpacity>
+          );
+        })}
       </View>
     </View>
   );
@@ -562,7 +617,7 @@ export default function ReportScreen() {
                     <View style={styles.lineChartLegend}>
                       <View style={[styles.lineTrendDot, { backgroundColor: lineTrendColor }]} />
                       <Text style={styles.lineChartLegendText}>
-                        {lineTrendColor === "#10B981" ? "Xu hướng tăng" : "Xu hướng giảm"}
+                        {isTrendUp ? "Xu hướng tăng" : "Xu hướng giảm"}
                       </Text>
                       <Text style={styles.lineChartHint}>Chạm vào biểu đồ để xem giá trị</Text>
                     </View>
@@ -632,8 +687,8 @@ export default function ReportScreen() {
             )}
           </View>
 
-          {/* Giao dịch chưa phân loại — phân loại trực tiếp trong báo cáo (tab Chi tiêu) */}
-          {activeTab === "expense" && unclassified.length > 0 && (
+          {/* Giao dịch chưa phân loại — phân loại trực tiếp trong báo cáo */}
+          {unclassified.length > 0 && (
             <View style={styles.unclassifiedSection}>
               <View style={styles.unclassifiedHeader}>
                 <Ionicons name="alert-circle" size={18} color="#F59E0B" />
@@ -644,7 +699,7 @@ export default function ReportScreen() {
                 <View key={t.transactionCode} style={styles.unclassifiedItem}>
                   <View style={{ flex: 1, marginRight: 10 }}>
                     <Text style={styles.unclassifiedItemTitle} numberOfLines={1}>
-                      {t.note || "Rút tiền về ngân hàng"}
+                      {t.note || (activeTab === "expense" ? "Giao dịch chi tiêu" : "Giao dịch thu nhập")}
                     </Text>
                     <Text style={styles.unclassifiedItemSub}>{formatCurrency(Number(t.amount))}</Text>
                   </View>
@@ -668,18 +723,27 @@ export default function ReportScreen() {
                 <Ionicons name="chevron-down" size={20} color={Colors.primary} />
               </TouchableOpacity>
 
-              {activeDistributionData.map((item, index) => (
-                <View key={`${distributionPage}-${item.categoryId}-${index}`} style={styles.categoryItem}>
-                  <View style={[styles.categoryIconContainer, { backgroundColor: item.color + '1A' }]}>
-                    {renderCategoryIcon(item.icon, item.color, 22)}
-                  </View>
-                  <View style={styles.categoryDetails}>
-                    <Text style={styles.categoryItemTitle}>{item.categoryName}</Text>
-                    <Text style={styles.categoryItemSubtitle}>{item.percentage.toFixed(1)}%</Text>
-                  </View>
-                  <Text style={styles.categoryAmount}>{formatCurrency(item.totalAmount)}</Text>
-                </View>
-              ))}
+              {activeDistributionData.map((item, index) => {
+                const key = item.categoryId || index;
+                const isSelected = selectedCategoryKey === key;
+                return (
+                  <TouchableOpacity 
+                    key={`${distributionPage}-${key}-${index}`} 
+                    style={[styles.categoryItem, isSelected && { borderColor: item.color, borderWidth: 2 }]}
+                    onPress={() => setSelectedCategoryKey(isSelected ? null : key)}
+                    activeOpacity={0.8}
+                  >
+                    <View style={[styles.categoryIconContainer, { backgroundColor: item.color + '1A' }]}>
+                      {renderCategoryIcon(item.icon, item.color, 22)}
+                    </View>
+                    <View style={styles.categoryDetails}>
+                      <Text style={styles.categoryItemTitle}>{item.categoryName}</Text>
+                      <Text style={styles.categoryItemSubtitle}>{item.percentage.toFixed(1)}%</Text>
+                    </View>
+                    <Text style={styles.categoryAmount}>{formatCurrency(item.totalAmount)}</Text>
+                  </TouchableOpacity>
+                );
+              })}
             </>
           )}
 
@@ -747,9 +811,29 @@ export default function ReportScreen() {
 
       {/* Chọn danh mục để phân loại nhanh */}
       <CategorySelectModal
-        visible={isCategoryModalVisible}
+        visible={isCategoryModalVisible && !isAddCategoryModalVisible}
         onClose={() => { setIsCategoryModalVisible(false); setClassifyingCode(null); }}
         onSelect={(item) => handleSelectCategory(item)}
+        onAddCategory={() => {
+          setIsCategoryModalVisible(false);
+          setTimeout(() => setIsAddCategoryModalVisible(true), 350);
+        }}
+      />
+
+      <AddCategoryModal 
+        visible={isAddCategoryModalVisible}
+        onClose={() => setIsAddCategoryModalVisible(false)}
+        onBack={() => {
+          setIsAddCategoryModalVisible(false);
+          setTimeout(() => setIsCategoryModalVisible(true), 350);
+        }}
+        onCreated={(category, groupName) => {
+          setIsAddCategoryModalVisible(false);
+          // If a category was created, automatically select it for the pending classification
+          if (category) {
+             handleSelectCategory(category);
+          }
+        }}
       />
 
       {isSaving && (

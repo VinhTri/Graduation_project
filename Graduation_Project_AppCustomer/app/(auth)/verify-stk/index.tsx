@@ -136,12 +136,12 @@ export default function VerifyStkScreen() {
 
               {/* Visual Leather Wallet Card */}
               <View style={styles.walletCardContainer}>
-                <View style={[styles.walletBody, { backgroundColor: '#0D9488' }]}>
+                <View style={[styles.walletBody, { backgroundColor: '#F472B6' }]}>
                   <View style={styles.walletStitchBorder} />
                   <View style={styles.walletSlit} />
                   
                   {/* Wallet Flap */}
-                  <View style={[styles.walletFlap, { backgroundColor: '#115E59' }]}>
+                  <View style={[styles.walletFlap, { backgroundColor: Colors.primary }]}>
                     <View style={styles.walletFlapStitch} />
                     <View style={styles.snapButton}>
                       <View style={styles.snapButtonInner}>

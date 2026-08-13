@@ -59,6 +59,14 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
             java.time.LocalDateTime endDate
     );
 
+    java.util.List<Transaction> findByUserAndTypeInAndStatusAndWallet_IsDefaultTrueAndCreatedAtBetween(
+            com.project.app.user.entity.User user,
+            java.util.List<com.project.app.transaction.enums.TransactionType> types,
+            com.project.app.transaction.enums.TransactionStatus status,
+            java.time.LocalDateTime startDate,
+            java.time.LocalDateTime endDate
+    );
+
     @org.springframework.data.jpa.repository.Query("SELECT COALESCE(SUM(t.amount), 0) FROM Transaction t WHERE t.wallet.id = :walletId " +
            "AND t.type IN :types AND t.status = :status AND t.createdAt >= :startOfDay")
     java.math.BigDecimal sumDailyTransactedAmount(

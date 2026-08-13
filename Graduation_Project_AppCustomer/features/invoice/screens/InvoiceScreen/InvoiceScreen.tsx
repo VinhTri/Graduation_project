@@ -99,8 +99,8 @@ export const InvoiceScreen = () => {
       setSuccessMessage(`Thanh toán thành công hóa đơn "${itemToPay.name}"!`);
       setSuccessModalVisible(true);
     } catch (error: any) {
-      console.error(error);
-      setErrorMessage(error?.response?.data?.message || "Có lỗi xảy ra khi thanh toán.");
+      console.log("Pay Invoice Error:", error);
+      setErrorMessage(error?.message || error?.response?.data?.message || "Có lỗi xảy ra khi thanh toán.");
       setErrorModalVisible(true);
     } finally {
       setItemToPay(null);
@@ -285,18 +285,19 @@ export const InvoiceScreen = () => {
                 <Text style={styles.headerSubtitle}>{t('invoiceSub')}</Text>
               </View>
             </View>
+            <TouchableOpacity 
+              style={styles.createButton}
+              onPress={() => router.push('/invoice/create')}
+            >
+              <Ionicons name="add" size={16} color="#FFFFFF" />
+              <Text style={styles.createButtonText}>Tạo mới</Text>
+            </TouchableOpacity>
           </View>
         </LinearGradient>
       </View>
 
       {/* Services Grid */}
       <View style={styles.servicesGridContainer}>
-        <TouchableOpacity style={styles.serviceGridItem} onPress={() => router.push('/invoice/create')} activeOpacity={0.7}>
-          <View style={[styles.serviceGridIconWrap, { backgroundColor: '#F1F5F9' }]}>
-            <Ionicons name="add" size={24} color="#64748B" />
-          </View>
-          <Text style={styles.serviceGridText}>Tạo mới</Text>
-        </TouchableOpacity>
 
         <TouchableOpacity style={styles.serviceGridItem} onPress={() => router.push('/invoice/service/electricity')} activeOpacity={0.7}>
           <View style={[styles.serviceGridIconWrap, { backgroundColor: '#FEF3C7' }]}>

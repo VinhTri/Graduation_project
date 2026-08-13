@@ -41,18 +41,22 @@ public class ReportServiceImpl implements ReportService {
      * - Chi tiêu (EXPENSE)  -> tiền RÚT (WITHDRAW).
      * - Thu nhập (INCOME)   -> tiền NẠP (TOP_UP).
      */
-    private TransactionType resolveType(TransactionType requested) {
-        if (requested == TransactionType.EXPENSE) return TransactionType.WITHDRAW;
-        if (requested == TransactionType.INCOME) return TransactionType.TOP_UP;
-        return requested;
+    private List<TransactionType> resolveTypes(TransactionType requested) {
+        if (requested == TransactionType.EXPENSE) {
+            return Arrays.asList(TransactionType.WITHDRAW, TransactionType.TRANSFER, TransactionType.PAYMENT, TransactionType.BANK_LINK_FEE, TransactionType.EXPENSE);
+        }
+        if (requested == TransactionType.INCOME) {
+            return Arrays.asList(TransactionType.TOP_UP, TransactionType.RECEIVE_TRANSFER, TransactionType.INCOME);
+        }
+        return Collections.singletonList(requested);
     }
 
     @Override
     @Transactional(readOnly = true)
     public List<ReportDistributionResponse> getDistributionReport(User user, TransactionType type, String filter, LocalDate date) {
         LocalDateTime[] dateRange = getDateRange(filter, date);
-        List<Transaction> transactions = transactionRepository.findByUserAndTypeAndStatusAndWallet_IsDefaultTrueAndCreatedAtBetween(
-                user, resolveType(type), TransactionStatus.SUCCESS, dateRange[0], dateRange[1]
+        List<Transaction> transactions = transactionRepository.findByUserAndTypeInAndStatusAndWallet_IsDefaultTrueAndCreatedAtBetween(
+                user, resolveTypes(type), TransactionStatus.SUCCESS, dateRange[0], dateRange[1]
         );
 
         // Chỉ phân tích giao dịch đã gắn danh mục; chưa phân loại hiển thị riêng trên FE.
@@ -118,8 +122,8 @@ public class ReportServiceImpl implements ReportService {
     @Transactional(readOnly = true)
     public List<ReportDistributionResponse> getGroupDistributionReport(User user, TransactionType type, String filter, LocalDate date) {
         LocalDateTime[] dateRange = getDateRange(filter, date);
-        List<Transaction> transactions = transactionRepository.findByUserAndTypeAndStatusAndWallet_IsDefaultTrueAndCreatedAtBetween(
-                user, resolveType(type), TransactionStatus.SUCCESS, dateRange[0], dateRange[1]
+        List<Transaction> transactions = transactionRepository.findByUserAndTypeInAndStatusAndWallet_IsDefaultTrueAndCreatedAtBetween(
+                user, resolveTypes(type), TransactionStatus.SUCCESS, dateRange[0], dateRange[1]
         );
 
         List<Transaction> classified = transactions.stream()
@@ -214,8 +218,8 @@ public class ReportServiceImpl implements ReportService {
     @Transactional(readOnly = true)
     public List<ReportTrendResponse> getTrendReport(User user, TransactionType type, String filter, LocalDate date) {
         LocalDateTime[] dateRange = getDateRange(filter, date);
-        List<Transaction> transactions = transactionRepository.findByUserAndTypeAndStatusAndWallet_IsDefaultTrueAndCreatedAtBetween(
-                user, resolveType(type), TransactionStatus.SUCCESS, dateRange[0], dateRange[1]
+        List<Transaction> transactions = transactionRepository.findByUserAndTypeInAndStatusAndWallet_IsDefaultTrueAndCreatedAtBetween(
+                user, resolveTypes(type), TransactionStatus.SUCCESS, dateRange[0], dateRange[1]
         );
 
         // Tab chi tiêu: xu hướng chỉ tính giao dịch rút đã phân loại.

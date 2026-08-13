@@ -17,10 +17,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { PASTEL_PALETTE } from '@/shared/constants/PastelPalette';
 import { friendshipService, FriendshipResponse } from '@/shared/api/services/friendship.service';
 import { splitBillService } from '@/shared/api/services/splitBillService';
-import { transactionService } from '@/shared/api/services/transactionService';
 import ConfirmModal from '@/shared/components/ConfirmModal/ConfirmModal';
-import { CategorySelectModal } from '@/features/categories/components/CategorySelectModal';
-import { AddCategoryModal } from '@/features/categories/components/AddCategoryModal';
 import { styles } from './CreateSplitBillScreen.styles';
 
 export const CreateSplitBillScreen = () => {
@@ -46,25 +43,6 @@ export const CreateSplitBillScreen = () => {
   const [errorMessage, setErrorMessage] = useState('');
   const [successModalVisible, setSuccessModalVisible] = useState(false);
   const [createdBillId, setCreatedBillId] = useState<number | null>(null);
-
-  // Notebook state
-  const [recordToNotebook, setRecordToNotebook] = useState(false);
-  const [notebookCategory, setNotebookCategory] = useState<any>(null);
-  const [step, setStep] = useState<'form' | 'select' | 'create' | 'wait'>('form');
-  const switchTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  const goToStepAfterClose = (next: 'form' | 'select' | 'create' | 'wait') => {
-    if (switchTimerRef.current) clearTimeout(switchTimerRef.current);
-    setStep('wait');
-    switchTimerRef.current = setTimeout(() => {
-      setStep(next);
-      switchTimerRef.current = null;
-    }, 350);
-  };
-
-  useEffect(() => () => {
-    if (switchTimerRef.current) clearTimeout(switchTimerRef.current);
-  }, []);
 
   useEffect(() => {
     loadFriends();
@@ -140,9 +118,8 @@ export const CreateSplitBillScreen = () => {
     numericTotalAmount >= 2000 &&
     selectedCount > 0 &&
     isAmountValid &&
-    (!recordToNotebook || !!notebookCategory) &&
     !submitting;
-
+  
   const handleSubmit = async () => {
     if (!title.trim()) {
       setErrorMessage('Vui lòng nhập tên khoản chia.');
@@ -170,26 +147,16 @@ export const CreateSplitBillScreen = () => {
         amount: perPersonAmount,
       }));
 
-      const res: any = await splitBillService.createSplitBill({
+      const payload = {
         title: title.trim(),
         totalAmount: numericTotalAmount,
         note: note.trim() || undefined,
         members: membersPayload,
-      });
+      };
+
+      const res: any = await splitBillService.createSplitBill(payload);
 
       if (res && res.success) {
-        if (recordToNotebook && notebookCategory && numericTotalAmount > 0) {
-          try {
-            await transactionService.createManualTransaction({
-              amount: numericTotalAmount,
-              type: 'EXPENSE',
-              categoryId: notebookCategory.id,
-              note: `Chia tiền: ${title.trim()}`.substring(0, 40),
-            });
-          } catch (e) {
-            console.log('Error creating manual transaction:', e);
-          }
-        }
         setCreatedBillId(res.data?.id || null);
         setSuccessModalVisible(true);
       } else {
@@ -310,49 +277,6 @@ export const CreateSplitBillScreen = () => {
             />
           </View>
 
-          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 8 }}>
-            <Text style={[styles.label, { marginBottom: 0 }]}>Ghi khoản chi vào sổ tay</Text>
-            <Switch
-              value={recordToNotebook}
-              onValueChange={setRecordToNotebook}
-              trackColor={{ false: '#E2E8F0', true: PASTEL_PALETTE.accentDeep }}
-            />
-          </View>
-
-          {recordToNotebook && (
-            <View style={{ marginTop: 16 }}>
-              <Text style={[styles.label, { marginBottom: 8 }]}>
-                Chọn danh mục chi tiêu <Text style={{ color: '#EF4444' }}>*</Text>
-              </Text>
-              <TouchableOpacity
-                style={{
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  paddingHorizontal: 16,
-                  paddingVertical: 12,
-                  backgroundColor: PASTEL_PALETTE.white,
-                  borderWidth: 1,
-                  borderColor: PASTEL_PALETTE.border,
-                  borderRadius: 12,
-                }}
-                activeOpacity={0.7}
-                onPress={() => setStep('select')}
-              >
-                {notebookCategory ? (
-                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                    <View style={{ width: 28, height: 28, borderRadius: 14, backgroundColor: notebookCategory.bgColor || `${notebookCategory.color}22`, alignItems: 'center', justifyContent: 'center', marginRight: 12 }}>
-                      <Ionicons name={notebookCategory.icon as any} size={16} color={notebookCategory.color || PASTEL_PALETTE.accentDeep} />
-                    </View>
-                    <Text style={{ fontSize: 15, color: PASTEL_PALETTE.title }}>{notebookCategory.label}</Text>
-                  </View>
-                ) : (
-                  <Text style={{ fontSize: 15, color: PASTEL_PALETTE.textMuted }}>Chọn danh mục...</Text>
-                )}
-                <Ionicons name="chevron-down" size={20} color={PASTEL_PALETTE.textMuted} />
-              </TouchableOpacity>
-            </View>
-          )}
         </View>
 
         {/* Card 2: Chọn bạn bè */}
@@ -537,7 +461,7 @@ export const CreateSplitBillScreen = () => {
         title="Gửi yêu cầu thành công!"
         message={`Đã gửi yêu cầu chia tiền '${title}' đến ${selectedCount} người bạn. Hệ thống đã gửi thông báo chuông và email qua Gmail cho bạn bè.`}
         iconName="checkmark-circle"
-        iconColor="#10B981"
+        iconColor="#EC4899"
         confirmText="Xem chi tiết"
         cancelText="Về danh sách"
         hideCancel={false}
@@ -546,40 +470,7 @@ export const CreateSplitBillScreen = () => {
         onCancel={handleGoToList}
       />
 
-      {/* Category Selectors */}
-      <CategorySelectModal
-        visible={step === 'select'}
-        onClose={() => setStep('form')}
-        onSelect={(item, groupName) => {
-          setNotebookCategory({
-            id: item.id,
-            label: item.label,
-            icon: item.icon,
-            color: item.color,
-            bgColor: item.bgColor,
-            groupName,
-          });
-          setStep('form');
-        }}
-        onAddCategory={() => goToStepAfterClose('create')}
-      />
 
-      <AddCategoryModal
-        visible={step === 'create'}
-        onClose={() => setStep('form')}
-        onBack={() => goToStepAfterClose('select')}
-        onCreated={(newItem, groupName) => {
-          setNotebookCategory({
-            id: newItem.id,
-            label: newItem.label,
-            icon: newItem.icon,
-            color: newItem.color,
-            bgColor: newItem.bgColor,
-            groupName,
-          });
-          setStep('form');
-        }}
-      />
     </KeyboardAvoidingView>
   );
 };

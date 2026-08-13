@@ -82,7 +82,7 @@ export const RentInvoiceScreen = () => {
           }
         }
       } catch (error) {
-        console.error(error);
+        console.log("L?i:", error);
         setErrorMessage("Không thể lấy thông tin hóa đơn");
         setErrorModalVisible(true);
       } finally {
@@ -196,8 +196,8 @@ export const RentInvoiceScreen = () => {
       
       setShowSuccessModal(true);
     } catch (error: any) {
-      console.error(error);
-      setErrorMessage(error?.response?.data?.message || "Có lỗi xảy ra khi lưu hóa đơn.");
+      console.log("L?i:", error);
+      setErrorMessage(error?.message || error?.response?.data?.message || "Có lỗi xảy ra khi lưu hóa đơn.");
       setErrorModalVisible(true);
     } finally {
       setLoading(false);

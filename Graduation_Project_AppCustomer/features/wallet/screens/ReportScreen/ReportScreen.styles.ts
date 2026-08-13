@@ -122,7 +122,7 @@ export const styles = StyleSheet.create({
   },
   summaryCardActive: {
     borderColor: Colors.primary,
-    backgroundColor: "#F0FDFA",
+    backgroundColor: Colors.primaryLight,
   },
   summaryLabelRow: {
     flexDirection: "row",

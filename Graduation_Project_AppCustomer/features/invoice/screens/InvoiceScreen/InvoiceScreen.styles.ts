@@ -349,7 +349,7 @@ export const styles = StyleSheet.create({
   },
   serviceGridItem: {
     alignItems: 'center',
-    width: '18%',
+    width: '22%',
   },
   serviceGridIconWrap: {
     width: 48,

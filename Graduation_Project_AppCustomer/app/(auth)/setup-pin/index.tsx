@@ -6,6 +6,7 @@ import { useRouter } from 'expo-router';
 import { styles } from '@/features/auth/styles/setup-pin.styles';
 import { axiosClient } from '../../../shared/api/axiosClient';
 import SuccessModal from '../../../shared/components/SuccessModal/SuccessModal';
+import Colors from '../../../shared/constants/Colors';
 
 export default function SetupPinScreen() {
   const router = useRouter();
@@ -114,7 +115,7 @@ export default function SetupPinScreen() {
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <View style={styles.iconContainer}>
-          <Feather name="lock" size={32} color="#109185" />
+          <Feather name="lock" size={32} color={Colors.primary} />
         </View>
         <Text style={styles.title}>
           {step === 'create' ? 'Thiết lập mã PIN' : 'Xác nhận mã PIN'}

@@ -201,13 +201,13 @@ export const BudgetScreen = () => {
           </View>
         </View>
         <TouchableOpacity
-          style={[styles.addButton, { backgroundColor: theme.isDark ? theme.bgSoft : 'rgba(255, 255, 255, 0.7)' }]}
+          style={[styles.addButton, { backgroundColor: '#EC4899', shadowColor: '#EC4899', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.25, shadowRadius: 8, elevation: 3 }]}
           onPress={() => router.push('/budget/create')}
           activeOpacity={0.8}
         >
-          <Ionicons name="add-outline" size={18} color={theme.isDark ? theme.primary : PASTEL_PALETTE.title} />
-          <Text style={[styles.addButtonText, { color: theme.isDark ? theme.primary : PASTEL_PALETTE.title }]}>
-            {isEn ? 'New' : 'Thêm mới'}
+          <Ionicons name="add" size={16} color="#FFFFFF" />
+          <Text style={[styles.addButtonText, { color: '#FFFFFF', fontWeight: '800' }]}>
+            {isEn ? 'New' : 'Tạo mới'}
           </Text>
         </TouchableOpacity>
       </View>

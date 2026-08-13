@@ -467,7 +467,7 @@ export const SplitBillDetailScreen = () => {
         title="Thành công!"
         message={successMessage}
         iconName="checkmark-circle"
-        iconColor="#10B981"
+        iconColor="#EC4899"
         confirmText="Đóng"
         hideCancel={true}
         confirmButtonColor={PASTEL_PALETTE.accentDeep}
