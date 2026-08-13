@@ -7,9 +7,10 @@ import { PinModal, OtpModal, ResetPinModal, SuccessModal } from '../../../shared
 type Props = {
   visible: boolean;
   onClose: () => void;
+  startMode?: 'change' | 'forgot';
 };
 
-export const ChangePinFlow = ({ visible, onClose }: Props) => {
+export const ChangePinFlow = ({ visible, onClose, startMode = 'change' }: Props) => {
   const [currentPinVisible, setCurrentPinVisible] = useState(false);
   const [newPinVisible, setNewPinVisible] = useState(false);
   const [otpVisible, setOtpVisible] = useState(false);
@@ -38,12 +39,21 @@ export const ChangePinFlow = ({ visible, onClose }: Props) => {
       return;
     }
 
-    setMode('change');
+    setMode(startMode);
     setPinError('');
-    setCurrentPinVisible(true);
+    
+    const initializeMode = async () => {
+      if (startMode === 'forgot') {
+        handleForgotPin();
+      } else {
+        setCurrentPinVisible(true);
+      }
+    };
+
     AsyncStorage.getItem('userEmail').then(async (email) => {
       if (email) {
         setUserEmail(email);
+        initializeMode();
         return;
       }
       try {
@@ -55,9 +65,11 @@ export const ChangePinFlow = ({ visible, onClose }: Props) => {
         }
       } catch {
         // ignore
+      } finally {
+        initializeMode();
       }
     });
-  }, [visible]);
+  }, [visible, startMode]);
 
   const closeAll = () => {
     setCurrentPinVisible(false);

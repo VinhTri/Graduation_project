@@ -1,5 +1,6 @@
 import { StyleSheet } from 'react-native';
 import Colors from '../../constants/Colors';
+import { PASTEL_PALETTE } from '../../constants/PastelPalette';
 
 export const styles = StyleSheet.create({
   overlay: {
@@ -31,7 +32,7 @@ export const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: 'rgba(16, 145, 133, 0.1)',
+    backgroundColor: PASTEL_PALETTE.accentSoft,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 16,
@@ -81,8 +82,8 @@ export const styles = StyleSheet.create({
     backgroundColor: 'transparent',
   },
   pinDotActive: {
-    backgroundColor: Colors.primary,
-    borderColor: Colors.primary,
+    backgroundColor: PASTEL_PALETTE.primary,
+    borderColor: PASTEL_PALETTE.primary,
     transform: [{ scale: 1.2 }],
   },
   errorText: {
@@ -91,7 +92,7 @@ export const styles = StyleSheet.create({
     marginBottom: 16,
   },
   forgotPinText: {
-    color: Colors.primary,
+    color: PASTEL_PALETTE.primary,
     fontSize: 14,
     fontWeight: '600',
     marginBottom: 32,

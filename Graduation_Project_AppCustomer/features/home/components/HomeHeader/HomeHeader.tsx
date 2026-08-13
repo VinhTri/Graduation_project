@@ -43,14 +43,6 @@ export const HomeHeader = () => {
       color: theme.isDark ? theme.primary : PASTEL_PALETTE.accentDeep,
       bgColor: theme.isDark ? theme.bgSoft : PASTEL_PALETTE.accentSoft,
     },
-    {
-      id: "utilities",
-      label: isEn ? "Utilities" : "Ví tiện ích",
-      icon: "grid-outline" as const,
-      color: theme.textSecondary,
-      bgColor: theme.isDark ? theme.bgSoft : "rgba(255, 255, 255, 0.72)",
-      route: "/all-services",
-    },
   ];
 
   useFocusEffect(

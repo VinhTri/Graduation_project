@@ -37,6 +37,8 @@ public enum ErrorCode {
     ACCOUNT_NUMBER_ALREADY_EXISTS("WALL_2006", "Số tài khoản này đã được người khác sử dụng!", HttpStatus.CONFLICT),
     RECEIVER_NOT_FOUND("WALL_2008", "Không tìm thấy người nhận với số tài khoản này!", HttpStatus.NOT_FOUND),
     CANNOT_TRANSFER_SELF("WALL_2009", "Không thể chuyển tiền cho chính mình!", HttpStatus.BAD_REQUEST),
+    DAILY_LIMIT_EXCEEDED("WALL_2010", "Giao dịch vượt quá hạn mức trong ngày của ví!", HttpStatus.BAD_REQUEST),
+    TRANSACTION_LIMIT_EXCEEDED("WALL_2011", "Số tiền vượt quá hạn mức cho một giao dịch!", HttpStatus.BAD_REQUEST),
 
     // ---- LỖI DANH MỤC ----
     CATEGORY_GROUP_NOT_FOUND("CAT_5001", "Không tìm thấy nhóm danh mục!", HttpStatus.NOT_FOUND),

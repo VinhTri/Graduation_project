@@ -67,10 +67,11 @@ export const styles = StyleSheet.create({
   },
   quickActionsRow: {
     flexDirection: "row",
-    justifyContent: "space-between",
+    justifyContent: "flex-start",
     alignItems: "flex-start",
     paddingHorizontal: 4,
     zIndex: 2,
+    gap: 24,
   },
   actionItem: {
     alignItems: "center",

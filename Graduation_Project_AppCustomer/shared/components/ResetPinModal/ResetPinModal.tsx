@@ -3,6 +3,7 @@ import { View, Text, TouchableOpacity, Modal, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather, Ionicons } from '@expo/vector-icons';
 import { styles } from '../PinModal/PinModal.styles';
+import { PASTEL_PALETTE } from '../../constants/PastelPalette';
 
 interface ResetPinModalProps {
   visible: boolean;
@@ -130,7 +131,7 @@ export default function ResetPinModal({ visible, onClose, onConfirm, errorMessag
           <View style={styles.dragIndicator} />
           
           <View style={styles.headerIconContainer}>
-            <Ionicons name="key" size={28} color="#109185" />
+            <Ionicons name="key" size={28} color={PASTEL_PALETTE.primary} />
           </View>
 
           <View style={styles.headerRow}>

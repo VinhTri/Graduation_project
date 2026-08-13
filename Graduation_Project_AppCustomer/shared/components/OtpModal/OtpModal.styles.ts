@@ -1,4 +1,5 @@
 import { StyleSheet } from 'react-native';
+import { PASTEL_PALETTE } from '../../constants/PastelPalette';
 
 export const styles = StyleSheet.create({
   overlay: {
@@ -25,7 +26,7 @@ export const styles = StyleSheet.create({
     width: 64,
     height: 64,
     borderRadius: 32,
-    backgroundColor: 'rgba(16, 145, 133, 0.1)',
+    backgroundColor: PASTEL_PALETTE.accentSoft,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 20,
@@ -46,7 +47,7 @@ export const styles = StyleSheet.create({
   },
   emailHighlight: {
     fontWeight: '700',
-    color: '#109185',
+    color: PASTEL_PALETTE.primary,
   },
   inputContainer: {
     width: '100%',
@@ -123,8 +124,8 @@ export const styles = StyleSheet.create({
     borderRadius: 16,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#109185',
-    shadowColor: '#109185',
+    backgroundColor: PASTEL_PALETTE.primary,
+    shadowColor: PASTEL_PALETTE.primary,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.2,
     shadowRadius: 8,

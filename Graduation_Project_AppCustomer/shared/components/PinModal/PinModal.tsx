@@ -3,6 +3,7 @@ import { View, Text, TouchableOpacity, Modal, Alert, TouchableWithoutFeedback } 
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather, Ionicons } from '@expo/vector-icons';
 import { styles } from './PinModal.styles';
+import { PASTEL_PALETTE } from '../../constants/PastelPalette';
 
 interface PinModalProps {
   visible: boolean;
@@ -112,7 +113,7 @@ export default function PinModal({
               <View style={styles.dragIndicator} />
               
               <View style={styles.headerIconContainer}>
-                <Ionicons name="lock-closed" size={28} color="#109185" />
+                <Ionicons name="lock-closed" size={28} color={PASTEL_PALETTE.primary} />
               </View>
 
               <View style={styles.headerRow}>

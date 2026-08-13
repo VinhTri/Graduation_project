@@ -8,6 +8,7 @@ import { PASTEL_PALETTE } from '@/shared/constants/PastelPalette';
 import PinModal from '@/shared/components/PinModal/PinModal';
 import ConfirmModal from '@/shared/components/ConfirmModal/ConfirmModal';
 import { transactionService } from '@/shared/api/services/transactionService';
+import { ChangePinFlow } from '@/features/settings/components/ChangePinFlow';
 import { styles } from './TransferConfirmScreen.styles';
 
 export default function TransferConfirmScreen() {
@@ -34,6 +35,7 @@ export default function TransferConfirmScreen() {
   const formattedAmount = amount.toLocaleString('vi-VN');
 
   const [isPinModalVisible, setIsPinModalVisible] = useState(false);
+  const [isForgotPinFlowVisible, setIsForgotPinFlowVisible] = useState(false);
   const [pinError, setPinError] = useState("");
   const [loading, setLoading] = useState(false);
   const [errorModalVisible, setErrorModalVisible] = useState(false);
@@ -188,6 +190,11 @@ export default function TransferConfirmScreen() {
           setPinError("");
         }}
         onConfirm={handleConfirmPin}
+        onForgotPin={() => {
+          setIsPinModalVisible(false);
+          setPinError("");
+          setIsForgotPinFlowVisible(true);
+        }}
         errorMessage={pinError}
         title="Xác thực giao dịch"
         subtitle="Vui lòng nhập mã PIN bảo mật để hoàn tất chuyển tiền."
@@ -205,6 +212,12 @@ export default function TransferConfirmScreen() {
         confirmButtonColor={PASTEL_PALETTE.accentDeep}
         onConfirm={() => setErrorModalVisible(false)}
         onCancel={() => setErrorModalVisible(false)}
+      />
+
+      <ChangePinFlow 
+        visible={isForgotPinFlowVisible} 
+        onClose={() => setIsForgotPinFlowVisible(false)} 
+        startMode="forgot" 
       />
     </View>
   );

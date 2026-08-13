@@ -43,7 +43,7 @@ export const HomeWalletSummary = () => {
         </TouchableOpacity>
 
         {/* SmartSpend */}
-        <View style={[styles.walletItem, { borderRightColor: theme.divider }]}>
+        <View style={[styles.walletItem, styles.walletItemNoBorder]}>
           <View style={styles.smartSpendHeader}>
             <SmartSpendIcon size={16} borderRadius={4} />
             <Text style={styles.smartSpendLabel}>
@@ -53,24 +53,6 @@ export const HomeWalletSummary = () => {
           </View>
           <View style={styles.walletBalanceRow}>
             <Text style={[styles.walletBalance, { color: theme.textPrimary }]}>{isBalanceVisible ? `${walletBalance.toLocaleString("vi-VN")}đ` : "***"}</Text>
-            <Ionicons name="chevron-forward" size={14} color={theme.textMuted} />
-          </View>
-        </View>
-
-        {/* Tiết Kiệm */}
-        <View style={[styles.walletItem, { borderRightColor: theme.divider }]}>
-          <Text style={[styles.walletLabel, { color: theme.textSecondary }]}>{isEn ? 'Savings Wallet' : 'Ví Tiết Kiệm'}</Text>
-          <View style={styles.walletBalanceRow}>
-            <Text style={[styles.walletBalance, { color: theme.textMuted, fontSize: 13, fontWeight: "500" }]}>{isEn ? 'Not linked' : 'Chưa liên kết'}</Text>
-            <Ionicons name="chevron-forward" size={14} color={theme.textMuted} />
-          </View>
-        </View>
-
-        {/* Quỹ */}
-        <View style={[styles.walletItem, styles.walletItemNoBorder]}>
-          <Text style={[styles.walletLabel, { color: theme.textSecondary }]}>{isEn ? 'Group Fund' : 'Quỹ'}</Text>
-          <View style={styles.walletBalanceRow}>
-            <Text style={[styles.walletBalance, { color: theme.textMuted, fontSize: 13, fontWeight: "500" }]}>{isEn ? 'Not linked' : 'Chưa liên kết'}</Text>
             <Ionicons name="chevron-forward" size={14} color={theme.textMuted} />
           </View>
         </View>

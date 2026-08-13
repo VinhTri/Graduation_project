@@ -17,11 +17,11 @@ const VARIANT_THEME: Record<SuccessModalVariant, {
   shadowColor: string;
 }> = {
   default: {
-    iconColor: '#109185',
-    iconBg: '#E5F7F3',
-    buttonBg: '#109185',
-    loaderColor: '#109185',
-    shadowColor: '#000',
+    iconColor: '#EC4899',
+    iconBg: '#FCE7F3',
+    buttonBg: '#EC4899',
+    loaderColor: '#EC4899',
+    shadowColor: '#F472B6',
   },
   pastel: {
     iconColor: '#EC4899',

@@ -5,6 +5,7 @@ import {
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { styles } from './OtpModal.styles';
+import { PASTEL_PALETTE } from '../../constants/PastelPalette';
 
 interface OtpModalProps {
   visible: boolean;
@@ -69,7 +70,7 @@ export default function OtpModal({ visible, email, errorMessage, isSendingOtp = 
       >
         <View style={styles.modalContainer}>
           <View style={styles.iconContainer}>
-            <Feather name="mail" size={32} color="#109185" />
+            <Feather name="mail" size={32} color={PASTEL_PALETTE.primary} />
           </View>
 
           <Text style={styles.title}>Xác thực Email</Text>
@@ -86,7 +87,7 @@ export default function OtpModal({ visible, email, errorMessage, isSendingOtp = 
           <View style={styles.inputContainer}>
             {isSendingOtp ? (
               <View style={styles.sendingContainer}>
-                <ActivityIndicator size="small" color="#109185" />
+                <ActivityIndicator size="small" color={PASTEL_PALETTE.primary} />
                 <Text style={styles.sendingText}>Đang gửi mã OTP...</Text>
               </View>
             ) : (

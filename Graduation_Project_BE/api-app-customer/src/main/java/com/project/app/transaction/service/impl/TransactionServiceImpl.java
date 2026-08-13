@@ -314,6 +314,8 @@ public class TransactionServiceImpl implements TransactionService {
         if (senderWallet.getBalance().compareTo(request.getAmount()) < 0) {
             throw new AppException(ErrorCode.INSUFFICIENT_BALANCE);
         }
+        
+        checkTransactionLimits(senderWallet, request.getAmount());
 
         String senderTxCode = "TF_OUT_" + System.currentTimeMillis() + UUID.randomUUID().toString().substring(0, 4).toUpperCase();
         String receiverTxCode = "TF_IN_" + System.currentTimeMillis() + UUID.randomUUID().toString().substring(0, 4).toUpperCase();
@@ -400,6 +402,8 @@ public class TransactionServiceImpl implements TransactionService {
         if (wallet.getBalance().compareTo(request.getAmount()) < 0) {
             throw new AppException(ErrorCode.INSUFFICIENT_BALANCE);
         }
+        
+        checkTransactionLimits(wallet, request.getAmount());
 
         String transactionCode = "WD" + System.currentTimeMillis() + UUID.randomUUID().toString().substring(0, 4).toUpperCase();
 
@@ -484,6 +488,7 @@ public class TransactionServiceImpl implements TransactionService {
             if (targetWallet.getBalance().compareTo(amount) < 0) {
                 throw new AppException(ErrorCode.INSUFFICIENT_BALANCE);
             }
+            checkTransactionLimits(targetWallet, amount);
             targetWallet.setBalance(targetWallet.getBalance().subtract(amount));
         } else {
             targetWallet.setBalance(targetWallet.getBalance().add(amount));
@@ -563,6 +568,7 @@ public class TransactionServiceImpl implements TransactionService {
             if (wallet.getBalance().compareTo(newAmount) < 0) {
                 throw new AppException(ErrorCode.INSUFFICIENT_BALANCE);
             }
+            checkTransactionLimits(wallet, newAmount);
             wallet.setBalance(wallet.getBalance().subtract(newAmount));
             adjustBudgetForExpense(user, category.getId(), wallet.getId(), newAmount, transaction.getCreatedAt().toLocalDate());
         } else {
@@ -661,6 +667,37 @@ public class TransactionServiceImpl implements TransactionService {
         }
         if (!activePeriods.isEmpty()) {
             budgetPeriodRepository.saveAll(activePeriods);
+        }
+    }
+
+    private void checkTransactionLimits(Wallet wallet, BigDecimal amount) {
+        if (!wallet.isLimitEnabled()) {
+            return;
+        }
+
+        if (wallet.getTransactionLimit() != null && amount.compareTo(wallet.getTransactionLimit()) > 0) {
+            throw new AppException(ErrorCode.TRANSACTION_LIMIT_EXCEEDED);
+        }
+
+        if (wallet.getDailyLimit() != null) {
+            java.time.LocalDateTime startOfDay = java.time.LocalDate.now().atStartOfDay();
+            java.util.List<com.project.app.transaction.enums.TransactionType> outgoingTypes = java.util.Arrays.asList(
+                    com.project.app.transaction.enums.TransactionType.TRANSFER,
+                    com.project.app.transaction.enums.TransactionType.WITHDRAW,
+                    com.project.app.transaction.enums.TransactionType.EXPENSE,
+                    com.project.app.transaction.enums.TransactionType.PAYMENT
+            );
+            
+            BigDecimal dailyTotal = transactionRepository.sumDailyTransactedAmount(
+                    wallet.getId(), 
+                    outgoingTypes, 
+                    com.project.app.transaction.enums.TransactionStatus.SUCCESS, 
+                    startOfDay
+            );
+            
+            if (dailyTotal.add(amount).compareTo(wallet.getDailyLimit()) > 0) {
+                throw new AppException(ErrorCode.DAILY_LIMIT_EXCEEDED);
+            }
         }
     }
 }

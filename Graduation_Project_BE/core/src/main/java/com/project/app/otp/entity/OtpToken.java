@@ -18,7 +18,7 @@ public class OtpToken {
     private String otp;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "VARCHAR(50)")
     private OtpPurpose purpose;
 
     @Column(nullable = false)
