@@ -404,6 +404,15 @@ export const styles = StyleSheet.create({
     marginBottom: 8,
     marginTop: 12,
   },
+  labelRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'baseline',
+  },
+  charCount: {
+    fontSize: 11,
+    color: PASTEL_PALETTE.textGray,
+  },
   topicRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -464,5 +473,14 @@ export const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '700',
     color: '#FFFFFF',
+  },
+  errorText: {
+    color: '#EF4444',
+    fontSize: 12,
+    marginTop: 4,
+    marginLeft: 4,
+  },
+  inputError: {
+    borderColor: '#EF4444',
   },
 });

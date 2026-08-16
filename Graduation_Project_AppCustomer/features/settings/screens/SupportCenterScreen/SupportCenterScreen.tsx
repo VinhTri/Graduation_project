@@ -161,6 +161,8 @@ export const SupportCenterScreen = () => {
   const [subject, setSubject] = useState('');
   const [content, setContent] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [subjectError, setSubjectError] = useState('');
+  const [contentError, setContentError] = useState('');
 
   const loadTickets = useCallback(async (isSilent = false) => {
     try {
@@ -242,6 +244,8 @@ export const SupportCenterScreen = () => {
       setSubject('');
     }
     setContent('');
+    setSubjectError('');
+    setContentError('');
     setModalVisible(true);
   };
 
@@ -253,14 +257,22 @@ export const SupportCenterScreen = () => {
   };
 
   const handleSubmitTicket = async () => {
+    let isValid = true;
     if (!subject.trim()) {
-      Alert.alert('Thông báo', 'Vui lòng nhập tiêu đề yêu cầu');
-      return;
+      setSubjectError('Vui lòng nhập tiêu đề yêu cầu');
+      isValid = false;
+    } else {
+      setSubjectError('');
     }
+    
     if (!content.trim()) {
-      Alert.alert('Thông báo', 'Vui lòng nhập nội dung chi tiết cần hỗ trợ');
-      return;
+      setContentError('Vui lòng nhập nội dung chi tiết cần hỗ trợ');
+      isValid = false;
+    } else {
+      setContentError('');
     }
+
+    if (!isValid) return;
 
     try {
       setSubmitting(true);
@@ -638,24 +650,40 @@ export const SupportCenterScreen = () => {
                 })}
               </View>
 
-              <Text style={styles.inputLabel}>Tiêu đề vấn đề *</Text>
+              <View style={styles.labelRow}>
+                <Text style={styles.inputLabel}>Tiêu đề vấn đề *</Text>
+                <Text style={styles.charCount}>{subject.length}/50</Text>
+              </View>
               <TextInput
-                style={styles.modalInput}
+                style={[styles.modalInput, subjectError ? styles.inputError : null]}
                 placeholder="VD: Cần hỗ trợ nạp tiền qua ngân hàng..."
                 placeholderTextColor={PASTEL_PALETTE.textGray}
                 value={subject}
-                onChangeText={setSubject}
+                maxLength={50}
+                onChangeText={(text) => {
+                  setSubject(text);
+                  if (subjectError) setSubjectError('');
+                }}
               />
+              {!!subjectError && <Text style={styles.errorText}>{subjectError}</Text>}
 
-              <Text style={styles.inputLabel}>Nội dung chi tiết *</Text>
+              <View style={styles.labelRow}>
+                <Text style={styles.inputLabel}>Nội dung chi tiết *</Text>
+                <Text style={styles.charCount}>{content.length}/150</Text>
+              </View>
               <TextInput
-                style={[styles.modalInput, styles.modalTextArea]}
+                style={[styles.modalInput, styles.modalTextArea, contentError ? styles.inputError : null]}
                 placeholder="Mô tả cụ thể vấn đề hoặc mã giao dịch bạn cần được trợ giúp..."
                 placeholderTextColor={PASTEL_PALETTE.textGray}
                 value={content}
-                onChangeText={setContent}
+                maxLength={150}
+                onChangeText={(text) => {
+                  setContent(text);
+                  if (contentError) setContentError('');
+                }}
                 multiline
               />
+              {!!contentError && <Text style={styles.errorText}>{contentError}</Text>}
 
               <TouchableOpacity
                 style={[styles.modalSubmitBtn, submitting && styles.modalSubmitBtnDisabled]}
