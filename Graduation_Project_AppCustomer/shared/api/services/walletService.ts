@@ -11,7 +11,7 @@ export interface WalletData {
   transactionLimit?: number;
   dailyLimit?: number;
   dailyTransactedAmount?: number;
-  walletType?: 'MAIN' | 'CASH' | string;
+  walletType?: 'MAIN' | 'MANUAL' | 'LINKED' | string;
 }
 
 export interface WalletSettingsRequest {
@@ -24,11 +24,6 @@ export interface WalletSettingsRequest {
 export const walletService = {
   getMyWallet: async (): Promise<WalletData> => {
     const response = await axiosClient.get(ENDPOINTS.WALLET.MY_WALLET);
-    return response.data;
-  },
-
-  getCashWallet: async (): Promise<WalletData> => {
-    const response = await axiosClient.get(ENDPOINTS.WALLET.CASH_WALLET);
     return response.data;
   },
 

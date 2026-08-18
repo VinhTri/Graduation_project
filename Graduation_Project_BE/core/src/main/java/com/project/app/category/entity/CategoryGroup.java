@@ -23,13 +23,13 @@ public class CategoryGroup {
     @Column(nullable = false, length = 24)
     private String title;
 
-    @Column(nullable = false)
+    @Column(nullable = false, length = 50)
     private String icon;
 
-    @Column(nullable = false)
+    @Column(nullable = false, length = 20)
     private String color;
 
-    @Column(name = "bg_color", nullable = false)
+    @Column(name = "bg_color", nullable = false, length = 20)
     private String bgColor;
 
     // If user is null, it means this is a default group system-wide

@@ -5,7 +5,6 @@ import java.math.BigDecimal;
 
 public interface WalletService {
     Wallet getDefaultWallet(Long userId);
-    Wallet getOrCreateCashWallet(Long userId);
     Wallet getWalletById(Long walletId, Long userId);
     void addBalance(Long walletId, BigDecimal amount);
     void updateWalletSettings(Long walletId, Long userId, com.project.app.wallet.dto.WalletSettingsDto request);

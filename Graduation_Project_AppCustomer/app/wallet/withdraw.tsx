@@ -1,6 +1,5 @@
-import React from 'react';
-import WithdrawScreen from '../../features/wallet/screens/WithdrawScreen/WithdrawScreen';
+import WithdrawScreen from '@/features/wallet/screens/WithdrawScreen'
 
-export default function WithdrawRoute() {
-  return <WithdrawScreen />;
+export default function WithdrawPage() {
+  return <WithdrawScreen />
 }

@@ -36,8 +36,12 @@ import com.project.app.transaction.enums.TransactionType;
 import com.project.app.transaction.repository.TransactionRepository;
 import com.project.app.user.entity.User;
 import com.project.app.user.repository.UserRepository;
+import com.project.app.category.entity.CategoryItem;
 import com.project.app.wallet.entity.Wallet;
+import com.project.app.wallet.entity.WalletTransaction;
+import com.project.app.wallet.enums.WalletTransactionType;
 import com.project.app.wallet.repository.WalletRepository;
+import com.project.app.wallet.repository.WalletTransactionRepository;
 import com.project.app.wallet.service.WalletService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -57,6 +61,7 @@ public class FundServiceImpl implements FundService {
     private static final int MAX_JOINED_FUNDS = 6;
     private static final int MAX_FUND_MEMBERS = 10;
     private static final BigDecimal MIN_AMOUNT = new BigDecimal("10000");
+    private static final BigDecimal SYSTEM_MIN_DEPOSIT = new BigDecimal("2000");
     private static final String FUND_DEPOSIT_CATEGORY_LABEL = "Nạp quỹ";
     private static final String FUND_WITHDRAW_CATEGORY_LABEL = "Rút quỹ";
 
@@ -67,6 +72,7 @@ public class FundServiceImpl implements FundService {
     private final WalletRepository walletRepository;
     private final AuthService authService;
     private final TransactionRepository transactionRepository;
+    private final WalletTransactionRepository walletTransactionRepository;
     private final CategoryItemRepository categoryItemRepository;
     private final UserRepository userRepository;
     private final FriendshipRepository friendshipRepository;
@@ -94,6 +100,7 @@ public class FundServiceImpl implements FundService {
                             .fundName(f.getName())
                             .balance(f.getBalance())
                             .targetAmount(f.getTargetAmount())
+                            .minDepositAmount(resolveMinDeposit(f))
                             .coverColorSeed(f.getCoverColorSeed())
                             .ownerId(f.getOwner().getId())
                             .ownerName(f.getOwner().getUsername())
@@ -123,6 +130,14 @@ public class FundServiceImpl implements FundService {
         if (request.getTargetAmount() == null || request.getTargetAmount().compareTo(MIN_AMOUNT) < 0) {
             throw new AppException(ErrorCode.FUND_TARGET_REQUIRED);
         }
+        if (request.getMinDepositAmount() != null) {
+            if (request.getMinDepositAmount().compareTo(SYSTEM_MIN_DEPOSIT) < 0) {
+                throw new AppException(ErrorCode.FUND_MIN_DEPOSIT_REQUIRED);
+            }
+            if (request.getMinDepositAmount().compareTo(request.getTargetAmount()) > 0) {
+                throw new AppException(ErrorCode.FUND_MIN_DEPOSIT_EXCEEDS_TARGET);
+            }
+        }
         if (fundRepository.existsByOwnerIdAndCoverColorSeedAndStatus(
                 user.getId(), request.getCoverColorSeed(), FundStatus.ACTIVE)) {
             throw new AppException(ErrorCode.FUND_COLOR_TAKEN);
@@ -133,6 +148,7 @@ public class FundServiceImpl implements FundService {
         fund.setName(request.getName().trim());
         fund.setBalance(BigDecimal.ZERO);
         fund.setTargetAmount(request.getTargetAmount());
+        fund.setMinDepositAmount(request.getMinDepositAmount());
         fund.setCoverColorSeed(request.getCoverColorSeed());
         fund.setStatus(FundStatus.ACTIVE);
         fund = fundRepository.save(fund);
@@ -156,15 +172,38 @@ public class FundServiceImpl implements FundService {
         if (!fund.getOwner().getId().equals(user.getId())) {
             throw new AppException(ErrorCode.FUND_NOT_OWNER);
         }
-        if (fund.getBalance().compareTo(BigDecimal.ZERO) > 0) {
-            throw new AppException(ErrorCode.FUND_HAS_BALANCE);
-        }
+
+        refundRemainingBalanceToOwner(user, fund);
 
         notificationRepository.deleteByTypeAndRelatedId(NotificationType.FUND_INVITE, fundId);
         notificationRepository.deleteByTypeAndRelatedId(NotificationType.FUND_INVITE_ACCEPTED, fundId);
         fundTransactionRepository.deleteByFundId(fundId);
         fundMemberRepository.deleteByFundId(fundId);
         fundRepository.delete(fund);
+    }
+
+    private void refundRemainingBalanceToOwner(User owner, Fund fund) {
+        BigDecimal remaining = fund.getBalance() == null ? BigDecimal.ZERO : fund.getBalance();
+        if (remaining.compareTo(BigDecimal.ZERO) <= 0) {
+            return;
+        }
+
+        Wallet wallet = walletService.getDefaultWallet(owner.getId());
+        wallet.setBalance(wallet.getBalance().add(remaining));
+        walletRepository.save(wallet);
+
+        fund.setBalance(BigDecimal.ZERO);
+        fundRepository.save(fund);
+
+        createWalletTransaction(
+                owner,
+                wallet,
+                remaining,
+                TransactionType.TOP_UP,
+                FUND_WITHDRAW_CATEGORY_LABEL,
+                "FWD",
+                "Rút từ quỹ \"" + fund.getName() + "\" về ví khi đóng quỹ"
+        );
     }
 
     @Override
@@ -192,10 +231,16 @@ public class FundServiceImpl implements FundService {
     @Transactional
     public FundDetailResponse deposit(User user, Long fundId, FundAmountRequest request) {
         verifyPin(user.getId(), request.getPinCode());
-        validateAmount(request.getAmount());
 
         Fund fund = requireActiveFund(fundId);
         FundMember member = requireActiveMember(fundId, user.getId());
+        BigDecimal minDeposit = resolveMinDeposit(fund);
+        if (request.getAmount() == null || request.getAmount().compareTo(minDeposit) < 0) {
+            throw new AppException(
+                    ErrorCode.FUND_DEPOSIT_BELOW_MINIMUM,
+                    "Số tiền nạp tối thiểu của quỹ này là " + formatAmount(minDeposit) + "đ"
+            );
+        }
 
         Wallet wallet = walletService.getDefaultWallet(user.getId());
         if (wallet.getBalance().compareTo(request.getAmount()) < 0) {
@@ -301,6 +346,9 @@ public class FundServiceImpl implements FundService {
     @Transactional
     public FundDetailResponse inviteMember(User user, Long fundId, InviteFundRequest request) {
         Fund fund = requireActiveFund(fundId);
+        if (!fund.getOwner().getId().equals(user.getId())) {
+            throw new AppException(ErrorCode.FUND_NOT_OWNER);
+        }
         requireActiveMember(fundId, user.getId());
 
         if (request.getUserId() == null) {
@@ -456,6 +504,18 @@ public class FundServiceImpl implements FundService {
         }
     }
 
+    private BigDecimal resolveMinDeposit(Fund fund) {
+        if (fund.getMinDepositAmount() == null || fund.getMinDepositAmount().compareTo(SYSTEM_MIN_DEPOSIT) < 0) {
+            return SYSTEM_MIN_DEPOSIT;
+        }
+        return fund.getMinDepositAmount();
+    }
+
+    private String formatAmount(BigDecimal amount) {
+        if (amount == null) return "0";
+        return String.format("%,d", amount.longValue()).replace(',', '.');
+    }
+
     private Fund requireActiveFund(Long fundId) {
         return fundRepository.findByIdAndStatus(fundId, FundStatus.ACTIVE)
                 .orElseThrow(() -> new AppException(ErrorCode.FUND_NOT_FOUND));
@@ -490,10 +550,12 @@ public class FundServiceImpl implements FundService {
             String codePrefix,
             String note
     ) {
-        Long categoryId = categoryItemRepository
+        CategoryItem category = categoryItemRepository
                 .findFirstByLabelAndUserIsNullAndIsDeletedFalse(categoryLabel)
-                .orElseThrow(() -> new AppException(ErrorCode.CATEGORY_ITEM_NOT_FOUND))
-                .getId();
+                .orElseThrow(() -> new AppException(ErrorCode.CATEGORY_ITEM_NOT_FOUND));
+
+        String transactionCode =
+                codePrefix + System.currentTimeMillis() + UUID.randomUUID().toString().substring(0, 4).toUpperCase();
 
         Transaction walletTx = new Transaction();
         walletTx.setUser(user);
@@ -501,12 +563,25 @@ public class FundServiceImpl implements FundService {
         walletTx.setAmount(amount);
         walletTx.setType(type);
         walletTx.setStatus(TransactionStatus.SUCCESS);
-        walletTx.setTransactionCode(
-                codePrefix + System.currentTimeMillis() + UUID.randomUUID().toString().substring(0, 4).toUpperCase()
-        );
+        walletTx.setTransactionCode(transactionCode);
         walletTx.setNote(note);
-        walletTx.setCategoryId(categoryId);
+        walletTx.setCategoryId(category.getId());
         transactionRepository.save(walletTx);
+
+        WalletTransactionType walletType = type == TransactionType.TOP_UP
+                ? WalletTransactionType.TOP_UP
+                : WalletTransactionType.WITHDRAW;
+
+        walletTransactionRepository.save(WalletTransaction.builder()
+                .user(user)
+                .wallet(wallet)
+                .amount(amount)
+                .type(walletType)
+                .note(note)
+                .categoryId(category.getId())
+                .categoryName(category.getLabel())
+                .transactionCode(transactionCode)
+                .build());
     }
 
     private FundSummaryResponse toSummary(Fund fund, Long currentUserId) {
@@ -516,6 +591,7 @@ public class FundServiceImpl implements FundService {
                 .name(fund.getName())
                 .balance(fund.getBalance())
                 .targetAmount(fund.getTargetAmount())
+                .minDepositAmount(resolveMinDeposit(fund))
                 .coverColorSeed(fund.getCoverColorSeed())
                 .isOwner(fund.getOwner().getId().equals(currentUserId))
                 .memberCount(memberCount)
@@ -536,6 +612,7 @@ public class FundServiceImpl implements FundService {
                 .name(fund.getName())
                 .balance(fund.getBalance())
                 .targetAmount(fund.getTargetAmount())
+                .minDepositAmount(resolveMinDeposit(fund))
                 .coverColorSeed(fund.getCoverColorSeed())
                 .isOwner(fund.getOwner().getId().equals(currentUserId))
                 .memberCount(members.stream().filter(m -> m.getStatus() == FundMemberStatus.ACTIVE).count())

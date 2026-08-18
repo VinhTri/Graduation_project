@@ -1,5 +1,5 @@
-import { StyleSheet } from 'react-native';
-import { PASTEL_PALETTE } from '../../../../shared/constants/PastelPalette';
+import { StyleSheet } from 'react-native'
+import { PASTEL_PALETTE } from '@/shared/constants/PastelPalette'
 
 export const styles = StyleSheet.create({
   headerContent: {
@@ -9,29 +9,54 @@ export const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 20,
-    justifyContent: 'space-between',
+    gap: 8,
   },
   backBtn: {
     width: 40,
     height: 40,
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 10,
+    marginRight: 2,
     marginLeft: -8,
   },
   titleBlock: {
     flex: 1,
+    minWidth: 0,
   },
   title: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: '800',
     color: PASTEL_PALETTE.title,
   },
-  subtitle: {
-    fontSize: 13,
-    fontWeight: '500',
-    color: PASTEL_PALETTE.subtitle,
-    marginTop: 2,
+  headerTabs: {
+    flexDirection: 'row',
+    backgroundColor: 'rgba(255,255,255,0.72)',
+    borderRadius: 12,
+    padding: 3,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.9)',
+  },
+  headerTab: {
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+    borderRadius: 9,
+  },
+  headerTabActive: {
+    backgroundColor: PASTEL_PALETTE.white,
+    shadowColor: PASTEL_PALETTE.lavender,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.12,
+    shadowRadius: 3,
+    elevation: 2,
+  },
+  headerTabText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: PASTEL_PALETTE.textMuted,
+  },
+  headerTabTextActive: {
+    color: PASTEL_PALETTE.title,
+    fontWeight: '800',
   },
   balanceCard: {
     backgroundColor: 'rgba(255,255,255,0.72)',
@@ -66,6 +91,11 @@ export const styles = StyleSheet.create({
     color: PASTEL_PALETTE.title,
     marginBottom: 12,
   },
+  balanceActions: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
   addBalanceBtn: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -81,11 +111,6 @@ export const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '700',
     color: PASTEL_PALETTE.accentDeep,
-  },
-  balanceActions: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
   },
   spendBalanceBtn: {
     flexDirection: 'row',
@@ -103,4 +128,4 @@ export const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#DC2626',
   },
-});
+})

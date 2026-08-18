@@ -13,6 +13,7 @@ public class FundSummaryResponse {
     private String name;
     private BigDecimal balance;
     private BigDecimal targetAmount;
+    private BigDecimal minDepositAmount;
     private int coverColorSeed;
     @JsonProperty("isOwner")
     private boolean isOwner;

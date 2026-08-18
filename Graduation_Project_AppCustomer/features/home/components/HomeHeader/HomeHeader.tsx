@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from "react";
 import { View, Text, TextInput, TouchableOpacity } from "react-native";
-import { SmartSpendIcon } from "@/shared/components/SmartSpendIcon";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { styles } from "./HomeHeader.styles";
@@ -22,26 +21,30 @@ export const HomeHeader = () => {
 
   const quickActions = [
     {
-      id: "topup",
-      label: isEn ? "Top Up/Withdraw" : "Nạp/Rút",
-      route: "/wallet/action?initialTab=topup",
-      type: "logo" as const,
-      bgColor: theme.isDark ? theme.bgSoft : PASTEL_PALETTE.accentSoft,
+      id: "receive-qr",
+      label: isEn ? "Receive QR" : "QR nhận tiền",
+      icon: "qr-code" as const,
+      color: theme.isDark ? theme.primary : PASTEL_PALETTE.accentDeep,
+    },
+    {
+      id: "withdraw",
+      label: isEn ? "Withdraw" : "Rút tiền",
+      icon: "arrow-down-outline" as const,
+      color: theme.isDark ? theme.primary : PASTEL_PALETTE.subtitle,
+      route: "/wallet/withdraw",
     },
     {
       id: "transfer",
       label: isEn ? "Transfer" : "Chuyển tiền",
       icon: "paper-plane-outline" as const,
       color: theme.isDark ? theme.primary : PASTEL_PALETTE.lavender,
-      bgColor: theme.isDark ? theme.bgSoft : PASTEL_PALETTE.lavenderSoft,
       route: "/transfer",
     },
     {
-      id: "qr",
+      id: "scan-qr",
       label: isEn ? "Scan QR" : "Quét mã QR",
-      icon: "qr-code-outline" as const,
+      icon: "scan-outline" as const,
       color: theme.isDark ? theme.primary : PASTEL_PALETTE.accentDeep,
-      bgColor: theme.isDark ? theme.bgSoft : PASTEL_PALETTE.accentSoft,
     },
   ];
 
@@ -66,10 +69,11 @@ export const HomeHeader = () => {
     <PastelHeaderShell
       style={styles.headerShell}
       contentStyle={[styles.container, { paddingTop: insets.top + 6 }]}
+      coverImage={require('../../../../assets/images/home-list-header.png')}
     >
       {/* Search and Notification Row */}
       <View style={styles.topRow}>
-        <View style={[styles.searchContainer, { backgroundColor: theme.isDark ? theme.card : 'rgba(255,255,255,0.85)', borderColor: theme.cardBorder }]}>
+        <View style={[styles.searchContainer, { borderColor: theme.isDark ? theme.primary : PASTEL_PALETTE.subtitle }]}>
           <Ionicons name="search-outline" size={20} color={theme.textSecondary} style={styles.searchIcon} />
           <TextInput 
             style={[styles.searchInput, { color: theme.textPrimary }]}
@@ -78,7 +82,7 @@ export const HomeHeader = () => {
           />
         </View>
         <TouchableOpacity 
-          style={[styles.notificationBtn, { backgroundColor: theme.isDark ? theme.card : 'rgba(255,255,255,0.85)' }]} 
+          style={[styles.notificationBtn, { borderColor: theme.isDark ? theme.primary : PASTEL_PALETTE.subtitle }]} 
           activeOpacity={0.7}
           onPress={() => router.push("/notifications")}
         >
@@ -104,12 +108,8 @@ export const HomeHeader = () => {
               if (action.route) router.push(action.route as any);
             }}
           >
-            <View style={[styles.iconWrapper, { backgroundColor: action.bgColor, borderColor: theme.cardBorder }]}>
-              {action.type === "logo" ? (
-                <SmartSpendIcon size={32} borderRadius={8} />
-              ) : (
-                <Ionicons name={action.icon!} size={24} color={action.color} />
-              )}
+            <View style={[styles.iconWrapper, { borderColor: action.color }]}>
+              <Ionicons name={action.icon} size={24} color={action.color} />
             </View>
             <Text style={[styles.actionLabel, { color: theme.textPrimary }]}>{action.label}</Text>
           </TouchableOpacity>

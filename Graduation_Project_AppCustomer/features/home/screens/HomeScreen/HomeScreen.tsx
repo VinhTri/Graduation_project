@@ -1,8 +1,6 @@
 import React, { useState } from "react";
-import { View, ScrollView, TouchableOpacity } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
+import { View, ScrollView } from "react-native";
 import { styles } from "./HomeScreen.styles";
-import { PASTEL_PALETTE } from "@/shared/constants/PastelPalette";
 
 import { HomeHeader } from "../../components/HomeHeader";
 import { HomeWalletSummary } from "../../components/HomeWalletSummary";
@@ -11,6 +9,7 @@ import { ServicesGrid } from "../../components/ServicesGrid";
 import { HomeNotebookCalendar } from "../../components/HomeNotebookCalendar";
 import { DiscoverMore } from "../../components/DiscoverMore";
 import { AIChatModal } from "../../components/AIChatModal";
+import { AIChatButton } from "../../components/AIChatButton/AIChatButton";
 
 import { useTheme } from "@/shared/contexts/ThemeLanguageContext";
 
@@ -39,22 +38,14 @@ export default function HomeScreen() {
           <ServicesGrid />
         </View>
 
-        <View style={styles.sectionContainer}>
-          <HomeNotebookCalendar />
-        </View>
+        <HomeNotebookCalendar />
 
         <View style={styles.sectionContainer}>
           <DiscoverMore />
         </View>
       </ScrollView>
 
-      <TouchableOpacity
-        style={styles.aiBubble}
-        activeOpacity={0.8}
-        onPress={() => setIsChatVisible(true)}
-      >
-        <Ionicons name="sparkles" size={28} color={PASTEL_PALETTE.white} />
-      </TouchableOpacity>
+      <AIChatButton onPress={() => setIsChatVisible(true)} />
 
       <AIChatModal
         visible={isChatVisible}

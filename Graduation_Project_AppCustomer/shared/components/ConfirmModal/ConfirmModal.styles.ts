@@ -1,13 +1,81 @@
-import { StyleSheet } from 'react-native';
-import Colors from '../../constants/Colors';
+import { StyleSheet } from 'react-native'
+import Colors from '../../constants/Colors'
+import { PASTEL_PALETTE } from '../../constants/PastelPalette'
+
+export const OVERLAY_PADDING_H = 24
 
 export const styles = StyleSheet.create({
   overlay: {
     flex: 1,
+    justifyContent: 'center',
+    paddingHorizontal: OVERLAY_PADDING_H,
+  },
+  overlayIcon: {
+    flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
     justifyContent: 'center',
     alignItems: 'center',
+    padding: OVERLAY_PADDING_H,
+  },
+  backdrop: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0, 0, 0, 0.45)',
+  },
+  cardImage: {
+    backgroundColor: PASTEL_PALETTE.white,
+    borderRadius: 24,
+    overflow: 'hidden',
+    alignSelf: 'center',
+  },
+  imageBody: {
     padding: 24,
+    alignItems: 'center',
+  },
+  imageTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: PASTEL_PALETTE.title,
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  imageMessage: {
+    fontSize: 14,
+    lineHeight: 20,
+    color: PASTEL_PALETTE.textMuted,
+    textAlign: 'center',
+    marginBottom: 22,
+  },
+  imageActions: {
+    flexDirection: 'row',
+    gap: 10,
+    width: '100%',
+  },
+  imageCancelButton: {
+    flex: 1,
+    paddingVertical: 14,
+    borderRadius: 14,
+    backgroundColor: PASTEL_PALETTE.gray100,
+    alignItems: 'center',
+  },
+  imageCancelButtonText: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: PASTEL_PALETTE.textMuted,
+  },
+  imageConfirmButton: {
+    flex: 1,
+    paddingVertical: 14,
+    borderRadius: 14,
+    backgroundColor: PASTEL_PALETTE.accentDeep,
+    alignItems: 'center',
+  },
+  imageConfirmButtonDanger: {
+    backgroundColor: '#DC2626',
+  },
+  imageConfirmButtonText: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: PASTEL_PALETTE.white,
   },
   modalContainer: {
     width: '100%',
@@ -71,4 +139,4 @@ export const styles = StyleSheet.create({
     fontWeight: '600',
     color: Colors.white,
   },
-});
+})

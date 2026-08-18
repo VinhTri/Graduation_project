@@ -2,6 +2,7 @@ package com.project.app.report.controller;
 
 import com.project.app.auth.security.CustomUserDetails;
 import com.project.app.common.dto.ApiResponse;
+import com.project.app.report.dto.response.FinanceCenterResponse;
 import com.project.app.report.dto.response.ReportDistributionResponse;
 import com.project.app.report.dto.response.ReportTrendResponse;
 import com.project.app.report.service.ReportService;
@@ -56,6 +57,22 @@ public class ReportController {
         return ResponseEntity.ok(ApiResponse.<List<ReportTrendResponse>>builder()
                 .success(true)
                 .message("Lấy dữ liệu xu hướng thành công")
+                .data(data)
+                .build());
+    }
+
+    @GetMapping("/finance-center")
+    public ResponseEntity<ApiResponse<FinanceCenterResponse>> getFinanceCenter(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @RequestParam(defaultValue = "MONTH") String period,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate compareDate) {
+
+        FinanceCenterResponse data = reportService.getFinanceCenter(
+                userDetails.getUser(), period, date, compareDate);
+        return ResponseEntity.ok(ApiResponse.<FinanceCenterResponse>builder()
+                .success(true)
+                .message("Lấy trung tâm tài chính thành công")
                 .data(data)
                 .build());
     }

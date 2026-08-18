@@ -113,7 +113,12 @@ export const fundStore = {
     }
   },
 
-  async addFund(input: { name: string; targetAmount: number; coverColorSeed: number }): Promise<Fund> {
+  async addFund(input: {
+    name: string
+    targetAmount: number
+    minDepositAmount?: number
+    coverColorSeed: number
+  }): Promise<Fund> {
     const created = await fundService.createFund(input);
     upsertFund(created);
     emit();
@@ -143,9 +148,6 @@ export const fundStore = {
     } catch (err: any) {
       const message = getErrorMessage(err, 'Không thể xóa quỹ');
       const code = err?.code || '';
-      if (code === 'FUND_8006' || message.includes('rút hết')) {
-        return { ok: false, reason: 'HAS_BALANCE', message };
-      }
       if (code === 'FUND_8005') {
         return { ok: false, reason: 'NOT_OWNER', message };
       }

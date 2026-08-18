@@ -43,11 +43,11 @@ export const DiscoverMore = () => {
 
     // 1. Phân tích các liên kết nội bộ của ứng dụng (In-app routing)
     if (link.includes('topup') || link.includes('nap-tien')) {
-      router.push('/wallet/action' as any);
+      router.push('/wallet/top-up' as any);
       return;
     }
     if (link.includes('withdraw') || link.includes('rut-tien')) {
-      router.push({ pathname: '/wallet/action', params: { initialTab: 'withdraw' } } as any);
+      router.push('/wallet/withdraw' as any);
       return;
     }
     if (link.includes('transfer') || link.includes('chuyen-tien')) {

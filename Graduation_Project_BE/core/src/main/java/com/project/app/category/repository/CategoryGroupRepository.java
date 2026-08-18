@@ -13,8 +13,6 @@ public interface CategoryGroupRepository extends JpaRepository<CategoryGroup, Lo
     
     List<CategoryGroup> findByUserAndIsDeletedFalseOrderByIdAsc(User user);
 
-    List<CategoryGroup> findByUserIsNull();
-
     Optional<CategoryGroup> findFirstByTitleAndUserIsNullAndIsDeletedFalse(String title);
 
     long countByUserAndIsDeletedFalse(User user);

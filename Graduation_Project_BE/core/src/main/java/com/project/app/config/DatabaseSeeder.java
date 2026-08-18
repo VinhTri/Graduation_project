@@ -1,5 +1,8 @@
 package com.project.app.config;
 
+import com.project.app.notebook.entity.NotebookBook;
+import com.project.app.notebook.enums.NotebookBookType;
+import com.project.app.notebook.repository.NotebookBookRepository;
 import com.project.app.post.entity.Post;
 import com.project.app.post.repository.PostRepository;
 import com.project.app.support.entity.SupportMessage;
@@ -39,6 +42,7 @@ public class DatabaseSeeder implements CommandLineRunner {
     private final PasswordEncoder passwordEncoder;
     private final JdbcTemplate jdbcTemplate;
     private final WalletRepository walletRepository;
+    private final NotebookBookRepository notebookBookRepository;
     private final TransactionRepository transactionRepository;
     private final PostRepository postRepository;
     private final SupportTicketRepository supportTicketRepository;
@@ -49,6 +53,7 @@ public class DatabaseSeeder implements CommandLineRunner {
             PasswordEncoder passwordEncoder,
             JdbcTemplate jdbcTemplate,
             WalletRepository walletRepository,
+            NotebookBookRepository notebookBookRepository,
             TransactionRepository transactionRepository,
             PostRepository postRepository,
             SupportTicketRepository supportTicketRepository,
@@ -57,6 +62,7 @@ public class DatabaseSeeder implements CommandLineRunner {
         this.passwordEncoder = passwordEncoder;
         this.jdbcTemplate = jdbcTemplate;
         this.walletRepository = walletRepository;
+        this.notebookBookRepository = notebookBookRepository;
         this.transactionRepository = transactionRepository;
         this.postRepository = postRepository;
         this.supportTicketRepository = supportTicketRepository;
@@ -88,7 +94,7 @@ public class DatabaseSeeder implements CommandLineRunner {
                 true
         );
         userRepository.save(admin);
-        System.out.println("[SEED] ADMIN: admin / admin123");
+        System.out.println("[SEED] ADMIN: admin@smartspend.com / admin123");
     }
 
     private void seedDemoUsersAndFinance() {
@@ -104,9 +110,9 @@ public class DatabaseSeeder implements CommandLineRunner {
         User u2 = createUser("tranthib", "tranthib@gmail.com", encodedPassword, true);
         User u3 = createUser("leminhc", "leminhc@gmail.com", encodedPassword, false); // bị khóa để demo
 
-        Wallet w1Main = createWallets(u1, "10000001", new BigDecimal("2500000"));
-        Wallet w2Main = createWallets(u2, "10000002", new BigDecimal("1800000"));
-        Wallet w3Main = createWallets(u3, "10000003", new BigDecimal("500000"));
+        Wallet w1Main = createWallets(u1, "100000000001", new BigDecimal("2500000"));
+        Wallet w2Main = createWallets(u2, "100000000002", new BigDecimal("1800000"));
+        Wallet w3Main = createWallets(u3, "100000000003", new BigDecimal("500000"));
 
         u1.setPinCode(encodedPin);
         u2.setPinCode(encodedPin);
@@ -253,9 +259,12 @@ public class DatabaseSeeder implements CommandLineRunner {
         main.setAccountNumber(stk);
         walletRepository.save(main);
 
-        // Sổ tay CASH: không tính vào thống kê Admin (số dư ảo)
-        Wallet cash = new Wallet(user, "Tiền mặt", BigDecimal.ZERO, false, false, WalletType.CASH);
-        walletRepository.save(cash);
+        notebookBookRepository.save(NotebookBook.builder()
+                .user(user)
+                .name(NotebookBook.CASH_BOOK_NAME)
+                .balance(BigDecimal.ZERO)
+                .bookType(NotebookBookType.CASH)
+                .build());
         return main;
     }
 

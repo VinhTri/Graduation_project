@@ -1,83 +1,76 @@
-import React, { useEffect, useState } from 'react';
-import { View, Text, TouchableOpacity } from 'react-native';
-import { MaterialIcons, Feather } from '@expo/vector-icons';
-import { Image } from 'expo-image';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { PastelHeaderShell } from '../../../shared/components/PastelHeaderShell';
-import { PASTEL_PALETTE } from '../../../shared/constants/PastelPalette';
-import { walletService } from '../../../shared/api/services/walletService';
-import { userService } from '../../../shared/api/services/userService';
-import { resolveMediaUrl } from '../../../shared/utils/resolveMediaUrl';
-import { styles } from '../SettingsScreen.styles';
-import { ProfileDetailModal } from './ProfileDetailModal';
+import { useEffect, useState } from 'react'
+import { Text, TouchableOpacity, View } from 'react-native'
+import { Feather, MaterialIcons } from '@expo/vector-icons'
+import PastelHeaderShell from '@/shared/components/PastelHeaderShell/PastelHeaderShell'
+import { PASTEL_PALETTE } from '@/shared/constants/PastelPalette'
+import { getCustomerProfile } from '@/shared/services'
+import { styles } from '../SettingsScreen.styles'
+import { ProfileDetailModal } from './ProfileDetailModal'
 
-export const ProfileHeader = () => {
-  const [userName, setUserName] = useState('');
-  const [userEmail, setUserEmail] = useState('');
-  const [accountNumber, setAccountNumber] = useState('');
-  const [avatarUrl, setAvatarUrl] = useState('');
-  const [profileVisible, setProfileVisible] = useState(false);
+function getInitials(name: string) {
+  if (!name) return 'U'
+  const parts = name.trim().split(/\s+/)
+  if (parts.length >= 2) {
+    return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase()
+  }
+  return name.substring(0, 2).toUpperCase()
+}
+
+function formatCreatedAt(iso: string | null) {
+  if (!iso) return '—'
+  const date = new Date(iso)
+  if (Number.isNaN(date.getTime())) return '—'
+  return date.toLocaleDateString('vi-VN')
+}
+
+function nameFromEmail(email: string) {
+  const local = email.split('@')[0] || 'Người dùng'
+  return local
+    .replace(/[._-]+/g, ' ')
+    .split(' ')
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(' ')
+}
+
+export function ProfileHeader() {
+  const [userName, setUserName] = useState('Người dùng')
+  const [userEmail, setUserEmail] = useState('')
+  const [accountNumber, setAccountNumber] = useState('Chưa thiết lập')
+  const [createdAt, setCreatedAt] = useState<string | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [profileVisible, setProfileVisible] = useState(false)
 
   useEffect(() => {
-    const fetchUserData = async () => {
+    let cancelled = false
+    ;(async () => {
       try {
-        const storedName = await AsyncStorage.getItem('userName');
-        const storedEmail = await AsyncStorage.getItem('userEmail');
-        const storedAvatar = await AsyncStorage.getItem('userAvatarUrl');
-
-        if (storedName) {
-          setUserName(storedName);
-        } else if (storedEmail) {
-          setUserName(storedEmail.split('@')[0]);
+        const profile = await getCustomerProfile()
+        if (cancelled) return
+        setUserEmail(profile.email || '')
+        setUserName(nameFromEmail(profile.email || 'Người dùng'))
+        setAccountNumber(profile.accountNumber || 'Chưa thiết lập')
+        setCreatedAt(profile.createdAt ?? null)
+      } catch {
+        if (!cancelled) {
+          setUserEmail('')
+          setUserName('Người dùng')
         }
-
-        if (storedEmail) {
-          setUserEmail(storedEmail);
-        }
-        if (storedAvatar) {
-          setAvatarUrl(storedAvatar);
-        }
-
-        const [wallet, profile] = await Promise.all([
-          walletService.getMyWallet().catch(() => null),
-          userService.getMyProfile().catch(() => null),
-        ]);
-
-        if (wallet?.accountNumber) {
-          setAccountNumber(String(wallet.accountNumber));
-        }
-        if (profile?.username) {
-          setUserName(profile.username);
-        }
-        if (profile?.email) {
-          setUserEmail(profile.email);
-        }
-        if (profile?.avatarUrl) {
-          setAvatarUrl(profile.avatarUrl);
-          await AsyncStorage.setItem('userAvatarUrl', profile.avatarUrl);
-        }
-      } catch (error) {
-        console.error('Error fetching user data', error);
+      } finally {
+        if (!cancelled) setLoading(false)
       }
-    };
-
-    fetchUserData();
-  }, []);
-
-  const getInitials = (name: string) => {
-    if (!name) return 'U';
-    const parts = name.trim().split(/\s+/);
-    if (parts.length >= 2) {
-      return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase();
+    })()
+    return () => {
+      cancelled = true
     }
-    return name.substring(0, 2).toUpperCase();
-  };
-
-  const avatarUri = resolveMediaUrl(avatarUrl);
+  }, [])
 
   return (
     <>
-      <PastelHeaderShell contentStyle={styles.headerContent}>
+      <PastelHeaderShell
+        contentStyle={styles.headerContent}
+        coverImage={require('../../../assets/images/account-list-header.png')}
+      >
         <View style={styles.headerTop}>
           <Text style={styles.headerTitle}>Tài khoản</Text>
         </View>
@@ -88,21 +81,13 @@ export const ProfileHeader = () => {
             activeOpacity={0.85}
             onPress={() => setProfileVisible(true)}
           >
-            {avatarUri ? (
-              <Image
-                source={{ uri: avatarUri }}
-                style={styles.avatarImage}
-                contentFit="cover"
-              />
-            ) : (
-              <Text style={styles.avatarText}>{getInitials(userName)}</Text>
-            )}
+            <Text style={styles.avatarText}>{getInitials(userName)}</Text>
           </TouchableOpacity>
 
           <View style={styles.userInfo}>
             <View style={styles.userNameRow}>
               <Text style={styles.userName} numberOfLines={1}>
-                {userName || 'Người dùng'}
+                {userName}
               </Text>
               <MaterialIcons name="verified" size={16} color={PASTEL_PALETTE.accentDeep} />
             </View>
@@ -110,7 +95,7 @@ export const ProfileHeader = () => {
               {userEmail || 'Chưa cập nhật email'}
             </Text>
             <Text style={styles.userStk} numberOfLines={1}>
-              STK: {accountNumber || 'Chưa thiết lập'}
+              STK: {accountNumber}
             </Text>
             <View style={styles.badge}>
               <Feather name="shield" size={11} color={PASTEL_PALETTE.accentDeep} />
@@ -131,12 +116,12 @@ export const ProfileHeader = () => {
       <ProfileDetailModal
         visible={profileVisible}
         onClose={() => setProfileVisible(false)}
-        fallbackName={userName}
-        fallbackEmail={userEmail}
-        fallbackAccountNumber={accountNumber}
-        fallbackAvatarUrl={avatarUrl}
-        onAvatarChanged={setAvatarUrl}
+        loading={loading && !userEmail}
+        userName={userName}
+        userEmail={userEmail}
+        accountNumber={accountNumber}
+        createdAtLabel={formatCreatedAt(createdAt)}
       />
     </>
-  );
-};
+  )
+}

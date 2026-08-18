@@ -1,21 +1,37 @@
 package com.project.app.category.dto.response;
 
-import lombok.AllArgsConstructor;
+import com.project.app.category.entity.CategoryGroup;
 import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.Value;
 
 import java.util.List;
 
-@Data
+@Value
 @Builder
-@NoArgsConstructor
-@AllArgsConstructor
 public class CategoryGroupResponse {
-    private String id; // Using String to match FE type easily
-    private String title;
-    private String icon;
-    private String color;
-    private String bgColor;
-    private List<CategoryItemResponse> items;
+
+    Long id;
+    String title;
+    String icon;
+    String color;
+    String bgColor;
+    List<CategoryItemResponse> items;
+
+    public static CategoryGroupResponse from(CategoryGroup group) {
+        List<CategoryItemResponse> items = group.getItems() == null
+                ? List.of()
+                : group.getItems().stream()
+                        .filter(item -> !item.isDeleted())
+                        .map(CategoryItemResponse::from)
+                        .toList();
+
+        return CategoryGroupResponse.builder()
+                .id(group.getId())
+                .title(group.getTitle())
+                .icon(group.getIcon())
+                .color(group.getColor())
+                .bgColor(group.getBgColor())
+                .items(items)
+                .build();
+    }
 }

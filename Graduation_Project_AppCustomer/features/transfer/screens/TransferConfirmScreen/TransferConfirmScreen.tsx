@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, ActivityIndicator } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { View, Text, TouchableOpacity, ScrollView, ActivityIndicator, Alert } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -7,8 +7,10 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import { PASTEL_PALETTE } from '@/shared/constants/PastelPalette';
 import PinModal from '@/shared/components/PinModal/PinModal';
 import ConfirmModal from '@/shared/components/ConfirmModal/ConfirmModal';
+import { OtpModal, ResetPinModal } from '@/shared/components';
 import { transactionService } from '@/shared/api/services/transactionService';
-import { ChangePinFlow } from '@/features/settings/components/ChangePinFlow';
+import { authService } from '@/shared/api/services/auth.service';
+import { getCustomerProfile } from '@/shared/services';
 import { styles } from './TransferConfirmScreen.styles';
 
 export default function TransferConfirmScreen() {
@@ -35,11 +37,23 @@ export default function TransferConfirmScreen() {
   const formattedAmount = amount.toLocaleString('vi-VN');
 
   const [isPinModalVisible, setIsPinModalVisible] = useState(false);
-  const [isForgotPinFlowVisible, setIsForgotPinFlowVisible] = useState(false);
   const [pinError, setPinError] = useState("");
   const [loading, setLoading] = useState(false);
   const [errorModalVisible, setErrorModalVisible] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
+
+  const [userEmail, setUserEmail] = useState("");
+  const [isOtpModalVisible, setIsOtpModalVisible] = useState(false);
+  const [otpError, setOtpError] = useState("");
+  const [forgotPinOtp, setForgotPinOtp] = useState("");
+  const [isResetPinModalVisible, setIsResetPinModalVisible] = useState(false);
+  const [resetPinError, setResetPinError] = useState("");
+
+  useEffect(() => {
+    getCustomerProfile()
+      .then((profile) => setUserEmail(profile.email || ""))
+      .catch(() => setUserEmail(""));
+  }, []);
 
   const handleConfirmPin = async (pin: string) => {
     try {
@@ -88,6 +102,60 @@ export default function TransferConfirmScreen() {
           setErrorModalVisible(true);
         }, 500);
       }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleForgotPin = async () => {
+    setIsPinModalVisible(false);
+    setPinError("");
+    setLoading(true);
+    try {
+      await authService.forgotPin();
+      setIsOtpModalVisible(true);
+      setOtpError("");
+    } catch {
+      Alert.alert("Lỗi", "Không thể gửi mã OTP khôi phục mã PIN.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleVerifyForgotPinOtp = async (otp: string) => {
+    setLoading(true);
+    try {
+      await authService.verifyOtp({
+        email: userEmail,
+        otp,
+        purpose: "RESET_PIN",
+      });
+      setOtpError("");
+      setForgotPinOtp(otp);
+      setIsOtpModalVisible(false);
+      setTimeout(() => setIsResetPinModalVisible(true), 300);
+    } catch (error: any) {
+      setOtpError(error.message || "Mã OTP không chính xác");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleResetPinConfirm = async (newPinCode: string) => {
+    setLoading(true);
+    try {
+      await authService.resetPin({
+        otp: forgotPinOtp,
+        newPinCode,
+      });
+      setIsResetPinModalVisible(false);
+      setResetPinError("");
+      Alert.alert(
+        "Thành công",
+        "Đặt lại mã PIN thành công. Vui lòng bấm Xác nhận chuyển tiền để tiếp tục.",
+      );
+    } catch (error: any) {
+      setResetPinError(error.message || "Không thể đặt lại mã PIN");
     } finally {
       setLoading(false);
     }
@@ -190,11 +258,7 @@ export default function TransferConfirmScreen() {
           setPinError("");
         }}
         onConfirm={handleConfirmPin}
-        onForgotPin={() => {
-          setIsPinModalVisible(false);
-          setPinError("");
-          setIsForgotPinFlowVisible(true);
-        }}
+        onForgotPin={handleForgotPin}
         errorMessage={pinError}
         title="Xác thực giao dịch"
         subtitle="Vui lòng nhập mã PIN bảo mật để hoàn tất chuyển tiền."
@@ -214,10 +278,19 @@ export default function TransferConfirmScreen() {
         onCancel={() => setErrorModalVisible(false)}
       />
 
-      <ChangePinFlow 
-        visible={isForgotPinFlowVisible} 
-        onClose={() => setIsForgotPinFlowVisible(false)} 
-        startMode="forgot" 
+      <OtpModal
+        visible={isOtpModalVisible}
+        email={userEmail}
+        errorMessage={otpError}
+        onClose={() => setIsOtpModalVisible(false)}
+        onVerify={handleVerifyForgotPinOtp}
+      />
+
+      <ResetPinModal
+        visible={isResetPinModalVisible}
+        onClose={() => setIsResetPinModalVisible(false)}
+        onConfirm={handleResetPinConfirm}
+        errorMessage={resetPinError}
       />
     </View>
   );

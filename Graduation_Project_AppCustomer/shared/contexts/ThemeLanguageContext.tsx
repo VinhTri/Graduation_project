@@ -1,10 +1,15 @@
-import React, { createContext, useContext, useEffect, useState, useCallback, useMemo } from 'react';
+import React, { createContext, useContext, useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { useColorScheme } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { userService } from '../api/services/userService';
+import { getStoredUserId, subscribeSession } from '../services/session.service';
 import { translate, Language, TranslationKeys, translations as i18nTranslations } from '../i18n';
 
 export type ThemeMode = 'light' | 'dark' | 'system';
 export type { Language, TranslationKeys };
+
+export const DEFAULT_THEME_MODE: ThemeMode = 'light';
+export const DEFAULT_LANGUAGE: Language = 'vi';
 
 export interface ThemeColors {
   isDark: boolean;
@@ -115,47 +120,117 @@ interface ThemeLanguageContextType {
 const STORAGE_THEME_KEY = '@smartspend_theme_mode';
 const STORAGE_LANG_KEY = '@smartspend_language';
 
+function appearanceStorageKey(userId: string) {
+  return `@smartspend_appearance:user:${userId}`;
+}
+
+function parseThemeMode(value?: string | null): ThemeMode {
+  if (value === 'dark' || value === 'system' || value === 'light') return value;
+  return DEFAULT_THEME_MODE;
+}
+
+function parseLanguage(value?: string | null): Language {
+  return value === 'en' ? 'en' : DEFAULT_LANGUAGE;
+}
+
 const ThemeLanguageContext = createContext<ThemeLanguageContextType | undefined>(undefined);
 
 export const ThemeLanguageProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const systemColorScheme = useColorScheme();
-  const [themeMode, setThemeModeState] = useState<ThemeMode>('light');
-  const [language, setLanguageState] = useState<Language>('vi');
+  const [themeMode, setThemeModeState] = useState<ThemeMode>(DEFAULT_THEME_MODE);
+  const [language, setLanguageState] = useState<Language>(DEFAULT_LANGUAGE);
+  const userIdRef = useRef<string | null>(null);
+  const themeModeRef = useRef<ThemeMode>(DEFAULT_THEME_MODE);
+  const languageRef = useRef<Language>(DEFAULT_LANGUAGE);
 
-  useEffect(() => {
-    (async () => {
-      try {
-        const savedTheme = await AsyncStorage.getItem(STORAGE_THEME_KEY);
-        if (savedTheme === 'light' || savedTheme === 'dark' || savedTheme === 'system') {
-          setThemeModeState(savedTheme);
-        }
-        const savedLang = await AsyncStorage.getItem(STORAGE_LANG_KEY);
-        if (savedLang === 'vi' || savedLang === 'en') {
-          setLanguageState(savedLang);
-        }
-      } catch (error) {
-        console.error('Failed to load theme/language preferences:', error);
-      }
-    })();
+  const applyAppearance = useCallback((nextTheme: ThemeMode, nextLang: Language) => {
+    themeModeRef.current = nextTheme;
+    languageRef.current = nextLang;
+    setThemeModeState(nextTheme);
+    setLanguageState(nextLang);
   }, []);
 
-  const setThemeMode = async (mode: ThemeMode) => {
-    setThemeModeState(mode);
-    try {
-      await AsyncStorage.setItem(STORAGE_THEME_KEY, mode);
-    } catch (error) {
-      console.error('Failed to save theme mode:', error);
-    }
-  };
+  const cacheLocal = useCallback(async (userId: string, nextTheme: ThemeMode, nextLang: Language) => {
+    await AsyncStorage.setItem(
+      appearanceStorageKey(userId),
+      JSON.stringify({ themeMode: nextTheme, language: nextLang }),
+    );
+  }, []);
 
-  const setLanguage = async (lang: Language) => {
-    setLanguageState(lang);
+  const reloadForCurrentUser = useCallback(async () => {
     try {
-      await AsyncStorage.setItem(STORAGE_LANG_KEY, lang);
+      const token = await AsyncStorage.getItem('token');
+      if (!token) {
+        userIdRef.current = null;
+        applyAppearance(DEFAULT_THEME_MODE, DEFAULT_LANGUAGE);
+        return;
+      }
+
+      try {
+        const profile = await userService.getMyProfile();
+        const userId = String(profile.id);
+        await AsyncStorage.setItem('userId', userId);
+        userIdRef.current = userId;
+        const nextTheme = parseThemeMode(profile.themeMode);
+        const nextLang = parseLanguage(profile.language);
+        await cacheLocal(userId, nextTheme, nextLang);
+        applyAppearance(nextTheme, nextLang);
+      } catch {
+        const userId = (await getStoredUserId()) ?? (await AsyncStorage.getItem('userEmail'));
+        userIdRef.current = userId;
+        if (!userId) {
+          applyAppearance(DEFAULT_THEME_MODE, DEFAULT_LANGUAGE);
+          return;
+        }
+        const raw = await AsyncStorage.getItem(appearanceStorageKey(userId));
+        if (raw) {
+          const parsed = JSON.parse(raw) as { themeMode?: string; language?: string };
+          applyAppearance(parseThemeMode(parsed.themeMode), parseLanguage(parsed.language));
+          return;
+        }
+        const legacyTheme = await AsyncStorage.getItem(STORAGE_THEME_KEY);
+        const legacyLang = await AsyncStorage.getItem(STORAGE_LANG_KEY);
+        applyAppearance(parseThemeMode(legacyTheme), parseLanguage(legacyLang));
+      }
     } catch (error) {
-      console.error('Failed to save language:', error);
+      console.error('Failed to load theme/language preferences:', error);
     }
-  };
+  }, [applyAppearance, cacheLocal]);
+
+  useEffect(() => {
+    void reloadForCurrentUser();
+    return subscribeSession(() => {
+      void reloadForCurrentUser();
+    });
+  }, [reloadForCurrentUser]);
+
+  const persistAppearance = useCallback(
+    async (nextTheme: ThemeMode, nextLang: Language) => {
+      applyAppearance(nextTheme, nextLang);
+      const userId = userIdRef.current;
+      if (userId) {
+        try {
+          await cacheLocal(userId, nextTheme, nextLang);
+        } catch {
+          // ignore local cache errors
+        }
+      }
+      try {
+        await userService.updateAppearance({ themeMode: nextTheme, language: nextLang });
+      } catch {
+        // keep optimistic local; server wins on next login if API succeeds later
+      }
+    },
+    [applyAppearance, cacheLocal],
+  );
+
+  const setThemeMode = useCallback(async (mode: ThemeMode) => {
+    await persistAppearance(mode, languageRef.current);
+  }, [persistAppearance]);
+
+  const setLanguage = useCallback(async (lang: Language) => {
+    await persistAppearance(themeModeRef.current, lang);
+  }, [persistAppearance]);
 
   const isDark =
     themeMode === 'dark' || (themeMode === 'system' && systemColorScheme === 'dark');
@@ -174,7 +249,7 @@ export const ThemeLanguageProvider: React.FC<{ children: React.ReactNode }> = ({
     language,
     setLanguage,
     t,
-  }), [themeMode, isDark, theme, language, t]);
+  }), [themeMode, setThemeMode, isDark, theme, language, setLanguage, t]);
 
   return (
     <ThemeLanguageContext.Provider value={contextValue}>

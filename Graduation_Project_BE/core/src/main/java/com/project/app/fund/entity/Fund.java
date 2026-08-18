@@ -28,6 +28,9 @@ public class Fund {
     @Column(name = "target_amount", nullable = false, precision = 19, scale = 2)
     private BigDecimal targetAmount;
 
+    @Column(name = "min_deposit_amount", precision = 19, scale = 2)
+    private BigDecimal minDepositAmount;
+
     @Column(name = "cover_color_seed", nullable = false)
     private int coverColorSeed;
 
@@ -76,6 +79,14 @@ public class Fund {
 
     public void setTargetAmount(BigDecimal targetAmount) {
         this.targetAmount = targetAmount;
+    }
+
+    public BigDecimal getMinDepositAmount() {
+        return minDepositAmount;
+    }
+
+    public void setMinDepositAmount(BigDecimal minDepositAmount) {
+        this.minDepositAmount = minDepositAmount;
     }
 
     public int getCoverColorSeed() {

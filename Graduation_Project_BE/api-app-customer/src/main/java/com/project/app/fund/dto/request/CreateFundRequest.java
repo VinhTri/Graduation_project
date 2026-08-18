@@ -21,6 +21,9 @@ public class CreateFundRequest {
     @DecimalMin(value = "10000")
     private BigDecimal targetAmount;
 
+    @DecimalMin(value = "2000")
+    private BigDecimal minDepositAmount;
+
     @Min(0)
     @Max(5)
     private int coverColorSeed;

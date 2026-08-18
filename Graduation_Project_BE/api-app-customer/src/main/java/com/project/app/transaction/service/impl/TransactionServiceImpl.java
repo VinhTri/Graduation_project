@@ -1,7 +1,5 @@
 package com.project.app.transaction.service.impl;
 
-import com.project.app.budget.entity.BudgetPeriod;
-import com.project.app.budget.repository.BudgetPeriodRepository;
 import com.project.app.common.exception.AppException;
 import com.project.app.common.exception.ErrorCode;
 import com.project.app.transaction.dto.request.SePayWebhookRequest;
@@ -14,10 +12,6 @@ import com.project.app.transaction.repository.TransactionRepository;
 import com.project.app.transaction.service.TransactionService;
 import com.project.app.user.entity.User;
 import com.project.app.user.repository.UserRepository;
-import com.project.app.budget.entity.Budget;
-import com.project.app.budget.repository.BudgetRepository;
-import com.project.app.notification.enums.NotificationType;
-import com.project.app.notification.service.NotificationService;
 import com.project.app.transaction.dto.request.WithdrawRequest;
 import com.project.app.transaction.dto.request.TransferRequest;
 import com.project.app.transaction.dto.response.TransferResponse;
@@ -29,8 +23,13 @@ import com.project.app.transaction.service.SePayService;
 import com.project.app.bankaccount.entity.BankAccount;
 import com.project.app.bankaccount.repository.BankAccountRepository;
 import com.project.app.wallet.entity.Wallet;
+import com.project.app.wallet.entity.WalletTransaction;
+import com.project.app.wallet.enums.WalletTransactionType;
+import com.project.app.wallet.enums.WalletType;
+import com.project.app.wallet.service.WalletLimitHelper;
 import com.project.app.wallet.service.WalletService;
 import com.project.app.wallet.repository.WalletRepository;
+import com.project.app.wallet.repository.WalletTransactionRepository;
 import com.project.app.transaction.repository.SePayTransactionRepository;
 import com.project.app.transaction.entity.SePayTransaction;
 import com.project.app.transaction.enums.SePayMatchStatus;
@@ -43,11 +42,15 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
-import java.time.LocalDate;
 import java.util.UUID;
 
 @Service
 public class TransactionServiceImpl implements TransactionService {
+
+    private static final String TRANSFER_OUT_CATEGORY_LABEL = "Chuyển tiền";
+    private static final String TRANSFER_IN_CATEGORY_LABEL = "Nhận chuyển tiền";
+    private static final String SYSTEM_EXPENSE_GROUP = "Chi tiêu hệ thống";
+    private static final String SYSTEM_INCOME_GROUP = "Thu nhập hệ thống";
 
     @Value("${sepay.api-key}")
     private String sepayApiKey;
@@ -56,6 +59,7 @@ public class TransactionServiceImpl implements TransactionService {
     private final TransactionRepository transactionRepository;
     private final WalletService walletService;
     private final WalletRepository walletRepository;
+    private final WalletTransactionRepository walletTransactionRepository;
     private final BankAccountRepository bankAccountRepository;
     private final PayOsPayoutService payOsPayoutService;
     private final SePayService sePayService;
@@ -63,22 +67,20 @@ public class TransactionServiceImpl implements TransactionService {
     private final SePayTransactionRepository sePayTransactionRepository;
     private final UserRepository userRepository;
     private final CategoryItemRepository categoryItemRepository;
-    private final BudgetRepository budgetRepository;
-    private final BudgetPeriodRepository budgetPeriodRepository;
-    private final NotificationService notificationService;
+    private final WalletLimitHelper walletLimitHelper;
 
     public TransactionServiceImpl(TransactionRepository transactionRepository, WalletService walletService,
                                   WalletRepository walletRepository,
+                                  WalletTransactionRepository walletTransactionRepository,
                                   BankAccountRepository bankAccountRepository, PayOsPayoutService payOsPayoutService,
                                   SePayService sePayService, PasswordEncoder passwordEncoder,
                                   SePayTransactionRepository sePayTransactionRepository, UserRepository userRepository,
                                   CategoryItemRepository categoryItemRepository,
-                                  BudgetRepository budgetRepository,
-                                  BudgetPeriodRepository budgetPeriodRepository,
-                                  NotificationService notificationService) {
+                                  WalletLimitHelper walletLimitHelper) {
         this.transactionRepository = transactionRepository;
         this.walletService = walletService;
         this.walletRepository = walletRepository;
+        this.walletTransactionRepository = walletTransactionRepository;
         this.bankAccountRepository = bankAccountRepository;
         this.payOsPayoutService = payOsPayoutService;
         this.sePayService = sePayService;
@@ -86,9 +88,7 @@ public class TransactionServiceImpl implements TransactionService {
         this.sePayTransactionRepository = sePayTransactionRepository;
         this.userRepository = userRepository;
         this.categoryItemRepository = categoryItemRepository;
-        this.budgetRepository = budgetRepository;
-        this.budgetPeriodRepository = budgetPeriodRepository;
-        this.notificationService = notificationService;
+        this.walletLimitHelper = walletLimitHelper;
     }
 
     // ====================== NẠP TIỀN ======================
@@ -249,25 +249,11 @@ public class TransactionServiceImpl implements TransactionService {
     public Transaction updateTransaction(String transactionCode, User user, com.project.app.transaction.dto.request.UpdateTransactionRequest request) {
         Transaction transaction = getTransactionByCode(transactionCode, user);
 
-        Long oldCategoryId = transaction.getCategoryId();
-
         if (request.getNote() != null) {
             transaction.setNote(request.getNote());
         }
-        if (request.getCategoryId() != null && !request.getCategoryId().equals(oldCategoryId)) {
+        if (request.getCategoryId() != null) {
             transaction.setCategoryId(request.getCategoryId());
-
-            if (transaction.getType() == TransactionType.EXPENSE) {
-                Long walletId = transaction.getWallet() != null ? transaction.getWallet().getId() : null;
-                LocalDate date = transaction.getCreatedAt() != null ? transaction.getCreatedAt().toLocalDate() : LocalDate.now();
-
-                // Trừ tiền khỏi ngân sách danh mục cũ
-                if (oldCategoryId != null) {
-                    adjustBudgetForExpense(user, oldCategoryId, walletId, transaction.getAmount().negate(), date);
-                }
-                // Cộng tiền vào ngân sách danh mục mới
-                adjustBudgetForExpense(user, request.getCategoryId(), walletId, transaction.getAmount(), date);
-            }
         }
 
         return transactionRepository.save(transaction);
@@ -278,29 +264,13 @@ public class TransactionServiceImpl implements TransactionService {
     @Override
     @Transactional
     public TransferResponse processTransfer(User user, TransferRequest request) {
-        if (user.isLocked()) {
-            throw new AppException(ErrorCode.ACCOUNT_LOCKED);
-        }
-
         if (user.getPinCode() == null || user.getPinCode().isEmpty()) {
             throw new AppException(ErrorCode.INVALID_PIN);
         }
 
         if (!passwordEncoder.matches(request.getPinCode(), user.getPinCode())) {
-            user.incrementFailedPin();
-            if (user.getFailedPinAttempts() >= 5) {
-                user.setLockoutTime(LocalDateTime.now().plusMinutes(15));
-            }
-            userRepository.save(user);
-
-            if (user.isLocked()) {
-                throw new AppException(ErrorCode.ACCOUNT_LOCKED);
-            }
             throw new AppException(ErrorCode.INVALID_PIN);
         }
-
-        user.resetFailedPin();
-        userRepository.save(user);
 
         Wallet senderWallet = walletService.getDefaultWallet(user.getId());
 
@@ -315,10 +285,17 @@ public class TransactionServiceImpl implements TransactionService {
             throw new AppException(ErrorCode.INSUFFICIENT_BALANCE);
         }
         
-        checkTransactionLimits(senderWallet, request.getAmount());
+        walletLimitHelper.enforceOutgoingLimits(user.getId(), senderWallet, request.getAmount());
 
         String senderTxCode = "TF_OUT_" + System.currentTimeMillis() + UUID.randomUUID().toString().substring(0, 4).toUpperCase();
         String receiverTxCode = "TF_IN_" + System.currentTimeMillis() + UUID.randomUUID().toString().substring(0, 4).toUpperCase();
+
+        CategoryItem senderCategory = resolveTransferOutCategory(request.getCategoryId());
+        CategoryItem receiverCategory = requireSystemCategory(TRANSFER_IN_CATEGORY_LABEL, SYSTEM_INCOME_GROUP);
+        String senderNote = buildWalletNote(
+                "Chuyển tiền đến \"" + receiverWallet.getUser().getUsername() + "\"",
+                request.getNote());
+        String receiverNote = "Nhận chuyển tiền từ \"" + user.getUsername() + "\"";
 
         // 1. Trừ tiền người gửi
         senderWallet.setBalance(senderWallet.getBalance().subtract(request.getAmount()));
@@ -331,15 +308,12 @@ public class TransactionServiceImpl implements TransactionService {
         senderTx.setType(TransactionType.TRANSFER);
         senderTx.setStatus(TransactionStatus.SUCCESS);
         senderTx.setTransactionCode(senderTxCode);
-        senderTx.setNote(request.getNote() != null && !request.getNote().trim().isEmpty() 
-            ? request.getNote().trim() 
-            : "Chuyển tiền đến " + receiverWallet.getUser().getUsername());
-        if (request.getCategoryId() != null) {
-            senderTx.setCategoryId(request.getCategoryId());
-            // Adjust budget for transfer if category is selected
-            adjustBudgetForExpense(user, request.getCategoryId(), senderWallet.getId(), request.getAmount(), LocalDate.now());
-        }
+        senderTx.setNote(senderNote);
+        senderTx.setCategoryId(senderCategory.getId());
         transactionRepository.save(senderTx);
+        saveWalletTransaction(
+                user, senderWallet, request.getAmount(), WalletTransactionType.WITHDRAW,
+                senderCategory, senderTxCode, senderNote);
 
         // 2. Cộng tiền người nhận
         receiverWallet.setBalance(receiverWallet.getBalance().add(request.getAmount()));
@@ -352,10 +326,12 @@ public class TransactionServiceImpl implements TransactionService {
         receiverTx.setType(TransactionType.RECEIVE_TRANSFER);
         receiverTx.setStatus(TransactionStatus.SUCCESS);
         receiverTx.setTransactionCode(receiverTxCode);
-        receiverTx.setNote(request.getNote() != null && !request.getNote().trim().isEmpty() 
-            ? request.getNote().trim() 
-            : "Nhận tiền từ " + user.getUsername());
+        receiverTx.setNote(receiverNote);
+        receiverTx.setCategoryId(receiverCategory.getId());
         transactionRepository.save(receiverTx);
+        saveWalletTransaction(
+                receiverWallet.getUser(), receiverWallet, request.getAmount(), WalletTransactionType.TOP_UP,
+                receiverCategory, receiverTxCode, receiverNote);
 
         return new TransferResponse(
                 senderTxCode,
@@ -370,29 +346,13 @@ public class TransactionServiceImpl implements TransactionService {
     @Override
     @Transactional
     public WithdrawResponse processWithdrawal(User user, WithdrawRequest request) {
-        if (user.isLocked()) {
-            throw new AppException(ErrorCode.ACCOUNT_LOCKED);
-        }
-
         if (user.getPinCode() == null || user.getPinCode().isEmpty()) {
             throw new AppException(ErrorCode.INVALID_PIN);
         }
 
         if (!passwordEncoder.matches(request.getPinCode(), user.getPinCode())) {
-            user.incrementFailedPin();
-            if (user.getFailedPinAttempts() >= 5) {
-                user.setLockoutTime(LocalDateTime.now().plusMinutes(15));
-            }
-            userRepository.save(user);
-
-            if (user.isLocked()) {
-                throw new AppException(ErrorCode.ACCOUNT_LOCKED);
-            }
             throw new AppException(ErrorCode.INVALID_PIN);
         }
-
-        user.resetFailedPin();
-        userRepository.save(user);
 
         BankAccount bankAccount = bankAccountRepository.findByIdAndUserId(request.getBankAccountId(), user.getId())
                 .orElseThrow(() -> new AppException(ErrorCode.BANK_ACCOUNT_NOT_FOUND));
@@ -458,7 +418,7 @@ public class TransactionServiceImpl implements TransactionService {
         );
     }
 
-    // ====================== GIAO DỊCH THỦ CÔNG TIỀN MẶT / NGÂN HÀNG (SỔ TAY) ======================
+    // ====================== GIAO DỊCH THỦ CÔNG SỔ TAY NGÂN HÀNG ======================
     @Override
     @Transactional
     public ManualTransactionResponse createManualTransaction(User user, ManualTransactionRequest request) {
@@ -467,19 +427,20 @@ public class TransactionServiceImpl implements TransactionService {
             throw new AppException(ErrorCode.INVALID_MANUAL_TRANSACTION_TYPE);
         }
 
+        if (request.walletId() == null) {
+            throw new AppException(ErrorCode.INVALID_REQUEST, "Vui lòng chọn sổ tay ngân hàng");
+        }
+
         CategoryItem category = categoryItemRepository.findById(request.categoryId())
                 .orElseThrow(() -> new AppException(ErrorCode.CATEGORY_ITEM_NOT_FOUND));
 
-        // Chỉ chấp nhận danh mục của user (không dùng danh mục hệ thống quỹ)
         if (category.getUser() == null || !category.getUser().getId().equals(user.getId()) || category.isDeleted()) {
-            throw new AppException(ErrorCode.CATEGORY_INVALID_FOR_CASH);
+            throw new AppException(ErrorCode.CATEGORY_INVALID_FOR_NOTEBOOK);
         }
 
-        Wallet targetWallet;
-        if (request.walletId() != null) {
-            targetWallet = walletService.getWalletById(request.walletId(), user.getId());
-        } else {
-            targetWallet = walletService.getOrCreateCashWallet(user.getId());
+        Wallet targetWallet = walletService.getWalletById(request.walletId(), user.getId());
+        if (targetWallet.getWalletType() != WalletType.MANUAL && targetWallet.getWalletType() != WalletType.LINKED) {
+            throw new AppException(ErrorCode.INVALID_REQUEST, "Chỉ ghi chép trên sổ tay ngân hàng");
         }
 
         BigDecimal amount = request.amount();
@@ -512,11 +473,6 @@ public class TransactionServiceImpl implements TransactionService {
         }
         transaction = transactionRepository.save(transaction);
 
-        if (type == TransactionType.EXPENSE) {
-            LocalDate expenseDate = request.createdAt() != null ? request.createdAt().toLocalDate() : LocalDate.now();
-            adjustBudgetForExpense(user, category.getId(), targetWallet.getId(), amount, expenseDate);
-        }
-
         return new ManualTransactionResponse(
                 transaction.getTransactionCode(),
                 transaction.getType(),
@@ -543,7 +499,6 @@ public class TransactionServiceImpl implements TransactionService {
         // Reverse old transaction impact
         if (transaction.getType() == TransactionType.EXPENSE) {
             wallet.setBalance(wallet.getBalance().add(transaction.getAmount()));
-            adjustBudgetForExpense(user, transaction.getCategoryId(), wallet.getId(), transaction.getAmount().negate(), transaction.getCreatedAt().toLocalDate());
         } else {
             wallet.setBalance(wallet.getBalance().subtract(transaction.getAmount()));
         }
@@ -558,7 +513,7 @@ public class TransactionServiceImpl implements TransactionService {
 
         boolean isSameCategory = category.getId().equals(transaction.getCategoryId());
         if (category.getUser() == null || !category.getUser().getId().equals(user.getId()) || (category.isDeleted() && !isSameCategory)) {
-            throw new AppException(ErrorCode.CATEGORY_INVALID_FOR_CASH);
+            throw new AppException(ErrorCode.CATEGORY_INVALID_FOR_NOTEBOOK);
         }
 
         BigDecimal newAmount = request.amount();
@@ -570,7 +525,6 @@ public class TransactionServiceImpl implements TransactionService {
             }
             checkTransactionLimits(wallet, newAmount);
             wallet.setBalance(wallet.getBalance().subtract(newAmount));
-            adjustBudgetForExpense(user, category.getId(), wallet.getId(), newAmount, transaction.getCreatedAt().toLocalDate());
         } else {
             wallet.setBalance(wallet.getBalance().add(newAmount));
         }
@@ -611,7 +565,6 @@ public class TransactionServiceImpl implements TransactionService {
         Wallet wallet = transaction.getWallet();
         if (transaction.getType() == TransactionType.EXPENSE) {
             wallet.setBalance(wallet.getBalance().add(transaction.getAmount()));
-            adjustBudgetForExpense(user, transaction.getCategoryId(), wallet.getId(), transaction.getAmount().negate(), transaction.getCreatedAt().toLocalDate());
         } else {
             wallet.setBalance(wallet.getBalance().subtract(transaction.getAmount()));
         }
@@ -627,77 +580,53 @@ public class TransactionServiceImpl implements TransactionService {
         return walletService.getWalletById(walletId, user.getId());
     }
 
-    private void adjustBudgetForExpense(User user, Long categoryId, Long walletId, BigDecimal amountDelta, LocalDate date) {
-        if (categoryId == null || amountDelta.compareTo(BigDecimal.ZERO) == 0) {
-            return;
-        }
-
-        java.util.List<BudgetPeriod> activePeriods = budgetPeriodRepository.findActivePeriodsForTransaction(
-                user.getId(), categoryId, walletId, date != null ? date : LocalDate.now());
-
-        for (BudgetPeriod period : activePeriods) {
-            BigDecimal newSpent = period.getSpentAmount().add(amountDelta);
-            if (newSpent.compareTo(BigDecimal.ZERO) < 0) {
-                newSpent = BigDecimal.ZERO;
-            }
-            period.setSpentAmount(newSpent);
-
-            Budget budget = period.getBudget();
-            BigDecimal eightyPercent = budget.getAmount().multiply(new BigDecimal("0.8"));
-
-            if (period.getSpentAmount().compareTo(budget.getAmount()) >= 0 && !period.isNotified100()) {
-                period.setNotified100(true);
-                notificationService.createNotification(
-                        user,
-                        "Vượt hạn mức ngân sách!",
-                        "Bạn đã vượt 100% hạn mức ngân sách cho danh mục " + budget.getCategory().getLabel(),
-                        NotificationType.BUDGET_EXCEEDED,
-                        budget.getId()
-                );
-            } else if (period.getSpentAmount().compareTo(eightyPercent) >= 0 && !period.isNotified80()) {
-                period.setNotified80(true);
-                notificationService.createNotification(
-                        user,
-                        "Sắp vượt hạn mức ngân sách!",
-                        "Bạn đã sử dụng " + (period.getSpentAmount().multiply(new BigDecimal("100")).divide(budget.getAmount(), java.math.RoundingMode.HALF_UP)) + "% ngân sách cho danh mục " + budget.getCategory().getLabel(),
-                        NotificationType.BUDGET_WARNING,
-                        budget.getId()
-                );
-            }
-        }
-        if (!activePeriods.isEmpty()) {
-            budgetPeriodRepository.saveAll(activePeriods);
-        }
+    private void checkTransactionLimits(Wallet wallet, BigDecimal amount) {
+        walletLimitHelper.enforceOutgoingLimits(wallet.getUser().getId(), wallet, amount);
     }
 
-    private void checkTransactionLimits(Wallet wallet, BigDecimal amount) {
-        if (!wallet.isLimitEnabled()) {
-            return;
+    private CategoryItem resolveTransferOutCategory(Long categoryId) {
+        if (categoryId != null) {
+            return categoryItemRepository.findByIdAndIsDeletedFalse(categoryId)
+                    .orElseGet(() -> requireSystemCategory(TRANSFER_OUT_CATEGORY_LABEL, SYSTEM_EXPENSE_GROUP));
         }
+        return requireSystemCategory(TRANSFER_OUT_CATEGORY_LABEL, SYSTEM_EXPENSE_GROUP);
+    }
 
-        if (wallet.getTransactionLimit() != null && amount.compareTo(wallet.getTransactionLimit()) > 0) {
-            throw new AppException(ErrorCode.TRANSACTION_LIMIT_EXCEEDED);
-        }
+    private CategoryItem requireSystemCategory(String label, String groupTitle) {
+        return categoryItemRepository
+                .findFirstByLabelAndGroup_TitleAndUserIsNullAndIsDeletedFalse(label, groupTitle)
+                .orElseThrow(() -> new AppException(ErrorCode.CATEGORY_ITEM_NOT_FOUND));
+    }
 
-        if (wallet.getDailyLimit() != null) {
-            java.time.LocalDateTime startOfDay = java.time.LocalDate.now().atStartOfDay();
-            java.util.List<com.project.app.transaction.enums.TransactionType> outgoingTypes = java.util.Arrays.asList(
-                    com.project.app.transaction.enums.TransactionType.TRANSFER,
-                    com.project.app.transaction.enums.TransactionType.WITHDRAW,
-                    com.project.app.transaction.enums.TransactionType.EXPENSE,
-                    com.project.app.transaction.enums.TransactionType.PAYMENT
-            );
-            
-            BigDecimal dailyTotal = transactionRepository.sumDailyTransactedAmount(
-                    wallet.getId(), 
-                    outgoingTypes, 
-                    com.project.app.transaction.enums.TransactionStatus.SUCCESS, 
-                    startOfDay
-            );
-            
-            if (dailyTotal.add(amount).compareTo(wallet.getDailyLimit()) > 0) {
-                throw new AppException(ErrorCode.DAILY_LIMIT_EXCEEDED);
-            }
-        }
+    private String trimNote(String note) {
+        if (note == null) return null;
+        String trimmed = note.trim();
+        return trimmed.isEmpty() ? null : trimmed;
+    }
+
+    private String buildWalletNote(String prefix, String userNote) {
+        String trimmed = trimNote(userNote);
+        return trimmed == null ? prefix : prefix + " — " + trimmed;
+    }
+
+    private void saveWalletTransaction(
+            User user,
+            Wallet wallet,
+            BigDecimal amount,
+            WalletTransactionType type,
+            CategoryItem category,
+            String transactionCode,
+            String note
+    ) {
+        walletTransactionRepository.save(WalletTransaction.builder()
+                .user(user)
+                .wallet(wallet)
+                .amount(amount)
+                .type(type)
+                .note(note)
+                .categoryId(category.getId())
+                .categoryName(category.getLabel())
+                .transactionCode(transactionCode)
+                .build());
     }
 }

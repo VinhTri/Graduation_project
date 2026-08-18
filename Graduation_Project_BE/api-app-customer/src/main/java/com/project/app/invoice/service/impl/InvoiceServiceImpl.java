@@ -7,21 +7,20 @@ import com.project.app.invoice.dto.response.InvoiceResponse;
 import com.project.app.invoice.entity.Invoice;
 import com.project.app.invoice.repository.InvoiceRepository;
 import com.project.app.invoice.service.InvoiceService;
+import com.project.app.notebook.entity.NotebookBook;
+import com.project.app.notebook.entity.NotebookTransaction;
+import com.project.app.notebook.enums.NotebookTransactionType;
+import com.project.app.notebook.repository.NotebookBookRepository;
+import com.project.app.notebook.repository.NotebookTransactionRepository;
+import com.project.app.notebook.service.impl.NotebookBookServiceImpl;
 import com.project.app.user.entity.User;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import com.project.app.wallet.service.WalletService;
-import com.project.app.wallet.repository.WalletRepository;
-import com.project.app.transaction.repository.TransactionRepository;
-import com.project.app.transaction.entity.Transaction;
-import com.project.app.transaction.enums.TransactionType;
-import com.project.app.transaction.enums.TransactionStatus;
-import com.project.app.wallet.entity.Wallet;
-import java.math.BigDecimal;
-import java.util.UUID;
 
+import java.math.BigDecimal;
 import java.util.List;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Service
@@ -29,9 +28,9 @@ import java.util.stream.Collectors;
 public class InvoiceServiceImpl implements InvoiceService {
 
     private final InvoiceRepository invoiceRepository;
-    private final WalletService walletService;
-    private final WalletRepository walletRepository;
-    private final TransactionRepository transactionRepository;
+    private final NotebookBookServiceImpl notebookBookService;
+    private final NotebookBookRepository notebookBookRepository;
+    private final NotebookTransactionRepository notebookTransactionRepository;
 
     @Override
     @Transactional
@@ -122,32 +121,34 @@ public class InvoiceServiceImpl implements InvoiceService {
     public InvoiceResponse payInvoiceWithCash(Long id, User user) {
         Invoice invoice = getInvoice(id, user);
         if (invoice.isPaid()) {
-            throw new AppException(ErrorCode.INVALID_REQUEST); // Already paid
+            throw new AppException(ErrorCode.INVALID_REQUEST);
         }
 
-        Wallet cashWallet = walletService.getOrCreateCashWallet(user.getId());
+        NotebookBook book = notebookBookService.getOrCreateCashBookEntity(user.getId());
         BigDecimal amount = invoice.getAmount();
-        
-        if (cashWallet.getBalance().compareTo(amount) < 0) {
-            throw new AppException(ErrorCode.INSUFFICIENT_BALANCE);
+
+        if (book.getBalance().compareTo(amount) < 0) {
+            throw new AppException(ErrorCode.NOTEBOOK_INSUFFICIENT_BALANCE);
         }
 
-        // Deduct balance
-        cashWallet.setBalance(cashWallet.getBalance().subtract(amount));
-        walletRepository.save(cashWallet);
+        book.setBalance(book.getBalance().subtract(amount));
+        notebookBookRepository.save(book);
 
-        // Create transaction history
-        Transaction transaction = new Transaction();
-        transaction.setUser(user);
-        transaction.setWallet(cashWallet);
-        transaction.setAmount(amount);
-        transaction.setType(TransactionType.EXPENSE);
-        transaction.setStatus(TransactionStatus.SUCCESS);
-        transaction.setTransactionCode("INV-" + invoice.getId() + "-" + System.currentTimeMillis());
-        transaction.setNote("Thanh toán hóa đơn: " + invoice.getInvoiceName());
-        transactionRepository.save(transaction);
+        String transactionCode = "INV-" + invoice.getId() + "-"
+                + System.currentTimeMillis()
+                + UUID.randomUUID().toString().substring(0, 4).toUpperCase();
 
-        // Mark as paid
+        notebookTransactionRepository.save(NotebookTransaction.builder()
+                .user(user)
+                .book(book)
+                .amount(amount)
+                .type(NotebookTransactionType.EXPENSE)
+                .note("Thanh toán hóa đơn: " + invoice.getInvoiceName())
+                .categoryId(null)
+                .categoryName("Hóa đơn")
+                .transactionCode(transactionCode)
+                .build());
+
         invoice.setPaid(true);
         Invoice updatedInvoice = invoiceRepository.save(invoice);
         return mapToResponse(updatedInvoice);

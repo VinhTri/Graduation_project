@@ -9,11 +9,48 @@ export interface UserProfile {
   isActive?: boolean;
   accountNumber?: string | null;
   avatarUrl?: string | null;
+  moneySuffix?: 'dong' | 'vnd';
+  moneySeparator?: 'dot' | 'comma';
+  themeMode?: 'light' | 'dark' | 'system';
+  language?: 'vi' | 'en';
+  notebookReminderEnabled?: boolean;
+  notebookReminderTime?: string | null;
 }
+
+export type MoneyFormatPayload = {
+  suffix: 'dong' | 'vnd';
+  separator: 'dot' | 'comma';
+};
+
+export type AppearancePayload = {
+  themeMode: 'light' | 'dark' | 'system';
+  language: 'vi' | 'en';
+};
+
+export type NotebookReminderPayload = {
+  enabled: boolean;
+  reminderTime?: string | null;
+  appliesToday?: boolean;
+};
 
 export const userService = {
   getMyProfile: async (): Promise<UserProfile> => {
     const response = await axiosClient.get(ENDPOINTS.USER.PROFILE);
+    return response.data;
+  },
+
+  updateMoneyFormat: async (prefs: MoneyFormatPayload): Promise<MoneyFormatPayload> => {
+    const response = await axiosClient.put(ENDPOINTS.USER.MONEY_FORMAT, prefs);
+    return response.data;
+  },
+
+  updateAppearance: async (prefs: AppearancePayload): Promise<AppearancePayload> => {
+    const response = await axiosClient.put(ENDPOINTS.USER.APPEARANCE, prefs);
+    return response.data;
+  },
+
+  updateNotebookReminder: async (prefs: NotebookReminderPayload): Promise<NotebookReminderPayload> => {
+    const response = await axiosClient.put(ENDPOINTS.USER.NOTEBOOK_REMINDER, prefs);
     return response.data;
   },
 

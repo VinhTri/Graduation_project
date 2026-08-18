@@ -1,2 +1,5 @@
-import BankBindingScreen from '../../../features/settings/screens/BankBindingScreen/BankBindingScreen';
-export default BankBindingScreen;
+import BankBindingScreen from '@/features/settings/screens/BankBindingScreen'
+
+export default function BankBindingPage() {
+  return <BankBindingScreen />
+}

@@ -1,11 +1,11 @@
-export const formatCurrency = (value: number): string => {
-  if (!value && value !== 0) return '0';
-  // Use regex to add comma (,) as thousands separator
-  return value.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
-};
+import { formatAmount, formatMoney } from '@/shared/utils/moneyFormat'
 
-export const formatCurrencyWithSymbol = (value: number): string =>
-  `${formatCurrency(value)}\u00A0₫`;
+export const formatCurrency = (value: number): string => {
+  if (!value && value !== 0) return formatAmount(0)
+  return formatAmount(value)
+}
+
+export const formatCurrencyWithSymbol = (value: number): string => formatMoney(value)
 
 // Rút gọn số lớn: 1.500.000 -> 1.5tr
 export const formatCompactCurrency = (value: number): string => {

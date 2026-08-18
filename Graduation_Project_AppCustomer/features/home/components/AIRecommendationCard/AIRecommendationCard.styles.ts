@@ -5,24 +5,21 @@ export const styles = StyleSheet.create({
   container: {
     backgroundColor: PASTEL_PALETTE.lavenderSoft,
     borderRadius: 16,
-    padding: 16,
+    paddingVertical: 12,
+    paddingHorizontal: 10,
     flexDirection: "row",
-    alignItems: "flex-start",
+    alignItems: "center",
     borderWidth: 1,
     borderColor: PASTEL_PALETTE.border,
   },
-  iconContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    backgroundColor: "rgba(255, 255, 255, 0.72)",
-    alignItems: "center",
-    justifyContent: "center",
-    marginRight: 12,
+  robot: {
+    width: 72,
+    height: 72,
+    marginRight: 4,
   },
   contentContainer: {
     flex: 1,
-    marginRight: 8,
+    marginRight: 4,
   },
   title: {
     fontSize: 16,
@@ -34,6 +31,11 @@ export const styles = StyleSheet.create({
     fontSize: 13,
     color: PASTEL_PALETTE.subtitle,
     lineHeight: 18,
+    minHeight: 54,
+  },
+  cursor: {
+    color: PASTEL_PALETTE.accentDeep,
+    fontWeight: "800",
   },
   closeBtn: {
     padding: 4,

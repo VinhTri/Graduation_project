@@ -1,5 +1,5 @@
-import ReportScreen from "../../features/wallet/screens/ReportScreen/ReportScreen";
+import WalletReportScreen from '@/features/wallet/screens/WalletReportScreen'
 
-export default function ReportRoute() {
-  return <ReportScreen />;
+export default function WalletReportPage() {
+  return <WalletReportScreen />
 }

@@ -38,11 +38,6 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
             String note
     );
 
-    java.util.List<Transaction> findByUserIdAndWallet_WalletTypeOrderByCreatedAtDesc(
-            Long userId,
-            com.project.app.wallet.enums.WalletType walletType
-    );
-
     java.util.List<Transaction> findByUserIdAndWallet_IsDefaultTrueOrderByCreatedAtDesc(Long userId);
 
     java.util.List<Transaction> findByUserIdAndWalletIdOrderByCreatedAtDesc(Long userId, Long walletId);
@@ -74,5 +69,56 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
             @org.springframework.data.repository.query.Param("types") java.util.List<com.project.app.transaction.enums.TransactionType> types,
             @org.springframework.data.repository.query.Param("status") com.project.app.transaction.enums.TransactionStatus status,
             @org.springframework.data.repository.query.Param("startOfDay") java.time.LocalDateTime startOfDay
+    );
+
+    @Query("""
+            SELECT COALESCE(SUM(t.amount), 0) FROM Transaction t
+            WHERE t.wallet.id = :walletId
+              AND t.type = :type
+              AND t.status = :status
+              AND t.createdAt >= :from
+              AND t.createdAt < :to
+            """)
+    java.math.BigDecimal sumAmountByWalletAndTypeAndCreatedAtRange(
+            @org.springframework.data.repository.query.Param("walletId") Long walletId,
+            @org.springframework.data.repository.query.Param("type") com.project.app.transaction.enums.TransactionType type,
+            @org.springframework.data.repository.query.Param("status") com.project.app.transaction.enums.TransactionStatus status,
+            @org.springframework.data.repository.query.Param("from") java.time.LocalDateTime from,
+            @org.springframework.data.repository.query.Param("to") java.time.LocalDateTime to
+    );
+
+    @Query("""
+            SELECT COALESCE(SUM(t.amount), 0) FROM Transaction t
+            WHERE t.user.id = :userId
+              AND t.wallet.isDefault = true
+              AND t.type IN :types
+              AND t.status = :status
+              AND t.createdAt >= :from
+              AND t.createdAt <= :to
+            """)
+    java.math.BigDecimal sumAmountByUserDefaultWalletAndTypesAndStatusAndCreatedAtBetween(
+            @org.springframework.data.repository.query.Param("userId") Long userId,
+            @org.springframework.data.repository.query.Param("types") java.util.List<com.project.app.transaction.enums.TransactionType> types,
+            @org.springframework.data.repository.query.Param("status") com.project.app.transaction.enums.TransactionStatus status,
+            @org.springframework.data.repository.query.Param("from") java.time.LocalDateTime from,
+            @org.springframework.data.repository.query.Param("to") java.time.LocalDateTime to
+    );
+
+    @Query("""
+            SELECT COALESCE(SUM(t.amount), 0) FROM Transaction t
+            WHERE t.user.id = :userId
+              AND t.type IN :types
+              AND t.status = :status
+              AND t.categoryId = :categoryId
+              AND t.createdAt >= :from
+              AND t.createdAt < :to
+            """)
+    java.math.BigDecimal sumAmountByUserAndTypesAndStatusAndCategoryAndCreatedAtRange(
+            @org.springframework.data.repository.query.Param("userId") Long userId,
+            @org.springframework.data.repository.query.Param("types") java.util.List<com.project.app.transaction.enums.TransactionType> types,
+            @org.springframework.data.repository.query.Param("status") com.project.app.transaction.enums.TransactionStatus status,
+            @org.springframework.data.repository.query.Param("categoryId") Long categoryId,
+            @org.springframework.data.repository.query.Param("from") java.time.LocalDateTime from,
+            @org.springframework.data.repository.query.Param("to") java.time.LocalDateTime to
     );
 }

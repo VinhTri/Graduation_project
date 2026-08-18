@@ -1,5 +1,7 @@
 package com.project.app.splitbill.service.impl;
 
+import com.project.app.category.entity.CategoryItem;
+import com.project.app.category.repository.CategoryItemRepository;
 import com.project.app.common.exception.AppException;
 import com.project.app.common.exception.ErrorCode;
 import com.project.app.common.service.EmailService;
@@ -24,7 +26,11 @@ import com.project.app.transaction.repository.TransactionRepository;
 import com.project.app.user.entity.User;
 import com.project.app.user.repository.UserRepository;
 import com.project.app.wallet.entity.Wallet;
+import com.project.app.wallet.entity.WalletTransaction;
+import com.project.app.wallet.enums.WalletTransactionType;
 import com.project.app.wallet.repository.WalletRepository;
+import com.project.app.wallet.repository.WalletTransactionRepository;
+import com.project.app.wallet.service.WalletLimitHelper;
 import com.project.app.wallet.service.WalletService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -46,13 +52,19 @@ public class SplitBillServiceImpl implements SplitBillService {
     private final SplitBillMemberRepository splitBillMemberRepository;
     private final UserRepository userRepository;
     private final WalletRepository walletRepository;
+    private final WalletTransactionRepository walletTransactionRepository;
+    private final CategoryItemRepository categoryItemRepository;
     private final WalletService walletService;
+    private final WalletLimitHelper walletLimitHelper;
     private final TransactionRepository transactionRepository;
     private final NotificationService notificationService;
     private final EmailService emailService;
     private final PasswordEncoder passwordEncoder;
 
     private static final BigDecimal MIN_AMOUNT_PER_PERSON = new BigDecimal("2000.00");
+    private static final String SPLIT_CATEGORY_LABEL = "Chia tiền";
+    private static final String SYSTEM_EXPENSE_GROUP = "Chi tiêu hệ thống";
+    private static final String SYSTEM_INCOME_GROUP = "Thu nhập hệ thống";
 
     @Override
     @Transactional
@@ -188,33 +200,16 @@ public class SplitBillServiceImpl implements SplitBillService {
     @Override
     @Transactional
     public SplitBillResponse paySplitBill(User currentUser, Long splitBillId, PaySplitBillRequest request) {
-        // 1. Kiểm tra tài khoản bị khóa
-        if (currentUser.isLocked()) {
-            throw new AppException(ErrorCode.ACCOUNT_LOCKED);
-        }
-
-        // 2. Xác thực mã PIN
+        // Xác thực mã PIN
         if (currentUser.getPinCode() == null || currentUser.getPinCode().isEmpty()) {
             throw new AppException(ErrorCode.PIN_NOT_SET);
         }
 
         if (!passwordEncoder.matches(request.getPinCode(), currentUser.getPinCode())) {
-            currentUser.incrementFailedPin();
-            if (currentUser.getFailedPinAttempts() >= 5) {
-                currentUser.setLockoutTime(LocalDateTime.now().plusMinutes(15));
-            }
-            userRepository.save(currentUser);
-
-            if (currentUser.isLocked()) {
-                throw new AppException(ErrorCode.ACCOUNT_LOCKED);
-            }
             throw new AppException(ErrorCode.INVALID_PIN);
         }
 
-        currentUser.resetFailedPin();
-        userRepository.save(currentUser);
-
-        // 3. Tìm SplitBill
+        // Tìm SplitBill
         SplitBill bill = splitBillRepository.findByIdWithMembers(splitBillId)
                 .orElseThrow(() -> new AppException(ErrorCode.SPLIT_BILL_NOT_FOUND));
 
@@ -242,6 +237,15 @@ public class SplitBillServiceImpl implements SplitBillService {
 
         Wallet creatorWallet = walletService.getDefaultWallet(bill.getCreator().getId());
 
+        walletLimitHelper.enforceOutgoingLimits(currentUser.getId(), senderWallet, payAmount);
+
+        CategoryItem expenseCategory = requireSystemCategory(SPLIT_CATEGORY_LABEL, SYSTEM_EXPENSE_GROUP);
+        CategoryItem incomeCategory = requireSystemCategory(SPLIT_CATEGORY_LABEL, SYSTEM_INCOME_GROUP);
+        String senderNote = buildWalletNote(
+                "Thanh toán chia tiền \"" + bill.getTitle() + "\" cho \"" + bill.getCreator().getUsername() + "\"",
+                request.getNote());
+        String receiverNote = "Nhận chia tiền \"" + bill.getTitle() + "\" từ \"" + currentUser.getUsername() + "\"";
+
         // 6. Thực hiện trừ / cộng ví
         senderWallet.setBalance(senderWallet.getBalance().subtract(payAmount));
         walletRepository.save(senderWallet);
@@ -260,10 +264,12 @@ public class SplitBillServiceImpl implements SplitBillService {
         senderTx.setType(TransactionType.TRANSFER);
         senderTx.setStatus(TransactionStatus.SUCCESS);
         senderTx.setTransactionCode(senderTxCode);
-        senderTx.setNote(request.getNote() != null && !request.getNote().trim().isEmpty()
-                ? request.getNote().trim()
-                : "Thanh toán chia tiền: " + bill.getTitle());
+        senderTx.setNote(senderNote);
+        senderTx.setCategoryId(expenseCategory.getId());
         transactionRepository.save(senderTx);
+        saveWalletTransaction(
+                currentUser, senderWallet, payAmount, WalletTransactionType.WITHDRAW,
+                expenseCategory, senderTxCode, senderNote);
 
         Transaction receiverTx = new Transaction();
         receiverTx.setUser(bill.getCreator());
@@ -272,8 +278,12 @@ public class SplitBillServiceImpl implements SplitBillService {
         receiverTx.setType(TransactionType.RECEIVE_TRANSFER);
         receiverTx.setStatus(TransactionStatus.SUCCESS);
         receiverTx.setTransactionCode(receiverTxCode);
-        receiverTx.setNote(currentUser.getUsername() + " đã thanh toán chia tiền: " + bill.getTitle());
+        receiverTx.setNote(receiverNote);
+        receiverTx.setCategoryId(incomeCategory.getId());
         transactionRepository.save(receiverTx);
+        saveWalletTransaction(
+                bill.getCreator(), creatorWallet, payAmount, WalletTransactionType.TOP_UP,
+                incomeCategory, receiverTxCode, receiverNote);
 
         // 8. Cập nhật trạng thái thành viên
         member.setStatus(SplitBillMemberStatus.PAID);
@@ -466,5 +476,43 @@ public class SplitBillServiceImpl implements SplitBillService {
     private String formatCurrency(BigDecimal amount) {
         if (amount == null) return "0";
         return String.format("%,d", amount.longValue()).replace(',', '.');
+    }
+
+    private CategoryItem requireSystemCategory(String label, String groupTitle) {
+        return categoryItemRepository
+                .findFirstByLabelAndGroup_TitleAndUserIsNullAndIsDeletedFalse(label, groupTitle)
+                .orElseThrow(() -> new AppException(ErrorCode.CATEGORY_ITEM_NOT_FOUND));
+    }
+
+    private String trimNote(String note) {
+        if (note == null) return null;
+        String trimmed = note.trim();
+        return trimmed.isEmpty() ? null : trimmed;
+    }
+
+    private String buildWalletNote(String prefix, String userNote) {
+        String trimmed = trimNote(userNote);
+        return trimmed == null ? prefix : prefix + " — " + trimmed;
+    }
+
+    private void saveWalletTransaction(
+            User user,
+            Wallet wallet,
+            BigDecimal amount,
+            WalletTransactionType type,
+            CategoryItem category,
+            String transactionCode,
+            String note
+    ) {
+        walletTransactionRepository.save(WalletTransaction.builder()
+                .user(user)
+                .wallet(wallet)
+                .amount(amount)
+                .type(type)
+                .note(note)
+                .categoryId(category.getId())
+                .categoryName(category.getLabel())
+                .transactionCode(transactionCode)
+                .build());
     }
 }

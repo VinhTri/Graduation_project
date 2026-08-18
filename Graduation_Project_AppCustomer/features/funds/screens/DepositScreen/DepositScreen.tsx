@@ -11,6 +11,7 @@ import { PinModal, SuccessModal } from '../../../../shared/components';
 import { fundStore, useFund } from '../../store/fundStore';
 import { walletService } from '../../../../shared/api/services/walletService';
 import { FUND_PALETTE } from '../../theme';
+import { SYSTEM_MIN_DEPOSIT } from '../../constants';
 import { formatCurrency, parseAmountInput } from '../../utils';
 import { styles } from './DepositScreen.styles';
 
@@ -40,11 +41,14 @@ export function DepositScreen() {
   );
 
   const parsedAmount = amount ? parseInt(amount, 10) : 0;
-  const isValid = parsedAmount >= 10_000 && parsedAmount <= walletBalance && !submitting;
+  const minDeposit = fund?.minDepositAmount && fund.minDepositAmount > 0
+    ? fund.minDepositAmount
+    : SYSTEM_MIN_DEPOSIT;
+  const isValid = parsedAmount >= minDeposit && parsedAmount <= walletBalance && !submitting;
 
   const handleConfirm = () => {
-    if (parsedAmount < 10_000) {
-      Alert.alert('Lỗi', 'Số tiền nạp tối thiểu là 10.000đ');
+    if (parsedAmount < minDeposit) {
+      Alert.alert('Lỗi', `Số tiền nạp tối thiểu của quỹ này là ${formatCurrency(minDeposit)}đ`);
       return;
     }
     if (parsedAmount > walletBalance) {
@@ -144,6 +148,9 @@ export function DepositScreen() {
                 </TouchableOpacity>
               ))}
             </ScrollView>
+            <Text style={styles.minDepositHint}>
+              Mỗi lần nạp tối thiểu {formatCurrency(minDeposit)} ₫
+            </Text>
           </View>
 
           {/* Note */}

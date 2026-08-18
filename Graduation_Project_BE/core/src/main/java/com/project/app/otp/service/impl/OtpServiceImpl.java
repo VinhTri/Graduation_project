@@ -4,7 +4,7 @@ import com.project.app.otp.service.OtpService;
 import com.project.app.common.exception.AppException;
 import com.project.app.common.exception.ErrorCode;
 import com.project.app.common.service.EmailService;
-import com.project.app.otp.entity.OtpPurpose;
+import com.project.app.otp.enums.OtpPurpose;
 import com.project.app.otp.entity.OtpToken;
 import com.project.app.otp.repository.OtpTokenRepository;
 import org.springframework.stereotype.Service;

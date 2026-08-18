@@ -117,7 +117,7 @@ export const transactionService = {
     await axiosClient.delete(ENDPOINTS.TRANSACTION.DELETE_MANUAL(transactionCode));
   },
 
-  getTransactionHistory: async (wallet: 'main' | 'cash' = 'main'): Promise<TransactionHistoryItem[]> => {
+  getTransactionHistory: async (wallet: 'main' | string = 'main'): Promise<TransactionHistoryItem[]> => {
     const response = await axiosClient.get(ENDPOINTS.HISTORY.TRANSACTIONS, {
       params: { wallet },
     });

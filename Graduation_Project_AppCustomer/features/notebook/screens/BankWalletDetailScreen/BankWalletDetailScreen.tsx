@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState, useEffect } from 'react';
+import React, { useCallback, useMemo, useState, useEffect } from 'react'
 import {
   View,
   Text,
@@ -7,181 +7,176 @@ import {
   ActivityIndicator,
   Alert,
   RefreshControl,
-} from 'react-native';
-import { useRouter } from 'expo-router';
-import { Feather, Ionicons } from '@expo/vector-icons';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { styles } from './BankWalletDetailScreen.styles';
-import { RecentTransactions } from '../../components/RecentTransactions/RecentTransactions';
-import { NotebookReport } from '../../components/NotebookReport/NotebookReport';
-import { TransactionItem } from '../../components/RecentTransactions/RecentTransactions.types';
-import { PastelHeaderShell } from '../../../../shared/components/PastelHeaderShell';
+} from 'react-native'
+import { useRouter } from 'expo-router'
+import { Feather, Ionicons } from '@expo/vector-icons'
+import { styles } from './BankWalletDetailScreen.styles'
+import { RecentTransactions } from '../../components/RecentTransactions/RecentTransactions'
+import { NotebookReport } from '../../components/NotebookReport/NotebookReport'
+import { PastelHeaderShell } from '../../../../shared/components/PastelHeaderShell'
 import {
-  AddCashBalanceModal,
-  CashBalanceMode,
-  CashBalancePayload,
-  InitialCashData,
-} from '../../components/AddCashBalanceModal/AddCashBalanceModal';
-import { walletService, WalletData } from '../../../../shared/api/services/walletService';
-import { transactionService } from '../../../../shared/api/services/transactionService';
-import { PASTEL_PALETTE } from '../../../../shared/constants/PastelPalette';
-import { ConfirmModal } from '../../../../shared/components';
-import Colors from '../../../../shared/constants/Colors';
-import { filterCashTransactions, mapCashHistoryToItem } from '../../utils/cashMappers';
-import { DateRangeSelector, DateFilterType } from '../../components/DateRangeSelector/DateRangeSelector';
+  AddTransactionModal,
+  type InitialTransactionData,
+  type TransactionMode,
+  type TransactionPayload,
+} from '../../components/AddTransactionModal/AddTransactionModal'
+import { walletService, WalletData } from '../../../../shared/api/services/walletService'
+import { transactionService } from '../../../../shared/api/services/transactionService'
+import { PASTEL_PALETTE } from '../../../../shared/constants/PastelPalette'
+import { ConfirmModal } from '../../../../shared/components'
+import Colors from '../../../../shared/constants/Colors'
+import {
+  filterNotebookItemsByHistoryRange,
+  mapBankHistoryToNotebookItem,
+  toInitialTransactionData,
+} from '../../utils/bankHistoryMappers'
+import type { NotebookTransactionItem } from '../../utils/notebookMappers'
+import {
+  NOTEBOOK_HISTORY_DATE_FILTERS,
+  type NotebookHistoryDateFilter,
+} from '../../constants/filters'
+import { styles as panelStyles } from '../../components/NotebookBookPanel/NotebookBookPanel.styles'
 
-type MainTab = 'history' | 'report';
+type MainTab = 'history' | 'report'
 
 interface Props {
-  walletId: number;
+  walletId: number
 }
 
 export const BankWalletDetailScreen = ({ walletId }: Props) => {
-  const router = useRouter();
-  const [tab, setTab] = useState<MainTab>('history');
-  const [dateFilter, setDateFilter] = useState<DateFilterType>('month');
-  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
-  
-  const [wallet, setWallet] = useState<WalletData | null>(null);
-  const [transactions, setTransactions] = useState<TransactionItem[]>([]);
-  
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-  const [saving, setSaving] = useState(false);
-  
-  const [balanceModalVisible, setBalanceModalVisible] = useState(false);
-  const [balanceMode, setBalanceMode] = useState<CashBalanceMode>('add');
-  const [selectedTransaction, setSelectedTransaction] = useState<InitialCashData | null>(null);
-  const [txToDelete, setTxToDelete] = useState<InitialCashData | null>(null);
-  const [confirmDeleteWalletVisible, setConfirmDeleteWalletVisible] = useState(false);
+  const router = useRouter()
+  const [tab, setTab] = useState<MainTab>('history')
+  const [dateFilter, setDateFilter] = useState<NotebookHistoryDateFilter>('month')
+  const [selectedDate] = useState<Date>(new Date())
+
+  const [wallet, setWallet] = useState<WalletData | null>(null)
+  const [transactions, setTransactions] = useState<NotebookTransactionItem[]>([])
+
+  const [loading, setLoading] = useState(true)
+  const [refreshing, setRefreshing] = useState(false)
+  const [saving, setSaving] = useState(false)
+
+  const [balanceModalVisible, setBalanceModalVisible] = useState(false)
+  const [balanceMode, setBalanceMode] = useState<TransactionMode>('add')
+  const [selectedTransaction, setSelectedTransaction] = useState<InitialTransactionData | null>(null)
+  const [txToDelete, setTxToDelete] = useState<InitialTransactionData | null>(null)
+  const [confirmDeleteWalletVisible, setConfirmDeleteWalletVisible] = useState(false)
 
   const loadData = useCallback(async () => {
     const [wallets, history] = await Promise.all([
       walletService.getBankWallets(),
-      transactionService.getTransactionHistory(walletId.toString() as any),
-    ]);
+      transactionService.getTransactionHistory(String(walletId)),
+    ])
 
-    const target = wallets.find(w => w.id === walletId);
-    if (target) {
-      setWallet(target);
-    }
-    
+    const target = wallets.find((w) => w.id === walletId)
+    if (target) setWallet(target)
+
     setTransactions(
       (history || [])
-        .map(mapCashHistoryToItem)
-        .filter((item): item is TransactionItem => item != null)
-    );
-  }, [walletId]);
+        .map(mapBankHistoryToNotebookItem)
+        .filter((item): item is NotebookTransactionItem => item != null),
+    )
+  }, [walletId])
 
   useEffect(() => {
-    let active = true;
-    (async () => {
+    let active = true
+    ;(async () => {
       try {
-        setLoading(true);
-        await loadData();
+        setLoading(true)
+        await loadData()
       } catch (e: any) {
         if (active) {
-          Alert.alert('Lỗi', e?.message || 'Không tải được dữ liệu sổ tay');
+          Alert.alert('Lỗi', e?.message || 'Không tải được dữ liệu sổ tay')
         }
       } finally {
-        if (active) setLoading(false);
+        if (active) setLoading(false)
       }
-    })();
+    })()
     return () => {
-      active = false;
-    };
-  }, [loadData]);
+      active = false
+    }
+  }, [loadData])
 
   const onRefresh = async () => {
     try {
-      setRefreshing(true);
-      await loadData();
+      setRefreshing(true)
+      await loadData()
     } catch (e: any) {
-      Alert.alert('Lỗi', e?.message || 'Không làm mới được dữ liệu');
+      Alert.alert('Lỗi', e?.message || 'Không làm mới được dữ liệu')
     } finally {
-      setRefreshing(false);
+      setRefreshing(false)
     }
-  };
+  }
 
   const visibleTransactions = useMemo(
-    () => filterCashTransactions(transactions, dateFilter, selectedDate),
-    [dateFilter, selectedDate, transactions]
-  );
+    () => filterNotebookItemsByHistoryRange(transactions, dateFilter, selectedDate),
+    [dateFilter, selectedDate, transactions],
+  )
 
-  const openBalanceModal = (mode: CashBalanceMode, txData?: InitialCashData) => {
-    setBalanceMode(mode);
-    setSelectedTransaction(txData || null);
-    setBalanceModalVisible(true);
-  };
+  const openBalanceModal = (mode: TransactionMode, txData?: InitialTransactionData) => {
+    setBalanceMode(mode)
+    setSelectedTransaction(txData || null)
+    setBalanceModalVisible(true)
+  }
 
-  const handleCashBalanceChange = async ({ amount, note, category }: CashBalancePayload) => {
-    const categoryId = Number(category.id);
+  const handleConfirm = async ({ amount, note, category }: TransactionPayload) => {
+    const categoryId = Number(category.id)
     if (!categoryId || Number.isNaN(categoryId)) {
-      Alert.alert('Lỗi', 'Danh mục không hợp lệ');
-      throw new Error('Invalid category');
+      Alert.alert('Lỗi', 'Danh mục không hợp lệ')
+      throw new Error('Invalid category')
     }
 
     try {
-      setSaving(true);
-      if (selectedTransaction) {
-        await transactionService.updateManualTransaction(selectedTransaction.transactionCode, {
-          amount,
-          type: balanceMode === 'add' ? 'INCOME' : 'EXPENSE',
-          categoryId,
-          note,
-          walletId,
-        });
-      } else {
-        await transactionService.createManualTransaction({
-          amount,
-          type: balanceMode === 'add' ? 'INCOME' : 'EXPENSE',
-          categoryId,
-          note,
-          walletId,
-        });
+      setSaving(true)
+      const payload = {
+        amount,
+        type: (balanceMode === 'add' ? 'INCOME' : 'EXPENSE') as 'INCOME' | 'EXPENSE',
+        categoryId,
+        note,
+        walletId,
       }
-      await loadData();
+      if (selectedTransaction) {
+        await transactionService.updateManualTransaction(selectedTransaction.transactionCode, payload)
+      } else {
+        await transactionService.createManualTransaction(payload)
+      }
+      await loadData()
+      setBalanceModalVisible(false)
     } catch (e: any) {
-      Alert.alert('Lỗi', e?.message || 'Không ghi được giao dịch');
-      throw e;
+      Alert.alert('Lỗi', e?.message || 'Không ghi được giao dịch')
+      throw e
     } finally {
-      setSaving(false);
+      setSaving(false)
     }
-  };
-
-  const handleDeleteTransaction = (txToDelete?: InitialCashData) => {
-    const targetTx = txToDelete || selectedTransaction;
-    if (!targetTx) return;
-    setTxToDelete(targetTx);
-  };
+  }
 
   const confirmDeleteTransaction = async () => {
-    if (!txToDelete) return;
+    if (!txToDelete) return
     try {
-      setSaving(true);
-      await transactionService.deleteManualTransaction(txToDelete.transactionCode);
-      setBalanceModalVisible(false);
-      await loadData();
+      setSaving(true)
+      await transactionService.deleteManualTransaction(txToDelete.transactionCode)
+      setBalanceModalVisible(false)
+      await loadData()
     } catch (e: any) {
-      Alert.alert('Lỗi', e?.message || 'Không xóa được giao dịch');
+      Alert.alert('Lỗi', e?.message || 'Không xóa được giao dịch')
     } finally {
-      setSaving(false);
-      setTxToDelete(null);
+      setSaving(false)
+      setTxToDelete(null)
     }
-  };
+  }
 
   const confirmDeleteWallet = async () => {
     try {
-      setSaving(true);
-      await walletService.deleteManualBank(walletId);
-      setConfirmDeleteWalletVisible(false);
-      router.back();
+      setSaving(true)
+      await walletService.deleteManualBank(walletId)
+      setConfirmDeleteWalletVisible(false)
+      router.back()
     } catch (e: any) {
-      Alert.alert('Lỗi', e?.message || 'Không thể xóa sổ tay');
+      Alert.alert('Lỗi', e?.message || 'Không thể xóa sổ tay')
     } finally {
-      setSaving(false);
+      setSaving(false)
     }
-  };
+  }
 
   return (
     <View style={styles.container}>
@@ -196,7 +191,10 @@ export const BankWalletDetailScreen = ({ walletId }: Props) => {
             </Text>
           </View>
           {wallet?.walletType === 'MANUAL' && (
-            <TouchableOpacity onPress={() => setConfirmDeleteWalletVisible(true)} style={styles.deleteWalletBtn}>
+            <TouchableOpacity
+              onPress={() => setConfirmDeleteWalletVisible(true)}
+              style={styles.deleteWalletBtn}
+            >
               <Ionicons name="trash-outline" size={24} color="#DC2626" />
             </TouchableOpacity>
           )}
@@ -236,18 +234,14 @@ export const BankWalletDetailScreen = ({ walletId }: Props) => {
             onPress={() => setTab('history')}
             activeOpacity={0.85}
           >
-            <Text style={[styles.tabText, tab === 'history' && styles.tabTextActive]}>
-              Lịch sử
-            </Text>
+            <Text style={[styles.tabText, tab === 'history' && styles.tabTextActive]}>Lịch sử</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={[styles.tab, tab === 'report' && styles.tabActive]}
             onPress={() => setTab('report')}
             activeOpacity={0.85}
           >
-            <Text style={[styles.tabText, tab === 'report' && styles.tabTextActive]}>
-              Báo cáo
-            </Text>
+            <Text style={[styles.tabText, tab === 'report' && styles.tabTextActive]}>Báo cáo</Text>
           </TouchableOpacity>
         </View>
 
@@ -257,56 +251,44 @@ export const BankWalletDetailScreen = ({ walletId }: Props) => {
           </View>
         ) : tab === 'history' ? (
           <>
-            <DateRangeSelector
-              dateFilter={dateFilter}
-              selectedDate={selectedDate}
-              onChangeFilter={setDateFilter}
-              onChangeDate={setSelectedDate}
-            />
+            <View style={panelStyles.filterRow}>
+              {NOTEBOOK_HISTORY_DATE_FILTERS.map((item) => {
+                const active = dateFilter === item.key
+                return (
+                  <TouchableOpacity
+                    key={item.key}
+                    style={[panelStyles.chip, active && panelStyles.chipActive]}
+                    onPress={() => setDateFilter(item.key)}
+                    activeOpacity={0.8}
+                  >
+                    <Text style={[panelStyles.chipText, active && panelStyles.chipTextActive]}>
+                      {item.label}
+                    </Text>
+                  </TouchableOpacity>
+                )
+              })}
+            </View>
 
             <ScrollView
               showsVerticalScrollIndicator={false}
               contentContainerStyle={{ paddingBottom: 120 }}
               refreshControl={
-                <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={PASTEL_PALETTE.accentDeep} />
+                <RefreshControl
+                  refreshing={refreshing}
+                  onRefresh={onRefresh}
+                  tintColor={PASTEL_PALETTE.accentDeep}
+                />
               }
             >
-              <RecentTransactions 
-                transactions={visibleTransactions} 
+              <RecentTransactions
+                transactions={visibleTransactions}
                 listTitle="Giao dịch tài khoản"
                 emptyTitle="Chưa có giao dịch"
                 emptySubtitle="Bấm nút thu hoặc chi để thêm giao dịch đầu tiên."
                 onPressItem={(tx) => {
-                  if (!tx.id) return;
-                  openBalanceModal(
-                    tx.type === 'INCOME' ? 'add' : 'spend',
-                    {
-                      transactionCode: tx.id,
-                      amount: tx.amount,
-                      note: tx.note,
-                      category: {
-                        id: tx.categoryId || 0,
-                        label: tx.categoryLabel || 'Chưa phân loại',
-                        icon: tx.categoryIcon || 'list',
-                        color: tx.categoryColor || PASTEL_PALETTE.accentDeep,
-                      },
-                    }
-                  );
+                  openBalanceModal(tx.type === 'INCOME' ? 'add' : 'spend', toInitialTransactionData(tx))
                 }}
-                onDeleteItem={(tx) => {
-                  if (!tx.id) return;
-                  handleDeleteTransaction({
-                    transactionCode: tx.id,
-                    amount: tx.amount,
-                    note: tx.note,
-                    category: {
-                      id: tx.categoryId || 0,
-                      label: tx.categoryLabel || 'Chưa phân loại',
-                      icon: tx.categoryIcon || 'list',
-                      color: tx.categoryColor || PASTEL_PALETTE.accentDeep,
-                    },
-                  });
-                }}
+                onDeleteItem={(tx) => setTxToDelete(toInitialTransactionData(tx))}
               />
             </ScrollView>
           </>
@@ -315,7 +297,11 @@ export const BankWalletDetailScreen = ({ walletId }: Props) => {
             showsVerticalScrollIndicator={false}
             contentContainerStyle={{ paddingBottom: 120 }}
             refreshControl={
-              <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={PASTEL_PALETTE.accentDeep} />
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={onRefresh}
+                tintColor={PASTEL_PALETTE.accentDeep}
+              />
             }
           >
             <NotebookReport transactions={transactions} />
@@ -323,21 +309,20 @@ export const BankWalletDetailScreen = ({ walletId }: Props) => {
         )}
       </View>
 
-      <AddCashBalanceModal
+      <AddTransactionModal
         visible={balanceModalVisible}
         mode={balanceMode}
         currentBalance={wallet?.balance ? Number(wallet.balance) : 0}
         saving={saving}
-        initialData={selectedTransaction || undefined}
+        initialData={selectedTransaction}
         onClose={() => setBalanceModalVisible(false)}
-        onConfirm={handleCashBalanceChange}
-        onDelete={() => { if (selectedTransaction) handleDeleteTransaction(selectedTransaction); }}
+        onConfirm={handleConfirm}
       />
 
       <ConfirmModal
         visible={!!txToDelete}
         title="Xóa giao dịch"
-        message="Bạn có chắc chắn muốn xóa giao dịch này không? Số dư sổ tay và ngân sách sẽ được hoàn lại tự động."
+        message="Bạn có chắc chắn muốn xóa giao dịch này không? Số dư sổ tay sẽ được hoàn lại tự động."
         iconName="trash-outline"
         iconColor={Colors.error}
         confirmText="Xóa"
@@ -360,5 +345,5 @@ export const BankWalletDetailScreen = ({ walletId }: Props) => {
         onCancel={() => setConfirmDeleteWalletVisible(false)}
       />
     </View>
-  );
-};
+  )
+}

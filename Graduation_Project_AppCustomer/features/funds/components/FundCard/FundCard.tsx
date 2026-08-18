@@ -5,7 +5,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { FontAwesome5, Feather } from '@expo/vector-icons';
 import { Fund } from '../../types';
 import { pickFundTheme } from '../../theme';
-import { formatCurrency } from '../../utils';
+import { formatCurrencyWithSymbol } from '../../utils';
 import FundProgressBar from '../FundProgressBar/FundProgressBar';
 
 interface FundCardProps {
@@ -59,15 +59,14 @@ export default function FundCard({ fund, onPress }: FundCardProps) {
           <View style={styles.bottom}>
             <Text style={styles.balanceLabel}>Số dư quỹ</Text>
             <Text style={styles.balance}>
-              {formatCurrency(fund.balance)}
-              <Text style={styles.currency}> ₫</Text>
+              {formatCurrencyWithSymbol(fund.balance)}
             </Text>
 
             {hasTarget && (
               <View style={styles.progressWrap}>
                 <FundProgressBar progress={progress} />
                 <Text style={styles.progressText}>
-                  {Math.round(progress * 100)}% của mục tiêu {formatCurrency(fund.targetAmount as number)} ₫
+                  {Math.round(progress * 100)}% của mục tiêu {formatCurrencyWithSymbol(fund.targetAmount as number)}
                 </Text>
               </View>
             )}

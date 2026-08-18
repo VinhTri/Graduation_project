@@ -17,7 +17,10 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { ConfirmModal } from '@/shared/components';
-import { useCategoryContext } from '@/shared/contexts/CategoryContext';
+import { useCategories } from '@/features/categories/hooks/useCategories';
+import { CategorySelectModal } from '@/features/categories/components/CategorySelectModal/CategorySelectModal';
+import { AddCategoryModal } from '@/features/categories/components/AddCategoryModal/AddCategoryModal';
+import type { CategoryItem } from '@/shared/types/category';
 import { PASTEL_PALETTE } from '@/shared/constants/PastelPalette';
 import { friendshipService } from '@/shared/api/services/friendship.service';
 import { userService } from '@/shared/api/services/userService';
@@ -40,9 +43,10 @@ export const TransferScreen = () => {
   const [amount, setAmount] = useState('');
   const [note, setNote] = useState('');
 
-  const { categories, isLoading: isLoadingCategories } = useCategoryContext();
-  const [selectedCategory, setSelectedCategory] = useState<any>(null);
+  const { categories, addGroup, addItem, loadCategories } = useCategories({ reloadOnFocus: true });
+  const [selectedCategory, setSelectedCategory] = useState<CategoryItem | null>(null);
   const [isCategoryModalVisible, setIsCategoryModalVisible] = useState(false);
+  const [isAddCategoryModalVisible, setIsAddCategoryModalVisible] = useState(false);
 
   // Hàm phụ trợ: cắt đuôi @gmail.com nếu là email
   const extractDisplayName = (nameOrEmail: string) => {
@@ -228,65 +232,6 @@ export const TransferScreen = () => {
     </View>
   );
 
-  const renderCategoryModal = () => {
-    return (
-      <Modal visible={isCategoryModalVisible} transparent animationType="fade" onRequestClose={() => setIsCategoryModalVisible(false)}>
-        <TouchableWithoutFeedback onPress={() => setIsCategoryModalVisible(false)}>
-          <View style={styles.modalOverlay}>
-            <TouchableWithoutFeedback>
-              <View style={styles.modalContent}>
-                <View style={styles.modalHeader}>
-                  <Text style={styles.modalTitle}>Chọn danh mục</Text>
-                  <TouchableOpacity onPress={() => setIsCategoryModalVisible(false)} style={styles.closeButton}>
-                    <Ionicons name="close" size={24} color={PASTEL_PALETTE.title} />
-                  </TouchableOpacity>
-                </View>
-                {isLoadingCategories ? (
-                  <ActivityIndicator size="large" color={PASTEL_PALETTE.accentDeep} style={{ marginTop: 20 }} />
-                ) : (
-                  <ScrollView contentContainerStyle={{ paddingHorizontal: 16, paddingVertical: 16 }}>
-                    {categories.map((group: any) => {
-                      if (!group.items || group.items.length === 0) return null;
-                      return (
-                        <View key={group.id} style={{ marginBottom: 20 }}>
-                          <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
-                            <Ionicons name={group.icon as any || 'folder'} size={18} color={group.color || PASTEL_PALETTE.title} />
-                            <Text style={{ fontSize: 16, fontWeight: 'bold', color: group.color || PASTEL_PALETTE.title, marginLeft: 8 }}>
-                              {group.title}
-                            </Text>
-                          </View>
-
-                          {group.items.map((item: any) => (
-                            <TouchableOpacity
-                              key={item.id}
-                              style={styles.categoryItem}
-                              onPress={() => {
-                                setSelectedCategory(item);
-                                setIsCategoryModalVisible(false);
-                              }}
-                              activeOpacity={0.7}
-                            >
-                              <View style={[styles.iconContainer, { backgroundColor: item.bgColor || PASTEL_PALETTE.lavenderSoft }]}>
-                                <Ionicons name={item.icon as any} size={22} color={item.color || PASTEL_PALETTE.accentDeep} />
-                              </View>
-                              <Text style={styles.categoryLabel}>{item.label}</Text>
-                              {selectedCategory?.id === item.id && (
-                                <Ionicons name="checkmark-circle" size={22} color={PASTEL_PALETTE.accentDeep} />
-                              )}
-                            </TouchableOpacity>
-                          ))}
-                        </View>
-                      );
-                    })}
-                  </ScrollView>
-                )}
-              </View>
-            </TouchableWithoutFeedback>
-          </View>
-        </TouchableWithoutFeedback>
-      </Modal>
-    );
-  };
 
   return (
     <KeyboardAvoidingView
@@ -467,7 +412,34 @@ export const TransferScreen = () => {
         onCancel={() => setErrorModalVisible(false)}
       />
 
-      {renderCategoryModal()}
+      <CategorySelectModal
+        visible={isCategoryModalVisible && !isAddCategoryModalVisible}
+        categories={categories}
+        onClose={() => setIsCategoryModalVisible(false)}
+        onSelect={(item) => {
+          setSelectedCategory(item)
+          setIsCategoryModalVisible(false)
+        }}
+        onAddCategory={() => {
+          setIsCategoryModalVisible(false)
+          setTimeout(() => setIsAddCategoryModalVisible(true), 350)
+        }}
+      />
+      <AddCategoryModal
+        visible={isAddCategoryModalVisible}
+        categories={categories}
+        onClose={() => setIsAddCategoryModalVisible(false)}
+        onBack={() => {
+          setIsAddCategoryModalVisible(false)
+          setTimeout(() => setIsCategoryModalVisible(true), 350)
+        }}
+        onCreateGroup={addGroup}
+        onSubmit={async (payload) => {
+          await addItem(payload)
+          await loadCategories()
+          setIsAddCategoryModalVisible(false)
+        }}
+      />
     </KeyboardAvoidingView>
   );
 };

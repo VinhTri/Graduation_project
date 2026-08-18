@@ -4,10 +4,18 @@ import com.project.app.auth.security.CustomUserDetails;
 import com.project.app.common.dto.ApiResponse;
 import com.project.app.friendship.dto.response.FriendshipRelationshipDto;
 import com.project.app.friendship.service.FriendshipService;
+import com.project.app.notebook.NotebookReminderTimes;
+import com.project.app.user.dto.request.AppearanceRequest;
+import com.project.app.user.dto.request.MoneyFormatRequest;
+import com.project.app.user.dto.request.NotebookReminderRequest;
+import com.project.app.user.dto.response.AppearanceResponse;
+import com.project.app.user.dto.response.MoneyFormatResponse;
+import com.project.app.user.dto.response.NotebookReminderResponse;
 import com.project.app.user.entity.User;
 import com.project.app.user.repository.UserRepository;
 import com.project.app.wallet.repository.WalletRepository;
 import com.project.app.wallet.service.WalletService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -16,11 +24,15 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.time.LocalTime;
+import java.time.format.DateTimeFormatter;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -56,6 +68,104 @@ public class UserController {
                 .success(true)
                 .message("Lấy thông tin người dùng thành công")
                 .data(userData)
+                .build());
+    }
+
+    @PutMapping("/money-format")
+    public ResponseEntity<ApiResponse<MoneyFormatResponse>> updateMoneyFormat(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @Valid @RequestBody MoneyFormatRequest request) {
+        User user = userRepository.findById(userDetails.getUser().getId())
+                .orElseThrow(() -> new IllegalStateException("Không tìm thấy người dùng"));
+        user.setMoneySuffix(request.getSuffix());
+        user.setMoneySeparator(request.getSeparator());
+        userRepository.save(user);
+
+        userDetails.getUser().setMoneySuffix(request.getSuffix());
+        userDetails.getUser().setMoneySeparator(request.getSeparator());
+
+        MoneyFormatResponse payload = MoneyFormatResponse.builder()
+                .suffix(user.resolvedMoneySuffix())
+                .separator(user.resolvedMoneySeparator())
+                .build();
+
+        return ResponseEntity.ok(ApiResponse.<MoneyFormatResponse>builder()
+                .success(true)
+                .message("Cập nhật định dạng tiền tệ thành công")
+                .data(payload)
+                .build());
+    }
+
+    @PutMapping("/appearance")
+    public ResponseEntity<ApiResponse<AppearanceResponse>> updateAppearance(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @Valid @RequestBody AppearanceRequest request) {
+        User user = userRepository.findById(userDetails.getUser().getId())
+                .orElseThrow(() -> new IllegalStateException("Không tìm thấy người dùng"));
+        user.setThemeMode(request.getThemeMode());
+        user.setLanguage(request.getLanguage());
+        userRepository.save(user);
+
+        userDetails.getUser().setThemeMode(request.getThemeMode());
+        userDetails.getUser().setLanguage(request.getLanguage());
+
+        AppearanceResponse payload = AppearanceResponse.builder()
+                .themeMode(user.resolvedThemeMode())
+                .language(user.resolvedLanguage())
+                .build();
+
+        return ResponseEntity.ok(ApiResponse.<AppearanceResponse>builder()
+                .success(true)
+                .message("Cập nhật giao diện thành công")
+                .data(payload)
+                .build());
+    }
+
+    @PutMapping("/notebook-reminder")
+    public ResponseEntity<ApiResponse<NotebookReminderResponse>> updateNotebookReminder(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @Valid @RequestBody NotebookReminderRequest request) {
+        boolean enabled = Boolean.TRUE.equals(request.getEnabled());
+        LocalTime reminderTime = parseReminderTime(request.getReminderTime());
+
+        if (enabled && reminderTime == null) {
+            return ResponseEntity.badRequest()
+                    .body(ApiResponse.<NotebookReminderResponse>builder()
+                            .success(false)
+                            .message("Vui lòng chọn giờ nhắc nhở trong ngày")
+                            .build());
+        }
+
+        User user = userRepository.findById(userDetails.getUser().getId())
+                .orElseThrow(() -> new IllegalStateException("Không tìm thấy người dùng"));
+        user.setNotebookReminderEnabled(enabled);
+        user.setNotebookReminderTime(enabled ? reminderTime : user.getNotebookReminderTime());
+
+        boolean appliesToday = false;
+        if (!enabled) {
+            user.setNotebookReminderLastSentOn(null);
+        } else if (NotebookReminderTimes.isLaterToday(reminderTime)) {
+            // Giờ chọn sau giờ hiện tại (21:00 → 21:50) → nhắc hôm nay khi tới giờ
+            user.setNotebookReminderLastSentOn(null);
+            appliesToday = true;
+        } else {
+            // Giờ chọn đã qua hoặc đúng phút hiện tại (21:00 → 20:58) → ngày mai
+            user.setNotebookReminderLastSentOn(NotebookReminderTimes.today());
+        }
+
+        userRepository.save(user);
+        userDetails.getUser().setNotebookReminderEnabled(enabled);
+        userDetails.getUser().setNotebookReminderTime(user.getNotebookReminderTime());
+        userDetails.getUser().setNotebookReminderLastSentOn(user.getNotebookReminderLastSentOn());
+
+        return ResponseEntity.ok(ApiResponse.<NotebookReminderResponse>builder()
+                .success(true)
+                .message(enabled
+                        ? (appliesToday
+                            ? "Đã bật. Sẽ nhắc hôm nay khi tới giờ đã chọn"
+                            : "Đã bật. Lần nhắc đầu vào ngày mai")
+                        : "Đã tắt nhắc nhở ghi chép sổ tay")
+                .data(toNotebookReminderResponse(user, appliesToday))
                 .build());
     }
 
@@ -213,6 +323,34 @@ public class UserController {
         userData.put("createdAt", user.getCreatedAt());
         userData.put("isActive", user.isActive());
         userData.put("avatarUrl", user.getAvatarUrl());
+        userData.put("moneySuffix", user.resolvedMoneySuffix());
+        userData.put("moneySeparator", user.resolvedMoneySeparator());
+        userData.put("themeMode", user.resolvedThemeMode());
+        userData.put("language", user.resolvedLanguage());
+        userData.put("notebookReminderEnabled", user.isNotebookReminderEnabled());
+        userData.put("notebookReminderTime", formatReminderTime(user.getNotebookReminderTime()));
         return userData;
+    }
+
+    private static NotebookReminderResponse toNotebookReminderResponse(User user, boolean appliesToday) {
+        return NotebookReminderResponse.builder()
+                .enabled(user.isNotebookReminderEnabled())
+                .reminderTime(formatReminderTime(user.getNotebookReminderTime()))
+                .appliesToday(appliesToday)
+                .build();
+    }
+
+    private static LocalTime parseReminderTime(String value) {
+        if (value == null || value.isBlank()) return null;
+        String normalized = value.trim();
+        if (normalized.length() == 5) {
+            return LocalTime.parse(normalized, DateTimeFormatter.ofPattern("HH:mm"));
+        }
+        return LocalTime.parse(normalized);
+    }
+
+    private static String formatReminderTime(LocalTime time) {
+        if (time == null) return null;
+        return time.format(DateTimeFormatter.ofPattern("HH:mm"));
     }
 }

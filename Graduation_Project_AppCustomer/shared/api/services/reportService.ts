@@ -16,6 +16,55 @@ export interface ReportTrendResponse {
     isCurrent: boolean;
 }
 
+export type FinanceCenterPeriod = 'WEEK' | 'MONTH' | 'YEAR'
+
+export interface FinanceAmountDelta {
+    amount: number
+    percent: number | null
+}
+
+export interface FinanceSourceFlow {
+    income: number
+    expense: number
+    net: number
+}
+
+export interface FinanceSourceDelta {
+    income: FinanceAmountDelta
+    expense: FinanceAmountDelta
+    net: FinanceAmountDelta
+}
+
+export interface FinancePeriodSnapshot {
+    wallet: FinanceSourceFlow
+    cash: FinanceSourceFlow
+    totalIncome: number
+    totalExpense: number
+    net: number
+}
+
+export interface FinanceCenterResponse {
+    period: FinanceCenterPeriod
+    currentLabel: string
+    compareLabel: string
+    currentDate: string
+    compareDate: string
+    walletBalance: number
+    cashBalance: number
+    totalAssets: number
+    walletBalancePercent: number
+    cashBalancePercent: number
+    current: FinancePeriodSnapshot
+    compare: FinancePeriodSnapshot
+    delta: {
+        wallet: FinanceSourceDelta
+        cash: FinanceSourceDelta
+        totalIncome: FinanceAmountDelta
+        totalExpense: FinanceAmountDelta
+        net: FinanceAmountDelta
+    }
+}
+
 export const reportService = {
     getDistributionReport: async (type: 'EXPENSE' | 'INCOME', filter: string, date: string): Promise<ReportDistributionResponse[]> => {
         try {
@@ -51,5 +100,16 @@ export const reportService = {
             console.error("Error fetching trend report:", error);
             return [];
         }
-    }
+    },
+
+    getFinanceCenter: async (
+        period: FinanceCenterPeriod,
+        date: string,
+        compareDate?: string,
+    ): Promise<FinanceCenterResponse> => {
+        const response: any = await axiosClient.get(ENDPOINTS.REPORT.FINANCE_CENTER, {
+            params: { period, date, compareDate },
+        });
+        return response.data;
+    },
 };

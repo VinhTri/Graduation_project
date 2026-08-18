@@ -1,0 +1,208 @@
+import { StyleSheet } from 'react-native'
+import { PASTEL_PALETTE } from '@/shared/constants/PastelPalette'
+
+export const styles = StyleSheet.create({
+  overlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    justifyContent: 'center',
+    paddingHorizontal: 20,
+  },
+  backdrop: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  modalContainer: {
+    backgroundColor: PASTEL_PALETTE.white,
+    borderRadius: 28,
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    paddingBottom: 24,
+    maxHeight: '88%',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.15,
+    shadowRadius: 24,
+    elevation: 10,
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 12,
+  },
+  headerTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: PASTEL_PALETTE.title,
+  },
+  closeBtn: {
+    padding: 4,
+  },
+  hint: {
+    fontSize: 13,
+    color: PASTEL_PALETTE.textMuted,
+    marginBottom: 12,
+    lineHeight: 18,
+  },
+  labelRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  label: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: PASTEL_PALETTE.title,
+    marginTop: 14,
+    marginBottom: 8,
+  },
+  charCount: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: PASTEL_PALETTE.textMuted,
+  },
+  charCountLimit: {
+    color: PASTEL_PALETTE.accentDeep,
+  },
+  input: {
+    borderWidth: 1.5,
+    borderColor: PASTEL_PALETTE.border,
+    borderRadius: 14,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    fontSize: 15,
+    color: PASTEL_PALETTE.textDark,
+    backgroundColor: PASTEL_PALETTE.bg,
+  },
+  inputError: {
+    borderColor: '#EF4444',
+  },
+  fieldError: {
+    marginTop: 6,
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#DC2626',
+  },
+  createGroupBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    borderRadius: 14,
+    backgroundColor: PASTEL_PALETTE.lavenderSoft,
+    borderWidth: 1.5,
+    borderColor: 'transparent',
+  },
+  createGroupBtnError: {
+    borderColor: '#EF4444',
+  },
+  createGroupText: {
+    fontWeight: '700',
+    color: PASTEL_PALETTE.accentDeep,
+  },
+  groupChips: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  groupChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: PASTEL_PALETTE.border,
+    backgroundColor: PASTEL_PALETTE.bgSoft,
+  },
+  groupChipText: {
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  groupChipCount: {
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  groupChipDisabled: {
+    opacity: 0.4,
+  },
+  lockedGroupCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    borderRadius: 14,
+    borderWidth: 1.5,
+  },
+  lockedGroupIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  lockedGroupTextWrap: {
+    flex: 1,
+  },
+  lockedGroupTitle: {
+    fontSize: 15,
+    fontWeight: '800',
+  },
+  lockedGroupCount: {
+    marginTop: 2,
+    fontSize: 12,
+    fontWeight: '600',
+    color: PASTEL_PALETTE.textMuted,
+  },
+  colorHint: {
+    fontSize: 12,
+    color: PASTEL_PALETTE.textMuted,
+    marginBottom: 10,
+  },
+  colorGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+  },
+  colorCircle: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: 'transparent',
+  },
+  colorCircleSelected: {
+    borderColor: PASTEL_PALETTE.title,
+  },
+  previewBox: {
+    marginTop: 4,
+    marginBottom: 8,
+    borderRadius: 16,
+    padding: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  previewTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  saveBtn: {
+    marginTop: 20,
+    backgroundColor: PASTEL_PALETTE.accentDeep,
+    borderRadius: 16,
+    paddingVertical: 16,
+    alignItems: 'center',
+  },
+  saveBtnText: {
+    color: PASTEL_PALETTE.white,
+    fontSize: 16,
+    fontWeight: '700',
+  },
+})

@@ -7,17 +7,17 @@ export const authService = {
   
   /**
    * Gọi API Đăng nhập
-   * @param data Chứa username và password
+   * @param data email + password
    */
-  login: async (data: { username: string; password: string }) => {
+  login: async (data: { email: string; password: string }) => {
     return axiosClient.post(ENDPOINTS.AUTH.LOGIN, data);
   },
 
   /**
    * Gọi API Đăng ký tài khoản mới
-   * @param data Chứa username, password, email và mã OTP xác nhận
+   * @param data email + password + otp (tên hiển thị BE lấy từ phần trước @)
    */
-  register: async (data: { username: string; password: string; email: string; otp: string }) => {
+  register: async (data: { password: string; email: string; otp: string }) => {
     return axiosClient.post(ENDPOINTS.AUTH.REGISTER, data);
   },
 

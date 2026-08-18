@@ -1,28 +1,20 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity, StatusBar,
-  Animated, Easing, LayoutAnimation, Platform, UIManager,
   FlatList, Dimensions, NativeSyntheticEvent, NativeScrollEvent,
   RefreshControl, Alert,
 } from 'react-native';
 import { Feather, Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
 import { Image } from 'expo-image';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { FundHeaderShell, FundCard, FundInvitationCard } from '../../components';
-import { FundIcon } from '../../../../shared/components/FundIcon';
 import { ConfirmModal, SuccessModal } from '../../../../shared/components';
 import { fundStore, useFunds, useFundInvitations } from '../../store/fundStore';
 import { FundInvitation } from '../../types';
-import { formatCurrency } from '../../utils';
-import { FUND_PALETTE, FUND_TOTAL_GRADIENT } from '../../theme';
+import { FUND_PALETTE } from '../../theme';
 import { MAX_OWNED_FUNDS, MAX_JOINED_FUNDS } from '../../constants';
 import { styles } from './FundsScreen.styles';
-
-if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
-  UIManager.setLayoutAnimationEnabledExperimental(true);
-}
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
 const BANNER_H_PAD = 20;
@@ -63,8 +55,6 @@ export function FundsScreen() {
   const { theme } = useTheme();
   const isEn = language === 'en';
   const [tab, setTab] = useState<'mine' | 'joined'>('mine');
-  const [totalExpanded, setTotalExpanded] = useState(false);
-  const [contentHeight, setContentHeight] = useState(110);
   const [bannerIndex, setBannerIndex] = useState(0);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -94,77 +84,17 @@ export function FundsScreen() {
   // Tab bar nổi (~78) + khoảng trống thêm để thẻ cuối không bị đè
   const bottomPad = Math.max(insets.bottom, 10) + 90;
 
-  const expandAnim = useRef(new Animated.Value(0)).current;
-  const heightAnim = useRef(new Animated.Value(0)).current;
-
-  useEffect(() => {
-    Animated.parallel([
-      Animated.spring(expandAnim, {
-        toValue: totalExpanded ? 1 : 0,
-        friction: 9,
-        tension: 68,
-        useNativeDriver: true,
-      }),
-      Animated.timing(heightAnim, {
-        toValue: totalExpanded ? contentHeight : 0,
-        duration: totalExpanded ? 340 : 280,
-        easing: totalExpanded
-          ? Easing.out(Easing.cubic)
-          : Easing.in(Easing.cubic),
-        useNativeDriver: false,
-      }),
-    ]).start();
-  }, [contentHeight, expandAnim, heightAnim, totalExpanded]);
-
-  const chevronRotate = expandAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: ['0deg', '180deg'],
-  });
-
-  const contentOpacity = expandAnim.interpolate({
-    inputRange: [0, 0.25, 1],
-    outputRange: [0, 0.35, 1],
-  });
-
-  const contentTranslateY = expandAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: [-10, 0],
-  });
-
-  const totalBalance = useMemo(
-    () => funds.reduce((sum, f) => sum + f.balance, 0),
-    [funds]
-  );
-  const totalMembers = useMemo(
-    () => funds.reduce((sum, f) => sum + f.memberCount, 0),
-    [funds]
-  );
-
   const myFunds = useMemo(() => funds.filter((f) => f.isOwner), [funds]);
   const joinedFunds = useMemo(() => funds.filter((f) => !f.isOwner), [funds]);
   const visibleFunds = tab === 'mine' ? myFunds : joinedFunds;
   const currentLimit = tab === 'mine' ? MAX_OWNED_FUNDS : MAX_JOINED_FUNDS;
   const createDisabled = myFunds.length >= MAX_OWNED_FUNDS;
-
-  const handleBack = () => router.replace('/(tabs)');
-
-  const toggleTotalExpanded = () => {
-    LayoutAnimation.configureNext({
-      duration: 300,
-      update: { type: LayoutAnimation.Types.easeInEaseOut },
-    });
-    setTotalExpanded((v) => !v);
-  };
-
   const canCreateMore = !createDisabled;
 
   const handleCreate = () => {
     if (createDisabled) return;
     router.push('/funds/create');
   };
-
-  const toggleCollapse = toggleTotalExpanded;
-  const isCollapsed = !totalExpanded;
 
   const handleOpenAcceptModal = (inv: FundInvitation) => {
     setSelectedInvitation(inv);
@@ -231,7 +161,11 @@ export function FundsScreen() {
     <View style={[styles.container, { backgroundColor: theme.bg }]}>
       <StatusBar barStyle={theme.statusBarStyle} />
 
-      <FundHeaderShell>
+      <FundHeaderShell
+        coverImage={require('../../../../assets/images/funds-list-header.png')}
+        coverTone="light"
+        contentStyle={styles.header}
+      >
         <View style={styles.headerTopRow}>
           <TouchableOpacity
             onPress={() => {
@@ -255,62 +189,13 @@ export function FundsScreen() {
               activeOpacity={0.85}
               disabled={!canCreateMore}
             >
-              <Feather name="plus" size={15} color={canCreateMore ? FUND_PALETTE.white : '#9CA3AF'} />
+              <Feather name="plus" size={15} color={canCreateMore ? FUND_PALETTE.primaryDeep : '#9CA3AF'} />
               <Text style={[styles.createBtnText, !canCreateMore && styles.createBtnTextDisabled]}>
                 {canCreateMore ? (isEn ? 'Create' : 'Tạo quỹ') : (isEn ? 'Limit' : 'Đạt Hạn')}
               </Text>
             </TouchableOpacity>
           </View>
         </View>
-
-        <TouchableOpacity
-          activeOpacity={0.92}
-          onPress={toggleCollapse}
-          style={{ marginTop: 16 }}
-        >
-          <LinearGradient
-            colors={FUND_TOTAL_GRADIENT}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={[styles.totalCard, isCollapsed && styles.totalCardCollapsed]}
-          >
-            <View style={styles.totalDecorCircle1} />
-            <View style={styles.totalDecorCircle2} />
-
-            <View style={styles.totalTopRow}>
-              <FundIcon size={24} color="#FFFFFF" style={styles.totalLogo} />
-              <Text style={styles.totalLabel}>
-                {isEn ? 'Total Funds Balance' : 'Tổng số dư tất cả các quỹ'}
-              </Text>
-              <Feather
-                name={isCollapsed ? 'chevron-down' : 'chevron-up'}
-                size={18}
-                color="rgba(255,255,255,0.9)"
-              />
-            </View>
-
-            <Animated.View style={{ height: heightAnim, overflow: 'hidden' }}>
-              <Animated.View>
-                <View style={styles.totalValueRow}>
-                  <Text style={styles.totalValue}>{formatCurrency(totalBalance)}</Text>
-                  <Text style={styles.totalCurrency}>₫</Text>
-                </View>
-
-                <View style={styles.totalStatsRow}>
-                  <View style={styles.totalStat}>
-                    <Feather name="briefcase" size={13} color="rgba(255,255,255,0.85)" />
-                    <Text style={styles.totalStatText}>{funds.length} {isEn ? 'funds' : 'quỹ'}</Text>
-                  </View>
-                  <View style={styles.totalStatDivider} />
-                  <View style={styles.totalStat}>
-                    <Feather name="users" size={13} color="rgba(255,255,255,0.85)" />
-                    <Text style={styles.totalStatText}>{totalMembers} {isEn ? 'members' : 'thành viên'}</Text>
-                  </View>
-                </View>
-              </Animated.View>
-            </Animated.View>
-          </LinearGradient>
-        </TouchableOpacity>
       </FundHeaderShell>
 
       <ScrollView

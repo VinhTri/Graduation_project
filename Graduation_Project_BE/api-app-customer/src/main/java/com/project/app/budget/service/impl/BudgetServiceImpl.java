@@ -1,340 +1,239 @@
 package com.project.app.budget.service.impl;
 
-import com.project.app.budget.dto.request.BudgetCreateRequest;
-import com.project.app.budget.dto.request.BudgetUpdateRequest;
+import com.project.app.budget.dto.BudgetSourceSpend;
+import com.project.app.budget.dto.request.CreateBudgetRequest;
+import com.project.app.budget.dto.request.UpdateBudgetRequest;
 import com.project.app.budget.dto.response.BudgetResponse;
-import com.project.app.budget.dto.response.BudgetSummaryResponse;
 import com.project.app.budget.entity.Budget;
-import com.project.app.budget.entity.BudgetPeriod;
-import com.project.app.budget.enums.BudgetCycle;
-import com.project.app.budget.repository.BudgetPeriodRepository;
+import com.project.app.budget.enums.BudgetApplyTo;
+import com.project.app.budget.enums.BudgetStatus;
 import com.project.app.budget.repository.BudgetRepository;
 import com.project.app.budget.service.BudgetService;
 import com.project.app.category.entity.CategoryItem;
-import com.project.app.category.repository.CategoryItemRepository;
+import com.project.app.category.service.CategoryService;
 import com.project.app.common.exception.AppException;
 import com.project.app.common.exception.ErrorCode;
+import com.project.app.notebook.enums.NotebookTransactionType;
+import com.project.app.notebook.repository.NotebookTransactionRepository;
+import com.project.app.wallet.enums.WalletTransactionType;
+import com.project.app.wallet.repository.WalletTransactionRepository;
 import com.project.app.user.entity.User;
-import com.project.app.wallet.entity.Wallet;
-import com.project.app.wallet.repository.WalletRepository;
-import com.project.app.notification.service.NotificationService;
-import com.project.app.notification.enums.NotificationType;
+import com.project.app.user.repository.UserRepository;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
-import java.time.DayOfWeek;
 import java.time.LocalDate;
-import java.time.temporal.TemporalAdjusters;
+import java.time.LocalDateTime;
+import java.util.Collection;
 import java.util.List;
-import java.util.stream.Collectors;
 
 @Service
+@RequiredArgsConstructor
 public class BudgetServiceImpl implements BudgetService {
 
     private final BudgetRepository budgetRepository;
-    private final BudgetPeriodRepository budgetPeriodRepository;
-    private final CategoryItemRepository categoryItemRepository;
-    private final WalletRepository walletRepository;
-    private final NotificationService notificationService;
+    private final UserRepository userRepository;
+    private final CategoryService categoryService;
+    private final NotebookTransactionRepository notebookTransactionRepository;
+    private final WalletTransactionRepository walletTransactionRepository;
 
-    public BudgetServiceImpl(BudgetRepository budgetRepository, 
-                             BudgetPeriodRepository budgetPeriodRepository,
-                             CategoryItemRepository categoryItemRepository, 
-                             WalletRepository walletRepository,
-                             NotificationService notificationService) {
-        this.budgetRepository = budgetRepository;
-        this.budgetPeriodRepository = budgetPeriodRepository;
-        this.categoryItemRepository = categoryItemRepository;
-        this.walletRepository = walletRepository;
-        this.notificationService = notificationService;
+    @Override
+    @Transactional(readOnly = true)
+    public List<BudgetResponse> listBudgets(Long userId) {
+        return budgetRepository.findAllByUserIdOrderByEndDateDescStartDateDesc(userId).stream()
+                .map(this::toResponse)
+                .toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public BudgetResponse getBudget(Long userId, Long budgetId) {
+        return toResponse(requireOwned(userId, budgetId));
     }
 
     @Override
     @Transactional
-    public BudgetResponse createBudget(User user, BudgetCreateRequest request) {
-        // Validation: Limit must be at least 10,000
-        if (request.amount() == null || request.amount().compareTo(new BigDecimal("10000")) < 0) {
-            throw new AppException(ErrorCode.INVALID_REQUEST);
+    public BudgetResponse createBudget(Long userId, CreateBudgetRequest request) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+
+        LocalDate startDate = request.getStartDate();
+        LocalDate endDate = request.getEndDate();
+        if (endDate.isBefore(startDate)) {
+            throw new AppException(ErrorCode.BUDGET_INVALID_DATE_RANGE);
+        }
+        if (startDate.isBefore(LocalDate.now())) {
+            throw new AppException(ErrorCode.BUDGET_START_IN_PAST);
         }
 
-        // Validation: Category exists and belongs to user
-        CategoryItem category = categoryItemRepository.findById(request.categoryId())
-                .orElseThrow(() -> new AppException(ErrorCode.CATEGORY_ITEM_NOT_FOUND));
+        CategoryItem category = categoryService.requireUserOwnedItem(userId, request.getCategoryId());
 
-        if (category.getUser() == null || !category.getUser().getId().equals(user.getId()) || category.isDeleted()) {
-            throw new AppException(ErrorCode.CATEGORY_INVALID_FOR_CASH); 
-        }
-
-        // Validation: Custom cycle requires dates
-        if (request.cycle() == BudgetCycle.CUSTOM) {
-            if (request.startDate() == null || request.endDate() == null) {
-                throw new AppException(ErrorCode.INVALID_REQUEST); // Must have dates
-            }
-            if (request.startDate().isAfter(request.endDate())) {
-                throw new AppException(ErrorCode.INVALID_REQUEST); // Start date must be <= End date
-            }
-        }
-
-        // Validation: Duplicate budget (same category and cycle)
-        if (budgetRepository.existsByUserIdAndCategoryIdAndCycleAndIsDeletedFalse(user.getId(), category.getId(), request.cycle())) {
-            throw new AppException(ErrorCode.BUDGET_ALREADY_EXISTS); // "A budget for this category and cycle already exists"
-        }
-
-        Wallet wallet = null;
-        if (request.walletId() != null) {
-            wallet = walletRepository.findByIdAndUserId(request.walletId(), user.getId())
-                    .orElseThrow(() -> new AppException(ErrorCode.WALLET_NOT_FOUND));
+        if (budgetRepository.existsOverlapping(userId, category.getId(), startDate, endDate)) {
+            throw new AppException(ErrorCode.BUDGET_OVERLAPPING);
         }
 
         Budget budget = Budget.builder()
-                .name(request.name())
                 .user(user)
-                .category(category)
-                .wallet(wallet)
-                .amount(request.amount())
-                .cycle(request.cycle())
-                .startDate(request.startDate())
-                .endDate(request.endDate())
+                .categoryId(category.getId())
+                .categoryName(category.getLabel())
+                .categoryIcon(category.getIcon())
+                .categoryColor(category.getColor())
+                .categoryBgColor(category.getBgColor())
+                .categoryGroupName(category.getGroup() != null ? category.getGroup().getTitle() : null)
+                .applyTo(request.getApplyTo())
+                .limitAmount(request.getLimitAmount())
+                .startDate(startDate)
+                .endDate(endDate)
+                .categoryDeleted(false)
+                .invalidated(false)
                 .build();
 
-        budget = budgetRepository.save(budget);
-
-        // Auto-create current period
-        BudgetPeriod period = getOrCreateCurrentPeriod(budget, LocalDate.now());
-
-        return mapToResponse(budget, period);
+        return toResponse(budgetRepository.save(budget));
     }
 
     @Override
     @Transactional
-    public BudgetResponse updateBudget(User user, Long id, BudgetUpdateRequest request) {
-        if (request.amount() == null || request.amount().compareTo(new BigDecimal("10000")) < 0) {
-            throw new AppException(ErrorCode.INVALID_REQUEST);
+    public BudgetResponse updateBudget(Long userId, Long budgetId, UpdateBudgetRequest request) {
+        Budget budget = requireOwned(userId, budgetId);
+        if (budget.isInvalidated()) {
+            throw new AppException(ErrorCode.BUDGET_INVALIDATED);
         }
-
-        Budget budget = budgetRepository.findByIdAndUserIdAndIsDeletedFalse(id, user.getId())
-                .orElseThrow(() -> new AppException(ErrorCode.BUDGET_NOT_FOUND));
-
-        budget.setName(request.name());
-        budget.setAmount(request.amount());
-        budget = budgetRepository.save(budget);
-
-        // Sync logic for current period
-        BudgetPeriod currentPeriod = getOrCreateCurrentPeriod(budget, LocalDate.now());
-        
-        // Re-evaluate notifications based on new limit
-        BigDecimal eightyPercent = budget.getAmount().multiply(new BigDecimal("0.8"));
-        if (currentPeriod.getSpentAmount().compareTo(eightyPercent) < 0) {
-            currentPeriod.setNotified80(false);
-        }
-        if (currentPeriod.getSpentAmount().compareTo(budget.getAmount()) < 0) {
-            currentPeriod.setNotified100(false);
-        }
-        
-        // Trigger notifications if limit was decreased and threshold is now met
-        if (currentPeriod.getSpentAmount().compareTo(budget.getAmount()) >= 0 && !currentPeriod.isNotified100()) {
-            currentPeriod.setNotified100(true);
-            notificationService.createNotification(
-                    user,
-                    "Vượt hạn mức ngân sách!",
-                    "Bạn đã vượt 100% hạn mức ngân sách cho danh mục " + budget.getCategory().getLabel() + " do thay đổi hạn mức.",
-                    NotificationType.BUDGET_EXCEEDED,
-                    budget.getId()
-            );
-        } else if (currentPeriod.getSpentAmount().compareTo(eightyPercent) >= 0 && !currentPeriod.isNotified80()) {
-            currentPeriod.setNotified80(true);
-            notificationService.createNotification(
-                    user,
-                    "Sắp vượt hạn mức ngân sách!",
-                    "Bạn đã sử dụng " + (currentPeriod.getSpentAmount().multiply(new BigDecimal("100")).divide(budget.getAmount(), java.math.RoundingMode.HALF_UP)) + "% ngân sách cho danh mục " + budget.getCategory().getLabel() + " do thay đổi hạn mức.",
-                    NotificationType.BUDGET_WARNING,
-                    budget.getId()
-            );
-        }
-        
-        budgetPeriodRepository.save(currentPeriod);
-
-        return mapToResponse(budget, currentPeriod);
+        budget.setApplyTo(request.getApplyTo());
+        budget.setLimitAmount(request.getLimitAmount());
+        return toResponse(budgetRepository.save(budget));
     }
 
     @Override
     @Transactional
-    public BudgetResponse cheatSpent(User user, Long id, BigDecimal spentAmount) {
-        Budget budget = budgetRepository.findByIdAndUserIdAndIsDeletedFalse(id, user.getId())
-                .orElseThrow(() -> new AppException(ErrorCode.BUDGET_NOT_FOUND));
+    public void deleteBudget(Long userId, Long budgetId) {
+        Budget budget = requireOwned(userId, budgetId);
+        budgetRepository.delete(budget);
+    }
 
-        BudgetPeriod period = getOrCreateCurrentPeriod(budget, LocalDate.now());
-        period.setSpentAmount(spentAmount);
-        
-        BigDecimal eightyPercent = budget.getAmount().multiply(new BigDecimal("0.8"));
+    @Override
+    @Transactional
+    public void markCategoryDeleted(Long userId, Long categoryId) {
+        applyCategoryDeleted(budgetRepository.findAllByUserIdAndCategoryId(userId, categoryId));
+    }
 
-        if (period.getSpentAmount().compareTo(budget.getAmount()) >= 0) {
-            period.setNotified100(true);
-            period.setNotified80(true);
-            notificationService.createNotification(
-                    user,
-                    "Vượt hạn mức ngân sách!",
-                    "Bạn đã vượt 100% hạn mức ngân sách cho danh mục " + budget.getCategory().getLabel(),
-                    NotificationType.BUDGET_EXCEEDED,
-                    budget.getId()
-            );
-        } else if (period.getSpentAmount().compareTo(eightyPercent) >= 0) {
-            period.setNotified80(true);
-            notificationService.createNotification(
-                    user,
-                    "Sắp vượt hạn mức ngân sách!",
-                    "Bạn đã sử dụng " + (period.getSpentAmount().multiply(new BigDecimal("100")).divide(budget.getAmount(), java.math.RoundingMode.HALF_UP)) + "% ngân sách cho danh mục " + budget.getCategory().getLabel(),
-                    NotificationType.BUDGET_WARNING,
-                    budget.getId()
-            );
-        } else {
-            // Reset flags if test value is low
-            period.setNotified80(false);
-            period.setNotified100(false);
+    @Override
+    @Transactional
+    public void markCategoriesDeleted(Long userId, Collection<Long> categoryIds) {
+        if (categoryIds == null || categoryIds.isEmpty()) {
+            return;
         }
-
-        budgetPeriodRepository.save(period);
-        return mapToResponse(budget, period);
+        applyCategoryDeleted(budgetRepository.findAllByUserIdAndCategoryIdIn(userId, categoryIds));
     }
 
-    @Override
-    @Transactional
-    public void deleteBudget(User user, Long id) {
-        Budget budget = budgetRepository.findByIdAndUserIdAndIsDeletedFalse(id, user.getId())
-                .orElseThrow(() -> new AppException(ErrorCode.BUDGET_NOT_FOUND));
-        budget.setDeleted(true);
-        budgetRepository.save(budget);
-    }
-
-    @Override
-    @Transactional
-    public List<BudgetResponse> getUserBudgets(User user) {
+    private void applyCategoryDeleted(List<Budget> budgets) {
+        if (budgets.isEmpty()) {
+            return;
+        }
         LocalDate today = LocalDate.now();
-        List<Budget> budgets = budgetRepository.findByUserIdAndIsDeletedFalse(user.getId());
-        
-        return budgets.stream()
-                .map(budget -> {
-                    BudgetPeriod period = getOrCreateCurrentPeriod(budget, today);
-                    return mapToResponse(budget, period);
-                })
-                .collect(Collectors.toList());
-    }
-
-    @Override
-    @Transactional
-    public BudgetResponse getBudgetById(User user, Long id) {
-        Budget budget = budgetRepository.findByIdAndUserIdAndIsDeletedFalse(id, user.getId())
-                .orElseThrow(() -> new AppException(ErrorCode.BUDGET_NOT_FOUND));
-        BudgetPeriod period = getOrCreateCurrentPeriod(budget, LocalDate.now());
-        return mapToResponse(budget, period);
-    }
-
-    @Override
-    @Transactional
-    public BudgetSummaryResponse getBudgetSummary(User user) {
-        LocalDate today = LocalDate.now();
-        
-        // Ensure all active budgets have a period for today
-        List<Budget> budgets = budgetRepository.findByUserIdAndIsDeletedFalse(user.getId());
         for (Budget budget : budgets) {
-            getOrCreateCurrentPeriod(budget, today);
-        }
-
-        // Now calculate summary based on active periods
-        List<BudgetPeriod> activePeriods = budgetPeriodRepository.findActivePeriodsByUserAndDate(user.getId(), today);
-
-        BigDecimal totalLimit = BigDecimal.ZERO;
-        BigDecimal totalSpent = BigDecimal.ZERO;
-        int warningCount = 0;
-
-        for (BudgetPeriod period : activePeriods) {
-            totalLimit = totalLimit.add(period.getBudget().getAmount());
-            totalSpent = totalSpent.add(period.getSpentAmount());
-            if (period.isNotified80() || period.isNotified100()) {
-                warningCount++;
+            budget.setCategoryDeleted(true);
+            if (!today.isAfter(budget.getEndDate()) && !budget.isInvalidated()) {
+                budget.setInvalidated(true);
             }
         }
+        budgetRepository.saveAll(budgets);
+    }
 
-        BigDecimal remaining = totalLimit.subtract(totalSpent);
-        if (remaining.compareTo(BigDecimal.ZERO) < 0) {
-            remaining = BigDecimal.ZERO;
+    private Budget requireOwned(Long userId, Long budgetId) {
+        return budgetRepository.findByIdAndUserId(budgetId, userId)
+                .orElseThrow(() -> new AppException(ErrorCode.BUDGET_NOT_FOUND));
+    }
+
+    private BudgetResponse toResponse(Budget budget) {
+        LocalDate today = LocalDate.now();
+        BudgetStatus status = resolveStatus(budget, today);
+
+        LocalDateTime from = budget.getStartDate().atStartOfDay();
+        LocalDateTime toExclusive = budget.getEndDate().plusDays(1).atStartOfDay();
+
+        BudgetApplyTo applyTo = budget.getApplyTo();
+        BudgetSourceSpend notebook = null;
+        BudgetSourceSpend wallet = null;
+
+        if (applyTo == BudgetApplyTo.NOTEBOOK || applyTo == BudgetApplyTo.BOTH) {
+            BigDecimal spent = notebookTransactionRepository.sumAmountByUserAndTypeAndCategoryAndCreatedAtRange(
+                    budget.getUser().getId(),
+                    NotebookTransactionType.EXPENSE,
+                    budget.getCategoryId(),
+                    from,
+                    toExclusive
+            );
+            notebook = buildSourceSpend(budget.getLimitAmount(), spent);
         }
 
-        return new BudgetSummaryResponse(totalLimit, totalSpent, remaining, warningCount);
+        if (applyTo == BudgetApplyTo.WALLET || applyTo == BudgetApplyTo.BOTH) {
+            BigDecimal spent = walletTransactionRepository.sumAmountByUserAndTypeAndCategoryAndCreatedAtRange(
+                    budget.getUser().getId(),
+                    WalletTransactionType.WITHDRAW,
+                    budget.getCategoryId(),
+                    from,
+                    toExclusive
+            );
+            wallet = buildSourceSpend(budget.getLimitAmount(), spent);
+        }
+
+        return BudgetResponse.builder()
+                .id(budget.getId())
+                .categoryId(budget.getCategoryId())
+                .categoryName(budget.getCategoryName())
+                .categoryIcon(budget.getCategoryIcon())
+                .categoryColor(budget.getCategoryColor())
+                .categoryBgColor(budget.getCategoryBgColor())
+                .categoryGroupName(resolveGroupName(budget))
+                .applyTo(budget.getApplyTo())
+                .limitAmount(budget.getLimitAmount())
+                .startDate(budget.getStartDate())
+                .endDate(budget.getEndDate())
+                .status(status)
+                .categoryDeleted(budget.isCategoryDeleted())
+                .notebook(notebook)
+                .wallet(wallet)
+                .createdAt(budget.getCreatedAt())
+                .updatedAt(budget.getUpdatedAt())
+                .build();
+    }
+
+    private String resolveGroupName(Budget budget) {
+        if (budget.getCategoryGroupName() != null && !budget.getCategoryGroupName().isBlank()) {
+            return budget.getCategoryGroupName();
+        }
+        return categoryService.findItemIncludingDeleted(budget.getCategoryId())
+                .map(item -> item.getGroup() != null ? item.getGroup().getTitle() : null)
+                .orElse(null);
+    }
+
+    private BudgetStatus resolveStatus(Budget budget, LocalDate today) {
+        if (budget.isInvalidated()) {
+            return BudgetStatus.INVALIDATED;
+        }
+        if (today.isBefore(budget.getStartDate())) {
+            return BudgetStatus.UPCOMING;
+        }
+        if (today.isAfter(budget.getEndDate())) {
+            return BudgetStatus.COMPLETED;
+        }
+        return BudgetStatus.ACTIVE;
     }
 
     /**
-     * Lazy-loads or creates the BudgetPeriod for the given date.
+     * Model B: mỗi nguồn đo độc lập với cùng hạn mức.
+     * remaining = limit - spent (có thể âm).
      */
-    private BudgetPeriod getOrCreateCurrentPeriod(Budget budget, LocalDate date) {
-        if (budget.getCycle() == BudgetCycle.CUSTOM) {
-            // A custom budget only has one period.
-            return budgetPeriodRepository.findFirstByBudgetId(budget.getId())
-                    .orElseGet(() -> {
-                        BudgetPeriod newPeriod = BudgetPeriod.builder()
-                                .budget(budget)
-                                .startDate(budget.getStartDate())
-                                .endDate(budget.getEndDate())
-                                .spentAmount(BigDecimal.ZERO)
-                                .isNotified80(false)
-                                .isNotified100(false)
-                                .build();
-                        return budgetPeriodRepository.save(newPeriod);
-                    });
-        }
-
-        return budgetPeriodRepository.findByBudgetIdAndDate(budget.getId(), date)
-                .orElseGet(() -> {
-                    LocalDate startDate = date;
-                    LocalDate endDate = date;
-
-                    switch (budget.getCycle()) {
-                        case WEEKLY:
-                            startDate = date.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY));
-                            endDate = date.with(TemporalAdjusters.nextOrSame(DayOfWeek.SUNDAY));
-                            break;
-                        case MONTHLY:
-                            startDate = date.withDayOfMonth(1);
-                            endDate = date.with(TemporalAdjusters.lastDayOfMonth());
-                            break;
-                        case YEARLY:
-                            startDate = date.withDayOfYear(1);
-                            endDate = date.with(TemporalAdjusters.lastDayOfYear());
-                            break;
-                    }
-
-                    BudgetPeriod newPeriod = BudgetPeriod.builder()
-                            .budget(budget)
-                            .startDate(startDate)
-                            .endDate(endDate)
-                            .spentAmount(BigDecimal.ZERO)
-                            .isNotified80(false)
-                            .isNotified100(false)
-                            .build();
-
-                    return budgetPeriodRepository.save(newPeriod);
-                });
-    }
-
-    private BudgetResponse mapToResponse(Budget budget, BudgetPeriod period) {
-        return new BudgetResponse(
-                budget.getId(),
-                budget.getName(),
-                budget.getCategory().getId(),
-                budget.getCategory().getLabel(),
-                budget.getCategory().getIcon(),
-                budget.getCategory().getColor(),
-                budget.getCategory().getBgColor(),
-                budget.getWallet() != null ? budget.getWallet().getId() : null,
-                budget.getWallet() != null ? budget.getWallet().getName() : null,
-                budget.getAmount(),
-                period.getSpentAmount(),
-                budget.getCycle(),
-                period.getStartDate(),
-                period.getEndDate(),
-                period.isNotified80(),
-                period.isNotified100()
-        );
+    private BudgetSourceSpend buildSourceSpend(BigDecimal limitAmount, BigDecimal spent) {
+        BigDecimal safeSpent = spent == null ? BigDecimal.ZERO : spent;
+        BigDecimal remaining = limitAmount.subtract(safeSpent);
+        return BudgetSourceSpend.builder()
+                .limitAmount(limitAmount)
+                .spent(safeSpent)
+                .remaining(remaining)
+                .overLimit(remaining.signum() < 0)
+                .build();
     }
 }

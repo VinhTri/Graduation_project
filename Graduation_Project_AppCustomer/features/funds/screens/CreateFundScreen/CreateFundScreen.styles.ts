@@ -104,6 +104,33 @@ export const styles = StyleSheet.create({
     marginTop: 10,
     lineHeight: 17,
   },
+  switchCard: {
+    marginTop: 18,
+    backgroundColor: FUND_PALETTE.white,
+    borderRadius: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    borderWidth: 1.5,
+    borderColor: FUND_PALETTE.border,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  switchTextWrap: {
+    flex: 1,
+    minWidth: 0,
+  },
+  switchTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: FUND_PALETTE.title,
+  },
+  switchHint: {
+    fontSize: 12,
+    color: FUND_PALETTE.textMuted,
+    lineHeight: 17,
+    marginTop: 4,
+  },
   limitBanner: {
     flexDirection: 'row',
     alignItems: 'center',

@@ -4,6 +4,12 @@ import com.project.app.category.entity.CategoryGroup;
 import com.project.app.category.entity.CategoryItem;
 import com.project.app.category.repository.CategoryGroupRepository;
 import com.project.app.category.repository.CategoryItemRepository;
+import com.project.app.notebook.entity.NotebookBook;
+import com.project.app.notebook.enums.NotebookBookType;
+import com.project.app.notebook.enums.NotebookTransactionType;
+import com.project.app.notebook.repository.NotebookBookRepository;
+import com.project.app.notebook.repository.NotebookTransactionRepository;
+import com.project.app.report.dto.response.FinanceCenterResponse;
 import com.project.app.report.dto.response.ReportDistributionResponse;
 import com.project.app.report.dto.response.ReportTrendResponse;
 import com.project.app.report.service.ReportService;
@@ -12,6 +18,8 @@ import com.project.app.transaction.enums.TransactionStatus;
 import com.project.app.transaction.enums.TransactionType;
 import com.project.app.transaction.repository.TransactionRepository;
 import com.project.app.user.entity.User;
+import com.project.app.wallet.entity.Wallet;
+import com.project.app.wallet.repository.WalletRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -34,6 +42,9 @@ public class ReportServiceImpl implements ReportService {
     private final TransactionRepository transactionRepository;
     private final CategoryItemRepository categoryItemRepository;
     private final CategoryGroupRepository categoryGroupRepository;
+    private final WalletRepository walletRepository;
+    private final NotebookBookRepository notebookBookRepository;
+    private final NotebookTransactionRepository notebookTransactionRepository;
 
     /**
      * Giao dịch thực tế trong hệ thống chỉ có TOP_UP (nạp) và WITHDRAW (rút).
@@ -94,7 +105,13 @@ public class ReportServiceImpl implements ReportService {
 
             if (categoryMap.containsKey(catId)) {
                 CategoryItem cat = categoryMap.get(catId);
-                name = cat.isDeleted() ? cat.getLabel() + " (đã xóa)" : cat.getLabel();
+                boolean systemCategory = cat.getUser() == null
+                        || "Nạp quỹ".equals(cat.getLabel())
+                        || "Rút quỹ".equals(cat.getLabel())
+                        || "Chia tiền".equals(cat.getLabel())
+                        || "Chuyển tiền".equals(cat.getLabel())
+                        || "Nhận chuyển tiền".equals(cat.getLabel());
+                name = (!systemCategory && cat.isDeleted()) ? cat.getLabel() + " (đã xóa)" : cat.getLabel();
                 color = cat.getColor();
                 icon = cat.getIcon();
             } else {
@@ -291,6 +308,160 @@ public class ReportServiceImpl implements ReportService {
         }
 
         return trendResponses;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public FinanceCenterResponse getFinanceCenter(User user, String period, LocalDate date, LocalDate compareDate) {
+        String filter = period == null || period.isBlank() ? "MONTH" : period;
+        LocalDate currentDate = date != null ? date : LocalDate.now();
+        LocalDate resolvedCompare = compareDate != null ? compareDate : previousPeriodDate(filter, currentDate);
+
+        LocalDateTime[] currentRange = getDateRange(filter, currentDate);
+        LocalDateTime[] compareRange = getDateRange(filter, resolvedCompare);
+
+        BigDecimal walletBalance = walletRepository.findByUserIdAndIsDefaultTrue(user.getId())
+                .map(Wallet::getBalance)
+                .orElse(BigDecimal.ZERO);
+        BigDecimal cashBalance = notebookBookRepository.findByUserIdAndBookType(user.getId(), NotebookBookType.CASH)
+                .map(NotebookBook::getBalance)
+                .orElse(BigDecimal.ZERO);
+        BigDecimal totalAssets = nz(walletBalance).add(nz(cashBalance));
+
+        FinanceCenterResponse.PeriodSnapshot current = buildPeriodSnapshot(user.getId(), currentRange);
+        FinanceCenterResponse.PeriodSnapshot compare = buildPeriodSnapshot(user.getId(), compareRange);
+
+        return FinanceCenterResponse.builder()
+                .period(filter.toUpperCase())
+                .currentLabel(periodLabel(filter, currentDate))
+                .compareLabel(periodLabel(filter, resolvedCompare))
+                .currentDate(currentDate)
+                .compareDate(resolvedCompare)
+                .walletBalance(nz(walletBalance))
+                .cashBalance(nz(cashBalance))
+                .totalAssets(totalAssets)
+                .walletBalancePercent(share(walletBalance, totalAssets))
+                .cashBalancePercent(share(cashBalance, totalAssets))
+                .current(current)
+                .compare(compare)
+                .delta(buildPeriodDelta(current, compare))
+                .build();
+    }
+
+    private FinanceCenterResponse.PeriodSnapshot buildPeriodSnapshot(Long userId, LocalDateTime[] range) {
+        FinanceCenterResponse.SourceFlow wallet = buildWalletFlow(userId, range[0], range[1]);
+        FinanceCenterResponse.SourceFlow cash = buildCashFlow(userId, range[0], range[1]);
+        BigDecimal totalIncome = nz(wallet.getIncome()).add(nz(cash.getIncome()));
+        BigDecimal totalExpense = nz(wallet.getExpense()).add(nz(cash.getExpense()));
+        return FinanceCenterResponse.PeriodSnapshot.builder()
+                .wallet(wallet)
+                .cash(cash)
+                .totalIncome(totalIncome)
+                .totalExpense(totalExpense)
+                .net(totalIncome.subtract(totalExpense))
+                .build();
+    }
+
+    private FinanceCenterResponse.SourceFlow buildWalletFlow(Long userId, LocalDateTime from, LocalDateTime to) {
+        BigDecimal income = transactionRepository.sumAmountByUserDefaultWalletAndTypesAndStatusAndCreatedAtBetween(
+                userId, resolveTypes(TransactionType.INCOME), TransactionStatus.SUCCESS, from, to);
+        BigDecimal expense = transactionRepository.sumAmountByUserDefaultWalletAndTypesAndStatusAndCreatedAtBetween(
+                userId, resolveTypes(TransactionType.EXPENSE), TransactionStatus.SUCCESS, from, to);
+        return sourceFlow(income, expense);
+    }
+
+    private FinanceCenterResponse.SourceFlow buildCashFlow(Long userId, LocalDateTime from, LocalDateTime to) {
+        BigDecimal income = notebookTransactionRepository.sumAmountByUserAndTypeAndCreatedAtBetween(
+                userId, NotebookTransactionType.INCOME, from, to);
+        BigDecimal expense = notebookTransactionRepository.sumAmountByUserAndTypeAndCreatedAtBetween(
+                userId, NotebookTransactionType.EXPENSE, from, to);
+        return sourceFlow(income, expense);
+    }
+
+    private FinanceCenterResponse.SourceFlow sourceFlow(BigDecimal income, BigDecimal expense) {
+        BigDecimal in = nz(income);
+        BigDecimal out = nz(expense);
+        return FinanceCenterResponse.SourceFlow.builder()
+                .income(in)
+                .expense(out)
+                .net(in.subtract(out))
+                .build();
+    }
+
+    private FinanceCenterResponse.PeriodDelta buildPeriodDelta(
+            FinanceCenterResponse.PeriodSnapshot current,
+            FinanceCenterResponse.PeriodSnapshot compare) {
+        return FinanceCenterResponse.PeriodDelta.builder()
+                .wallet(sourceDelta(current.getWallet(), compare.getWallet()))
+                .cash(sourceDelta(current.getCash(), compare.getCash()))
+                .totalIncome(amountDelta(current.getTotalIncome(), compare.getTotalIncome()))
+                .totalExpense(amountDelta(current.getTotalExpense(), compare.getTotalExpense()))
+                .net(amountDelta(current.getNet(), compare.getNet()))
+                .build();
+    }
+
+    private FinanceCenterResponse.SourceDelta sourceDelta(
+            FinanceCenterResponse.SourceFlow current,
+            FinanceCenterResponse.SourceFlow compare) {
+        return FinanceCenterResponse.SourceDelta.builder()
+                .income(amountDelta(current.getIncome(), compare.getIncome()))
+                .expense(amountDelta(current.getExpense(), compare.getExpense()))
+                .net(amountDelta(current.getNet(), compare.getNet()))
+                .build();
+    }
+
+    private FinanceCenterResponse.AmountDelta amountDelta(BigDecimal current, BigDecimal compare) {
+        BigDecimal c = nz(current);
+        BigDecimal p = nz(compare);
+        BigDecimal amount = c.subtract(p);
+        Double percent;
+        if (p.compareTo(BigDecimal.ZERO) == 0) {
+            percent = c.compareTo(BigDecimal.ZERO) == 0 ? 0d : null;
+        } else {
+            percent = amount.divide(p, 4, RoundingMode.HALF_UP)
+                    .multiply(BigDecimal.valueOf(100))
+                    .doubleValue();
+        }
+        return FinanceCenterResponse.AmountDelta.builder()
+                .amount(amount)
+                .percent(percent)
+                .build();
+    }
+
+    private LocalDate previousPeriodDate(String filter, LocalDate date) {
+        if ("YEAR".equalsIgnoreCase(filter)) {
+            return date.minusYears(1);
+        }
+        if ("WEEK".equalsIgnoreCase(filter)) {
+            return date.minusWeeks(1);
+        }
+        return date.minusMonths(1);
+    }
+
+    private String periodLabel(String filter, LocalDate date) {
+        if ("YEAR".equalsIgnoreCase(filter)) {
+            return "Năm " + date.getYear();
+        }
+        if ("WEEK".equalsIgnoreCase(filter)) {
+            LocalDate start = date.with(DayOfWeek.MONDAY);
+            LocalDate end = date.with(DayOfWeek.SUNDAY);
+            return start.getDayOfMonth() + "/" + start.getMonthValue()
+                    + " – " + end.getDayOfMonth() + "/" + end.getMonthValue() + "/" + end.getYear();
+        }
+        return "Tháng " + date.getMonthValue() + "/" + date.getYear();
+    }
+
+    private static BigDecimal nz(BigDecimal value) {
+        return value == null ? BigDecimal.ZERO : value;
+    }
+
+    private static Double share(BigDecimal part, BigDecimal total) {
+        if (total == null || total.compareTo(BigDecimal.ZERO) == 0) {
+            return 0d;
+        }
+        return nz(part).divide(total, 4, RoundingMode.HALF_UP)
+                .multiply(BigDecimal.valueOf(100))
+                .doubleValue();
     }
 
     private LocalDateTime[] getDateRange(String filter, LocalDate date) {

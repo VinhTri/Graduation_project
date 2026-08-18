@@ -9,6 +9,7 @@ import com.project.app.wallet.entity.Wallet;
 import com.project.app.wallet.enums.WalletType;
 import com.project.app.wallet.repository.WalletRepository;
 import com.project.app.wallet.service.WalletService;
+import com.project.app.wallet.util.WalletAccountNumberGenerator;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -31,6 +32,7 @@ public class WalletServiceImpl implements WalletService {
 
     // ====================== LẤY VÍ MẶC ĐỊNH ======================
     @Override
+    @Transactional
     public Wallet getDefaultWallet(Long userId) {
         Wallet wallet = walletRepository.findByUserIdAndIsDefaultTrue(userId)
                 .orElseThrow(() -> new AppException(ErrorCode.WALLET_NOT_FOUND));
@@ -38,27 +40,7 @@ public class WalletServiceImpl implements WalletService {
             wallet.setWalletType(WalletType.MAIN);
             walletRepository.save(wallet);
         }
-        return wallet;
-    }
-
-    // ====================== LẤY / TẠO VÍ TIỀN MẶT ======================
-    @Override
-    @Transactional
-    public Wallet getOrCreateCashWallet(Long userId) {
-        return walletRepository.findByUserIdAndWalletType(userId, WalletType.CASH)
-                .orElseGet(() -> {
-                    User user = userRepository.findById(userId)
-                            .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
-                    Wallet cashWallet = new Wallet(
-                            user,
-                            "Tiền mặt",
-                            BigDecimal.ZERO,
-                            false,
-                            false,
-                            WalletType.CASH
-                    );
-                    return walletRepository.save(cashWallet);
-                });
+        return ensureMainAccountNumber(wallet);
     }
 
     // ====================== LẤY VÍ THEO ID ======================
@@ -69,6 +51,9 @@ public class WalletServiceImpl implements WalletService {
         
         if (!wallet.getUser().getId().equals(userId)) {
             throw new AppException(ErrorCode.UNAUTHORIZED_ACCESS);
+        }
+        if (wallet.getWalletType() == WalletType.CASH) {
+            throw new AppException(ErrorCode.WALLET_NOT_FOUND);
         }
         return wallet;
     }
@@ -110,29 +95,26 @@ public class WalletServiceImpl implements WalletService {
         walletRepository.save(wallet);
     }
 
-    // ====================== THIẾT LẬP SỐ TÀI KHOẢN ======================
+    // ====================== SỐ TÀI KHOẢN (hệ thống tự sinh) ======================
     @Override
     @Transactional
     public Wallet setupAccount(com.project.app.user.entity.User user, com.project.app.wallet.dto.request.SetupAccountRequest request) {
-        Wallet wallet = getDefaultWallet(user.getId());
-
-        if (wallet.getAccountNumber() != null && !wallet.getAccountNumber().isEmpty()) {
-            throw new AppException(ErrorCode.ACCOUNT_ALREADY_SETUP);
-        }
-
-        if (walletRepository.existsByAccountNumber(request.getAccountNumber())) {
-            throw new AppException(ErrorCode.ACCOUNT_NUMBER_ALREADY_EXISTS);
-        }
-
-        wallet.setAccountNumber(request.getAccountNumber());
-        return walletRepository.save(wallet);
+        // Deprecated: STK do hệ thống random — bỏ qua input user, đảm bảo ví MAIN đã có STK.
+        return ensureMainAccountNumber(getDefaultWallet(user.getId()));
     }
 
     @Override
     public String getAccountNumberForUser(Long userId) {
         Wallet wallet = getDefaultWallet(userId);
-        String accountNumber = wallet.getAccountNumber();
-        return accountNumber != null && !accountNumber.isBlank() ? accountNumber : null;
+        return wallet.getAccountNumber();
+    }
+
+    private Wallet ensureMainAccountNumber(Wallet wallet) {
+        if (wallet.getAccountNumber() != null && !wallet.getAccountNumber().isBlank()) {
+            return wallet;
+        }
+        wallet.setAccountNumber(WalletAccountNumberGenerator.generateUnique(walletRepository));
+        return walletRepository.save(wallet);
     }
 
     @Override

@@ -46,6 +46,9 @@ public class Wallet {
     @Column(name = "daily_limit")
     private BigDecimal dailyLimit;
 
+    @Column(name = "limit_activated_at")
+    private java.time.LocalDateTime limitActivatedAt;
+
     @org.hibernate.annotations.CreationTimestamp
     @Column(name = "created_at", updatable = false)
     private java.time.LocalDateTime createdAt;
@@ -59,7 +62,7 @@ public class Wallet {
         this.balance = balance != null ? balance : BigDecimal.ZERO;
         this.isDefault = isDefault;
         this.isDeletable = isDeletable;
-        this.walletType = isDefault ? WalletType.MAIN : WalletType.CASH;
+        this.walletType = isDefault ? WalletType.MAIN : WalletType.MANUAL;
     }
 
     public Wallet(User user, String name, BigDecimal balance, boolean isDefault, boolean isDeletable, WalletType walletType) {
@@ -153,6 +156,14 @@ public class Wallet {
 
     public void setDailyLimit(BigDecimal dailyLimit) {
         this.dailyLimit = dailyLimit;
+    }
+
+    public java.time.LocalDateTime getLimitActivatedAt() {
+        return limitActivatedAt;
+    }
+
+    public void setLimitActivatedAt(java.time.LocalDateTime limitActivatedAt) {
+        this.limitActivatedAt = limitActivatedAt;
     }
 
     public String getAccountNumber() {

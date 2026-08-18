@@ -3,12 +3,15 @@ package com.project.app.ai.tool;
 import com.project.app.ai.tool.dto.ToolResultDto;
 import com.project.app.category.entity.CategoryItem;
 import com.project.app.category.repository.CategoryItemRepository;
+import com.project.app.notebook.dto.request.NotebookTransactionRequest;
+import com.project.app.notebook.enums.NotebookTransactionType;
+import com.project.app.notebook.service.NotebookTransactionService;
 import com.project.app.transaction.dto.request.ManualTransactionRequest;
-import com.project.app.transaction.dto.response.ManualTransactionResponse;
 import com.project.app.transaction.enums.TransactionType;
 import com.project.app.transaction.service.TransactionService;
 import com.project.app.user.entity.User;
 import com.project.app.wallet.entity.Wallet;
+import com.project.app.wallet.enums.WalletType;
 import com.project.app.wallet.repository.WalletRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -16,6 +19,7 @@ import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
 import java.text.DecimalFormat;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.*;
 
@@ -25,6 +29,7 @@ import java.util.*;
 public class CreateTransactionTool implements AiTool {
 
     private final TransactionService transactionService;
+    private final NotebookTransactionService notebookTransactionService;
     private final WalletRepository walletRepository;
     private final CategoryItemRepository categoryItemRepository;
 
@@ -65,7 +70,7 @@ public class CreateTransactionTool implements AiTool {
 
         Map<String, Object> walletNameProp = new HashMap<>();
         walletNameProp.put("type", "STRING");
-        walletNameProp.put("description", "Tên ví sử dụng cho giao dịch, ví dụ: 'Ví Tiền mặt', 'Ví MOMO', 'Ví ATM'. Nếu không chỉ định sẽ tự động chọn Ví mặc định.");
+        walletNameProp.put("description", "Tên sổ tay ngân hàng (nếu có). Bỏ trống = ghi vào sổ tay tiền mặt.");
         props.put("walletName", walletNameProp);
 
         Map<String, Object> descriptionProp = new HashMap<>();
@@ -154,67 +159,76 @@ public class CreateTransactionTool implements AiTool {
                         .build();
             }
 
-            // 4. Strict Resolution: Wallet (Match walletName OR lookup Default Wallet)
+            // 4. Wallet: bank notebook nếu khớp tên; còn lại → sổ tay tiền mặt (notebook)
             String walletNameArg = arguments.get("walletName") != null ? ((String) arguments.get("walletName")).trim() : "";
-            Long walletId = null;
-            List<Wallet> userWallets = walletRepository.findByUserId(user.getId());
+            Long bankWalletId = null;
+            boolean useCashNotebook = true;
 
             if (!walletNameArg.isEmpty()) {
-                if (userWallets != null) {
-                    for (Wallet w : userWallets) {
-                        if (w.getName() != null && w.getName().toLowerCase().contains(walletNameArg.toLowerCase())) {
-                            walletId = w.getId();
-                            break;
+                String lower = walletNameArg.toLowerCase();
+                if (lower.contains("tiền mặt") || lower.contains("tien mat") || lower.contains("cash")) {
+                    useCashNotebook = true;
+                } else {
+                    List<Wallet> userWallets = walletRepository.findByUserId(user.getId());
+                    if (userWallets != null) {
+                        for (Wallet w : userWallets) {
+                            if (w.getWalletType() != WalletType.MANUAL && w.getWalletType() != WalletType.LINKED) {
+                                continue;
+                            }
+                            if (w.getName() != null && w.getName().toLowerCase().contains(lower)) {
+                                bankWalletId = w.getId();
+                                useCashNotebook = false;
+                                break;
+                            }
                         }
                     }
-                }
-                if (walletId == null) {
-                    return ToolResultDto.builder()
-                            .toolName(getName())
-                            .success(false)
-                            .message("Không tìm thấy ví '" + walletNameArg + "'")
-                            .data(Map.of("walletNotFound", true, "promptUser", String.format("SmartSpend không tìm thấy ví '%s' của bạn. Bạn muốn ghi nhận giao dịch vào ví nào?", walletNameArg)))
-                            .build();
-                }
-            } else {
-                Optional<Wallet> defaultWalletOpt = walletRepository.findByUserIdAndIsDefaultTrue(user.getId());
-                if (defaultWalletOpt.isPresent()) {
-                    walletId = defaultWalletOpt.get().getId();
-                } else if (userWallets != null && !userWallets.isEmpty()) {
-                    walletId = userWallets.get(0).getId();
-                } else {
-                    return ToolResultDto.builder()
-                            .toolName(getName())
-                            .success(false)
-                            .message("Người dùng chưa có ví nào trong hệ thống")
-                            .data(Map.of("walletNotFound", true, "promptUser", "Bạn chưa có ví nào trong ứng dụng. Vui lòng tạo ví trước khi ghi nhận giao dịch."))
-                            .build();
+                    if (useCashNotebook && bankWalletId == null) {
+                        return ToolResultDto.builder()
+                                .toolName(getName())
+                                .success(false)
+                                .message("Không tìm thấy sổ tay ngân hàng '" + walletNameArg + "'")
+                                .data(Map.of("walletNotFound", true, "promptUser",
+                                        String.format("Không tìm thấy sổ tay '%s'. Ghi vào sổ tay tiền mặt hoặc chọn sổ ngân hàng khác?", walletNameArg)))
+                                .build();
+                    }
                 }
             }
 
-            // 5. Clean Description (Use category name if missing instead of hardcoded 'Giao dịch AI')
             String rawDesc = arguments.get("description") != null ? ((String) arguments.get("description")).trim() : "";
             String description = !rawDesc.isEmpty() ? rawDesc : matchedCategoryName;
 
-            // 6. Date Rule (Default to real-time current date unless yesterday specified)
             String dateStr = arguments.get("date") != null ? (String) arguments.get("date") : "today";
             LocalDateTime createdAt = LocalDateTime.now();
+            LocalDate entryDate = null;
             if ("yesterday".equalsIgnoreCase(dateStr) || dateStr.toLowerCase().contains("hom qua")) {
                 createdAt = LocalDateTime.now().minusDays(1);
+                entryDate = LocalDate.now().minusDays(1);
             }
 
-            ManualTransactionRequest req = new ManualTransactionRequest(
-                    BigDecimal.valueOf(amountVal),
-                    type,
-                    categoryId,
-                    description,
-                    walletId,
-                    createdAt
-            );
-
-            ManualTransactionResponse res = transactionService.createManualTransaction(user, req);
-
             DecimalFormat df = new DecimalFormat("#,###");
+
+            if (useCashNotebook) {
+                NotebookTransactionRequest nbReq = new NotebookTransactionRequest();
+                nbReq.setAmount(BigDecimal.valueOf(amountVal));
+                nbReq.setType(type == TransactionType.EXPENSE
+                        ? NotebookTransactionType.EXPENSE
+                        : NotebookTransactionType.INCOME);
+                nbReq.setCategoryId(categoryId);
+                nbReq.setNote(description);
+                nbReq.setEntryDate(entryDate);
+                notebookTransactionService.createTransaction(user.getId(), nbReq);
+            } else {
+                ManualTransactionRequest req = new ManualTransactionRequest(
+                        BigDecimal.valueOf(amountVal),
+                        type,
+                        categoryId,
+                        description,
+                        bankWalletId,
+                        createdAt
+                );
+                transactionService.createManualTransaction(user, req);
+            }
+
             String msg = String.format("Ghi nhận giao dịch thành công: %s %s VNĐ cho danh mục %s (%s).",
                     type == TransactionType.EXPENSE ? "Chi tiêu" : "Thu nhập",
                     df.format(amountVal),

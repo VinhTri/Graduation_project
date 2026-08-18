@@ -1,541 +1,742 @@
-import React, { useMemo, useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, Dimensions, Platform, Modal, TouchableWithoutFeedback } from 'react-native';
-import DateTimePicker from '@react-native-community/datetimepicker';
-import { Ionicons, Feather } from '@expo/vector-icons';
-import { PieChart, BarChart } from 'react-native-gifted-charts';
-import Colors from '../../../../shared/constants/Colors';
-import { PASTEL_PALETTE } from '../../../../shared/constants/PastelPalette';
-import { TransactionItem } from '../RecentTransactions/RecentTransactions.types';
-import { styles } from './NotebookReport.styles';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import {
+  ActivityIndicator,
+  Dimensions,
+  Modal,
+  Platform,
+  RefreshControl,
+  ScrollView,
+  Text,
+  TouchableOpacity,
+  TouchableWithoutFeedback,
+  View,
+} from 'react-native'
+import DateTimePicker from '@react-native-community/datetimepicker'
+import { Feather, Ionicons } from '@expo/vector-icons'
+import { LineChart, PieChart } from 'react-native-gifted-charts'
+import { PASTEL_PALETTE } from '@/shared/constants/PastelPalette'
+import type { CategoryGroup } from '@/shared/types/category'
+import { useNotebookCashReportData } from '../../report/useNotebookCashReportData'
+import {
+  buildNotebookDistribution,
+  buildNotebookDualTrend,
+  formatNotebookReportCurrency,
+  getNotebookReportRange,
+  parseNotebookTxDate,
+  startOfWeek,
+  isSameWeek,
+  type NotebookReportDateFilter,
+  type NotebookReportTab,
+  type NotebookReportViewMode,
+} from '../../report/notebookReportUtils'
+import type { NotebookTransactionItem } from '../../utils/notebookMappers'
+import { stripDeletedCategorySuffix } from '../../utils/notebookMappers'
+import { styles } from './NotebookReport.styles'
 
 type Props = {
-  transactions: TransactionItem[];
-};
-import { DateRangeSelector, DateFilterType } from '../DateRangeSelector/DateRangeSelector';
+  /** true khi tab Báo cáo sổ tay đang mở */
+  active?: boolean
+}
 
-type ViewMode = 'pie' | 'bar';
-type ActiveTab = 'expense' | 'income';
+const { width: SCREEN_WIDTH } = Dimensions.get('window')
+const PRIMARY = PASTEL_PALETTE.accentDeep
+const CATEGORY_VISIBLE = 4
+const CATEGORY_CARD_GAP = 8
+const CATEGORY_SIDE_PAD = 4
+const CATEGORY_CARD_WIDTH =
+  (SCREEN_WIDTH - 40 - CATEGORY_SIDE_PAD * 2 - CATEGORY_CARD_GAP * (CATEGORY_VISIBLE - 1)) /
+  CATEGORY_VISIBLE
 
-type DistRow = {
-  key: string;
-  categoryName: string;
-  icon: string;
-  color: string;
-  totalAmount: number;
-  percentage: number;
-};
+/**
+ * Báo cáo sổ tay tiền mặt — UI biểu đồ tách riêng khỏi báo cáo ví SmartSpend.
+ * Tự load dữ liệu YEAR, không dùng chung filter lịch sử.
+ */
+export function NotebookReport({ active = true }: Props) {
+  const { transactions, categories, loading, refreshing, refresh } =
+    useNotebookCashReportData(active)
 
-type TrendPoint = {
-  value: number;
-  label: string;
-  fullLabel: string;
-  isCurrent?: boolean;
-};
+  const [viewMode, setViewMode] = useState<NotebookReportViewMode>('pie')
+  const [activeTab, setActiveTab] = useState<NotebookReportTab>('expense')
+  const [dateFilter, setDateFilter] = useState<NotebookReportDateFilter>('month')
+  const [selectedDate, setSelectedDate] = useState(new Date())
+  const [showPicker, setShowPicker] = useState(false)
+  const [pointerIndex, setPointerIndex] = useState(-1)
+  const [focusedPieIndex, setFocusedPieIndex] = useState(-1)
+  const pointerIndexRef = useRef(-1)
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
+  useEffect(() => {
+    pointerIndexRef.current = -1
+    setPointerIndex(-1)
+  }, [dateFilter, selectedDate, viewMode])
 
-const WEEKDAY_LABELS = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'];
+  useEffect(() => {
+    setFocusedPieIndex(-1)
+  }, [dateFilter, selectedDate, activeTab, viewMode])
 
-const formatCurrency = (amount: number) =>
-  `${Math.round(amount).toLocaleString('vi-VN')}đ`;
+  const txType = activeTab === 'expense' ? 'EXPENSE' : 'INCOME'
 
-const parseTxDate = (tx: TransactionItem): Date => {
-  if (tx.createdAt) {
-    const d = new Date(tx.createdAt);
-    if (!Number.isNaN(d.getTime())) return d;
-  }
-  const now = new Date();
-  if (tx.date === 'Hôm nay') {
-    return new Date(now.getFullYear(), now.getMonth(), now.getDate(), 12, 0, 0);
-  }
-  if (tx.date === 'Hôm qua') {
-    const d = new Date(now);
-    d.setDate(d.getDate() - 1);
-    d.setHours(12, 0, 0, 0);
-    return d;
-  }
-  return now;
-};
-
-const startOfWeek = (d: Date) => {
-  const start = new Date(d);
-  const day = start.getDay() === 0 ? 6 : start.getDay() - 1;
-  start.setDate(start.getDate() - day);
-  start.setHours(0, 0, 0, 0);
-  return start;
-};
-
-const getRange = (filter: DateFilterType, selected: Date) => {
-  const d = new Date(selected);
-  let start: Date;
-  let end: Date;
-  if (filter === 'week') {
-    start = startOfWeek(d);
-    end = new Date(start);
-    end.setDate(end.getDate() + 6);
-    end.setHours(23, 59, 59, 999);
-  } else if (filter === 'year') {
-    start = new Date(d.getFullYear(), 0, 1, 0, 0, 0, 0);
-    end = new Date(d.getFullYear(), 11, 31, 23, 59, 59, 999);
-  } else {
-    start = new Date(d.getFullYear(), d.getMonth(), 1, 0, 0, 0, 0);
-    end = new Date(d.getFullYear(), d.getMonth() + 1, 0, 23, 59, 59, 999);
-  }
-  return { start, end };
-};
-
-const buildDistribution = (
-  txs: TransactionItem[],
-  type: 'EXPENSE' | 'INCOME'
-): DistRow[] => {
-  const map = new Map<string, Omit<DistRow, 'percentage'>>();
-  let total = 0;
-
-  txs.forEach((tx) => {
-    if (tx.type !== type) return;
-    total += tx.amount;
-    const key = String(tx.categoryId ?? `${tx.categoryIcon}|${tx.categoryColor}|${tx.categoryLabel || tx.title}`);
-    const name = tx.categoryLabel || tx.title;
-    const prev = map.get(key);
-    if (prev) {
-      prev.totalAmount += tx.amount;
-    } else {
-      map.set(key, {
-        key,
-        categoryName: name,
-        icon: tx.categoryIcon,
-        color: tx.categoryColor || Colors.primary,
-        totalAmount: tx.amount,
-      });
-    }
-  });
-
-  return Array.from(map.values())
-    .map((row) => ({
-      ...row,
-      percentage: total > 0 ? (row.totalAmount / total) * 100 : 0,
-    }))
-    .sort((a, b) => b.totalAmount - a.totalAmount);
-};
-
-const buildTrend = (
-  txs: TransactionItem[],
-  type: 'EXPENSE' | 'INCOME',
-  filter: DateFilterType,
-  selected: Date
-): TrendPoint[] => {
-  const { start, end } = getRange(filter, selected);
-  const filtered = txs.filter((tx) => {
-    if (tx.type !== type) return false;
-    const d = parseTxDate(tx);
-    return d >= start && d <= end;
-  });
-
-  if (filter === 'week') {
-    return WEEKDAY_LABELS.map((label, i) => {
-      const dayStart = new Date(start);
-      dayStart.setDate(start.getDate() + i);
-      dayStart.setHours(0, 0, 0, 0);
-      const dayEnd = new Date(dayStart);
-      dayEnd.setHours(23, 59, 59, 999);
-      const value = filtered
-        .filter((tx) => {
-          const d = parseTxDate(tx);
-          return d >= dayStart && d <= dayEnd;
-        })
-        .reduce((sum, tx) => sum + tx.amount, 0);
-      const today = new Date();
-      const isCurrent =
-        dayStart.getFullYear() === today.getFullYear() &&
-        dayStart.getMonth() === today.getMonth() &&
-        dayStart.getDate() === today.getDate();
-      return { value, label, fullLabel: label, isCurrent };
-    });
-  }
-
-  if (filter === 'year') {
-    return Array.from({ length: 12 }, (_, m) => {
-      const value = filtered
-        .filter((tx) => parseTxDate(tx).getMonth() === m)
-        .reduce((sum, tx) => sum + tx.amount, 0);
-      return {
-        value,
-        label: `T${m + 1}`,
-        fullLabel: `T${m + 1}`,
-        isCurrent: m === selected.getMonth() && selected.getFullYear() === new Date().getFullYear(),
-      };
-    });
-  }
-
-  // month — mỗi ngày trong tháng
-  const daysInMonth = end.getDate();
-  const today = new Date();
-  return Array.from({ length: daysInMonth }, (_, i) => {
-    const day = i + 1;
-    const value = filtered
-      .filter((tx) => parseTxDate(tx).getDate() === day)
-      .reduce((sum, tx) => sum + tx.amount, 0);
-    const showLabel = day === 1 || day % 5 === 0 || day === daysInMonth;
-    return {
-      value,
-      label: showLabel ? String(day) : '',
-      fullLabel: String(day),
-      isCurrent:
-        day === today.getDate() &&
-        selected.getMonth() === today.getMonth() &&
-        selected.getFullYear() === today.getFullYear(),
-    };
-  });
-};
-
-export const NotebookReport = ({ transactions }: Props) => {
-  const [viewMode, setViewMode] = useState<ViewMode>('pie');
-  const [activeTab, setActiveTab] = useState<ActiveTab>('expense');
-  const [dateFilter, setDateFilter] = useState<DateFilterType>('month');
-  const [selectedDate, setSelectedDate] = useState(new Date());
-  const [selectedCategoryKey, setSelectedCategoryKey] = useState<string | null>(null);
-  const [selectedBarIndex, setSelectedBarIndex] = useState<number | null>(null);
-
-  const txType = activeTab === 'expense' ? 'EXPENSE' : 'INCOME';
+  const resolveMeta = useMemo(
+    () => createCategoryResolver(categories),
+    [categories],
+  )
 
   const rangedTransactions = useMemo(() => {
-    const { start, end } = getRange(dateFilter, selectedDate);
+    const { start, end } = getNotebookReportRange(dateFilter, selectedDate)
     return transactions.filter((tx) => {
-      const d = parseTxDate(tx);
-      return d >= start && d <= end;
-    });
-  }, [transactions, dateFilter, selectedDate]);
+      const d = parseNotebookTxDate(tx)
+      return d >= start && d <= end
+    })
+  }, [transactions, dateFilter, selectedDate])
 
   const distribution = useMemo(
-    () => buildDistribution(rangedTransactions, txType),
-    [rangedTransactions, txType]
-  );
+    () => buildNotebookDistribution(rangedTransactions, txType, resolveMeta),
+    [rangedTransactions, txType, resolveMeta],
+  )
 
-  useEffect(() => {
-    setSelectedCategoryKey(null);
-  }, [distribution]);
-
-  useEffect(() => {
-    setSelectedBarIndex(null);
-  }, [dateFilter, selectedDate, activeTab]);
-
-  const trendData = useMemo(
-    () => buildTrend(transactions, txType, dateFilter, selectedDate),
-    [transactions, txType, dateFilter, selectedDate]
-  );
+  const dualTrend = useMemo(
+    () => buildNotebookDualTrend(transactions, dateFilter, selectedDate),
+    [transactions, dateFilter, selectedDate],
+  )
 
   const pieChartData = useMemo(
     () =>
-      distribution.map((item) => {
-        const isSelected = selectedCategoryKey === item.key;
-        return {
-          value: item.percentage,
-          color: item.color || Colors.primary,
-          focused: isSelected,
-          onPress: () => setSelectedCategoryKey(isSelected ? null : item.key),
-        };
-      }),
-    [distribution, selectedCategoryKey]
-  );
+      distribution.map((item, index) => ({
+        value: item.percentage,
+        color: item.color || PRIMARY,
+        focused: focusedPieIndex === index,
+      })),
+    [distribution, focusedPieIndex],
+  )
 
-  const trendColor = useMemo(() => {
-    if (trendData.length < 2) return '#2563EB';
-    const firstVal = trendData.find((d) => d.value > 0)?.value ?? trendData[0].value;
-    const lastVal = trendData[trendData.length - 1]?.value ?? 0;
-    return lastVal >= firstVal ? '#10B981' : '#EF4444';
-  }, [trendData]);
+  const togglePieFocus = (index: number) => {
+    setFocusedPieIndex((prev) => (prev === index ? -1 : index))
+  }
 
-  const barChartData = useMemo(
+  const expenseLineData = useMemo(
     () =>
-      trendData.map((item, index) => {
-        const isSelected = selectedBarIndex === index;
-        const hasSelection = selectedBarIndex !== null;
-        const defaultColor = item.isCurrent ? Colors.primary : trendColor;
-        
-        return {
-          value: item.value,
-          label: item.label,
-          frontColor: hasSelection ? (isSelected ? defaultColor : '#E2E8F0') : defaultColor,
-          onPress: () => setSelectedBarIndex(isSelected ? null : index),
-          labelTextStyle: {
-            color: hasSelection ? (isSelected ? Colors.primary : Colors.textMuted) : (item.isCurrent ? Colors.primary : Colors.textMuted),
-            fontSize: 10,
-            width: dateFilter === 'month' ? 22 : 28,
-            textAlign: 'center' as const,
-          },
-        };
-      }),
-    [trendData, dateFilter, selectedBarIndex, trendColor]
-  );
+      dualTrend.expense.map((item) => ({
+        value: item.value,
+        label: item.label,
+        labelTextStyle: {
+          color: item.isCurrent ? PRIMARY : PASTEL_PALETTE.textMuted,
+          fontSize: 10,
+          width: dateFilter === 'month' ? 22 : 28,
+          textAlign: 'center' as const,
+        },
+      })),
+    [dualTrend.expense, dateFilter],
+  )
 
-  const totalAmount = useMemo(() => {
-    if (viewMode === 'pie') {
-      return distribution.reduce((sum, item) => sum + item.totalAmount, 0);
+  const incomeLineData = useMemo(
+    () =>
+      dualTrend.income.map((item) => ({
+        value: item.value,
+        label: item.label,
+      })),
+    [dualTrend.income],
+  )
+
+  const totalAmount = useMemo(
+    () => distribution.reduce((sum, item) => sum + item.totalAmount, 0),
+    [distribution],
+  )
+
+  const hasTrendData = dualTrend.maxValue > 0
+
+  const lineChartWidth = useMemo(() => {
+    const spacing = dateFilter === 'month' ? 24 : dateFilter === 'week' ? 48 : 36
+    return Math.max(SCREEN_WIDTH - 56, dualTrend.expense.length * spacing + 48)
+  }, [dualTrend.expense.length, dateFilter])
+
+  const chartMaxValue = Math.max(dualTrend.maxValue * 1.15, 1)
+
+  const EXPENSE_LINE = '#EF4444'
+  const INCOME_LINE = '#10B981'
+  /** Màu điểm chạm — tím, tránh trùng đỏ của chi */
+  const POINTER_DOT = PASTEL_PALETTE.subtitle
+
+  const trendDataSet = useMemo(
+    () =>
+      [
+        {
+          data: expenseLineData,
+          color: EXPENSE_LINE,
+          thickness: 2.5,
+          hideDataPoints: false,
+          dataPointsColor: EXPENSE_LINE,
+          dataPointsRadius: 4,
+        },
+        {
+          data: incomeLineData,
+          color: INCOME_LINE,
+          thickness: 2.5,
+          hideDataPoints: false,
+          dataPointsColor: INCOME_LINE,
+          dataPointsRadius: 4,
+        },
+      ] as any,
+    [expenseLineData, incomeLineData],
+  )
+
+  const handlePointerProps = useCallback(({ pointerIndex: idx }: { pointerIndex: number }) => {
+    if (pointerIndexRef.current === idx) return
+    pointerIndexRef.current = idx
+    setPointerIndex((prev) => (prev === idx ? prev : idx))
+  }, [])
+
+  const pointerConfig = useMemo(
+    () => ({
+      pointerStripUptoDataPoint: true,
+      pointerStripHeight: 170,
+      pointerStripColor: '#94A3B855',
+      pointerStripWidth: 1,
+      pointerColor: POINTER_DOT,
+      radius: 5,
+      pointerLabelWidth: 1,
+      pointerLabelHeight: 1,
+      autoAdjustPointerLabelPosition: false,
+      activatePointersOnLongPress: false,
+      activatePointersInstantlyOnTouch: true,
+      persistPointer: true,
+      pointerLabelComponent: () => null,
+    }),
+    [],
+  )
+
+  const formatTrendYLabel = useCallback((label: string) => {
+    const val = Number(label)
+    if (val >= 1000000) return `${(val / 1000000).toFixed(1)}Tr`
+    if (val >= 1000) return `${Math.round(val / 1000)}K`
+    return String(Math.round(val))
+  }, [])
+
+  const getDateLabel = () => {
+    const now = new Date()
+    const currentYear = now.getFullYear()
+    const currentMonth = now.getMonth()
+    if (dateFilter === 'week') {
+      if (isSameWeek(selectedDate, now)) return 'Tuần này'
+      const start = startOfWeek(selectedDate)
+      const end = new Date(start)
+      end.setDate(end.getDate() + 6)
+      return `${start.getDate()}/${start.getMonth() + 1} - ${end.getDate()}/${end.getMonth() + 1}`
     }
-    return trendData.reduce((sum, item) => sum + item.value, 0);
-  }, [viewMode, distribution, trendData]);
+    if (dateFilter === 'month') {
+      if (
+        selectedDate.getMonth() === currentMonth &&
+        selectedDate.getFullYear() === currentYear
+      ) {
+        return 'Tháng này'
+      }
+      return `Tháng ${selectedDate.getMonth() + 1}/${selectedDate.getFullYear()}`
+    }
+    if (selectedDate.getFullYear() === currentYear) return 'Năm nay'
+    return `Năm ${selectedDate.getFullYear()}`
+  }
 
-  const chartWidth = useMemo(() => {
-    const spacing = dateFilter === 'month' ? 22 : dateFilter === 'week' ? 44 : 34;
-    return Math.max(SCREEN_WIDTH - 56, trendData.length * spacing + 48);
-  }, [trendData.length, dateFilter]);
+  const shiftPeriod = (dir: -1 | 1) => {
+    const next = new Date(selectedDate)
+    if (dateFilter === 'week') next.setDate(next.getDate() + dir * 7)
+    else if (dateFilter === 'month') next.setMonth(next.getMonth() + dir)
+    else next.setFullYear(next.getFullYear() + dir)
+    if (next > new Date()) return
+    setSelectedDate(next)
+  }
 
-  const renderCategoryIcon = (iconName: string | undefined, color: string, size: number) => (
-    <Ionicons
-      name={(iconName && iconName !== '?' ? iconName : 'help-circle-outline') as keyof typeof Ionicons.glyphMap}
-      size={size}
-      color={color}
-    />
-  );
+  const canGoNext = () => {
+    const probe = new Date(selectedDate)
+    if (dateFilter === 'week') probe.setDate(probe.getDate() + 7)
+    else if (dateFilter === 'month') probe.setMonth(probe.getMonth() + 1)
+    else probe.setFullYear(probe.getFullYear() + 1)
+    return probe <= new Date()
+  }
+
+  const applyPickedDate = (date?: Date) => {
+    if (!date) return
+    const now = new Date()
+    setSelectedDate(date > now ? now : date)
+  }
+
+  if (loading && transactions.length === 0) {
+    return (
+      <View style={styles.loadingWrap}>
+        <ActivityIndicator size="large" color={PRIMARY} />
+      </View>
+    )
+  }
 
   return (
-    <View style={styles.container}>
-      <View style={styles.sectionHeader}>
-        <Text style={styles.sectionTitle}>Tình hình thu chi</Text>
-        <View style={styles.toggleContainer}>
+    <ScrollView
+      showsVerticalScrollIndicator={false}
+      contentContainerStyle={{ paddingBottom: 160 }}
+      refreshControl={
+        <RefreshControl
+          refreshing={refreshing}
+          onRefresh={refresh}
+          tintColor={PRIMARY}
+        />
+      }
+    >
+      <View style={styles.container}>
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>Tình hình thu chi</Text>
+          <View style={styles.toggleContainer}>
+            <TouchableOpacity
+              style={[styles.toggleButton, viewMode === 'pie' && styles.toggleButtonActive]}
+              onPress={() => setViewMode('pie')}
+            >
+              <Ionicons
+                name="pie-chart"
+                size={16}
+                color={viewMode === 'pie' ? PRIMARY : PASTEL_PALETTE.textMuted}
+              />
+              <Text style={[styles.toggleText, viewMode === 'pie' && styles.toggleTextActive]}>
+                Phân bổ
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.toggleButton, viewMode === 'bar' && styles.toggleButtonActive]}
+              onPress={() => setViewMode('bar')}
+            >
+              <Ionicons
+                name="analytics-outline"
+                size={16}
+                color={viewMode === 'bar' ? PRIMARY : PASTEL_PALETTE.textMuted}
+              />
+              <Text style={[styles.toggleText, viewMode === 'bar' && styles.toggleTextActive]}>
+                Xu hướng
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        <View style={styles.periodChips}>
+          {(
+            [
+              { key: 'week', label: 'Tuần' },
+              { key: 'month', label: 'Tháng' },
+              { key: 'year', label: 'Năm' },
+            ] as const
+          ).map((item) => {
+            const isActive = dateFilter === item.key
+            return (
+              <TouchableOpacity
+                key={item.key}
+                style={[styles.periodChip, isActive && styles.periodChipActive]}
+                onPress={() => setDateFilter(item.key)}
+                activeOpacity={0.8}
+              >
+                <Text style={[styles.periodChipText, isActive && styles.periodChipTextActive]}>
+                  {item.label}
+                </Text>
+              </TouchableOpacity>
+            )
+          })}
+        </View>
+
+        <View style={styles.dateSelector}>
           <TouchableOpacity
-            style={[styles.toggleButton, viewMode === 'pie' && styles.toggleButtonActive]}
-            onPress={() => setViewMode('pie')}
+            style={styles.dateNavBtn}
+            onPress={() => shiftPeriod(-1)}
+            activeOpacity={0.7}
           >
-            <Ionicons
-              name="pie-chart"
-              size={16}
-              color={viewMode === 'pie' ? Colors.primary : Colors.textMuted}
-            />
-            <Text style={[styles.toggleText, viewMode === 'pie' && styles.toggleTextActive]}>
-              Phân bổ
-            </Text>
+            <Ionicons name="chevron-back" size={18} color={PASTEL_PALETTE.title} />
           </TouchableOpacity>
+
           <TouchableOpacity
-            style={[styles.toggleButton, viewMode === 'bar' && styles.toggleButtonActive]}
-            onPress={() => setViewMode('bar')}
+            style={styles.dateTextContainer}
+            onPress={() => setShowPicker(true)}
+            activeOpacity={0.7}
           >
-            <Ionicons
-              name="bar-chart"
-              size={16}
-              color={viewMode === 'bar' ? Colors.primary : Colors.textMuted}
-            />
-            <Text style={[styles.toggleText, viewMode === 'bar' && styles.toggleTextActive]}>
-              Xu hướng
-            </Text>
+            <Ionicons name="calendar-outline" size={18} color={PASTEL_PALETTE.title} />
+            <Text style={styles.dateText}>{getDateLabel()}</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.dateNavBtn, !canGoNext() && { opacity: 0.4 }]}
+            onPress={() => shiftPeriod(1)}
+            disabled={!canGoNext()}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="chevron-forward" size={18} color={PASTEL_PALETTE.title} />
           </TouchableOpacity>
         </View>
-      </View>
 
-      <DateRangeSelector
-        dateFilter={dateFilter}
-        selectedDate={selectedDate}
-        onChangeFilter={setDateFilter}
-        onChangeDate={setSelectedDate}
-      />
+        {showPicker && Platform.OS !== 'ios' ? (
+          <DateTimePicker
+            value={selectedDate}
+            mode="date"
+            display="default"
+            onChange={(_, date) => {
+              setShowPicker(false)
+              applyPickedDate(date)
+            }}
+            maximumDate={new Date()}
+          />
+        ) : null}
 
-      <View style={styles.summaryRow}>
-        <TouchableOpacity
-          style={[styles.summaryCard, activeTab === 'expense' && styles.summaryCardActive]}
-          onPress={() => setActiveTab('expense')}
-          activeOpacity={0.8}
-        >
-          <View style={styles.summaryLabelRow}>
-            <Feather
-              name="trending-up"
-              size={16}
-              color={activeTab === 'expense' ? Colors.primary : Colors.error}
-            />
-            <Text style={[styles.summaryLabel, activeTab === 'expense' && styles.summaryLabelActive]}>
-              Chi tiêu
-            </Text>
-          </View>
-          <Text style={styles.summaryValue}>
-            {activeTab === 'expense' ? formatCurrency(totalAmount) : '******'}
-          </Text>
-        </TouchableOpacity>
+        {Platform.OS === 'ios' ? (
+          <Modal visible={showPicker} transparent animationType="slide">
+            <TouchableOpacity
+              style={styles.pickerOverlay}
+              activeOpacity={1}
+              onPress={() => setShowPicker(false)}
+            >
+              <TouchableWithoutFeedback>
+                <View style={styles.pickerSheet}>
+                  <View style={styles.pickerHeader}>
+                    <Text style={styles.pickerTitle}>Chọn ngày báo cáo</Text>
+                    <TouchableOpacity onPress={() => setShowPicker(false)}>
+                      <Text style={styles.pickerDone}>Xong</Text>
+                    </TouchableOpacity>
+                  </View>
+                  <View style={{ alignItems: 'center' }}>
+                    <DateTimePicker
+                      value={selectedDate}
+                      mode="date"
+                      display="inline"
+                      onChange={(_, date) => applyPickedDate(date)}
+                      maximumDate={new Date()}
+                      locale="vi-VN"
+                      themeVariant="light"
+                      style={{ alignSelf: 'center' }}
+                    />
+                  </View>
+                </View>
+              </TouchableWithoutFeedback>
+            </TouchableOpacity>
+          </Modal>
+        ) : null}
 
-        <TouchableOpacity
-          style={[styles.summaryCard, activeTab === 'income' && styles.summaryCardActive]}
-          onPress={() => setActiveTab('income')}
-          activeOpacity={0.8}
-        >
-          <View style={styles.summaryLabelRow}>
-            <Feather
-              name="trending-down"
-              size={16}
-              color={activeTab === 'income' ? Colors.primary : Colors.textMuted}
-            />
-            <Text style={[styles.summaryLabel, activeTab === 'income' && styles.summaryLabelActive]}>
-              Thu nhập
-            </Text>
-          </View>
-          <Text style={styles.summaryValue}>
-            {activeTab === 'income' ? formatCurrency(totalAmount) : '******'}
-          </Text>
-        </TouchableOpacity>
-      </View>
-
-      <View style={styles.chartContainer}>
         {viewMode === 'pie' ? (
-          <View style={styles.pieChartWrapper}>
-            <View style={styles.donutContainer}>
-              {pieChartData.length > 0 ? (
-                <PieChart
-                  data={pieChartData as any}
-                  donut
-                  radius={100}
-                  innerRadius={65}
-                  innerCircleColor={Colors.white}
-                  focusOnPress={true}
-                  toggleFocusOnPress={true}
-                  centerLabelComponent={() => {
-                    const selected = distribution.find(d => d.key === selectedCategoryKey);
-                    if (!selected) {
-                      return (
-                        <View style={{justifyContent: 'center', alignItems: 'center'}}>
-                          <Text style={{fontSize: 12, color: PASTEL_PALETTE.textMuted, textAlign: 'center'}}>Tổng cộng</Text>
-                          <Text style={{fontSize: 16, fontWeight: '800', color: PASTEL_PALETTE.title}}>{formatCurrency(totalAmount)}</Text>
-                        </View>
-                      );
-                    }
-                    return (
-                      <View style={{justifyContent: 'center', alignItems: 'center', paddingHorizontal: 4}}>
-                        <Text style={{fontSize: 22, color: selected.color, fontWeight: '800'}}>{selected.percentage.toFixed(1)}%</Text>
-                        <Text style={{fontSize: 12, color: PASTEL_PALETTE.title, textAlign: 'center'}} numberOfLines={1}>{selected.categoryName}</Text>
-                      </View>
-                    );
-                  }}
+          <View style={styles.summaryRow}>
+            <TouchableOpacity
+              style={[styles.summaryCard, activeTab === 'expense' && styles.summaryCardActive]}
+              onPress={() => setActiveTab('expense')}
+              activeOpacity={0.8}
+            >
+              <View style={styles.summaryLabelRow}>
+                <Feather
+                  name="trending-up"
+                  size={16}
+                  color={activeTab === 'expense' ? PRIMARY : '#DC2626'}
                 />
+                <Text
+                  style={[
+                    styles.summaryLabel,
+                    activeTab === 'expense' && styles.summaryLabelActive,
+                  ]}
+                >
+                  Chi tiêu
+                </Text>
+              </View>
+              <Text style={styles.summaryValue}>
+                {activeTab === 'expense'
+                  ? formatNotebookReportCurrency(totalAmount)
+                  : '******'}
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.summaryCard, activeTab === 'income' && styles.summaryCardActive]}
+              onPress={() => setActiveTab('income')}
+              activeOpacity={0.8}
+            >
+              <View style={styles.summaryLabelRow}>
+                <Feather
+                  name="trending-down"
+                  size={16}
+                  color={activeTab === 'income' ? PRIMARY : PASTEL_PALETTE.textMuted}
+                />
+                <Text
+                  style={[
+                    styles.summaryLabel,
+                    activeTab === 'income' && styles.summaryLabelActive,
+                  ]}
+                >
+                  Thu nhập
+                </Text>
+              </View>
+              <Text style={styles.summaryValue}>
+                {activeTab === 'income'
+                  ? formatNotebookReportCurrency(totalAmount)
+                  : '******'}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        ) : (
+          <View style={styles.lineChartLegend}>
+            <View style={styles.dualLegendItem}>
+              <View style={[styles.lineTrendDot, { backgroundColor: EXPENSE_LINE }]} />
+              <Text style={styles.lineChartLegendText}>Chi tiêu</Text>
+            </View>
+            <View style={styles.dualLegendItem}>
+              <View style={[styles.lineTrendDot, { backgroundColor: INCOME_LINE }]} />
+              <Text style={styles.lineChartLegendText}>Thu nhập</Text>
+            </View>
+          </View>
+        )}
+
+        <View style={styles.chartContainer}>
+          {viewMode === 'pie' ? (
+            <View style={styles.pieChartWrapper}>
+              {pieChartData.length > 0 ? (
+                <View style={styles.donutContainer}>
+                  <PieChart
+                    data={pieChartData as any}
+                    donut
+                    radius={98}
+                    innerRadius={62}
+                    innerCircleColor={PASTEL_PALETTE.white}
+                    strokeWidth={2}
+                    strokeColor={PASTEL_PALETTE.white}
+                    focusOnPress
+                    toggleFocusOnPress={false}
+                    focusedPieIndex={focusedPieIndex}
+                    extraRadius={12}
+                    onPress={(_: unknown, index: number) => togglePieFocus(index)}
+                    centerLabelComponent={(selectedIndex?: number) => {
+                      const idx =
+                        typeof selectedIndex === 'number' && selectedIndex >= 0
+                          ? selectedIndex
+                          : focusedPieIndex
+                      const item = idx >= 0 ? distribution[idx] : null
+
+                      if (!item) {
+                        return (
+                          <View style={styles.donutCenter}>
+                            <Text style={styles.donutCenterHint}>Tổng</Text>
+                            <Text style={styles.donutCenterTotal} numberOfLines={1}>
+                              {formatCompactAmount(totalAmount)}
+                            </Text>
+                            <Text style={styles.donutCenterTap}>Chạm màu để xem</Text>
+                          </View>
+                        )
+                      }
+
+                      return (
+                        <View style={styles.donutCenter}>
+                          <View
+                            style={[
+                              styles.donutCenterIcon,
+                              { backgroundColor: `${item.color}22` },
+                            ]}
+                          >
+                            {renderCategoryIcon(item.icon, item.color, 20)}
+                          </View>
+                          <Text
+                            style={[styles.donutCenterPct, { color: item.color }]}
+                            numberOfLines={1}
+                          >
+                            {item.percentage.toFixed(1)}%
+                          </Text>
+                          <Text style={styles.donutCenterName} numberOfLines={2}>
+                            {item.categoryName}
+                          </Text>
+                          {item.deleted ? (
+                            <Text style={styles.donutCenterDeleted}>(đã xóa)</Text>
+                          ) : null}
+                        </View>
+                      )
+                    }}
+                  />
+                </View>
+              ) : (
+                <View style={styles.donutContainer}>
+                  <Text style={styles.emptyChartText}>
+                    Chưa có dữ liệu danh mục trong kỳ này
+                  </Text>
+                </View>
+              )}
+            </View>
+          ) : (
+            <View style={styles.lineChartWrapper}>
+              {hasTrendData ? (
+                <>
+                  <View style={styles.fixedValueBanner}>
+                    {pointerIndex >= 0 && pointerIndex < dualTrend.expense.length ? (
+                      <>
+                        <Text style={styles.fixedValueDay}>
+                          {dualTrend.expense[pointerIndex].timeLabel}
+                        </Text>
+                        <View style={styles.fixedValueRow}>
+                          <Text style={[styles.fixedValueText, { color: EXPENSE_LINE }]}>
+                            Chi: {formatNotebookReportCurrency(dualTrend.expense[pointerIndex].value)}
+                          </Text>
+                          <Text style={[styles.fixedValueText, { color: INCOME_LINE }]}>
+                            Thu: {formatNotebookReportCurrency(dualTrend.income[pointerIndex].value)}
+                          </Text>
+                        </View>
+                      </>
+                    ) : (
+                      <Text style={styles.fixedValueHint}>Chạm vào biểu đồ để xem giá trị</Text>
+                    )}
+                  </View>
+                  <View style={styles.lineChartPanel}>
+                    <ScrollView
+                      horizontal
+                      showsHorizontalScrollIndicator={false}
+                      contentContainerStyle={styles.lineChartScroll}
+                    >
+                      <LineChart
+                        key={`trend-${dateFilter}-${selectedDate.getTime()}`}
+                        dataSet={trendDataSet}
+                        width={lineChartWidth}
+                        height={220}
+                        overflowTop={48}
+                        maxValue={chartMaxValue}
+                        mostNegativeValue={0}
+                        curved={false}
+                        spacing={dateFilter === 'month' ? 22 : dateFilter === 'week' ? 44 : 34}
+                        initialSpacing={20}
+                        endSpacing={20}
+                        noOfSections={4}
+                        hideRules={false}
+                        rulesColor="#E2E8F0"
+                        rulesType="solid"
+                        xAxisThickness={1}
+                        xAxisColor="#CBD5E1"
+                        yAxisThickness={0}
+                        yAxisTextStyle={styles.yAxisLabel}
+                        formatYLabel={formatTrendYLabel}
+                        getPointerProps={handlePointerProps}
+                        pointerConfig={pointerConfig}
+                      />
+                    </ScrollView>
+                  </View>
+                </>
               ) : (
                 <Text style={styles.emptyChartText}>
-                  Chưa có dữ liệu danh mục trong kỳ này
+                  Chưa có dữ liệu xu hướng trong kỳ này
                 </Text>
               )}
             </View>
-            <View style={styles.legendContainer}>
+          )}
+        </View>
+
+        {viewMode === 'pie' && distribution.length > 0 ? (
+          <>
+            <View style={styles.categoryHeader}>
+              <Text style={styles.categoryTitle}>
+                Danh mục ({distribution.length})
+              </Text>
+              {distribution.length > 4 ? (
+                <View style={styles.categorySwipeHint}>
+                  <Text style={styles.categorySwipeHintText}>Vuốt</Text>
+                  <Ionicons name="chevron-forward" size={14} color={PRIMARY} />
+                </View>
+              ) : null}
+            </View>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              decelerationRate="fast"
+              snapToInterval={CATEGORY_CARD_WIDTH + CATEGORY_CARD_GAP}
+              snapToAlignment="start"
+              contentContainerStyle={styles.categoryScrollContent}
+            >
               {distribution.map((item, index) => {
-                const isSelected = selectedCategoryKey === item.key;
+                const isFocused = focusedPieIndex === index
                 return (
-                  <TouchableOpacity 
-                    key={`${item.key}-${index}`} 
-                    style={[styles.legendItem, isSelected && { opacity: 1 }, !isSelected && selectedCategoryKey && { opacity: 0.4 }]}
-                    onPress={() => setSelectedCategoryKey(isSelected ? null : item.key)}
-                    activeOpacity={0.8}
+                  <TouchableOpacity
+                    key={`${item.key}-${index}`}
+                    style={[
+                      styles.categoryCard,
+                      { width: CATEGORY_CARD_WIDTH },
+                      isFocused && {
+                        backgroundColor: `${item.color}12`,
+                        borderColor: item.color,
+                      },
+                    ]}
+                    onPress={() => togglePieFocus(index)}
+                    activeOpacity={0.75}
                   >
-                    <View style={[styles.legendIconBox, { backgroundColor: `${item.color}33` }]}>
+                    <View
+                      style={[
+                        styles.categoryCardIcon,
+                        { backgroundColor: `${item.color}22` },
+                      ]}
+                    >
                       {renderCategoryIcon(item.icon, item.color, 20)}
                     </View>
-                    <View style={{ marginLeft: 8, flex: 1 }}>
-                      <Text style={[styles.legendValue, { color: item.color }]}>
-                        {item.percentage.toFixed(1)}%
-                      </Text>
-                      <Text style={styles.legendLabel} numberOfLines={1}>
-                        {item.categoryName}
-                      </Text>
-                    </View>
+                    <Text style={[styles.categoryCardPct, { color: item.color }]} numberOfLines={1}>
+                      {item.percentage.toFixed(1)}%
+                    </Text>
+                    <Text style={styles.categoryCardName} numberOfLines={2}>
+                      {item.categoryName}
+                    </Text>
+                    {item.deleted ? (
+                      <Text style={styles.categoryCardDeleted}>(đã xóa)</Text>
+                    ) : null}
+                    <Text style={styles.categoryCardAmount} numberOfLines={1}>
+                      {formatCompactAmount(item.totalAmount)}
+                    </Text>
                   </TouchableOpacity>
-                );
+                )
               })}
-            </View>
-          </View>
-        ) : (
-          <View style={styles.lineChartWrapper}>
-            {trendData.some((d) => d.value > 0) ? (
-              <>
-                <View style={styles.lineChartLegend}>
-                  {selectedBarIndex !== null ? (
-                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                      <Text style={{ fontWeight: '700', fontSize: 14, color: PASTEL_PALETTE.title }}>
-                        {dateFilter === 'week' ? 'Thứ ' : dateFilter === 'year' ? 'Tháng ' : 'Ngày '} 
-                        {trendData[selectedBarIndex].fullLabel}: 
-                      </Text>
-                      <Text style={{ fontWeight: '800', fontSize: 16, color: trendData[selectedBarIndex].isCurrent ? Colors.primary : trendColor, marginLeft: 4 }}>
-                        {formatCurrency(trendData[selectedBarIndex].value)}
-                      </Text>
-                    </View>
-                  ) : (
-                    <>
-                      <View style={[styles.lineTrendDot, { backgroundColor: trendColor }]} />
-                      <Text style={styles.lineChartLegendText}>
-                        {trendColor === '#10B981' ? 'Xu hướng tăng' : 'Xu hướng giảm'}
-                      </Text>
-                    </>
-                  )}
-                  <Text style={styles.lineChartHint}>{selectedBarIndex !== null ? 'Nhấn lại để hủy' : 'Vuốt ngang để xem'}</Text>
-                </View>
-                <View style={styles.lineChartPanel}>
-                  <ScrollView
-                    horizontal
-                    showsHorizontalScrollIndicator={false}
-                    contentContainerStyle={styles.lineChartScroll}
-                  >
-                    <BarChart
-                      data={barChartData as any}
-                      width={chartWidth}
-                      height={220}
-                      barWidth={dateFilter === 'month' ? 10 : dateFilter === 'week' ? 22 : 16}
-                      spacing={dateFilter === 'month' ? 12 : dateFilter === 'week' ? 22 : 18}
-                      initialSpacing={16}
-                      endSpacing={16}
-                      noOfSections={5}
-                      rulesColor="#E2E8F0"
-                      rulesType="solid"
-                      xAxisThickness={1}
-                      xAxisColor="#CBD5E1"
-                      yAxisThickness={0}
-                      yAxisTextStyle={styles.yAxisLabel}
-                      formatYLabel={(label) => {
-                        const val = Number(label);
-                        if (val >= 1000000) return `${(val / 1000000).toFixed(1)}Tr`;
-                        if (val >= 1000) return `${(val / 1000).toFixed(0)}K`;
-                        return label;
-                      }}
-                      roundedTop
-                      roundedBottom={false}
-                      hideRules={false}
-                    />
-                  </ScrollView>
-                </View>
-              </>
-            ) : (
-              <Text style={styles.emptyChartText}>Chưa có dữ liệu xu hướng trong kỳ này</Text>
-            )}
-          </View>
-        )}
+            </ScrollView>
+          </>
+        ) : null}
       </View>
+    </ScrollView>
+  )
+}
 
-      {viewMode === 'pie' && distribution.length > 0 ? (
-        <>
-          <View style={styles.categoryHeader}>
-            <Text style={styles.categoryTitle}>
-              Chi tiết từng danh mục ({distribution.length})
-            </Text>
-            <Ionicons name="chevron-down" size={16} color={Colors.primary} />
-          </View>
-          {distribution.map((item, index) => {
-            const isSelected = selectedCategoryKey === item.key;
-            return (
-              <TouchableOpacity 
-                key={`${item.key}-${index}`} 
-                style={[styles.categoryItem, isSelected && { borderColor: item.color, borderWidth: 2 }]}
-                onPress={() => setSelectedCategoryKey(isSelected ? null : item.key)}
-                activeOpacity={0.8}
-              >
-                <View style={[styles.categoryIconContainer, { backgroundColor: `${item.color}22` }]}>
-                  {renderCategoryIcon(item.icon, item.color, 20)}
-                </View>
-                <View style={styles.categoryDetails}>
-                  <Text style={styles.categoryItemTitle} numberOfLines={1}>
-                    {item.categoryName}
-                  </Text>
-                  <Text style={styles.categoryItemSubtitle}>
-                    {item.percentage.toFixed(1)}% tổng {activeTab === 'expense' ? 'chi' : 'thu'}
-                  </Text>
-                </View>
-                <Text style={styles.categoryAmount}>{formatCurrency(item.totalAmount)}</Text>
-              </TouchableOpacity>
-            );
-          })}
-        </>
-      ) : null}
-    </View>
-  );
-};
+function formatCompactAmount(amount: number) {
+  const value = Math.round(amount || 0)
+  if (value >= 1_000_000_000) return `${(value / 1_000_000_000).toFixed(1)} tỷ`
+  if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(1)} tr`
+  return formatNotebookReportCurrency(value)
+}
 
-export default NotebookReport;
+function renderCategoryIcon(iconName: string | undefined, color: string, size: number) {
+  return (
+    <Ionicons
+      name={
+        (iconName && iconName !== '?'
+          ? iconName
+          : 'help-circle-outline') as keyof typeof Ionicons.glyphMap
+      }
+      size={size}
+      color={color}
+    />
+  )
+}
+
+function createCategoryResolver(categories: CategoryGroup[]) {
+  const byId = new Map<number, { icon: string; color: string; label: string }>()
+  categories.forEach((group) => {
+    group.items.forEach((item) => {
+      byId.set(item.id, {
+        icon: item.icon,
+        color: item.color,
+        label: item.label,
+      })
+    })
+  })
+
+  return (tx: NotebookTransactionItem) => {
+    const active = tx.categoryId != null ? byId.get(tx.categoryId) : undefined
+    const deleted = !!tx.categoryDeleted || (tx.categoryId != null && !active)
+    const baseName = stripDeletedCategorySuffix(active?.label || tx.categoryName || 'Khác')
+
+    if (!deleted) {
+      if (active) {
+        return { ...active, label: stripDeletedCategorySuffix(active.label), deleted: false }
+      }
+      return {
+        icon: tx.categoryIcon || 'pricetag',
+        color: tx.categoryColor || PASTEL_PALETTE.accentDeep,
+        label: baseName,
+        deleted: false,
+      }
+    }
+
+    return {
+      icon: tx.categoryIcon || active?.icon || 'pricetag',
+      color: tx.categoryColor || active?.color || PASTEL_PALETTE.accentDeep,
+      label: baseName,
+      deleted: true,
+    }
+  }
+}

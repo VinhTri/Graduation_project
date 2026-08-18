@@ -12,7 +12,7 @@ import java.math.BigDecimal;
 public class FundAmountRequest {
 
     @NotNull
-    @DecimalMin(value = "10000")
+    @DecimalMin(value = "2000")
     private BigDecimal amount;
 
     @Size(max = 100)
