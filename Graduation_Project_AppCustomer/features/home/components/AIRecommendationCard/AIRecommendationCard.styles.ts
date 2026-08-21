@@ -33,6 +33,11 @@ export const styles = StyleSheet.create({
     lineHeight: 18,
     minHeight: 54,
   },
+  loadingRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    minHeight: 54,
+  },
   cursor: {
     color: PASTEL_PALETTE.accentDeep,
     fontWeight: "800",

@@ -3,6 +3,5 @@ export * from './HomeWalletSummary';
 export * from './AIRecommendationCard';
 export * from './ServicesGrid';
 export * from './HomeNotebookCalendar';
-export * from './SmartSpendProposals';
 export * from './DiscoverMore';
 

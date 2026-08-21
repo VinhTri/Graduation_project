@@ -3,7 +3,8 @@ import {
   View, Text, ScrollView, TouchableOpacity, TextInput, Alert, StyleSheet,
 } from 'react-native';
 import { Feather, Ionicons } from '@expo/vector-icons';
-import { PinModal, SuccessModal } from '../../../../shared/components';
+import { PinModal } from '../../../../shared/components';
+import { useToast } from '../../../../shared/components/Toast';
 import { fundStore } from '../../store/fundStore';
 import { FUND_PALETTE } from '../../theme';
 import { formatCurrency, parseAmountInput } from '../../utils';
@@ -22,11 +23,11 @@ type Props = {
 
 export function FundMoneyForm({ mode, fund, walletBalance, minDeposit, onCompleted }: Props) {
   const isDeposit = mode === 'deposit';
+  const { showToast } = useToast();
   const [amount, setAmount] = useState('');
   const [note, setNote] = useState('');
   const [pinVisible, setPinVisible] = useState(false);
   const [pinError, setPinError] = useState('');
-  const [successVisible, setSuccessVisible] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
   const parsedAmount = amount ? parseInt(amount, 10) : 0;
@@ -65,7 +66,15 @@ export function FundMoneyForm({ mode, fund, walletBalance, minDeposit, onComplet
         await fundStore.withdraw(fund.id, parsedAmount, pin, note.trim() || undefined);
       }
       setPinVisible(false);
-      setSuccessVisible(true);
+      showToast({
+        variant: 'success',
+        message: isDeposit
+          ? `Đã nạp ${formatCurrency(parsedAmount)} ₫ vào "${fund.name}"`
+          : `Đã rút ${formatCurrency(parsedAmount)} ₫ từ "${fund.name}" về ví`,
+      });
+      setAmount('');
+      setNote('');
+      onCompleted?.();
     } catch (err: any) {
       setPinError(err?.message || (isDeposit ? 'Nạp tiền thất bại' : 'Rút tiền thất bại'));
     } finally {
@@ -177,22 +186,6 @@ export function FundMoneyForm({ mode, fund, walletBalance, minDeposit, onComplet
         onClose={() => setPinVisible(false)}
         onConfirm={handlePinConfirm}
         errorMessage={pinError}
-      />
-      <SuccessModal
-        visible={successVisible}
-        variant="pastel"
-        title={isDeposit ? 'Nạp tiền thành công' : 'Rút tiền thành công'}
-        message={
-          isDeposit
-            ? `Bạn đã nạp ${formatCurrency(parsedAmount)} ₫ vào "${fund.name}".`
-            : `Bạn đã rút ${formatCurrency(parsedAmount)} ₫ từ "${fund.name}" về ví.`
-        }
-        onClose={() => {
-          setSuccessVisible(false);
-          setAmount('');
-          setNote('');
-          onCompleted?.();
-        }}
       />
     </View>
   );

@@ -36,6 +36,7 @@ public class FinanceCenterResponse {
     public static class PeriodSnapshot {
         private SourceFlow wallet;
         private SourceFlow cash;
+        private SourceFlow fund;
         private BigDecimal totalIncome;
         private BigDecimal totalExpense;
         private BigDecimal net;

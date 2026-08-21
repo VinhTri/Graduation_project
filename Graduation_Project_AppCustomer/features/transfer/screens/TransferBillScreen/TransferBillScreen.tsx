@@ -67,15 +67,6 @@ export default function TransferBillScreen() {
   const receiverName = (params.receiverName as string) || '';
   const note = ((params.note as string) || '').trim();
   const transactionDate = params.createdAt ? formatIsoDate(params.createdAt as string) : getCurrentFormattedDate();
-  const categoryLabel = (params.categoryLabel as string) || '';
-  const categoryIconStr = params.categoryIcon as string;
-  const categoryIcon = (!categoryIconStr || categoryIconStr === 'undefined') ? 'pricetag' : categoryIconStr;
-  
-  const categoryColorStr = params.categoryColor as string;
-  const categoryColor = (!categoryColorStr || categoryColorStr === 'undefined') ? '' : categoryColorStr;
-  
-  const categoryBgColorStr = params.categoryBgColor as string;
-  const categoryBgColor = (!categoryBgColorStr || categoryBgColorStr === 'undefined') ? '' : categoryBgColorStr;
 
   return (
     <View style={[styles.container, { paddingTop: insets.top, paddingBottom: Math.max(insets.bottom, 16) }]}>
@@ -147,17 +138,6 @@ export default function TransferBillScreen() {
                 <Text style={styles.infoLabel}>Tài khoản nhận</Text>
                 <Text style={styles.infoValue}>{accountNumber}</Text>
               </View>
-              {!!categoryLabel && (
-                <View style={styles.infoRow}>
-                  <Text style={styles.infoLabel}>Danh mục</Text>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, justifyContent: 'flex-end' }}>
-                    <View style={{ width: 28, height: 28, borderRadius: 14, backgroundColor: categoryBgColor || PASTEL_PALETTE.lavenderSoft, justifyContent: 'center', alignItems: 'center', marginRight: 8 }}>
-                      <Ionicons name={categoryIcon as any} size={16} color={categoryColor || PASTEL_PALETTE.accentDeep} />
-                    </View>
-                    <Text style={[styles.infoValue, { flex: 0, textAlign: 'left' }]} numberOfLines={1}>{categoryLabel}</Text>
-                  </View>
-                </View>
-              )}
               {!!note && (
                 <View style={styles.infoRow}>
                   <Text style={styles.infoLabel}>Lời nhắn</Text>

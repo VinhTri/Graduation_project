@@ -56,9 +56,26 @@ axiosClient.interceptors.response.use(
     // Xử lý dữ liệu trả về thành công tại đây, trả về trực tiếp response.data cho gọn
     return response.data;
   },
-  (error) => {
+  async (error) => {
     // Xử lý lỗi hệ thống chung (ví dụ: 401 Chưa xác thực, 500 Lỗi server)
     console.warn(`Lỗi API [${error.config?.url}]:`, error?.response?.data || error.message);
+    
+    // Cách sạch nhất: Bắt lỗi 401 hoặc 403 (Token hết hạn / Không có quyền)
+    if (error?.response?.status === 401 || error?.response?.status === 403) {
+      console.warn("Token hết hạn hoặc lỗi xác thực, đang xoá token và chuyển về trang đăng nhập...");
+      
+      // Xoá token
+      await AsyncStorage.removeItem('token');
+      
+      // Chuyển hướng người dùng về màn hình đăng nhập
+      // Yêu cầu import { router } from 'expo-router'; ở đầu file
+      const { router } = require('expo-router');
+      if (router) {
+        // Tuỳ thuộc vào cấu trúc thư mục của bạn, đường dẫn có thể khác
+        router.replace('/(auth)/login'); 
+      }
+    }
+
     return Promise.reject(error?.response?.data || error);
   }
 );

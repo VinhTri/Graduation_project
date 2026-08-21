@@ -10,11 +10,12 @@ import { Ionicons } from '@expo/vector-icons'
 import { useFocusEffect, useRouter } from 'expo-router'
 import { BankLogo } from '@/shared/components/BankLogo/BankLogo'
 import ConfirmModal from '@/shared/components/ConfirmModal/ConfirmModal'
+import PinModal from '@/shared/components/PinModal/PinModal'
 import PastelHeaderShell from '@/shared/components/PastelHeaderShell/PastelHeaderShell'
 import { useToast } from '@/shared/components/Toast'
 import { getBankMeta, getBankShortName } from '@/shared/constants/commonBanks'
 import { PASTEL_PALETTE } from '@/shared/constants/PastelPalette'
-import { getBankAccounts } from '@/shared/services'
+import { getBankAccounts, unlinkBankAccount, verifyCurrentPin } from '@/shared/services'
 import type { BankAccountResponse } from '@/shared/types/bankAccount'
 import { styles } from './BankBindingScreen.styles'
 
@@ -32,6 +33,10 @@ export default function BankBindingScreen() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [accountToUnlink, setAccountToUnlink] = useState<BankAccountResponse | null>(null)
+  const [pendingUnlink, setPendingUnlink] = useState<BankAccountResponse | null>(null)
+  const [pinVisible, setPinVisible] = useState(false)
+  const [pinError, setPinError] = useState('')
+  const [unlinking, setUnlinking] = useState(false)
 
   const load = useCallback(async () => {
     try {
@@ -53,16 +58,37 @@ export default function BankBindingScreen() {
 
   function handleConfirmUnlink() {
     if (!accountToUnlink) return
-
     const account = accountToUnlink
     setAccountToUnlink(null)
-    router.push({
-      pathname: '/settings/bank-binding/unlink-pin',
-      params: {
-        accountId: String(account.id),
-        bankName: account.bankName,
-      },
-    })
+    setPendingUnlink(account)
+    setPinError('')
+    setPinVisible(true)
+  }
+
+  function closePinModal() {
+    if (unlinking) return
+    setPinVisible(false)
+    setPinError('')
+    setPendingUnlink(null)
+  }
+
+  async function handlePinConfirm(pinCode: string) {
+    if (!pendingUnlink) return
+
+    setUnlinking(true)
+    setPinError('')
+    try {
+      await verifyCurrentPin({ currentPinCode: pinCode })
+      await unlinkBankAccount(pendingUnlink.id)
+      setPinVisible(false)
+      setPendingUnlink(null)
+      showToast({ variant: 'success', message: 'Đã hủy liên kết ngân hàng' })
+      await load()
+    } catch (err) {
+      setPinError(err instanceof Error ? err.message : 'Xác thực PIN thất bại')
+    } finally {
+      setUnlinking(false)
+    }
   }
 
   function handleAddBank() {
@@ -160,6 +186,19 @@ export default function BankBindingScreen() {
         isDestructive={false}
         onConfirm={handleConfirmUnlink}
         onCancel={() => setAccountToUnlink(null)}
+      />
+
+      <PinModal
+        visible={pinVisible}
+        onClose={closePinModal}
+        onConfirm={handlePinConfirm}
+        errorMessage={pinError}
+        title="Xác nhận hủy liên kết"
+        subtitle={
+          pendingUnlink
+            ? `Nhập mã PIN 6 số để xác nhận hủy liên kết tài khoản ${pendingUnlink.bankName}.`
+            : 'Nhập mã PIN 6 số để xác nhận hủy liên kết.'
+        }
       />
     </View>
   )

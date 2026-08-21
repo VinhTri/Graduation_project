@@ -2,12 +2,14 @@ import { useState } from 'react'
 import { ActivityIndicator, Text, TextInput, TouchableOpacity, View } from 'react-native'
 import { Feather } from '@expo/vector-icons'
 import { useRouter } from 'expo-router'
+import { startForgotPasswordFlowSafe } from '@/features/auth/forgot-password/startForgotPasswordFlow'
 import ChangeSecurityShell from '@/features/settings/components/ChangeSecurityShell'
 import { useChangeSecurityDraft } from '@/features/settings/context/ChangeSecurityContext'
 import {
   AUTH_INPUT_ICON,
   AUTH_INPUT_PLACEHOLDER,
 } from '@/shared/constants/authInputColors'
+import { PASTEL_PALETTE } from '@/shared/constants/PastelPalette'
 import { verifyCurrentPassword } from '@/shared/services'
 import { authScreenStyles as styles } from '@/shared/styles/authScreen.styles'
 
@@ -18,6 +20,7 @@ export default function ChangePasswordCurrentScreen() {
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const [sendingOtp, setSendingOtp] = useState(false)
 
   async function handleContinue() {
     const trimmed = value.trim()
@@ -38,6 +41,17 @@ export default function ChangePasswordCurrentScreen() {
       setError(message)
     } finally {
       setLoading(false)
+    }
+  }
+
+  async function handleForgotPassword() {
+    if (sendingOtp || loading) return
+    setError('')
+    setSendingOtp(true)
+    try {
+      await startForgotPasswordFlowSafe(router)
+    } finally {
+      setSendingOtp(false)
     }
   }
 
@@ -70,12 +84,12 @@ export default function ChangePasswordCurrentScreen() {
               if (error) setError('')
             }}
             autoFocus
-            editable={!loading}
+            editable={!loading && !sendingOtp}
           />
           <TouchableOpacity
             onPress={() => setShowPassword(!showPassword)}
             style={styles.eyeIcon}
-            disabled={loading}
+            disabled={loading || sendingOtp}
           >
             <Feather
               name={showPassword ? 'eye' : 'eye-off'}
@@ -87,14 +101,27 @@ export default function ChangePasswordCurrentScreen() {
         {error ? <Text style={styles.errorText}>{error}</Text> : null}
       </View>
 
+      <View style={styles.forgotPasswordContainer}>
+        <TouchableOpacity onPress={handleForgotPassword} disabled={sendingOtp || loading}>
+          <Text
+            style={[
+              styles.forgotPasswordText,
+              sendingOtp ? { color: PASTEL_PALETTE.textMuted } : null,
+            ]}
+          >
+            {sendingOtp ? 'Đang gửi OTP...' : 'Quên mật khẩu?'}
+          </Text>
+        </TouchableOpacity>
+      </View>
+
       <TouchableOpacity
         style={[
           styles.primaryButton,
-          (loading || !value.trim()) && styles.primaryButtonDisabled,
+          (loading || sendingOtp || !value.trim()) && styles.primaryButtonDisabled,
         ]}
         onPress={handleContinue}
         activeOpacity={0.8}
-        disabled={loading || !value.trim()}
+        disabled={loading || sendingOtp || !value.trim()}
       >
         {loading ? (
           <ActivityIndicator color="#fff" />

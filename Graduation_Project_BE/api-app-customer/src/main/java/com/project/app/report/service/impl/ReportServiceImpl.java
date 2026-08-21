@@ -18,8 +18,12 @@ import com.project.app.transaction.enums.TransactionStatus;
 import com.project.app.transaction.enums.TransactionType;
 import com.project.app.transaction.repository.TransactionRepository;
 import com.project.app.user.entity.User;
+import com.project.app.fund.enums.FundTransactionType;
+import com.project.app.fund.repository.FundTransactionRepository;
 import com.project.app.wallet.entity.Wallet;
+import com.project.app.wallet.enums.WalletTransactionType;
 import com.project.app.wallet.repository.WalletRepository;
+import com.project.app.wallet.repository.WalletTransactionRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -43,6 +47,8 @@ public class ReportServiceImpl implements ReportService {
     private final CategoryItemRepository categoryItemRepository;
     private final CategoryGroupRepository categoryGroupRepository;
     private final WalletRepository walletRepository;
+    private final WalletTransactionRepository walletTransactionRepository;
+    private final FundTransactionRepository fundTransactionRepository;
     private final NotebookBookRepository notebookBookRepository;
     private final NotebookTransactionRepository notebookTransactionRepository;
 
@@ -351,11 +357,13 @@ public class ReportServiceImpl implements ReportService {
     private FinanceCenterResponse.PeriodSnapshot buildPeriodSnapshot(Long userId, LocalDateTime[] range) {
         FinanceCenterResponse.SourceFlow wallet = buildWalletFlow(userId, range[0], range[1]);
         FinanceCenterResponse.SourceFlow cash = buildCashFlow(userId, range[0], range[1]);
+        FinanceCenterResponse.SourceFlow fund = buildFundFlow(userId, range[0], range[1]);
         BigDecimal totalIncome = nz(wallet.getIncome()).add(nz(cash.getIncome()));
         BigDecimal totalExpense = nz(wallet.getExpense()).add(nz(cash.getExpense()));
         return FinanceCenterResponse.PeriodSnapshot.builder()
                 .wallet(wallet)
                 .cash(cash)
+                .fund(fund)
                 .totalIncome(totalIncome)
                 .totalExpense(totalExpense)
                 .net(totalIncome.subtract(totalExpense))
@@ -363,11 +371,25 @@ public class ReportServiceImpl implements ReportService {
     }
 
     private FinanceCenterResponse.SourceFlow buildWalletFlow(Long userId, LocalDateTime from, LocalDateTime to) {
-        BigDecimal income = transactionRepository.sumAmountByUserDefaultWalletAndTypesAndStatusAndCreatedAtBetween(
-                userId, resolveTypes(TransactionType.INCOME), TransactionStatus.SUCCESS, from, to);
-        BigDecimal expense = transactionRepository.sumAmountByUserDefaultWalletAndTypesAndStatusAndCreatedAtBetween(
-                userId, resolveTypes(TransactionType.EXPENSE), TransactionStatus.SUCCESS, from, to);
-        return sourceFlow(income, expense);
+        BigDecimal topUp = nz(walletTransactionRepository.sumAmountByUserDefaultWalletAndTypeAndCreatedAtBetween(
+                userId, WalletTransactionType.TOP_UP, from, to));
+        BigDecimal withdraw = nz(walletTransactionRepository.sumAmountByUserDefaultWalletAndTypeAndCreatedAtBetween(
+                userId, WalletTransactionType.WITHDRAW, from, to));
+
+        topUp = topUp.add(nz(transactionRepository.sumOrphanAmountByUserDefaultWalletAndTypeAndStatusAndCreatedAtBetween(
+                userId, TransactionType.TOP_UP, TransactionStatus.SUCCESS, from, to)));
+        withdraw = withdraw.add(nz(transactionRepository.sumOrphanAmountByUserDefaultWalletAndTypeAndStatusAndCreatedAtBetween(
+                userId, TransactionType.WITHDRAW, TransactionStatus.SUCCESS, from, to)));
+
+        return sourceFlow(topUp, withdraw);
+    }
+
+    private FinanceCenterResponse.SourceFlow buildFundFlow(Long userId, LocalDateTime from, LocalDateTime to) {
+        BigDecimal deposit = nz(fundTransactionRepository.sumAmountForUserFundsByTypeAndCreatedAtBetween(
+                userId, FundTransactionType.DEPOSIT, from, to));
+        BigDecimal withdraw = nz(fundTransactionRepository.sumAmountForUserFundsByTypeAndCreatedAtBetween(
+                userId, FundTransactionType.WITHDRAW, from, to));
+        return sourceFlow(deposit, withdraw);
     }
 
     private FinanceCenterResponse.SourceFlow buildCashFlow(Long userId, LocalDateTime from, LocalDateTime to) {

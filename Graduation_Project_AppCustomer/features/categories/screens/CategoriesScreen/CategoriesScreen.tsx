@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
   ActivityIndicator,
   Alert,
@@ -7,7 +7,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native'
-import { useFocusEffect, useRouter } from 'expo-router'
+import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'
 import ConfirmModal from '@/shared/components/ConfirmModal/ConfirmModal'
 import PastelHeaderShell from '@/shared/components/PastelHeaderShell/PastelHeaderShell'
@@ -69,6 +69,11 @@ type GroupDeleteTarget = {
 
 export default function CategoriesScreen() {
   const router = useRouter()
+  const params = useLocalSearchParams<{
+    openCreate?: string
+    prefillLabel?: string
+    groupId?: string
+  }>()
   const { showToast } = useToast()
   const { categories, loading, addGroup, addItem, removeItem, removeGroup } = useCategories()
 
@@ -76,6 +81,7 @@ export default function CategoriesScreen() {
   const [itemModalVisible, setItemModalVisible] = useState(false)
   const [groupModalVisible, setGroupModalVisible] = useState(false)
   const [defaultGroupId, setDefaultGroupId] = useState<number | undefined>()
+  const [prefillLabel, setPrefillLabel] = useState<string | undefined>()
   const [itemToDelete, setItemToDelete] = useState<ItemDeleteTarget | null>(null)
   const [groupToDelete, setGroupToDelete] = useState<GroupDeleteTarget | null>(null)
   const [checkingImpact, setCheckingImpact] = useState(false)
@@ -96,6 +102,27 @@ export default function CategoriesScreen() {
       loadBudgets()
     }, [loadBudgets]),
   )
+
+  useEffect(() => {
+    const shouldOpen =
+      params.openCreate === '1' ||
+      (typeof params.prefillLabel === 'string' && params.prefillLabel.length > 0)
+
+    if (!shouldOpen) {
+      return
+    }
+
+    const label = typeof params.prefillLabel === 'string'
+      ? decodeURIComponent(params.prefillLabel)
+      : undefined
+    const groupId = params.groupId ? Number(params.groupId) : undefined
+
+    setPrefillLabel(label)
+    if (groupId && !Number.isNaN(groupId)) {
+      setDefaultGroupId(groupId)
+    }
+    setItemModalVisible(true)
+  }, [params.openCreate, params.prefillLabel, params.groupId])
 
   const handleCreateGroup = () => {
     if (categories.length >= MAX_CATEGORY_GROUPS) {
@@ -295,9 +322,11 @@ export default function CategoriesScreen() {
         visible={itemModalVisible}
         categories={categories}
         defaultGroupId={defaultGroupId}
+        initialLabel={prefillLabel}
         onClose={() => {
           setItemModalVisible(false)
           setDefaultGroupId(undefined)
+          setPrefillLabel(undefined)
         }}
         onCreateGroup={addGroup}
         onSubmit={addItem}

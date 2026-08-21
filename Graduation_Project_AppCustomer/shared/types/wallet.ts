@@ -51,6 +51,6 @@ export type WalletTopUpRequest = {
 export type WalletWithdrawRequest = {
   amount: number
   bankAccountId: number
-  categoryId: number
+  pinCode: string
   note?: string
 }

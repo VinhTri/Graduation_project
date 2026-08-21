@@ -8,23 +8,16 @@ import {
   KeyboardAvoidingView,
   Platform,
   ActivityIndicator,
-  Modal,
-  FlatList,
-  TouchableWithoutFeedback
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { ConfirmModal } from '@/shared/components';
-import { useCategories } from '@/features/categories/hooks/useCategories';
-import { CategorySelectModal } from '@/features/categories/components/CategorySelectModal/CategorySelectModal';
-import { AddCategoryModal } from '@/features/categories/components/AddCategoryModal/AddCategoryModal';
-import type { CategoryItem } from '@/shared/types/category';
-import { PASTEL_PALETTE } from '@/shared/constants/PastelPalette';
-import { friendshipService } from '@/shared/api/services/friendship.service';
-import { userService } from '@/shared/api/services/userService';
-import { styles } from './TransferScreen.styles';
+import { ConfirmModal } from '@/shared/components'
+import { PASTEL_PALETTE } from '@/shared/constants/PastelPalette'
+import { friendshipService } from '@/shared/api/services/friendship.service'
+import { userService } from '@/shared/api/services/userService'
+import { styles } from './TransferScreen.styles'
 
 export const TransferScreen = () => {
   const router = useRouter();
@@ -42,11 +35,6 @@ export const TransferScreen = () => {
   const searchRequestId = useRef(0);
   const [amount, setAmount] = useState('');
   const [note, setNote] = useState('');
-
-  const { categories, addGroup, addItem, loadCategories } = useCategories({ reloadOnFocus: true });
-  const [selectedCategory, setSelectedCategory] = useState<CategoryItem | null>(null);
-  const [isCategoryModalVisible, setIsCategoryModalVisible] = useState(false);
-  const [isAddCategoryModalVisible, setIsAddCategoryModalVisible] = useState(false);
 
   // Hàm phụ trợ: cắt đuôi @gmail.com nếu là email
   const extractDisplayName = (nameOrEmail: string) => {
@@ -176,11 +164,6 @@ export const TransferScreen = () => {
         receiverName: receiverName.trim(),
         amount: numericAmount,
         note: note.trim(),
-        categoryId: selectedCategory?.id,
-        categoryLabel: selectedCategory?.label,
-        categoryIcon: selectedCategory?.icon,
-        categoryColor: selectedCategory?.color,
-        categoryBgColor: selectedCategory?.bgColor
       }
     });
   };
@@ -334,27 +317,6 @@ export const TransferScreen = () => {
           </View>
 
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Danh mục (Tùy chọn)</Text>
-            <TouchableOpacity
-              style={[styles.input, { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }]}
-              onPress={() => setIsCategoryModalVisible(true)}
-              activeOpacity={0.7}
-            >
-              {selectedCategory ? (
-                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                  <View style={[{ width: 28, height: 28, borderRadius: 14, justifyContent: 'center', alignItems: 'center' }, { backgroundColor: selectedCategory.bgColor || PASTEL_PALETTE.lavenderSoft }]}>
-                    <Ionicons name={selectedCategory.icon as any} size={16} color={selectedCategory.color || PASTEL_PALETTE.accentDeep} />
-                  </View>
-                  <Text style={{ fontSize: 15, color: PASTEL_PALETTE.title, fontWeight: '600', marginLeft: 8 }}>{selectedCategory.label}</Text>
-                </View>
-              ) : (
-                <Text style={{ fontSize: 15, color: PASTEL_PALETTE.textMuted }}>Chọn danh mục giao dịch...</Text>
-              )}
-              <Ionicons name="chevron-down" size={20} color={PASTEL_PALETTE.textMuted} />
-            </TouchableOpacity>
-          </View>
-
-          <View style={styles.inputGroup}>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
               <Text style={[styles.label, { marginBottom: 0 }]}>Lời nhắn <Text style={{ color: PASTEL_PALETTE.error }}>*</Text></Text>
               <Text style={{ fontSize: 12, color: PASTEL_PALETTE.textMuted }}>{note.length}/100</Text>
@@ -410,35 +372,6 @@ export const TransferScreen = () => {
         confirmButtonColor={PASTEL_PALETTE.accentDeep}
         onConfirm={() => setErrorModalVisible(false)}
         onCancel={() => setErrorModalVisible(false)}
-      />
-
-      <CategorySelectModal
-        visible={isCategoryModalVisible && !isAddCategoryModalVisible}
-        categories={categories}
-        onClose={() => setIsCategoryModalVisible(false)}
-        onSelect={(item) => {
-          setSelectedCategory(item)
-          setIsCategoryModalVisible(false)
-        }}
-        onAddCategory={() => {
-          setIsCategoryModalVisible(false)
-          setTimeout(() => setIsAddCategoryModalVisible(true), 350)
-        }}
-      />
-      <AddCategoryModal
-        visible={isAddCategoryModalVisible}
-        categories={categories}
-        onClose={() => setIsAddCategoryModalVisible(false)}
-        onBack={() => {
-          setIsAddCategoryModalVisible(false)
-          setTimeout(() => setIsCategoryModalVisible(true), 350)
-        }}
-        onCreateGroup={addGroup}
-        onSubmit={async (payload) => {
-          await addItem(payload)
-          await loadCategories()
-          setIsAddCategoryModalVisible(false)
-        }}
       />
     </KeyboardAvoidingView>
   );

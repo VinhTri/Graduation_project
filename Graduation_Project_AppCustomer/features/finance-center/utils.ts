@@ -14,6 +14,7 @@ const EMPTY_FLOW: FinanceSourceFlow = { income: 0, expense: 0, net: 0 }
 const EMPTY_SNAPSHOT: FinancePeriodSnapshot = {
   wallet: EMPTY_FLOW,
   cash: EMPTY_FLOW,
+  fund: EMPTY_FLOW,
   totalIncome: 0,
   totalExpense: 0,
   net: 0,

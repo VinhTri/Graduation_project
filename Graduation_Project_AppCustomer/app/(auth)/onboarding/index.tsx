@@ -1,199 +1,182 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { View, Text, TouchableOpacity, Animated } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { Feather } from '@expo/vector-icons';
-import { styles } from '@/features/auth/styles/onboarding.styles';
-import { useRouter } from 'expo-router';
+import React, { useEffect, useRef, useState } from 'react'
+import { View, Text, TouchableOpacity, Animated, Image } from 'react-native'
+import { SafeAreaView } from 'react-native-safe-area-context'
+import { Feather } from '@expo/vector-icons'
+import { styles } from '@/features/auth/styles/onboarding.styles'
+import { useRouter } from 'expo-router'
+
+const STEPS = [
+  {
+    image: require('../../../assets/images/onboarding/step-1.png'),
+    title: 'Khó khăn quản lý chi tiêu?',
+    subtitle:
+      'Hóa đơn, tiền mặt và chi tiêu hàng ngày dễ khiến bạn rối nếu không có công cụ hỗ trợ.',
+  },
+  {
+    image: require('../../../assets/images/onboarding/step-2.png'),
+    title: 'SmartSpend đồng hành cùng bạn',
+    subtitle: 'Theo dõi chi tiêu rõ ràng và từng bước làm chủ tài chính cá nhân.',
+  },
+  {
+    image: require('../../../assets/images/onboarding/step-3.png'),
+    title: 'Quản lý tài chính thông minh',
+    subtitle: 'Lập ngân sách, phân tích dòng tiền và trợ lý AI giúp bạn tối ưu mỗi ngày.',
+  },
+] as const
+
+const HOLD_MS = 2200
+const CROSSFADE_MS = 750
 
 export default function OnboardingScreen() {
-  const router = useRouter();
-  
-  // 0: Question, 1: Solution, 2: Final Welcome Page
-  const [step, setStep] = useState(0);
-
-  // Animation values for smooth cinematic transitions
-  const textOpacity = useRef(new Animated.Value(0)).current;
-  const textTranslateY = useRef(new Animated.Value(20)).current;
-  const buttonOpacity = useRef(new Animated.Value(0)).current;
-
-  const runOnboardingSequence = useCallback(() => {
-    // Reset to step 0
-    setStep(0);
-    textOpacity.setValue(0);
-    textTranslateY.setValue(20);
-    buttonOpacity.setValue(0);
-
-    // STEP 0: Show the Question
-    Animated.parallel([
-      Animated.timing(textOpacity, {
-        toValue: 1,
-        duration: 900,
-        useNativeDriver: true,
-      }),
-      Animated.timing(textTranslateY, {
-        toValue: 0,
-        duration: 800,
-        useNativeDriver: true,
-      }),
-    ]).start(() => {
-      // Stay for 2.2 seconds, then transition out
-      setTimeout(() => {
-        Animated.parallel([
-          Animated.timing(textOpacity, {
-            toValue: 0,
-            duration: 600,
-            useNativeDriver: true,
-          }),
-          Animated.timing(textTranslateY, {
-            toValue: -15, // Slides slightly upwards during fade out
-            duration: 600,
-            useNativeDriver: true,
-          }),
-        ]).start(() => {
-          // Switch to STEP 1: Show the Reassurance
-          setStep(1);
-          textTranslateY.setValue(20); // Reset position below
-
-          Animated.parallel([
-            Animated.timing(textOpacity, {
-              toValue: 1,
-              duration: 900,
-              useNativeDriver: true,
-            }),
-            Animated.timing(textTranslateY, {
-              toValue: 0,
-              duration: 800,
-              useNativeDriver: true,
-            }),
-          ]).start(() => {
-            // Stay for 2.2 seconds, then transition out
-            setTimeout(() => {
-              Animated.parallel([
-                Animated.timing(textOpacity, {
-                  toValue: 0,
-                  duration: 600,
-                  useNativeDriver: true,
-                }),
-                Animated.timing(textTranslateY, {
-                  toValue: -15,
-                  duration: 600,
-                  useNativeDriver: true,
-                }),
-              ]).start(() => {
-                // Switch to STEP 2: Final Welcome Screen
-                setStep(2);
-                textTranslateY.setValue(20);
-
-                // Fade in the welcome typography group and the action button
-                Animated.parallel([
-                  Animated.timing(textOpacity, {
-                    toValue: 1,
-                    duration: 1000,
-                    useNativeDriver: true,
-                  }),
-                  Animated.timing(textTranslateY, {
-                    toValue: 0,
-                    duration: 850,
-                    useNativeDriver: true,
-                  }),
-                  Animated.timing(buttonOpacity, {
-                    toValue: 1,
-                    duration: 1000,
-                    useNativeDriver: true,
-                  }),
-                ]).start();
-              });
-            }, 2200);
-          });
-        });
-      }, 2200);
-    });
-  }, [buttonOpacity, textOpacity, textTranslateY]);
+  const router = useRouter()
+  const stepRef = useRef(0)
+  const [canStartPin, setCanStartPin] = useState(false)
+  const imageOpacities = useRef(STEPS.map((_, i) => new Animated.Value(i === 0 ? 1 : 0))).current
+  const textOpacities = useRef(STEPS.map((_, i) => new Animated.Value(i === 0 ? 1 : 0))).current
+  const buttonOpacity = useRef(new Animated.Value(0)).current
+  const timeoutsRef = useRef<ReturnType<typeof setTimeout>[]>([])
 
   useEffect(() => {
-    runOnboardingSequence();
-  }, [runOnboardingSequence]);
+    let cancelled = false
 
-  const handleStart = async () => {
-    try {
-      // Import AsyncStorage locally to avoid changing top level imports if possible
-      // Actually, better to import it at top level, but for simplicity let's require it
-      const AsyncStorage = require('@react-native-async-storage/async-storage').default;
-      await AsyncStorage.setItem('hasSeenOnboarding', 'true');
-      router.replace('/(auth)/login');
-    } catch (e) {
-      console.log('Error routing to login', e);
-      router.replace('/(auth)/login');
+    const clearTimers = () => {
+      timeoutsRef.current.forEach(clearTimeout)
+      timeoutsRef.current = []
     }
-  };
+
+    const wait = (ms: number) =>
+      new Promise<void>((resolve) => {
+        const id = setTimeout(resolve, ms)
+        timeoutsRef.current.push(id)
+      })
+
+    const crossfadeTo = (next: number) =>
+      new Promise<void>((resolve) => {
+        const prev = stepRef.current
+        if (prev === next) {
+          resolve()
+          return
+        }
+
+        Animated.parallel([
+          Animated.timing(imageOpacities[prev], {
+            toValue: 0,
+            duration: CROSSFADE_MS,
+            useNativeDriver: true,
+          }),
+          Animated.timing(imageOpacities[next], {
+            toValue: 1,
+            duration: CROSSFADE_MS,
+            useNativeDriver: true,
+          }),
+          Animated.timing(textOpacities[prev], {
+            toValue: 0,
+            duration: CROSSFADE_MS,
+            useNativeDriver: true,
+          }),
+          Animated.timing(textOpacities[next], {
+            toValue: 1,
+            duration: CROSSFADE_MS,
+            useNativeDriver: true,
+          }),
+        ]).start(({ finished }) => {
+          if (finished) stepRef.current = next
+          resolve()
+        })
+      })
+
+    const run = async () => {
+      // Fade-in nhẹ bước đầu (ảnh đã sẵn opacity 1, chỉ đảm bảo text mượt)
+      imageOpacities[0].setValue(0)
+      textOpacities[0].setValue(0)
+      await new Promise<void>((resolve) => {
+        Animated.parallel([
+          Animated.timing(imageOpacities[0], {
+            toValue: 1,
+            duration: 700,
+            useNativeDriver: true,
+          }),
+          Animated.timing(textOpacities[0], {
+            toValue: 1,
+            duration: 700,
+            useNativeDriver: true,
+          }),
+        ]).start(() => resolve())
+      })
+
+      if (cancelled) return
+      await wait(HOLD_MS)
+      if (cancelled) return
+
+      await crossfadeTo(1)
+      if (cancelled) return
+      await wait(HOLD_MS)
+      if (cancelled) return
+
+      await crossfadeTo(2)
+      if (cancelled) return
+
+      setCanStartPin(true)
+      Animated.timing(buttonOpacity, {
+        toValue: 1,
+        duration: 600,
+        useNativeDriver: true,
+      }).start()
+    }
+
+    void run()
+
+    return () => {
+      cancelled = true
+      clearTimers()
+    }
+  }, [buttonOpacity, imageOpacities, textOpacities])
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* Soft blurred ambient decorative background shapes */}
       <View style={[styles.bgCircle, styles.circleTopLeft]} />
       <View style={[styles.bgCircle, styles.circleBottomRight]} />
 
-      <View style={{ flex: 1, justifyContent: 'space-between', alignItems: 'center', paddingVertical: 54, zIndex: 1 }}>
-        {/* Animated Typographic Storytelling Content Area */}
-        <Animated.View 
-          style={[
-            styles.textContainer,
-            {
-              opacity: textOpacity,
-              transform: [{ translateY: textTranslateY }],
-              flex: 1,
-              justifyContent: 'center',
-            }
-          ]}
-        >
-          {step === 0 && (
-            <Text style={styles.title1}>
-              Bạn đang gặp khó{'\n'}khăn{'\n'}trong việc quản lý{'\n'}chi tiêu hàng ngày?
-            </Text>
-          )}
+      <View style={styles.screenBody}>
+        <View style={[styles.textContainer, { flex: 1, justifyContent: 'center' }]}>
+          <View style={styles.heroFrame}>
+            {STEPS.map((item, index) => (
+              <Animated.View
+                key={`img-${index}`}
+                style={[styles.heroLayer, { opacity: imageOpacities[index] }]}
+                pointerEvents="none"
+              >
+                <Image source={item.image} style={styles.heroImage} resizeMode="cover" />
+              </Animated.View>
+            ))}
+          </View>
 
-          {step === 1 && (
-            <Text style={styles.title2}>
-              Đừng lo lắng...{'\n'}
-              <Text style={styles.highlight}>SmartSpend</Text> sẽ{'\n'}đồng hành và giúp{'\n'}bạn làm chủ tài{'\n'}chính!
-            </Text>
-          )}
+          <View style={styles.copyStack}>
+            {STEPS.map((item, index) => (
+              <Animated.View
+                key={`copy-${index}`}
+                style={[styles.copyLayer, { opacity: textOpacities[index] }]}
+                pointerEvents="none"
+              >
+                <Text style={styles.stepTitle}>{item.title}</Text>
+                <Text style={styles.stepSubtitle}>{item.subtitle}</Text>
+              </Animated.View>
+            ))}
+          </View>
+        </View>
 
-          {step === 2 && (
-            <View style={{ alignItems: 'center' }}>
-              <View style={styles.badge}>
-                <Text style={styles.badgeText}>SMARTSPEND</Text>
-              </View>
-              <Text style={styles.title3}>
-                Quản Lý Tài Chính{'\n'}Thông Minh & Tối{'\n'}Ưu
-              </Text>
-              <Text style={styles.subtitle3}>
-                Theo dõi chi tiêu hàng ngày, tự động lập{'\n'}ngân sách và phân tích dòng tiền thông{'\n'}minh cùng trợ lý AI.
-              </Text>
-            </View>
-          )}
-        </Animated.View>
-
-        {/* Action Button - Fades in only during the final step */}
-        <Animated.View 
-          style={{
-            opacity: buttonOpacity,
-            width: '100%',
-            paddingHorizontal: 32,
-            paddingBottom: 50,
-          }}
-        >
-          <TouchableOpacity 
-            style={styles.button} 
-            activeOpacity={0.8} 
-            onPress={handleStart}
-            disabled={step !== 2} // Prevent interactions during story steps
+        <Animated.View style={[styles.ctaWrap, { opacity: buttonOpacity }]}>
+          <TouchableOpacity
+            style={styles.button}
+            activeOpacity={0.8}
+            onPress={() => router.replace('/(auth)/setup-pin')}
+            disabled={!canStartPin}
           >
-            <Text style={styles.buttonText}>Bắt đầu sử dụng</Text>
+            <Text style={styles.buttonText}>Bắt đầu thiết lập mã PIN</Text>
             <Feather name="arrow-right" size={20} color="#FFFFFF" />
           </TouchableOpacity>
         </Animated.View>
       </View>
     </SafeAreaView>
-  );
+  )
 }

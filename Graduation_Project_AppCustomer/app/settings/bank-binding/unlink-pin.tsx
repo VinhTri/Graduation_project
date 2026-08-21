@@ -1,5 +1,6 @@
-import UnlinkBankPinScreen from '@/features/settings/screens/UnlinkBankPinScreen'
+import { Redirect } from 'expo-router'
 
+/** PIN hủy liên kết đã chuyển sang PinModal nửa màn trên BankBindingScreen. */
 export default function UnlinkBankPinPage() {
-  return <UnlinkBankPinScreen />
+  return <Redirect href="/settings/bank-binding" />
 }

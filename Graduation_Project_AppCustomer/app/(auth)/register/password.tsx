@@ -1,62 +1,63 @@
-import { useEffect, useState } from 'react';
-import { ActivityIndicator, Text, TextInput, TouchableOpacity, View } from 'react-native';
-import { Feather } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
-import RegisterStepShell from '@/features/auth/components/RegisterStepShell';
-import PasswordRequirementList from '@/features/auth/components/PasswordRequirementList';
-import { useRegisterDraft } from '@/features/auth/context/RegisterContext';
-import { isPasswordValid } from '@/features/auth/constants/registerValidation';
+import { useEffect, useState } from 'react'
+import { ActivityIndicator, Text, TextInput, TouchableOpacity, View } from 'react-native'
+import { Feather } from '@expo/vector-icons'
+import { useRouter } from 'expo-router'
+import RegisterStepShell from '@/features/auth/components/RegisterStepShell'
+import PasswordRequirementList from '@/features/auth/components/PasswordRequirementList'
+import { useRegisterDraft } from '@/features/auth/context/RegisterContext'
+import { isPasswordValid } from '@/features/auth/constants/registerValidation'
+import { registerScreenStyles as registerStyles } from '@/features/auth/styles/registerScreen.styles'
 import {
   AUTH_INPUT_ICON,
   AUTH_INPUT_PLACEHOLDER,
-} from '@/shared/constants/authInputColors';
-import { authScreenStyles as styles } from '@/shared/styles/authScreen.styles';
-import { authService } from '@/shared/api/services/auth.service';
+} from '@/shared/constants/authInputColors'
+import { authScreenStyles as styles } from '@/shared/styles/authScreen.styles'
+import { authService } from '@/shared/api/services/auth.service'
 
 export default function RegisterPasswordScreen() {
-  const router = useRouter();
-  const { email, password, setPassword, startOtpCountdown } = useRegisterDraft();
-  const [value, setValue] = useState(password);
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [confirmPasswordError, setConfirmPasswordError] = useState('');
-  const [submitError, setSubmitError] = useState('');
-  const [loading, setLoading] = useState(false);
+  const router = useRouter()
+  const { email, password, setPassword, startOtpCountdown } = useRegisterDraft()
+  const [value, setValue] = useState(password)
+  const [confirmPassword, setConfirmPassword] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
+  const [confirmPasswordError, setConfirmPasswordError] = useState('')
+  const [submitError, setSubmitError] = useState('')
+  const [loading, setLoading] = useState(false)
 
   useEffect(() => {
     if (!email) {
-      router.replace('/(auth)/register');
+      router.replace('/(auth)/register')
     }
-  }, [email, router]);
+  }, [email, router])
 
-  const passwordOk = isPasswordValid(value);
-  const confirmOk = passwordOk && value === confirmPassword && confirmPassword.length > 0;
+  const passwordOk = isPasswordValid(value)
+  const confirmOk = passwordOk && value === confirmPassword && confirmPassword.length > 0
 
   async function handleContinue() {
-    setConfirmPasswordError('');
-    setSubmitError('');
+    setConfirmPasswordError('')
+    setSubmitError('')
 
-    if (!passwordOk) return;
+    if (!passwordOk) return
 
     if (!confirmPassword) {
-      setConfirmPasswordError('Vui lòng xác nhận mật khẩu');
-      return;
+      setConfirmPasswordError('Vui lòng xác nhận mật khẩu')
+      return
     }
 
     if (value !== confirmPassword) {
-      setConfirmPasswordError('Mật khẩu xác nhận không khớp');
-      return;
+      setConfirmPasswordError('Mật khẩu xác nhận không khớp')
+      return
     }
 
-    setLoading(true);
+    setLoading(true)
     try {
-      await authService.sendRegisterOtp({ email });
-      setPassword(value);
-      startOtpCountdown();
-      router.push('/(auth)/register/otp');
+      await authService.sendRegisterOtp({ email })
+      setPassword(value)
+      startOtpCountdown()
+      router.push('/(auth)/register/otp')
     } catch (error: any) {
-      const message = error?.message || 'Không thể gửi mã OTP';
+      const message = error?.message || 'Không thể gửi mã OTP'
       if (
         message === 'Email này đã được sử dụng!' ||
         message === 'Tài khoản email đã tồn tại!' ||
@@ -64,17 +65,25 @@ export default function RegisterPasswordScreen() {
         message.toLowerCase().includes('email') ||
         message.toLowerCase().includes('tồn tại')
       ) {
-        setSubmitError('Email này đã được đăng ký. Vui lòng đăng nhập.');
+        setSubmitError('Email này đã được đăng ký. Vui lòng đăng nhập.')
       } else {
-        setSubmitError(message);
+        setSubmitError(message)
       }
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
   }
 
   return (
-    <RegisterStepShell step={2} subtitle="Tạo mật khẩu đăng nhập của bạn">
+    <RegisterStepShell>
+      <View style={registerStyles.registerHero}>
+        <Text style={registerStyles.registerTitle}>Tạo mật khẩu</Text>
+        <Text style={registerStyles.registerHint}>
+          Tạo mật khẩu cho tài khoản{' '}
+          <Text style={registerStyles.registerHintAccent}>{email}</Text>.
+        </Text>
+      </View>
+
       <View style={styles.inputGroup}>
         <Text style={styles.label}>Mật khẩu đăng nhập</Text>
         <View
@@ -127,8 +136,8 @@ export default function RegisterPasswordScreen() {
             secureTextEntry={!showConfirmPassword}
             value={confirmPassword}
             onChangeText={(text) => {
-              setConfirmPassword(text);
-              if (confirmPasswordError) setConfirmPasswordError('');
+              setConfirmPassword(text)
+              if (confirmPasswordError) setConfirmPasswordError('')
             }}
           />
           {confirmOk && (
@@ -175,5 +184,5 @@ export default function RegisterPasswordScreen() {
         <Text style={styles.linkAction}>Quay lại</Text>
       </TouchableOpacity>
     </RegisterStepShell>
-  );
+  )
 }

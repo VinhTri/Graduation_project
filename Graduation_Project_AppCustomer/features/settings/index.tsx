@@ -9,7 +9,6 @@ import { AppSettingsSection } from './components/AppSettingsSection'
 import { LogoutButton } from './components/LogoutButton'
 import { NotebookSettingsSection } from './components/NotebookSettingsSection'
 import { ProfileHeader } from './components/ProfileHeader'
-import { QuickActionCard } from './components/QuickActionCard'
 import { SecuritySection } from './components/SecuritySection'
 import { SettingsItem } from './components/SettingsItem'
 import { SettingsSection } from './components/SettingsSection'
@@ -53,7 +52,6 @@ export function SettingsScreen() {
         showsVerticalScrollIndicator={false}
       >
         <ProfileHeader />
-        <QuickActionCard />
 
         <SettingsSection title="Tài chính">
           <SettingsItem

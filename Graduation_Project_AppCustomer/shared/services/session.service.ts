@@ -34,7 +34,6 @@ export function notifySessionChanged() {
 
 export async function persistAuthSession(data: AuthSessionPayload): Promise<void> {
   await AsyncStorage.setItem('token', data.token)
-  await AsyncStorage.setItem('hasSeenOnboarding', 'true')
   if (data.id != null && String(data.id).trim() !== '') {
     await AsyncStorage.setItem(SESSION_USER_ID, String(data.id))
   }

@@ -35,6 +35,7 @@ type Props = {
   visible: boolean
   categories: CategoryGroup[]
   defaultGroupId?: number
+  initialLabel?: string
   onClose: () => void
   onBack?: () => void
   onCreateGroup: (payload: {
@@ -56,6 +57,7 @@ export function AddCategoryModal({
   visible,
   categories,
   defaultGroupId,
+  initialLabel,
   onClose,
   onBack,
   onCreateGroup,
@@ -87,7 +89,7 @@ export function AddCategoryModal({
       setGroupError('')
       return
     }
-    setLabel('')
+    setLabel(initialLabel?.trim() || '')
     setNameError('')
     setGroupError('')
     setSelectedIcon(availableIcons[0] ?? null)
@@ -99,7 +101,7 @@ export function AddCategoryModal({
     } else {
       setSelectedGroupId(null)
     }
-  }, [visible, defaultGroupId, categories, availableColors, availableIcons])
+  }, [visible, defaultGroupId, categories, availableColors, availableIcons, initialLabel])
 
   const selectedGroup = categories.find((g) => g.id === selectedGroupId)
   const isGroupLocked = defaultGroupId != null

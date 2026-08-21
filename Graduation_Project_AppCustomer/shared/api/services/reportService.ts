@@ -38,6 +38,7 @@ export interface FinanceSourceDelta {
 export interface FinancePeriodSnapshot {
     wallet: FinanceSourceFlow
     cash: FinanceSourceFlow
+    fund: FinanceSourceFlow
     totalIncome: number
     totalExpense: number
     net: number

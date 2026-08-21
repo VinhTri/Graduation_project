@@ -58,7 +58,6 @@ public class SecurityConfig {
                                         "/api/v1/auth/verify-otp"
                                 ).permitAll()
                                 .requestMatchers("/api/v1/admin/auth/**").permitAll()
-                                .requestMatchers("/api/v1/ai/**").permitAll()
                                 .requestMatchers("/api/v1/transactions/sepay-webhook").permitAll()
                                 .requestMatchers("/uploads/**").permitAll()
                                 .anyRequest().authenticated()

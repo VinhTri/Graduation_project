@@ -107,6 +107,28 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
     @Query("""
             SELECT COALESCE(SUM(t.amount), 0) FROM Transaction t
             WHERE t.user.id = :userId
+              AND t.wallet.isDefault = true
+              AND t.type = :type
+              AND t.status = :status
+              AND t.createdAt >= :from
+              AND t.createdAt <= :to
+              AND NOT EXISTS (
+                  SELECT 1 FROM WalletTransaction wt
+                  WHERE wt.user.id = :userId
+                    AND wt.transactionCode = t.transactionCode
+              )
+            """)
+    java.math.BigDecimal sumOrphanAmountByUserDefaultWalletAndTypeAndStatusAndCreatedAtBetween(
+            @org.springframework.data.repository.query.Param("userId") Long userId,
+            @org.springframework.data.repository.query.Param("type") com.project.app.transaction.enums.TransactionType type,
+            @org.springframework.data.repository.query.Param("status") com.project.app.transaction.enums.TransactionStatus status,
+            @org.springframework.data.repository.query.Param("from") java.time.LocalDateTime from,
+            @org.springframework.data.repository.query.Param("to") java.time.LocalDateTime to
+    );
+
+    @Query("""
+            SELECT COALESCE(SUM(t.amount), 0) FROM Transaction t
+            WHERE t.user.id = :userId
               AND t.type IN :types
               AND t.status = :status
               AND t.categoryId = :categoryId

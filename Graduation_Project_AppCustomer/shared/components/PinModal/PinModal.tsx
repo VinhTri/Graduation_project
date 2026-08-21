@@ -1,18 +1,30 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, Modal, Alert, TouchableWithoutFeedback } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { Feather, Ionicons } from '@expo/vector-icons';
-import { styles } from './PinModal.styles';
-import { PASTEL_PALETTE } from '../../constants/PastelPalette';
+import { useEffect, useState } from 'react'
+import {
+  Animated,
+  Modal,
+  Pressable,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native'
+import { SafeAreaView } from 'react-native-safe-area-context'
+import { useRouter } from 'expo-router'
+import { startForgotPinFlowSafe } from '@/features/auth/forgot-pin/startForgotPinFlow'
+import PinDots from '@/features/onboarding/components/PinDots'
+import PinKeypad from '@/features/onboarding/components/PinKeypad'
+import { styles } from './PinModal.styles'
+import { useBottomSheetPresence } from './useBottomSheetPresence'
+
+const PIN_LENGTH = 6
 
 interface PinModalProps {
-  visible: boolean;
-  onClose: () => void;
-  onConfirm: (pin: string) => void;
-  onForgotPin?: () => void;
-  errorMessage?: string;
-  title?: string;
-  subtitle?: string;
+  visible: boolean
+  onClose: () => void
+  onConfirm: (pin: string) => void
+  onForgotPin?: () => void
+  errorMessage?: string
+  title?: string
+  subtitle?: string
 }
 
 export default function PinModal({
@@ -22,134 +34,109 @@ export default function PinModal({
   onForgotPin,
   errorMessage,
   title = 'Nhập mã PIN',
-  subtitle = 'Vui lòng nhập mã PIN bảo mật để xác nhận giao dịch rút tiền.',
+  subtitle = 'Vui lòng nhập mã PIN bảo mật để xác nhận giao dịch.',
 }: PinModalProps) {
-  const [pin, setPin] = useState('');
+  const router = useRouter()
+  const [pin, setPin] = useState('')
+  const [sendingOtp, setSendingOtp] = useState(false)
+  const { presented, backdropOpacity, sheetTranslateY } = useBottomSheetPresence(visible)
 
   useEffect(() => {
     if (visible) {
-      setPin('');
+      setPin('')
     }
-  }, [visible]);
+  }, [visible])
 
-  const handleKeyPress = (key: string) => {
-    if (key === 'cancel') {
-      onClose();
-      return;
+  useEffect(() => {
+    if (errorMessage) {
+      setPin('')
     }
-    
+  }, [errorMessage])
+
+  function handleKeyPress(key: string) {
+    if (sendingOtp) return
+
     if (key === 'backspace') {
-      setPin(prev => prev.slice(0, -1));
-      return;
+      setPin((prev) => prev.slice(0, -1))
+      return
     }
 
-    if (pin.length < 6) {
-      const newPin = pin + key;
-      setPin(newPin);
-      if (newPin.length === 6) {
-        // Tự động confirm khi nhập đủ 6 số
-        setTimeout(() => onConfirm(newPin), 300);
-      }
+    if (pin.length >= PIN_LENGTH) return
+
+    const nextPin = pin + key
+    setPin(nextPin)
+
+    if (nextPin.length === PIN_LENGTH) {
+      setTimeout(() => onConfirm(nextPin), 200)
     }
-  };
+  }
 
-  const renderKeypad = () => {
-    const keys = [
-      ['1', '2', '3'],
-      ['4', '5', '6'],
-      ['7', '8', '9'],
-      ['cancel', '0', 'backspace']
-    ];
-
-    return (
-      <View style={styles.keypadContainer}>
-        {keys.map((row, rowIndex) => (
-          <View key={rowIndex} style={styles.keypadRow}>
-            {row.map((key, colIndex) => {
-              if (key === 'cancel') {
-                return (
-                  <TouchableOpacity 
-                    key={colIndex} 
-                    style={styles.key} 
-                    onPress={() => handleKeyPress(key)}
-                  >
-                    <Text style={[styles.keyText, { fontSize: 18, color: '#6B7280' }]}>Hủy</Text>
-                  </TouchableOpacity>
-                );
-              }
-              if (key === 'backspace') {
-                return (
-                  <TouchableOpacity 
-                    key={colIndex} 
-                    style={styles.key} 
-                    onPress={() => handleKeyPress(key)}
-                  >
-                    <Feather name="delete" size={24} color="#1F2937" />
-                  </TouchableOpacity>
-                );
-              }
-              return (
-                <TouchableOpacity 
-                  key={colIndex} 
-                  style={styles.key} 
-                  onPress={() => handleKeyPress(key)}
-                >
-                  <Text style={styles.keyText}>{key}</Text>
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-        ))}
-      </View>
-    );
-  };
+  async function handleForgotPin() {
+    if (sendingOtp) return
+    onForgotPin?.()
+    setSendingOtp(true)
+    try {
+      const ok = await startForgotPinFlowSafe(router)
+      if (ok) onClose()
+    } finally {
+      setSendingOtp(false)
+    }
+  }
 
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <TouchableWithoutFeedback onPress={onClose}>
-        <View style={styles.overlay}>
-          <TouchableWithoutFeedback onPress={() => {}}>
-            <SafeAreaView style={styles.modalContainer}>
-              <View style={styles.dragIndicator} />
-              
-              <View style={styles.headerIconContainer}>
-                <Ionicons name="lock-closed" size={28} color={PASTEL_PALETTE.primary} />
+    <Modal
+      visible={presented}
+      transparent
+      animationType="none"
+      statusBarTranslucent
+      onRequestClose={onClose}
+    >
+      <View style={styles.overlay}>
+        <Animated.View style={[styles.backdrop, { opacity: backdropOpacity }]}>
+          <Pressable style={styles.backdropPressable} onPress={onClose} />
+        </Animated.View>
+
+        <Animated.View
+          style={[styles.sheetWrap, { transform: [{ translateY: sheetTranslateY }] }]}
+        >
+          <SafeAreaView edges={['bottom']} style={styles.modalContainer}>
+            <View style={styles.dragIndicator} />
+
+            <View style={styles.content}>
+              <View style={styles.pinHeader}>
+                <Text style={styles.pinTitle}>{title}</Text>
+                <Text style={styles.pinSubtitle}>{subtitle}</Text>
               </View>
 
-              <View style={styles.headerRow}>
-                <Text style={styles.title}>{title}</Text>
-              </View>
+              <PinDots
+                length={PIN_LENGTH}
+                filled={pin.length}
+                style={styles.pinDots}
+              />
 
-              <Text style={styles.subtitle}>
-                {subtitle}
-              </Text>
+              {errorMessage ? (
+                <Text style={styles.pinErrorText}>{errorMessage}</Text>
+              ) : null}
 
-              <View style={styles.pinContainer}>
-                {[...Array(6)].map((_, i) => (
-                  <View 
-                    key={i} 
-                    style={[styles.pinDot, i < pin.length ? styles.pinDotActive : null]} 
-                  />
-                ))}
-              </View>
-
-              {errorMessage ? <Text style={styles.errorText}>{errorMessage}</Text> : null}
-              
-              <TouchableOpacity onPress={() => {
-                if (onForgotPin) {
-                  onForgotPin();
-                } else {
-                  Alert.alert("Quên mã PIN", "Vui lòng liên hệ bộ phận CSKH để được hỗ trợ cấp lại mã PIN.");
-                }
-              }}>
-                <Text style={styles.forgotPinText}>Quên mã PIN?</Text>
+              <TouchableOpacity onPress={handleForgotPin} disabled={sendingOtp}>
+                <Text style={styles.forgotPinText}>
+                  {sendingOtp ? 'Đang gửi OTP...' : 'Quên mã PIN?'}
+                </Text>
               </TouchableOpacity>
 
-              {renderKeypad()}
-            </SafeAreaView>
-          </TouchableWithoutFeedback>
-        </View>
-      </TouchableWithoutFeedback>
+              <PinKeypad
+                onPressKey={handleKeyPress}
+                style={styles.keypad}
+                leftAction={{
+                  label: 'Hủy',
+                  onPress: onClose,
+                  disabled: sendingOtp,
+                }}
+              />
+            </View>
+          </SafeAreaView>
+        </Animated.View>
+      </View>
     </Modal>
-  );
+  )
 }

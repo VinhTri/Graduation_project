@@ -1,6 +1,7 @@
 import { useState } from 'react'
-import { ActivityIndicator, SafeAreaView, Text, View } from 'react-native'
+import { ActivityIndicator, SafeAreaView, Text, TouchableOpacity, View } from 'react-native'
 import { useRouter } from 'expo-router'
+import { startForgotPinFlowSafe } from '@/features/auth/forgot-pin/startForgotPinFlow'
 import PinDots from '@/features/onboarding/components/PinDots'
 import PinKeypad from '@/features/onboarding/components/PinKeypad'
 import { onboardingStyles as styles } from '@/features/onboarding/styles/onboarding.styles'
@@ -16,6 +17,7 @@ export default function ChangePinCurrentScreen() {
   const [pin, setPin] = useState('')
   const [error, setError] = useState('')
   const [verifying, setVerifying] = useState(false)
+  const [sendingOtp, setSendingOtp] = useState(false)
 
   async function verifyPin(candidate: string) {
     setVerifying(true)
@@ -36,7 +38,7 @@ export default function ChangePinCurrentScreen() {
   }
 
   function handleKeyPress(key: string) {
-    if (verifying) return
+    if (verifying || sendingOtp) return
 
     if (key === 'backspace') {
       setPin((prev) => prev.slice(0, -1))
@@ -51,6 +53,18 @@ export default function ChangePinCurrentScreen() {
 
     if (nextPin.length === PIN_LENGTH) {
       verifyPin(nextPin)
+    }
+  }
+
+  async function handleForgotPin() {
+    if (sendingOtp || verifying) return
+    setPin('')
+    setError('')
+    setSendingOtp(true)
+    try {
+      await startForgotPinFlowSafe(router)
+    } finally {
+      setSendingOtp(false)
     }
   }
 
@@ -71,6 +85,23 @@ export default function ChangePinCurrentScreen() {
         <PinDots length={PIN_LENGTH} filled={pin.length} />
 
         {error ? <Text style={styles.pinErrorText}>{error}</Text> : null}
+
+        <TouchableOpacity
+          onPress={handleForgotPin}
+          disabled={sendingOtp || verifying}
+          style={{ alignItems: 'center', marginBottom: 8 }}
+        >
+          <Text
+            style={{
+              color: PASTEL_PALETTE.accentDeep,
+              fontSize: 14,
+              fontWeight: '700',
+              opacity: sendingOtp ? 0.5 : 1,
+            }}
+          >
+            {sendingOtp ? 'Đang gửi OTP...' : 'Quên mã PIN?'}
+          </Text>
+        </TouchableOpacity>
 
         {verifying ? (
           <View style={styles.pinLoadingWrap}>

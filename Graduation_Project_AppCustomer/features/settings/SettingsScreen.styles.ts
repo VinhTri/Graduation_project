@@ -102,10 +102,10 @@ export const styles = StyleSheet.create({
   profileModalOverlay: {
     flex: 1,
     justifyContent: 'flex-end',
-    backgroundColor: 'rgba(15, 23, 42, 0.35)',
   },
   profileModalBackdrop: {
     ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(15, 23, 42, 0.42)',
   },
   profileModalSheet: {
     backgroundColor: PASTEL_PALETTE.bg,
@@ -114,6 +114,7 @@ export const styles = StyleSheet.create({
     paddingTop: 10,
     paddingHorizontal: 16,
     maxHeight: '88%',
+    zIndex: 1,
   },
   profileModalHandle: {
     alignSelf: 'center',

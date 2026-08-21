@@ -5,21 +5,20 @@ import {
   ScrollView,
   View,
 } from 'react-native'
-import AuthBrandHeader from '@/shared/components/AuthBrandHeader/AuthBrandHeader'
 import RegisterStepProgress from '@/features/auth/components/RegisterStepProgress'
 import { authScreenStyles as formStyles } from '@/shared/styles/authScreen.styles'
 import { registerScreenStyles as styles } from '@/features/auth/styles/registerScreen.styles'
 
 type RegisterStepShellProps = {
-  step: 1 | 2 | 3
-  subtitle: string
+  step?: 1 | 2 | 3
   children: React.ReactNode
+  showStepProgress?: boolean
 }
 
 export default function RegisterStepShell({
-  step,
-  subtitle,
+  step = 1,
   children,
+  showStepProgress = false,
 }: RegisterStepShellProps) {
   return (
     <SafeAreaView style={styles.container}>
@@ -32,9 +31,16 @@ export default function RegisterStepShell({
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
-          <AuthBrandHeader subtitle={subtitle} />
-          <RegisterStepProgress currentStep={step} />
-          <View style={[formStyles.formContainer, styles.formFlex]}>{children}</View>
+          {showStepProgress ? <RegisterStepProgress currentStep={step} /> : null}
+          <View
+            style={[
+              formStyles.formContainer,
+              styles.formFlex,
+              !showStepProgress && styles.formWithoutStepper,
+            ]}
+          >
+            {children}
+          </View>
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>

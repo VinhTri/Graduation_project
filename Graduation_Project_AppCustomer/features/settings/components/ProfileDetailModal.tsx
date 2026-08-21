@@ -1,6 +1,8 @@
 import {
   ActivityIndicator,
+  Animated,
   Modal,
+  Pressable,
   ScrollView,
   Text,
   TouchableOpacity,
@@ -8,6 +10,7 @@ import {
 } from 'react-native'
 import { Feather, MaterialIcons } from '@expo/vector-icons'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import { useBottomSheetPresence } from '@/shared/components/PinModal/useBottomSheetPresence'
 import { PASTEL_PALETTE } from '@/shared/constants/PastelPalette'
 import { styles } from '../SettingsScreen.styles'
 
@@ -44,14 +47,29 @@ export function ProfileDetailModal({
   const insets = useSafeAreaInsets()
   const displayName = userName || 'Người dùng'
   const displayEmail = userEmail || '—'
+  const { presented, backdropOpacity, sheetTranslateY } = useBottomSheetPresence(visible)
 
   return (
-    <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
+    <Modal
+      visible={presented}
+      animationType="none"
+      transparent
+      statusBarTranslucent
+      onRequestClose={onClose}
+    >
       <View style={styles.profileModalOverlay}>
-        <TouchableOpacity style={styles.profileModalBackdrop} activeOpacity={1} onPress={onClose} />
+        <Animated.View style={[styles.profileModalBackdrop, { opacity: backdropOpacity }]}>
+          <Pressable style={{ flex: 1 }} onPress={onClose} />
+        </Animated.View>
 
-        <View
-          style={[styles.profileModalSheet, { paddingBottom: Math.max(insets.bottom, 16) + 8 }]}
+        <Animated.View
+          style={[
+            styles.profileModalSheet,
+            {
+              paddingBottom: Math.max(insets.bottom, 16) + 8,
+              transform: [{ translateY: sheetTranslateY }],
+            },
+          ]}
         >
           <View style={styles.profileModalHandle} />
 
@@ -96,7 +114,7 @@ export function ProfileDetailModal({
               </View>
             </ScrollView>
           )}
-        </View>
+        </Animated.View>
       </View>
     </Modal>
   )

@@ -10,11 +10,34 @@ export const registerScreenStyles = StyleSheet.create({
   scrollContainer: {
     flexGrow: 1,
     paddingHorizontal: 24,
-    paddingTop: 24,
+    paddingTop: 16,
     paddingBottom: 40,
   },
   formFlex: {
     flexGrow: 1,
+  },
+  formWithoutStepper: {
+    marginTop: 0,
+  },
+
+  registerHero: {
+    marginBottom: 28,
+  },
+  registerTitle: {
+    fontSize: 26,
+    fontWeight: '800',
+    color: PASTEL_PALETTE.title,
+    letterSpacing: -0.3,
+    marginBottom: 8,
+  },
+  registerHint: {
+    fontSize: 14,
+    lineHeight: 21,
+    color: PASTEL_PALETTE.textMuted,
+  },
+  registerHintAccent: {
+    color: PASTEL_PALETTE.accentDeep,
+    fontWeight: '700',
   },
 
   stepperCard: {

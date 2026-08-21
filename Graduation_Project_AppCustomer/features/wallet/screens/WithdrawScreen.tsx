@@ -10,11 +10,8 @@ import {
 import { Feather, Ionicons } from '@expo/vector-icons'
 import { LinearGradient } from 'expo-linear-gradient'
 import { useFocusEffect, useRouter } from 'expo-router'
-import { AddCategoryModal } from '@/features/categories/components/AddCategoryModal/AddCategoryModal'
-import { CategorySelectModal } from '@/features/categories/components/CategorySelectModal/CategorySelectModal'
-import { useCategories } from '@/features/categories/hooks/useCategories'
-import type { SelectedCategory } from '@/features/notebook/types/transaction'
 import ConfirmModal from '@/shared/components/ConfirmModal/ConfirmModal'
+import PinModal from '@/shared/components/PinModal/PinModal'
 import PastelHeaderShell from '@/shared/components/PastelHeaderShell/PastelHeaderShell'
 import { BankLogo } from '@/shared/components/BankLogo/BankLogo'
 import { getBankMeta, getBankShortName } from '@/shared/constants/commonBanks'
@@ -71,9 +68,6 @@ function dailyRemainingTooSmallError(remaining: number) {
 
 export default function WithdrawScreen() {
   const router = useRouter()
-  const { categories, loadCategories, addGroup, addItem } = useCategories({
-    reloadOnFocus: false,
-  })
 
   const [balance, setBalance] = useState(0)
   const [limitEnabled, setLimitEnabled] = useState(false)
@@ -84,16 +78,14 @@ export default function WithdrawScreen() {
   const [selectedBankId, setSelectedBankId] = useState<number | null>(null)
   const [amountText, setAmountText] = useState('')
   const [note, setNote] = useState('')
-  const [category, setCategory] = useState<SelectedCategory | null>(null)
   const [amountError, setAmountError] = useState('')
   const [bankError, setBankError] = useState('')
-  const [categoryError, setCategoryError] = useState('')
   const [submitError, setSubmitError] = useState('')
   const [saving, setSaving] = useState(false)
-  const [selectOpen, setSelectOpen] = useState(false)
-  const [createOpen, setCreateOpen] = useState(false)
   const [dailyWarnVisible, setDailyWarnVisible] = useState(false)
   const [dailyWarnMessage, setDailyWarnMessage] = useState('')
+  const [pinVisible, setPinVisible] = useState(false)
+  const [pinError, setPinError] = useState('')
 
   const entryWarnShownRef = useRef(false)
   const exceedModalShownRef = useRef(false)
@@ -174,10 +166,6 @@ export default function WithdrawScreen() {
     }
   }, [])
 
-  useEffect(() => {
-    loadCategories()
-  }, [loadCategories])
-
   useFocusEffect(
     useCallback(() => {
       loadWalletData()
@@ -241,8 +229,8 @@ export default function WithdrawScreen() {
   async function handleSubmit() {
     setAmountError('')
     setBankError('')
-    setCategoryError('')
     setSubmitError('')
+    setPinError('')
 
     if (dailyRemainingBelowMin && remainingDaily != null) {
       setAmountError(dailyRemainingTooSmallError(remainingDaily))
@@ -274,21 +262,25 @@ export default function WithdrawScreen() {
       setBankError('Vui lòng chọn tài khoản ngân hàng đã liên kết')
       return
     }
-    if (!category) {
-      setCategoryError('Vui lòng chọn danh mục')
-      return
-    }
+
+    setPinVisible(true)
+  }
+
+  async function handlePinConfirm(pinCode: string) {
+    if (!selectedBankId) return
 
     setSaving(true)
+    setPinError('')
     try {
       const selectedBank = banks.find((bank) => bank.id === selectedBankId)
       const tx = await withdrawWallet({
         amount,
         bankAccountId: selectedBankId,
-        categoryId: category.id,
+        pinCode,
         note: note.trim() || undefined,
       })
 
+      setPinVisible(false)
       router.replace({
         pathname: '/wallet/withdraw-success',
         params: {
@@ -301,23 +293,29 @@ export default function WithdrawScreen() {
           bankCode: tx.bankCode ?? selectedBank?.bankCode ?? '',
           bankAccountNumber: tx.bankAccountNumber ?? selectedBank?.accountNumber ?? '',
           accountName: tx.bankAccountName ?? selectedBank?.accountName ?? '',
-          categoryName: tx.categoryName ?? category.label,
-          categoryIcon: tx.categoryIcon ?? category.icon,
-          categoryColor: tx.categoryColor ?? category.color,
-          categoryBgColor: tx.categoryBgColor ?? category.bgColor,
+          categoryId: tx.categoryId != null ? String(tx.categoryId) : '',
+          categoryName: tx.categoryName ?? '',
+          categoryIcon: tx.categoryIcon ?? '',
+          categoryColor: tx.categoryColor ?? '',
+          categoryBgColor: tx.categoryBgColor ?? '',
           note: tx.note ?? note.trim(),
         },
       })
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Không thể rút tiền'
-      setSubmitError(message)
-      if (
+      const isLimitError =
         message.includes('WALL_2010') ||
         message.includes('WALL_2011') ||
         message.includes('hạn mức giao dịch trong ngày') ||
         message.includes('hạn mức giao dịch đã thiết lập')
-      ) {
+
+      if (isLimitError) {
+        setPinVisible(false)
+        setSubmitError(message)
         openDailyWarnModal(dailyRemainingBelowMin ? 'below_min' : 'exceed')
+      } else {
+        // Lỗi PIN / khác → chỉ hiện trong PinModal, không hiện dưới ô ghi chú
+        setPinError(message)
       }
     } finally {
       setSaving(false)
@@ -466,19 +464,6 @@ export default function WithdrawScreen() {
         )}
         {bankError ? <Text style={styles.errorText}>{bankError}</Text> : null}
 
-        <Text style={[styles.label, { marginTop: 8 }]}>Danh mục</Text>
-        <TouchableOpacity
-          style={[styles.selector, categoryError ? styles.inputBoxError : null]}
-          onPress={() => setSelectOpen(true)}
-        >
-          <Feather name="tag" size={18} color={PASTEL_PALETTE.accentDeep} />
-          <Text style={styles.selectorText}>
-            {category ? category.label : 'Chọn danh mục'}
-          </Text>
-          <Feather name="chevron-right" size={18} color={PASTEL_PALETTE.lavender} />
-        </TouchableOpacity>
-        {categoryError ? <Text style={styles.errorText}>{categoryError}</Text> : null}
-
         <Text style={[styles.label, { marginTop: 14 }]}>Ghi chú</Text>
         <View style={styles.inputBox}>
           <TextInput
@@ -524,41 +509,17 @@ export default function WithdrawScreen() {
         onCancel={() => setDailyWarnVisible(false)}
       />
 
-      <CategorySelectModal
-        visible={selectOpen}
-        categories={categories}
-        onClose={() => setSelectOpen(false)}
-        onSelect={(item) => {
-          setCategory({
-            id: item.id,
-            label: item.label,
-            icon: item.icon,
-            color: item.color,
-            bgColor: item.bgColor,
-          })
-          setCategoryError('')
-          setSelectOpen(false)
+      <PinModal
+        visible={pinVisible}
+        onClose={() => {
+          if (saving) return
+          setPinVisible(false)
+          setPinError('')
         }}
-        onAddCategory={() => {
-          setSelectOpen(false)
-          setCreateOpen(true)
-        }}
-      />
-      <AddCategoryModal
-        visible={createOpen}
-        categories={categories}
-        onClose={() => setCreateOpen(false)}
-        onBack={() => {
-          setCreateOpen(false)
-          setSelectOpen(true)
-        }}
-        onCreateGroup={addGroup}
-        onSubmit={async (payload) => {
-          await addItem(payload)
-          await loadCategories()
-          setCreateOpen(false)
-          setSelectOpen(true)
-        }}
+        onConfirm={handlePinConfirm}
+        errorMessage={pinError}
+        title="Xác nhận rút tiền"
+        subtitle="Nhập mã PIN 6 số để xác nhận giao dịch rút về ngân hàng."
       />
     </View>
   )

@@ -47,11 +47,6 @@ import java.util.UUID;
 @Service
 public class TransactionServiceImpl implements TransactionService {
 
-    private static final String TRANSFER_OUT_CATEGORY_LABEL = "Chuyển tiền";
-    private static final String TRANSFER_IN_CATEGORY_LABEL = "Nhận chuyển tiền";
-    private static final String SYSTEM_EXPENSE_GROUP = "Chi tiêu hệ thống";
-    private static final String SYSTEM_INCOME_GROUP = "Thu nhập hệ thống";
-
     @Value("${sepay.api-key}")
     private String sepayApiKey;
 
@@ -247,16 +242,61 @@ public class TransactionServiceImpl implements TransactionService {
     @Override
     @Transactional
     public Transaction updateTransaction(String transactionCode, User user, com.project.app.transaction.dto.request.UpdateTransactionRequest request) {
-        Transaction transaction = getTransactionByCode(transactionCode, user);
+        Transaction transaction = transactionRepository.findByTransactionCode(transactionCode).orElse(null);
+        WalletTransaction walletTx = walletTransactionRepository
+                .findByTransactionCodeAndUser_Id(transactionCode, user.getId())
+                .orElse(null);
 
-        if (request.getNote() != null) {
-            transaction.setNote(request.getNote());
+        if (transaction == null && walletTx == null) {
+            throw new AppException(ErrorCode.INVALID_TRANSACTION);
         }
+        if (transaction != null && !transaction.getUser().getId().equals(user.getId())) {
+            throw new AppException(ErrorCode.UNAUTHORIZED_ACCESS);
+        }
+
+        CategoryItem category = null;
         if (request.getCategoryId() != null) {
-            transaction.setCategoryId(request.getCategoryId());
+            category = categoryItemRepository.findByIdAndIsDeletedFalse(request.getCategoryId())
+                    .filter(item -> item.getUser() != null && item.getUser().getId().equals(user.getId()))
+                    .orElseThrow(() -> new AppException(ErrorCode.CATEGORY_ITEM_NOT_FOUND));
         }
 
-        return transactionRepository.save(transaction);
+        if (transaction != null) {
+            if (request.getNote() != null) {
+                transaction.setNote(request.getNote());
+            }
+            if (category != null) {
+                transaction.setCategoryId(category.getId());
+            }
+            transaction = transactionRepository.save(transaction);
+        }
+
+        if (walletTx != null) {
+            if (request.getNote() != null) {
+                walletTx.setNote(request.getNote());
+            }
+            if (category != null) {
+                walletTx.setCategoryId(category.getId());
+                walletTx.setCategoryName(category.getLabel());
+            }
+            walletTransactionRepository.save(walletTx);
+        }
+
+        if (transaction != null) {
+            return transaction;
+        }
+
+        // Wallet-only (vd. rút về ngân hàng): trả Transaction ảo để controller giữ contract
+        Transaction shadow = new Transaction();
+        shadow.setTransactionCode(walletTx.getTransactionCode());
+        shadow.setStatus(TransactionStatus.SUCCESS);
+        shadow.setType(walletTx.getType() == WalletTransactionType.TOP_UP
+                ? TransactionType.TOP_UP
+                : TransactionType.WITHDRAW);
+        shadow.setAmount(walletTx.getAmount());
+        shadow.setCreatedAt(walletTx.getCreatedAt());
+        shadow.setUser(user);
+        return shadow;
     }
 
     
@@ -290,8 +330,6 @@ public class TransactionServiceImpl implements TransactionService {
         String senderTxCode = "TF_OUT_" + System.currentTimeMillis() + UUID.randomUUID().toString().substring(0, 4).toUpperCase();
         String receiverTxCode = "TF_IN_" + System.currentTimeMillis() + UUID.randomUUID().toString().substring(0, 4).toUpperCase();
 
-        CategoryItem senderCategory = resolveTransferOutCategory(request.getCategoryId());
-        CategoryItem receiverCategory = requireSystemCategory(TRANSFER_IN_CATEGORY_LABEL, SYSTEM_INCOME_GROUP);
         String senderNote = buildWalletNote(
                 "Chuyển tiền đến \"" + receiverWallet.getUser().getUsername() + "\"",
                 request.getNote());
@@ -309,11 +347,11 @@ public class TransactionServiceImpl implements TransactionService {
         senderTx.setStatus(TransactionStatus.SUCCESS);
         senderTx.setTransactionCode(senderTxCode);
         senderTx.setNote(senderNote);
-        senderTx.setCategoryId(senderCategory.getId());
+        senderTx.setCategoryId(null);
         transactionRepository.save(senderTx);
         saveWalletTransaction(
                 user, senderWallet, request.getAmount(), WalletTransactionType.WITHDRAW,
-                senderCategory, senderTxCode, senderNote);
+                null, senderTxCode, senderNote);
 
         // 2. Cộng tiền người nhận
         receiverWallet.setBalance(receiverWallet.getBalance().add(request.getAmount()));
@@ -327,11 +365,11 @@ public class TransactionServiceImpl implements TransactionService {
         receiverTx.setStatus(TransactionStatus.SUCCESS);
         receiverTx.setTransactionCode(receiverTxCode);
         receiverTx.setNote(receiverNote);
-        receiverTx.setCategoryId(receiverCategory.getId());
+        receiverTx.setCategoryId(null);
         transactionRepository.save(receiverTx);
         saveWalletTransaction(
                 receiverWallet.getUser(), receiverWallet, request.getAmount(), WalletTransactionType.TOP_UP,
-                receiverCategory, receiverTxCode, receiverNote);
+                null, receiverTxCode, receiverNote);
 
         return new TransferResponse(
                 senderTxCode,
@@ -584,20 +622,6 @@ public class TransactionServiceImpl implements TransactionService {
         walletLimitHelper.enforceOutgoingLimits(wallet.getUser().getId(), wallet, amount);
     }
 
-    private CategoryItem resolveTransferOutCategory(Long categoryId) {
-        if (categoryId != null) {
-            return categoryItemRepository.findByIdAndIsDeletedFalse(categoryId)
-                    .orElseGet(() -> requireSystemCategory(TRANSFER_OUT_CATEGORY_LABEL, SYSTEM_EXPENSE_GROUP));
-        }
-        return requireSystemCategory(TRANSFER_OUT_CATEGORY_LABEL, SYSTEM_EXPENSE_GROUP);
-    }
-
-    private CategoryItem requireSystemCategory(String label, String groupTitle) {
-        return categoryItemRepository
-                .findFirstByLabelAndGroup_TitleAndUserIsNullAndIsDeletedFalse(label, groupTitle)
-                .orElseThrow(() -> new AppException(ErrorCode.CATEGORY_ITEM_NOT_FOUND));
-    }
-
     private String trimNote(String note) {
         if (note == null) return null;
         String trimmed = note.trim();
@@ -624,8 +648,8 @@ public class TransactionServiceImpl implements TransactionService {
                 .amount(amount)
                 .type(type)
                 .note(note)
-                .categoryId(category.getId())
-                .categoryName(category.getLabel())
+                .categoryId(category != null ? category.getId() : null)
+                .categoryName(category != null ? category.getLabel() : null)
                 .transactionCode(transactionCode)
                 .build());
     }

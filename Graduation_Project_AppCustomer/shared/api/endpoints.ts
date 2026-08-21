@@ -120,6 +120,7 @@ export const ENDPOINTS = {
   },
   AI: {
     CHAT: '/api/v1/ai/chat',
+    HOME_INSIGHT: '/api/v1/ai/home-insight',
   },
   SPLIT_BILL: {
     BASE: '/api/v1/split-bills',

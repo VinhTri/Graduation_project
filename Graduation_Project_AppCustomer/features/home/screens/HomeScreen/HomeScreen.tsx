@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { View, ScrollView } from "react-native";
 import { styles } from "./HomeScreen.styles";
 
@@ -11,11 +11,20 @@ import { DiscoverMore } from "../../components/DiscoverMore";
 import { AIChatModal } from "../../components/AIChatModal";
 import { AIChatButton } from "../../components/AIChatButton/AIChatButton";
 
+import { consumePinSetupSuccessPending } from "@/features/auth/pinSetupSuccessFlag";
+import { SuccessModal } from "@/shared/components";
 import { useTheme } from "@/shared/contexts/ThemeLanguageContext";
 
 export default function HomeScreen() {
   const [isChatVisible, setIsChatVisible] = useState(false);
+  const [pinSuccessVisible, setPinSuccessVisible] = useState(false);
   const { theme } = useTheme();
+
+  useEffect(() => {
+    if (consumePinSetupSuccessPending()) {
+      setPinSuccessVisible(true);
+    }
+  }, []);
 
   return (
     <View style={[styles.container, { backgroundColor: theme.bg }]}>
@@ -50,6 +59,16 @@ export default function HomeScreen() {
       <AIChatModal
         visible={isChatVisible}
         onClose={() => setIsChatVisible(false)}
+      />
+
+      <SuccessModal
+        visible={pinSuccessVisible}
+        title="Thiết lập mã PIN thành công!"
+        message="Mã PIN của bạn đã được lưu. Bạn có thể dùng PIN để xác thực các giao dịch quan trọng."
+        confirmLabel="Đã hiểu"
+        variant="pastel"
+        imageSource={require("../../../../assets/images/onboarding/pin-success.png")}
+        onClose={() => setPinSuccessVisible(false)}
       />
     </View>
   );

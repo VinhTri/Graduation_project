@@ -1,5 +1,6 @@
 package com.project.app.wallet.service.impl;
 
+import com.project.app.auth.service.AuthService;
 import com.project.app.bankaccount.entity.BankAccount;
 import com.project.app.bankaccount.repository.BankAccountRepository;
 import com.project.app.category.entity.CategoryItem;
@@ -40,6 +41,7 @@ public class WalletTransactionServiceImpl implements WalletTransactionService {
     private final CategoryService categoryService;
     private final BankAccountRepository bankAccountRepository;
     private final WalletLimitHelper walletLimitHelper;
+    private final AuthService authService;
 
     @Override
     @Transactional
@@ -71,8 +73,13 @@ public class WalletTransactionServiceImpl implements WalletTransactionService {
     public WalletTransactionResponse withdraw(Long userId, WalletWithdrawRequest request) {
         User user = requireUser(userId);
         Wallet wallet = requireDefaultWallet(userId);
-        CategoryItem category = categoryService.requireUserOwnedItem(userId, request.getCategoryId());
         BankAccount bankAccount = requireOwnedAccount(userId, request.getBankAccountId());
+
+        if (request.getPinCode() == null
+                || request.getPinCode().isBlank()
+                || !authService.verifyPinCode(userId, request.getPinCode())) {
+            throw new AppException(ErrorCode.INVALID_PIN);
+        }
 
         if (wallet.getBalance().compareTo(request.getAmount()) < 0) {
             throw new AppException(ErrorCode.INSUFFICIENT_BALANCE);
@@ -89,8 +96,8 @@ public class WalletTransactionServiceImpl implements WalletTransactionService {
                 .amount(request.getAmount())
                 .type(WalletTransactionType.WITHDRAW)
                 .note(normalizeNote(request.getNote()))
-                .categoryId(category.getId())
-                .categoryName(category.getLabel())
+                .categoryId(null)
+                .categoryName(null)
                 .transactionCode(generateCode("WD"))
                 .bankAccountId(bankAccount.getId())
                 .bankName(bankAccount.getBankName())
@@ -100,7 +107,7 @@ public class WalletTransactionServiceImpl implements WalletTransactionService {
                 .build();
 
         walletTransactionRepository.save(transaction);
-        return toResponse(transaction, category, wallet.getBalance());
+        return toResponse(transaction, null, wallet.getBalance());
     }
 
     @Override

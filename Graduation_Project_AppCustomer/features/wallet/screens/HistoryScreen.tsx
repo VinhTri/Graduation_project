@@ -172,6 +172,7 @@ export default function HistoryScreen() {
         bankCode: item.bankCode ?? matched?.code ?? '',
         bankAccountNumber: item.bankAccountNumber ?? '',
         accountName: item.bankAccountName ?? '',
+        categoryId: item.categoryId != null ? String(item.categoryId) : '',
         categoryName: item.categoryName ?? '',
         categoryIcon: item.categoryIcon ?? 'cash',
         categoryColor: item.categoryColor ?? PASTEL_PALETTE.accentDeep,
@@ -301,6 +302,7 @@ export default function HistoryScreen() {
           }
           renderItem={({ item }) => {
             const isTopUp = item.type === 'TOP_UP'
+            const isStructured = shouldShowWalletHistoryDestination(item.categoryName, item.note)
             const destination = walletHistoryDestination({
               categoryName: item.categoryName,
               note: item.note,
@@ -309,6 +311,11 @@ export default function HistoryScreen() {
               fromHistory: true,
             })
             const userNote = walletHistoryUserNote(item.note, item.categoryName)
+            const rowTitle = isStructured
+              ? item.categoryName?.trim() || (isTopUp ? 'Nạp tiền' : 'Rút tiền')
+              : isTopUp
+                ? 'Nạp tiền'
+                : 'Rút tiền'
             return (
               <TouchableOpacity
                 style={styles.row}
@@ -332,11 +339,9 @@ export default function HistoryScreen() {
                   />
                 </View>
                 <View style={styles.rowContent}>
-                  <Text style={styles.rowTitle}>
-                    {item.categoryName?.trim() || (isTopUp ? 'Nạp tiền' : 'Rút tiền')}
-                  </Text>
+                  <Text style={styles.rowTitle}>{rowTitle}</Text>
                   <Text style={styles.rowMeta}>{formatDate(item.createdAt)}</Text>
-                  {shouldShowWalletHistoryDestination(item.categoryName, item.note) ? (
+                  {isStructured ? (
                     <Text style={styles.rowMeta} numberOfLines={2}>
                       {destination}
                     </Text>

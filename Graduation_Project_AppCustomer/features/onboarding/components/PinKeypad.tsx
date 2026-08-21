@@ -1,4 +1,4 @@
-import { Text, TouchableOpacity, View } from 'react-native'
+import { StyleProp, Text, TouchableOpacity, View, ViewStyle } from 'react-native'
 import { Feather } from '@expo/vector-icons'
 import { PASTEL_PALETTE } from '@/shared/constants/PastelPalette'
 import { onboardingStyles as styles } from '@/features/onboarding/styles/onboarding.styles'
@@ -10,6 +10,7 @@ type PinKeypadProps = {
     onPress: () => void
     disabled?: boolean
   }
+  style?: StyleProp<ViewStyle>
 }
 
 const ROWS = [
@@ -18,9 +19,9 @@ const ROWS = [
   ['7', '8', '9'],
 ] as const
 
-export default function PinKeypad({ onPressKey, leftAction }: PinKeypadProps) {
+export default function PinKeypad({ onPressKey, leftAction, style }: PinKeypadProps) {
   return (
-    <View style={styles.keypad}>
+    <View style={[styles.keypad, style]}>
       {ROWS.map((row, rowIndex) => (
         <View key={rowIndex} style={styles.keypadRow}>
           {row.map((key) => (
