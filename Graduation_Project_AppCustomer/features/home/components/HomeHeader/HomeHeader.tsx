@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { View, Text, TextInput, TouchableOpacity } from "react-native";
+import { View, Text, TouchableOpacity } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { styles } from "./HomeHeader.styles";
@@ -9,6 +9,7 @@ import { useRouter } from "expo-router";
 import { notificationService } from "@/shared/api/services/notification.service";
 import { useFocusEffect } from "@react-navigation/native";
 import { HomeReceiveQr } from "../HomeReceiveQr";
+import { HomeFeatureSearchModal } from "../HomeFeatureSearchModal";
 
 import { useLanguage, useTheme } from "@/shared/contexts/ThemeLanguageContext";
 
@@ -17,6 +18,7 @@ export const HomeHeader = () => {
   const insets = useSafeAreaInsets();
   const [unreadCount, setUnreadCount] = useState(0);
   const [receiveVisible, setReceiveVisible] = useState(false);
+  const [searchVisible, setSearchVisible] = useState(false);
   const { language } = useLanguage();
   const { theme } = useTheme();
   const isEn = language === 'en';
@@ -75,14 +77,16 @@ export const HomeHeader = () => {
     >
       {/* Search and Notification Row */}
       <View style={styles.topRow}>
-        <View style={[styles.searchContainer, { borderColor: theme.isDark ? theme.primary : PASTEL_PALETTE.subtitle }]}>
+        <TouchableOpacity 
+          style={[styles.searchContainer, { borderColor: theme.isDark ? theme.primary : PASTEL_PALETTE.subtitle }]}
+          activeOpacity={0.7}
+          onPress={() => setSearchVisible(true)}
+        >
           <Ionicons name="search-outline" size={20} color={theme.textSecondary} style={styles.searchIcon} />
-          <TextInput 
-            style={[styles.searchInput, { color: theme.textPrimary }]}
-            placeholder={isEn ? "Search transactions, funds..." : "Tìm kiếm giao dịch, quỹ..."}
-            placeholderTextColor={theme.textMuted}
-          />
-        </View>
+          <Text style={[styles.searchInput, { color: theme.textMuted }]}>
+            {isEn ? "Search transactions, funds..." : "Tìm kiếm giao dịch, quỹ..."}
+          </Text>
+        </TouchableOpacity>
         <TouchableOpacity 
           style={[styles.notificationBtn, { borderColor: theme.isDark ? theme.primary : PASTEL_PALETTE.subtitle }]} 
           activeOpacity={0.7}
@@ -132,9 +136,12 @@ export const HomeHeader = () => {
         visible={receiveVisible}
         onClose={() => setReceiveVisible(false)}
       />
+      <HomeFeatureSearchModal
+        visible={searchVisible}
+        onClose={() => setSearchVisible(false)}
+      />
     </PastelHeaderShell>
   );
 };
-
 
 export default HomeHeader;

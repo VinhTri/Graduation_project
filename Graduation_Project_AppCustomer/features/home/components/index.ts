@@ -6,3 +6,4 @@ export * from './HomeNotebookCalendar';
 export * from './DiscoverMore';
 export * from './HomeBudgetOverview';
 export * from './HomeReceiveQr';
+export * from './HomeFeatureSearchModal';
