@@ -28,6 +28,7 @@ public class FinanceCenterResponse {
     private PeriodSnapshot current;
     private PeriodSnapshot compare;
     private PeriodDelta delta;
+    private BudgetOverview budget;
 
     @Data
     @Builder
@@ -81,5 +82,19 @@ public class FinanceCenterResponse {
     public static class AmountDelta {
         private BigDecimal amount;
         private Double percent;
+    }
+
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class BudgetOverview {
+        private int activeCount;
+        private BigDecimal totalLimit;
+        private BigDecimal spent;
+        private BigDecimal remaining;
+        private int overLimitCount;
+        private int atRiskCount;
+        private Double usagePercent;
     }
 }

@@ -41,6 +41,10 @@ type Props = {
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window')
 const PRIMARY = PASTEL_PALETTE.accentDeep
+const WITHDRAW_LINE = '#EF4444'
+const TOPUP_LINE = '#10B981'
+/** Màu điểm chạm — tím, tránh trùng đỏ của chi. */
+const POINTER_DOT = PASTEL_PALETTE.subtitle
 const CATEGORY_VISIBLE = 4
 const CATEGORY_CARD_GAP = 8
 const CATEGORY_SIDE_PAD = 4
@@ -150,11 +154,6 @@ export function WalletReport({ active = true }: Props) {
   }, [dualTrend.withdraw.length, dateFilter])
 
   const chartMaxValue = Math.max(dualTrend.maxValue * 1.15, 1)
-
-  const WITHDRAW_LINE = '#EF4444'
-  const TOPUP_LINE = '#10B981'
-  /** Màu điểm chạm — tím, tránh trùng đỏ của chi */
-  const POINTER_DOT = PASTEL_PALETTE.subtitle
 
   const trendDataSet = useMemo(
     () =>

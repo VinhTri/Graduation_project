@@ -52,10 +52,12 @@ export function BudgetCard({ budget, onPress }: Props) {
         </View>
       </View>
 
-      {budget.notebook ? (
+      {budget.total ? (
+        <BudgetSpendBar label="Tổng chi" spend={budget.total} />
+      ) : budget.notebook ? (
         <BudgetSpendBar label={BUDGET_SOURCE_LABEL.notebook} spend={budget.notebook} />
       ) : null}
-      {budget.wallet ? (
+      {!budget.total && budget.wallet ? (
         <BudgetSpendBar label={BUDGET_SOURCE_LABEL.wallet} spend={budget.wallet} />
       ) : null}
     </TouchableOpacity>
@@ -65,11 +67,16 @@ export function BudgetCard({ budget, onPress }: Props) {
 const styles = StyleSheet.create({
   card: {
     backgroundColor: PASTEL_PALETTE.white,
-    borderRadius: 16,
+    borderRadius: 20,
     borderWidth: 1,
     borderColor: PASTEL_PALETTE.border,
-    padding: 14,
-    marginBottom: 10,
+    padding: 15,
+    marginBottom: 12,
+    shadowColor: '#72527D',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.06,
+    shadowRadius: 10,
+    elevation: 2,
   },
   header: {
     flexDirection: 'row',

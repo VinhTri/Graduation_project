@@ -1,9 +1,10 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity, TextInput,
   StatusBar, KeyboardAvoidingView, Platform, Alert,
 } from 'react-native';
 import { Feather, Ionicons } from '@expo/vector-icons';
+import { CharacterCounter } from '@/shared/components/CharacterCounter/CharacterCounter';
 import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { FundHeaderShell, FundTransferFlow } from '../../components';
@@ -11,7 +12,7 @@ import { PinModal, SuccessModal } from '../../../../shared/components';
 import { fundStore, useFund } from '../../store/fundStore';
 import { walletService } from '../../../../shared/api/services/walletService';
 import { FUND_PALETTE } from '../../theme';
-import { formatCurrency, parseAmountInput } from '../../utils';
+import { createFundRequestId, formatCompactCurrency, formatCurrency, parseAmountInput } from '../../utils';
 import { styles } from './WithdrawScreen.styles';
 
 const MIN_WITHDRAW = 10_000;
@@ -29,6 +30,7 @@ export function WithdrawScreen() {
   const [successVisible, setSuccessVisible] = useState(false);
   const [walletBalance, setWalletBalance] = useState(0);
   const [submitting, setSubmitting] = useState(false);
+  const requestIdRef = useRef<string | null>(null);
 
   useFocusEffect(
     useCallback(() => {
@@ -43,7 +45,8 @@ export function WithdrawScreen() {
   const parsedAmount = amount ? parseInt(amount, 10) : 0;
   const isValid = parsedAmount >= MIN_WITHDRAW && parsedAmount <= fundBalance && !submitting;
 
-  const quickAmounts = [100_000, 200_000, 500_000, 1_000_000].filter((a) => a <= fundBalance);
+  const quickAmounts = [100_000, 200_000, 500_000, 1_000_000, 2_000_000]
+    .filter((a) => a <= fundBalance);
 
   // Chỉ chủ quỹ mới được rút tiền
   if (fund && !fund.isOwner) {
@@ -72,6 +75,7 @@ export function WithdrawScreen() {
       return;
     }
     setPinError('');
+    requestIdRef.current = createFundRequestId();
     setPinVisible(true);
   };
 
@@ -79,7 +83,7 @@ export function WithdrawScreen() {
     try {
       setSubmitting(true);
       setPinError('');
-      await fundStore.withdraw(Number(id), parsedAmount, pin, note.trim() || undefined);
+      await fundStore.withdraw(Number(id), parsedAmount, pin, note.trim() || undefined, requestIdRef.current || undefined);
       setPinVisible(false);
       setSuccessVisible(true);
     } catch (err: any) {
@@ -169,7 +173,7 @@ export function WithdrawScreen() {
                     activeOpacity={0.85}
                   >
                     <Text style={[styles.quickChipText, parsedAmount === amt && styles.quickChipTextActive]}>
-                      {formatCurrency(amt)}
+                      {formatCompactCurrency(amt)}
                     </Text>
                   </TouchableOpacity>
                 ))}
@@ -191,6 +195,7 @@ export function WithdrawScreen() {
               maxLength={100}
             />
           </View>
+          <CharacterCounter value={note} maxLength={100} />
 
           <View style={styles.securityRow}>
             <Ionicons name="shield-checkmark" size={20} color={FUND_PALETTE.primaryDeep} />

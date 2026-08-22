@@ -1,7 +1,2 @@
-/**
- * Báo cáo ví SmartSpend — tách riêng khỏi báo cáo sổ tay tiền mặt.
- * Không import chung module notebook/report.
- */
+/** Giao diện báo cáo dòng tiền ví được nhúng trong Trung tâm tài chính. */
 export { WalletReport } from '../components/WalletReport/WalletReport'
-export { useWalletReportData } from './useWalletReportData'
-export * from './walletReportUtils'

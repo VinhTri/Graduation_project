@@ -156,6 +156,7 @@ public class BudgetServiceImpl implements BudgetService {
         BudgetApplyTo applyTo = budget.getApplyTo();
         BudgetSourceSpend notebook = null;
         BudgetSourceSpend wallet = null;
+        BigDecimal totalSpent = BigDecimal.ZERO;
 
         if (applyTo == BudgetApplyTo.NOTEBOOK || applyTo == BudgetApplyTo.BOTH) {
             BigDecimal spent = notebookTransactionRepository.sumAmountByUserAndTypeAndCategoryAndCreatedAtRange(
@@ -166,6 +167,7 @@ public class BudgetServiceImpl implements BudgetService {
                     toExclusive
             );
             notebook = buildSourceSpend(budget.getLimitAmount(), spent);
+            totalSpent = totalSpent.add(spent == null ? BigDecimal.ZERO : spent);
         }
 
         if (applyTo == BudgetApplyTo.WALLET || applyTo == BudgetApplyTo.BOTH) {
@@ -177,6 +179,7 @@ public class BudgetServiceImpl implements BudgetService {
                     toExclusive
             );
             wallet = buildSourceSpend(budget.getLimitAmount(), spent);
+            totalSpent = totalSpent.add(spent == null ? BigDecimal.ZERO : spent);
         }
 
         return BudgetResponse.builder()
@@ -195,6 +198,7 @@ public class BudgetServiceImpl implements BudgetService {
                 .categoryDeleted(budget.isCategoryDeleted())
                 .notebook(notebook)
                 .wallet(wallet)
+                .total(buildSourceSpend(budget.getLimitAmount(), totalSpent))
                 .createdAt(budget.getCreatedAt())
                 .updatedAt(budget.getUpdatedAt())
                 .build();
@@ -222,10 +226,7 @@ public class BudgetServiceImpl implements BudgetService {
         return BudgetStatus.ACTIVE;
     }
 
-    /**
-     * Model B: mỗi nguồn đo độc lập với cùng hạn mức.
-     * remaining = limit - spent (có thể âm).
-     */
+    /** remaining = limit - spent (có thể âm). */
     private BudgetSourceSpend buildSourceSpend(BigDecimal limitAmount, BigDecimal spent) {
         BigDecimal safeSpent = spent == null ? BigDecimal.ZERO : spent;
         BigDecimal remaining = limitAmount.subtract(safeSpent);

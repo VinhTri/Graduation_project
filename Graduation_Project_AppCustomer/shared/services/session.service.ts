@@ -10,6 +10,8 @@ const sessionListeners = new Set<() => void>()
 export type CustomerProfile = {
   id: number
   email: string
+  username?: string
+  avatarUrl?: string | null
   accountNumber?: string | null
   createdAt?: string
 }
@@ -66,6 +68,8 @@ export async function getCustomerProfile(): Promise<CustomerProfile> {
   return {
     id: profile.id,
     email: profile.email,
+    username: profile.username,
+    avatarUrl: profile.avatarUrl,
     accountNumber,
     createdAt: profile.createdAt,
   }

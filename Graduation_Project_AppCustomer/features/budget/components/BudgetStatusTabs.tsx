@@ -17,14 +17,13 @@ export function BudgetStatusTabs({ activeIndex, onChange }: Props) {
         return (
           <TouchableOpacity
             key={status}
-            style={styles.item}
+            style={[styles.item, selected && styles.itemActive]}
             onPress={() => onChange(index)}
             activeOpacity={0.85}
           >
             <Text style={[styles.text, selected && styles.textActive]} numberOfLines={1}>
               {meta.tabLabel}
             </Text>
-            {selected ? <View style={styles.underline} /> : null}
           </TouchableOpacity>
         )
       })}
@@ -35,17 +34,28 @@ export function BudgetStatusTabs({ activeIndex, onChange }: Props) {
 const styles = StyleSheet.create({
   bar: {
     flexDirection: 'row',
-    marginHorizontal: 12,
-    marginTop: 4,
-    borderBottomWidth: 1,
-    borderBottomColor: PASTEL_PALETTE.border,
+    marginHorizontal: 20,
+    marginTop: 12,
+    padding: 4,
+    borderRadius: 15,
+    backgroundColor: '#EEE7EF',
   },
   item: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 12,
+    minHeight: 40,
+    paddingVertical: 8,
     paddingHorizontal: 4,
+    borderRadius: 11,
+  },
+  itemActive: {
+    backgroundColor: PASTEL_PALETTE.white,
+    shadowColor: '#6D4AAF',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 7,
+    elevation: 2,
   },
   text: {
     fontSize: 12,
@@ -54,15 +64,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   textActive: {
-    color: PASTEL_PALETTE.title,
-  },
-  underline: {
-    position: 'absolute',
-    bottom: 0,
-    left: 8,
-    right: 8,
-    height: 2.5,
-    borderRadius: 999,
-    backgroundColor: PASTEL_PALETTE.accentDeep,
+    color: '#6D4AAF',
+    fontWeight: '900',
   },
 })

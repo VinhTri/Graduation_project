@@ -75,17 +75,31 @@ export default function BudgetDetailScreen() {
   }
 
   const statusMeta = budget ? BUDGET_STATUS_META[budget.status] : null
+  const detailLimit = budget ? toSafeAmount(budget.limitAmount) : 0
+  const detailSpent = budget
+    ? budget.total
+      ? toSafeAmount(budget.total.spent)
+      : toSafeAmount(budget.notebook?.spent) + toSafeAmount(budget.wallet?.spent)
+    : 0
+  const detailRemaining = detailLimit - detailSpent
+  const detailPercent = detailLimit > 0 ? Math.round((detailSpent / detailLimit) * 100) : 0
+  const detailProgressWidth = `${Math.min(Math.max(detailPercent, 0), 100)}%` as `${number}%`
+  const detailProgressColor = detailPercent >= 100 ? '#D9486F' : detailPercent >= 80 ? '#D9823D' : '#7655B4'
 
   return (
     <View style={styles.container}>
-      <PastelHeaderShell contentStyle={styles.headerContent}>
-        <View style={styles.headerRow}>
-          <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
-            <Ionicons name="chevron-back-outline" size={24} color="#7C3AED" />
+      <PastelHeaderShell contentStyle={styles.detailHeaderContent}>
+        <View style={styles.detailHeaderRow}>
+          <TouchableOpacity style={styles.detailHeaderBack} onPress={() => router.back()}>
+            <Ionicons name="chevron-back-outline" size={22} color="#6D4AAF" />
           </TouchableOpacity>
-          <View style={styles.headerTextWrap}>
-            <Text style={styles.title}>Chi tiết hạn mức</Text>
-            <Text style={styles.subtitle}>Theo dõi chi tiêu theo danh mục</Text>
+          <View style={styles.detailHeaderCopy}>
+            <Text style={styles.detailHeaderEyebrow}>NGÂN SÁCH</Text>
+            <Text style={styles.detailHeaderTitle}>Chi tiết hạn mức</Text>
+            <Text style={styles.detailHeaderSubtitle}>Theo dõi tiến độ và phần còn lại</Text>
+          </View>
+          <View style={styles.detailHeaderMark}>
+            <Ionicons name="analytics-outline" size={20} color="#6D4AAF" />
           </View>
         </View>
       </PastelHeaderShell>
@@ -95,7 +109,7 @@ export default function BudgetDetailScreen() {
       ) : error || !budget || !statusMeta ? (
         <Text style={styles.errorText}>{error || 'Không tìm thấy ngân sách'}</Text>
       ) : (
-        <ScrollView contentContainerStyle={styles.scrollContent}>
+        <ScrollView contentContainerStyle={styles.detailScrollContent} showsVerticalScrollIndicator={false}>
           <View style={styles.detailHero}>
             <View
               style={[
@@ -130,16 +144,56 @@ export default function BudgetDetailScreen() {
           </View>
 
           <View style={styles.detailLimitCard}>
-            <Text style={styles.detailLimitLabel}>Hạn mức</Text>
-            <Text style={styles.detailLimitValue}>{formatMoney(budget.limitAmount)}</Text>
+            <View style={styles.detailLimitTop}>
+              <View style={styles.detailLimitCopy}>
+                <Text style={styles.detailLimitLabel}>
+                  {detailRemaining < 0 ? 'Đã vượt hạn mức' : 'Bạn còn có thể chi'}
+                </Text>
+                <Text style={[styles.detailLimitValue, detailRemaining < 0 && styles.detailLimitValueOver]}>
+                  {formatMoney(Math.abs(detailRemaining))}
+                </Text>
+              </View>
+              <View style={[styles.detailPercentBadge, { backgroundColor: `${detailProgressColor}18` }]}>
+                <Text style={[styles.detailPercentValue, { color: detailProgressColor }]}>{detailPercent}%</Text>
+                <Text style={styles.detailPercentLabel}>đã dùng</Text>
+              </View>
+            </View>
+
+            <View style={styles.detailProgressTrack}>
+              <View
+                style={[
+                  styles.detailProgressFill,
+                  { width: detailProgressWidth, backgroundColor: detailProgressColor },
+                ]}
+              />
+            </View>
+
+            <View style={styles.detailMoneyStats}>
+              <View style={styles.detailMoneyStat}>
+                <Text style={styles.detailMetaLabel}>Đã chi</Text>
+                <Text style={styles.detailMoneyValue}>{formatMoney(detailSpent)}</Text>
+              </View>
+              <View style={styles.detailMetaDivider} />
+              <View style={styles.detailMoneyStat}>
+                <Text style={styles.detailMetaLabel}>Hạn mức</Text>
+                <Text style={styles.detailMoneyValue}>{formatMoney(detailLimit)}</Text>
+              </View>
+            </View>
+
             <View style={styles.detailMetaRow}>
               <View style={styles.detailMetaItem}>
-                <Text style={styles.detailMetaLabel}>Áp dụng</Text>
+                <View style={styles.detailMetaIconRow}>
+                  <Ionicons name="git-branch-outline" size={14} color="#806A89" />
+                  <Text style={styles.detailMetaLabel}>Áp dụng</Text>
+                </View>
                 <Text style={styles.detailMetaValue}>{applyToLabel(budget.applyTo)}</Text>
               </View>
               <View style={styles.detailMetaDivider} />
               <View style={styles.detailMetaItem}>
-                <Text style={styles.detailMetaLabel}>Kỳ hạn</Text>
+                <View style={styles.detailMetaIconRow}>
+                  <Ionicons name="calendar-clear-outline" size={14} color="#806A89" />
+                  <Text style={styles.detailMetaLabel}>Kỳ hạn</Text>
+                </View>
                 <Text style={styles.detailMetaValue}>
                   {formatDisplayDate(budget.startDate)} – {formatDisplayDate(budget.endDate)}
                 </Text>
@@ -148,11 +202,26 @@ export default function BudgetDetailScreen() {
           </View>
 
           <View style={styles.detailSpendSection}>
-            <Text style={styles.sectionLabel}>Tiến độ chi tiêu</Text>
-            {budget.notebook ? (
+            <View style={styles.detailSectionHeading}>
+              <View style={styles.detailSectionIcon}>
+                <Ionicons name="layers-outline" size={16} color="#6D4AAF" />
+              </View>
+              <View>
+                <Text style={styles.sectionLabel}>Chi tiêu theo nguồn</Text>
+                <Text style={styles.detailSectionSubtitle}>Dữ liệu được cập nhật từ giao dịch đã ghi nhận</Text>
+              </View>
+            </View>
+            {budget.total ? <BudgetSpendBar label="Tổng chi" spend={budget.total} /> : null}
+            {budget.total && budget.applyTo === 'BOTH' ? (
+              <Text style={styles.hint}>
+                {BUDGET_SOURCE_LABEL.notebook}: {formatMoney(budget.notebook?.spent)} ·{' '}
+                {BUDGET_SOURCE_LABEL.wallet}: {formatMoney(budget.wallet?.spent)}
+              </Text>
+            ) : null}
+            {!budget.total && budget.notebook ? (
               <BudgetSpendBar label={BUDGET_SOURCE_LABEL.notebook} spend={budget.notebook} />
             ) : null}
-            {budget.wallet ? (
+            {!budget.total && budget.wallet ? (
               <BudgetSpendBar label={BUDGET_SOURCE_LABEL.wallet} spend={budget.wallet} />
             ) : null}
             {!budget.notebook && !budget.wallet ? (
@@ -160,10 +229,11 @@ export default function BudgetDetailScreen() {
             ) : null}
           </View>
 
-          {(budget.notebook?.overLimit ||
-            budget.wallet?.overLimit ||
-            toSafeAmount(budget.notebook?.remaining) < 0 ||
-            toSafeAmount(budget.wallet?.remaining) < 0) && (
+          {((budget.total?.overLimit || toSafeAmount(budget.total?.remaining) < 0) ||
+            (!budget.total && (budget.notebook?.overLimit ||
+              budget.wallet?.overLimit ||
+              toSafeAmount(budget.notebook?.remaining) < 0 ||
+              toSafeAmount(budget.wallet?.remaining) < 0))) && (
             <Text style={[styles.errorField, { marginTop: 8 }]}>
               Đã vượt hạn mức — số còn lại có thể âm.
             </Text>

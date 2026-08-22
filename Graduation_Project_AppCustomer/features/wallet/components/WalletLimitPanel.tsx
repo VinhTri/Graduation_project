@@ -10,6 +10,7 @@ type Props = {
   dailyLimit: number | null
   dailyTransactedAmount: number
   withdrawAmount: number
+  currentAmountLabel?: string
 }
 
 function getLimitProgress(used: number, limit: number) {
@@ -44,6 +45,7 @@ export function WalletLimitPanel({
   dailyLimit,
   dailyTransactedAmount,
   withdrawAmount,
+  currentAmountLabel = 'Số tiền đang rút',
 }: Props) {
   const hasTransactionLimit = Boolean(enabled && transactionLimit && transactionLimit > 0)
   const hasDailyLimit = Boolean(enabled && dailyLimit && dailyLimit > 0)
@@ -115,7 +117,7 @@ export function WalletLimitPanel({
         <>
           <View style={styles.limitStatsRow}>
             <View style={styles.limitStatBlock}>
-              <Text style={styles.limitStatLabel}>Số tiền đang rút</Text>
+              <Text style={styles.limitStatLabel}>{currentAmountLabel}</Text>
               <Text style={styles.limitStatValue}>
                 {withdrawAmount.toLocaleString('vi-VN')} ₫
               </Text>

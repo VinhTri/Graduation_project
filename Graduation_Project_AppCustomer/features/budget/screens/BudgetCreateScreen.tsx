@@ -252,7 +252,7 @@ export default function BudgetCreateScreen() {
                   periodMode === 'week' && styles.periodChipTextActive,
                 ]}
               >
-                Tuần (+8 ngày)
+                Tuần (7 ngày)
               </Text>
             </TouchableOpacity>
             <TouchableOpacity

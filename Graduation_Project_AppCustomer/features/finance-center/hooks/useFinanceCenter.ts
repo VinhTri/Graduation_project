@@ -28,7 +28,10 @@ export function useFinanceCenter(
     if (!result?.current || !result?.compare || !result?.delta) {
       throw new Error('Không tải được trung tâm tài chính')
     }
-    setData(result)
+    setData({
+      ...result,
+      budget: result.budget ?? emptyFinanceCenter(period, date, compareDate).budget,
+    })
     setError(null)
   }, [period, date, compareDate])
 

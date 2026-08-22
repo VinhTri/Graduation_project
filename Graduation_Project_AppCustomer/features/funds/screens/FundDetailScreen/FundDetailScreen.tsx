@@ -4,8 +4,8 @@ import {
   Modal, TextInput, KeyboardAvoidingView, Platform, Alert, Keyboard,
 } from 'react-native';
 import { Feather, Ionicons } from '@expo/vector-icons';
+import { CharacterCounter } from '@/shared/components/CharacterCounter/CharacterCounter';
 import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { FundHeaderShell, FundAvatar, FundProgressBar, InviteFriendsModal, FundMoneyForm } from '../../components';
 import { ConfirmModal } from '../../../../shared/components';
 import { useToast } from '../../../../shared/components/Toast';
@@ -16,6 +16,7 @@ import { MAX_FUND_MEMBERS, SYSTEM_MIN_DEPOSIT } from '../../constants';
 import { FundMember, FundTransaction } from '../../types';
 import { walletService } from '../../../../shared/api/services/walletService';
 import { styles } from './FundDetailScreen.styles';
+import { getStoredUserId } from '../../../../shared/services/session.service';
 
 type DetailTab = 'members' | 'history' | 'deposit' | 'withdraw';
 
@@ -62,11 +63,14 @@ export function FundDetailScreen() {
   const fundSnapshotRef = useRef(liveFund);
   if (liveFund) fundSnapshotRef.current = liveFund;
   const fund = liveFund ?? ((deletingRef.current || leavingRef.current) ? fundSnapshotRef.current : undefined);
-  const [currentUserName, setCurrentUserName] = useState('');
+  const [currentUserId, setCurrentUserId] = useState<number | null>(null);
   const [walletBalance, setWalletBalance] = useState(0);
 
   useEffect(() => {
-    AsyncStorage.getItem('userName').then((name) => setCurrentUserName(name || ''));
+    getStoredUserId().then((value) => {
+      const parsed = value == null ? NaN : Number(value);
+      setCurrentUserId(Number.isFinite(parsed) ? parsed : null);
+    });
   }, []);
 
   useFocusEffect(
@@ -89,7 +93,7 @@ export function FundDetailScreen() {
   };
 
   const handlePressTx = (tx: FundTransaction) => {
-    if (currentUserName && tx.userName === currentUserName) {
+    if (currentUserId != null && tx.userId === currentUserId) {
       openEditNote(tx);
     } else {
       openViewTx(tx);
@@ -206,7 +210,7 @@ export function FundDetailScreen() {
 
   const renderTransaction = (tx: FundTransaction) => {
     const meta = TX_META[tx.type];
-    const isMine = !!currentUserName && tx.userName === currentUserName;
+    const isMine = currentUserId != null && tx.userId === currentUserId;
     return (
       <TouchableOpacity
         key={tx.id}
@@ -517,7 +521,7 @@ export function FundDetailScreen() {
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text style={styles.menuItemDangerText}>Đóng quỹ</Text>
-                  <Text style={styles.menuItemSub}>Số tiền còn lại sẽ rút về ví SmartSpend</Text>
+                  <Text style={styles.menuItemSub}>Số tiền còn lại sẽ chuyển về ví của chủ quỹ</Text>
                 </View>
               </TouchableOpacity>
             ) : (
@@ -531,7 +535,7 @@ export function FundDetailScreen() {
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text style={styles.menuItemDangerText}>Rời nhóm</Text>
-                  <Text style={styles.menuItemSub}>Bạn sẽ không còn là thành viên quỹ này</Text>
+                  <Text style={styles.menuItemSub}>Tiền đã góp vẫn thuộc quỹ chung và không tự động hoàn lại</Text>
                 </View>
               </TouchableOpacity>
             )}
@@ -552,10 +556,10 @@ export function FundDetailScreen() {
         title={reachedTarget ? 'Chúc mừng hoàn thành quỹ' : 'Chưa đạt mục tiêu'}
         message={
           reachedTarget
-            ? `Quỹ "${fund.name}" đã đạt hoặc vượt mục tiêu. ${formatCurrency(fund.balance)} ₫ sẽ được rút về ví SmartSpend và quỹ sẽ bị xóa.`
+            ? `Quỹ "${fund.name}" đã đạt hoặc vượt mục tiêu. ${formatCurrency(fund.balance)} ₫ sẽ được chuyển về ví SmartSpend của chủ quỹ. Lịch sử quỹ vẫn được lưu để đối soát.`
             : hasTarget
-              ? `Quỹ "${fund.name}" chưa đủ mục tiêu (${formatCurrency(fund.balance)} / ${formatCurrency(fund.targetAmount as number)} ₫). Nếu xác nhận, số tiền còn lại sẽ rút về ví SmartSpend và quỹ sẽ đóng.`
-              : `Số tiền còn lại ${formatCurrency(fund.balance)} ₫ sẽ được rút về ví SmartSpend và quỹ "${fund.name}" sẽ bị xóa.`
+              ? `Quỹ "${fund.name}" chưa đủ mục tiêu (${formatCurrency(fund.balance)} / ${formatCurrency(fund.targetAmount as number)} ₫). Nếu xác nhận, số tiền còn lại sẽ chuyển về ví SmartSpend của chủ quỹ và quỹ sẽ đóng.`
+              : `Số tiền còn lại ${formatCurrency(fund.balance)} ₫ sẽ được chuyển về ví SmartSpend của chủ quỹ. Lịch sử quỹ vẫn được lưu để đối soát.`
         }
         image={
           reachedTarget
@@ -578,7 +582,7 @@ export function FundDetailScreen() {
       <ConfirmModal
         visible={leaveConfirmVisible}
         title="Rời nhóm?"
-        message={`Bạn có chắc muốn rời quỹ "${fund.name}"?`}
+        message={`Bạn sẽ không còn quyền truy cập quỹ "${fund.name}". Các khoản đã đóng góp vẫn thuộc quỹ chung và không tự động hoàn về ví.`}
         image={require('../../../../assets/images/fund-leave.png')}
         imageAspectRatio={1}
         confirmText="Rời nhóm"
@@ -712,6 +716,7 @@ export function FundDetailScreen() {
                   multiline
                   maxLength={100}
                 />
+                <CharacterCounter value={noteDraft} maxLength={100} />
 
                 <View style={styles.modalActions}>
                   <TouchableOpacity style={styles.modalCancelBtn} onPress={() => setEditingTx(null)} activeOpacity={0.8}>

@@ -11,6 +11,7 @@ import com.project.app.user.dto.request.NotebookReminderRequest;
 import com.project.app.user.dto.response.AppearanceResponse;
 import com.project.app.user.dto.response.MoneyFormatResponse;
 import com.project.app.user.dto.response.NotebookReminderResponse;
+import com.project.app.auth.security.JwtUtil;
 import com.project.app.user.entity.User;
 import com.project.app.user.repository.UserRepository;
 import com.project.app.wallet.repository.WalletRepository;
@@ -20,6 +21,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -34,11 +36,15 @@ import org.springframework.web.multipart.MultipartFile;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.io.IOException;
+import java.awt.image.BufferedImage;
+import javax.imageio.ImageIO;
+import javax.imageio.ImageReader;
+import javax.imageio.stream.ImageInputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.nio.file.StandardCopyOption;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -49,13 +55,14 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class UserController {
 
-    private static final Set<String> ALLOWED_EXTENSIONS = Set.of(".jpg", ".jpeg", ".png", ".webp", ".gif");
     private static final long MAX_AVATAR_BYTES = 5L * 1024 * 1024;
+    private static final int MAX_AVATAR_DIMENSION = 4096;
 
     private final UserRepository userRepository;
     private final FriendshipService friendshipService;
     private final WalletService walletService;
     private final WalletRepository walletRepository;
+    private final JwtUtil jwtUtil;
 
     @GetMapping("/me")
     public ResponseEntity<ApiResponse<Map<String, Object>>> getCurrentUser(@AuthenticationPrincipal CustomUserDetails userDetails) {
@@ -93,6 +100,63 @@ public class UserController {
                 .success(true)
                 .message("Cập nhật định dạng tiền tệ thành công")
                 .data(payload)
+                .build());
+    }
+
+    @PutMapping("/username")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> updateUsername(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @Valid @RequestBody com.project.app.user.dto.request.UpdateUsernameRequest request) {
+
+        String newUsername = request.getUsername().trim();
+        User currentUser = userDetails.getUser();
+
+        if (currentUser.getUsername().equalsIgnoreCase(newUsername)) {
+            // Tên mới giống tên cũ, không làm gì cả
+            return ResponseEntity.ok(ApiResponse.<Map<String, Object>>builder()
+                    .success(true)
+                    .message("Cập nhật tên hiển thị thành công")
+                    .data(buildUserPayload(currentUser))
+                    .build());
+        }
+
+        Optional<User> usernameOwner = userRepository.searchByUsername(newUsername);
+        if (usernameOwner.isPresent() && !usernameOwner.get().getId().equals(currentUser.getId())) {
+            return ResponseEntity.badRequest()
+                    .body(ApiResponse.<Map<String, Object>>builder()
+                            .success(false)
+                            .message("Tên hiển thị này đã được sử dụng. Vui lòng chọn tên khác.")
+                            .build());
+        }
+
+        User user = userRepository.findById(currentUser.getId())
+                .orElseThrow(() -> new IllegalStateException("Không tìm thấy người dùng"));
+
+        user.setUsername(newUsername);
+        try {
+            userRepository.saveAndFlush(user);
+        } catch (DataIntegrityViolationException ex) {
+            return ResponseEntity.badRequest()
+                    .body(ApiResponse.<Map<String, Object>>builder()
+                            .success(false)
+                            .message("Tên hiển thị này đã được sử dụng. Vui lòng chọn tên khác.")
+                            .build());
+        }
+
+        // Keep auth principal in sync
+        currentUser.setUsername(newUsername);
+
+        Map<String, Object> userData = buildUserPayload(user);
+        userData.put("accountNumber", walletService.getAccountNumberForUser(user.getId()));
+
+        // Rotate legacy username-subject tokens to the new immutable email subject.
+        String newToken = jwtUtil.generateToken(userDetails);
+        userData.put("token", newToken);
+
+        return ResponseEntity.ok(ApiResponse.<Map<String, Object>>builder()
+                .success(true)
+                .message("Cập nhật tên hiển thị thành công")
+                .data(userData)
                 .build());
     }
 
@@ -205,11 +269,11 @@ public class UserController {
         if (dot != -1) {
             extension = originalName.substring(dot).toLowerCase();
         }
-        if (!ALLOWED_EXTENSIONS.contains(extension)) {
+        if (!Set.of(".jpg", ".jpeg", ".png").contains(extension)) {
             return ResponseEntity.badRequest()
                     .body(ApiResponse.<Map<String, Object>>builder()
                             .success(false)
-                            .message("Chỉ hỗ trợ ảnh JPG, PNG, WEBP hoặc GIF")
+                            .message("Chỉ hỗ trợ ảnh JPG hoặc PNG")
                             .build());
         }
 
@@ -223,18 +287,28 @@ public class UserController {
         }
 
         try {
+            BufferedImage decodedImage = decodeAvatar(file);
+
             Path avatarDir = Paths.get("uploads", "avatars").toAbsolutePath().normalize();
             Files.createDirectories(avatarDir);
 
-            String newFileName = "u" + userDetails.getUser().getId() + "_" + UUID.randomUUID() + extension;
+            // Re-encode all accepted inputs. This strips embedded content and
+            // guarantees the bytes match the public file extension.
+            String safeExtension = ".png";
+            String newFileName = "u" + userDetails.getUser().getId() + "_" + UUID.randomUUID() + safeExtension;
             Path target = avatarDir.resolve(newFileName);
-            Files.copy(file.getInputStream(), target, StandardCopyOption.REPLACE_EXISTING);
+            if (!ImageIO.write(decodedImage, safeExtension.substring(1), target.toFile())) {
+                throw new IOException("Không thể mã hóa ảnh đại diện");
+            }
 
             String avatarUrl = "/uploads/avatars/" + newFileName;
             User user = userRepository.findById(userDetails.getUser().getId())
                     .orElseThrow(() -> new IllegalStateException("Không tìm thấy người dùng"));
+            String previousAvatarUrl = user.getAvatarUrl();
             user.setAvatarUrl(avatarUrl);
-            userRepository.save(user);
+            userRepository.saveAndFlush(user);
+
+            deletePreviousAvatar(previousAvatarUrl, avatarDir, target);
 
             // Keep auth principal in sync for the rest of this request
             userDetails.getUser().setAvatarUrl(avatarUrl);
@@ -247,12 +321,69 @@ public class UserController {
                     .message("Cập nhật ảnh đại diện thành công")
                     .data(payload)
                     .build());
+        } catch (IllegalArgumentException ex) {
+            return ResponseEntity.badRequest()
+                    .body(ApiResponse.<Map<String, Object>>builder()
+                            .success(false)
+                            .message(ex.getMessage())
+                            .build());
         } catch (IOException ex) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(ApiResponse.<Map<String, Object>>builder()
                             .success(false)
                             .message("Không thể lưu ảnh đại diện. Vui lòng thử lại.")
                             .build());
+        }
+    }
+
+    private BufferedImage decodeAvatar(MultipartFile file) throws IOException {
+        try (ImageInputStream input = ImageIO.createImageInputStream(file.getInputStream())) {
+            if (input == null) {
+                throw new IllegalArgumentException("Ảnh không hợp lệ");
+            }
+
+            Iterator<ImageReader> readers = ImageIO.getImageReaders(input);
+            if (!readers.hasNext()) {
+                throw new IllegalArgumentException("Ảnh không hợp lệ");
+            }
+
+            ImageReader reader = readers.next();
+            try {
+                reader.setInput(input, true, true);
+                int width = reader.getWidth(0);
+                int height = reader.getHeight(0);
+                if (width <= 0 || height <= 0
+                        || width > MAX_AVATAR_DIMENSION
+                        || height > MAX_AVATAR_DIMENSION) {
+                    throw new IllegalArgumentException("Ảnh không hợp lệ hoặc kích thước ảnh quá lớn");
+                }
+
+                BufferedImage image = reader.read(0);
+                if (image == null) {
+                    throw new IllegalArgumentException("Ảnh không hợp lệ");
+                }
+                return image;
+            } finally {
+                reader.dispose();
+            }
+        }
+    }
+
+    private void deletePreviousAvatar(String previousAvatarUrl, Path avatarDir, Path currentAvatar) {
+        if (previousAvatarUrl == null || !previousAvatarUrl.startsWith("/uploads/avatars/")) {
+            return;
+        }
+
+        String previousFileName = previousAvatarUrl.substring(previousAvatarUrl.lastIndexOf('/') + 1);
+        Path previousFile = avatarDir.resolve(previousFileName).normalize();
+        if (!previousFile.startsWith(avatarDir) || previousFile.equals(currentAvatar)) {
+            return;
+        }
+
+        try {
+            Files.deleteIfExists(previousFile);
+        } catch (IOException ignored) {
+            // The profile update succeeded; stale-file cleanup can be retried later.
         }
     }
 

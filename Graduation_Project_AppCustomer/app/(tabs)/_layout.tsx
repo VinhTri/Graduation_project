@@ -32,9 +32,15 @@ export default function TabsLayout() {
         }}
       />
       <Tabs.Screen
-        name="wallet/index"
+        name="notebook/index"
         options={{
-          title: t('walletTab'),
+          title: t('notebookTab'),
+        }}
+      />
+      <Tabs.Screen
+        name="budget/index"
+        options={{
+          title: t('budgetTab'),
         }}
       />
       <Tabs.Screen
@@ -44,9 +50,10 @@ export default function TabsLayout() {
         }}
       />
       <Tabs.Screen
-        name="notebook/index"
+        name="wallet/index"
         options={{
-          title: t('notebookTab'),
+          title: t('walletTab'),
+          href: null,
         }}
       />
       <Tabs.Screen

@@ -47,6 +47,7 @@ public interface WalletTransactionRepository extends JpaRepository<WalletTransac
             @Param("to") LocalDateTime to
     );
 
+    /** Tổng dòng tiền Ví thuần, không tính các bản ghi đối ứng do nghiệp vụ Quỹ tạo ra. */
     @Query("""
             SELECT COALESCE(SUM(t.amount), 0) FROM WalletTransaction t
             WHERE t.user.id = :userId
@@ -54,8 +55,10 @@ public interface WalletTransactionRepository extends JpaRepository<WalletTransac
               AND t.type = :type
               AND t.createdAt >= :from
               AND t.createdAt <= :to
+              AND t.transactionCode NOT LIKE 'FDEP%'
+              AND t.transactionCode NOT LIKE 'FWD%'
             """)
-    BigDecimal sumAmountByUserDefaultWalletAndTypeAndCreatedAtBetween(
+    BigDecimal sumWalletOnlyAmountByUserAndTypeAndCreatedAtBetween(
             @Param("userId") Long userId,
             @Param("type") WalletTransactionType type,
             @Param("from") LocalDateTime from,

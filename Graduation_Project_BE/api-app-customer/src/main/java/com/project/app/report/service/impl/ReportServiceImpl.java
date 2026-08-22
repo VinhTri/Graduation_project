@@ -4,6 +4,10 @@ import com.project.app.category.entity.CategoryGroup;
 import com.project.app.category.entity.CategoryItem;
 import com.project.app.category.repository.CategoryGroupRepository;
 import com.project.app.category.repository.CategoryItemRepository;
+import com.project.app.budget.dto.BudgetSourceSpend;
+import com.project.app.budget.dto.response.BudgetResponse;
+import com.project.app.budget.enums.BudgetStatus;
+import com.project.app.budget.service.BudgetService;
 import com.project.app.notebook.entity.NotebookBook;
 import com.project.app.notebook.enums.NotebookBookType;
 import com.project.app.notebook.enums.NotebookTransactionType;
@@ -51,6 +55,7 @@ public class ReportServiceImpl implements ReportService {
     private final FundTransactionRepository fundTransactionRepository;
     private final NotebookBookRepository notebookBookRepository;
     private final NotebookTransactionRepository notebookTransactionRepository;
+    private final BudgetService budgetService;
 
     /**
      * Giao dịch thực tế trong hệ thống chỉ có TOP_UP (nạp) và WITHDRAW (rút).
@@ -68,13 +73,27 @@ public class ReportServiceImpl implements ReportService {
         return Collections.singletonList(requested);
     }
 
+    /**
+     * Nạp/rút quỹ là chuyển tiền nội bộ giữa ví SmartSpend và quỹ, không phải
+     * thu nhập hoặc chi tiêu thực. Giữ chúng ở lịch sử ví nhưng loại khỏi các
+     * biểu đồ phân bổ/xu hướng thu chi.
+     */
+    private List<Transaction> excludeFundTransfers(List<Transaction> transactions) {
+        return transactions.stream()
+                .filter(t -> {
+                    String code = t.getTransactionCode();
+                    return code == null || (!code.startsWith("FDEP") && !code.startsWith("FWD"));
+                })
+                .toList();
+    }
+
     @Override
     @Transactional(readOnly = true)
     public List<ReportDistributionResponse> getDistributionReport(User user, TransactionType type, String filter, LocalDate date) {
         LocalDateTime[] dateRange = getDateRange(filter, date);
-        List<Transaction> transactions = transactionRepository.findByUserAndTypeInAndStatusAndWallet_IsDefaultTrueAndCreatedAtBetween(
+        List<Transaction> transactions = excludeFundTransfers(transactionRepository.findByUserAndTypeInAndStatusAndWallet_IsDefaultTrueAndCreatedAtBetween(
                 user, resolveTypes(type), TransactionStatus.SUCCESS, dateRange[0], dateRange[1]
-        );
+        ));
 
         // Chỉ phân tích giao dịch đã gắn danh mục; chưa phân loại hiển thị riêng trên FE.
         List<Transaction> classified = transactions.stream()
@@ -145,9 +164,9 @@ public class ReportServiceImpl implements ReportService {
     @Transactional(readOnly = true)
     public List<ReportDistributionResponse> getGroupDistributionReport(User user, TransactionType type, String filter, LocalDate date) {
         LocalDateTime[] dateRange = getDateRange(filter, date);
-        List<Transaction> transactions = transactionRepository.findByUserAndTypeInAndStatusAndWallet_IsDefaultTrueAndCreatedAtBetween(
+        List<Transaction> transactions = excludeFundTransfers(transactionRepository.findByUserAndTypeInAndStatusAndWallet_IsDefaultTrueAndCreatedAtBetween(
                 user, resolveTypes(type), TransactionStatus.SUCCESS, dateRange[0], dateRange[1]
-        );
+        ));
 
         List<Transaction> classified = transactions.stream()
                 .filter(t -> t.getCategoryId() != null)
@@ -241,9 +260,9 @@ public class ReportServiceImpl implements ReportService {
     @Transactional(readOnly = true)
     public List<ReportTrendResponse> getTrendReport(User user, TransactionType type, String filter, LocalDate date) {
         LocalDateTime[] dateRange = getDateRange(filter, date);
-        List<Transaction> transactions = transactionRepository.findByUserAndTypeInAndStatusAndWallet_IsDefaultTrueAndCreatedAtBetween(
+        List<Transaction> transactions = excludeFundTransfers(transactionRepository.findByUserAndTypeInAndStatusAndWallet_IsDefaultTrueAndCreatedAtBetween(
                 user, resolveTypes(type), TransactionStatus.SUCCESS, dateRange[0], dateRange[1]
-        );
+        ));
 
         // Tab chi tiêu: xu hướng chỉ tính giao dịch rút đã phân loại.
         List<Transaction> forTrend = type == TransactionType.EXPENSE
@@ -336,6 +355,11 @@ public class ReportServiceImpl implements ReportService {
 
         FinanceCenterResponse.PeriodSnapshot current = buildPeriodSnapshot(user.getId(), currentRange);
         FinanceCenterResponse.PeriodSnapshot compare = buildPeriodSnapshot(user.getId(), compareRange);
+        FinanceCenterResponse.BudgetOverview budget = buildBudgetOverview(
+                user.getId(),
+                currentRange[0].toLocalDate(),
+                currentRange[1].toLocalDate()
+        );
 
         return FinanceCenterResponse.builder()
                 .period(filter.toUpperCase())
@@ -351,6 +375,7 @@ public class ReportServiceImpl implements ReportService {
                 .current(current)
                 .compare(compare)
                 .delta(buildPeriodDelta(current, compare))
+                .budget(budget)
                 .build();
     }
 
@@ -358,8 +383,10 @@ public class ReportServiceImpl implements ReportService {
         FinanceCenterResponse.SourceFlow wallet = buildWalletFlow(userId, range[0], range[1]);
         FinanceCenterResponse.SourceFlow cash = buildCashFlow(userId, range[0], range[1]);
         FinanceCenterResponse.SourceFlow fund = buildFundFlow(userId, range[0], range[1]);
-        BigDecimal totalIncome = nz(wallet.getIncome()).add(nz(cash.getIncome()));
-        BigDecimal totalExpense = nz(wallet.getExpense()).add(nz(cash.getExpense()));
+        // Thu/chi thực tế chỉ lấy từ sổ tay. Nạp/rút ví là dịch chuyển tiền,
+        // không được ghi nhận thành thu nhập hoặc chi tiêu cá nhân.
+        BigDecimal totalIncome = nz(cash.getIncome());
+        BigDecimal totalExpense = nz(cash.getExpense());
         return FinanceCenterResponse.PeriodSnapshot.builder()
                 .wallet(wallet)
                 .cash(cash)
@@ -370,10 +397,72 @@ public class ReportServiceImpl implements ReportService {
                 .build();
     }
 
+    private FinanceCenterResponse.BudgetOverview buildBudgetOverview(
+            Long userId,
+            LocalDate periodStart,
+            LocalDate periodEnd) {
+        List<BudgetResponse> active = budgetService.listBudgets(userId).stream()
+                .filter(budget -> budget.getStatus() != BudgetStatus.INVALIDATED)
+                .filter(budget -> !budget.getStartDate().isAfter(periodEnd)
+                        && !budget.getEndDate().isBefore(periodStart))
+                .toList();
+
+        BigDecimal totalLimit = active.stream()
+                .map(BudgetResponse::getLimitAmount)
+                .map(ReportServiceImpl::nz)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal spent = active.stream()
+                .map(this::budgetSpent)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal remaining = totalLimit.subtract(spent);
+        int overLimitCount = (int) active.stream()
+                .filter(budget -> budgetSpent(budget).compareTo(nz(budget.getLimitAmount())) > 0)
+                .count();
+        int atRiskCount = (int) active.stream()
+                .filter(budget -> {
+                    BigDecimal limit = nz(budget.getLimitAmount());
+                    BigDecimal budgetUsage = budgetSpent(budget);
+                    return limit.compareTo(BigDecimal.ZERO) > 0
+                            && budgetUsage.compareTo(limit) <= 0
+                            && budgetUsage.divide(limit, 4, RoundingMode.HALF_UP)
+                            .compareTo(BigDecimal.valueOf(0.8)) >= 0;
+                })
+                .count();
+        double usagePercent = totalLimit.compareTo(BigDecimal.ZERO) == 0
+                ? 0d
+                : spent.divide(totalLimit, 4, RoundingMode.HALF_UP)
+                .multiply(BigDecimal.valueOf(100))
+                .doubleValue();
+
+        return FinanceCenterResponse.BudgetOverview.builder()
+                .activeCount(active.size())
+                .totalLimit(totalLimit)
+                .spent(spent)
+                .remaining(remaining)
+                .overLimitCount(overLimitCount)
+                .atRiskCount(atRiskCount)
+                .usagePercent(usagePercent)
+                .build();
+    }
+
+    private BigDecimal budgetSpent(BudgetResponse budget) {
+        BudgetSourceSpend total = budget.getTotal();
+        if (total != null) {
+            return nz(total.getSpent());
+        }
+        BigDecimal notebook = budget.getNotebook() == null
+                ? BigDecimal.ZERO
+                : nz(budget.getNotebook().getSpent());
+        BigDecimal wallet = budget.getWallet() == null
+                ? BigDecimal.ZERO
+                : nz(budget.getWallet().getSpent());
+        return notebook.add(wallet);
+    }
+
     private FinanceCenterResponse.SourceFlow buildWalletFlow(Long userId, LocalDateTime from, LocalDateTime to) {
-        BigDecimal topUp = nz(walletTransactionRepository.sumAmountByUserDefaultWalletAndTypeAndCreatedAtBetween(
+        BigDecimal topUp = nz(walletTransactionRepository.sumWalletOnlyAmountByUserAndTypeAndCreatedAtBetween(
                 userId, WalletTransactionType.TOP_UP, from, to));
-        BigDecimal withdraw = nz(walletTransactionRepository.sumAmountByUserDefaultWalletAndTypeAndCreatedAtBetween(
+        BigDecimal withdraw = nz(walletTransactionRepository.sumWalletOnlyAmountByUserAndTypeAndCreatedAtBetween(
                 userId, WalletTransactionType.WITHDRAW, from, to));
 
         topUp = topUp.add(nz(transactionRepository.sumOrphanAmountByUserDefaultWalletAndTypeAndStatusAndCreatedAtBetween(
@@ -385,9 +474,9 @@ public class ReportServiceImpl implements ReportService {
     }
 
     private FinanceCenterResponse.SourceFlow buildFundFlow(Long userId, LocalDateTime from, LocalDateTime to) {
-        BigDecimal deposit = nz(fundTransactionRepository.sumAmountForUserFundsByTypeAndCreatedAtBetween(
+        BigDecimal deposit = nz(fundTransactionRepository.sumAmountByUserAndTypeAndCreatedAtBetween(
                 userId, FundTransactionType.DEPOSIT, from, to));
-        BigDecimal withdraw = nz(fundTransactionRepository.sumAmountForUserFundsByTypeAndCreatedAtBetween(
+        BigDecimal withdraw = nz(fundTransactionRepository.sumAmountByUserAndTypeAndCreatedAtBetween(
                 userId, FundTransactionType.WITHDRAW, from, to));
         return sourceFlow(deposit, withdraw);
     }

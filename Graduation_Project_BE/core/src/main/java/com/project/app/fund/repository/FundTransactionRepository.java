@@ -20,20 +20,16 @@ public interface FundTransactionRepository extends JpaRepository<FundTransaction
 
     Optional<FundTransaction> findByIdAndFundId(Long id, Long fundId);
 
+    Optional<FundTransaction> findByFundIdAndUserIdAndRequestId(Long fundId, Long userId, String requestId);
+
     @Query("""
             SELECT COALESCE(SUM(t.amount), 0) FROM FundTransaction t
-            WHERE t.fund.id IN (
-                SELECT f.id FROM Fund f
-                JOIN FundMember m ON m.fund = f
-                WHERE m.user.id = :userId
-                  AND m.status = com.project.app.fund.enums.FundMemberStatus.ACTIVE
-                  AND f.status = com.project.app.fund.enums.FundStatus.ACTIVE
-            )
+            WHERE t.user.id = :userId
               AND t.type = :type
               AND t.createdAt >= :from
               AND t.createdAt <= :to
             """)
-    BigDecimal sumAmountForUserFundsByTypeAndCreatedAtBetween(
+    BigDecimal sumAmountByUserAndTypeAndCreatedAtBetween(
             @Param("userId") Long userId,
             @Param("type") com.project.app.fund.enums.FundTransactionType type,
             @Param("from") LocalDateTime from,

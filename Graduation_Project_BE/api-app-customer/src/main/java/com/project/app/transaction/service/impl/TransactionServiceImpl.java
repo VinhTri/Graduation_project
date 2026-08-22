@@ -312,7 +312,10 @@ public class TransactionServiceImpl implements TransactionService {
             throw new AppException(ErrorCode.INVALID_PIN);
         }
 
-        Wallet senderWallet = walletService.getDefaultWallet(user.getId());
+        // Khóa ví người gửi để kiểm tra số dư và hạn mức ngày trên cùng một trạng thái.
+        // Việc này ngăn hai lệnh chuyển/rút đồng thời cùng vượt qua hạn mức.
+        Wallet senderWallet = walletRepository.findDefaultWalletForUpdate(user.getId())
+                .orElseThrow(() -> new AppException(ErrorCode.WALLET_NOT_FOUND));
 
         Wallet receiverWallet = walletRepository.findByAccountNumber(request.getReceiverAccountNumber())
                 .orElseThrow(() -> new AppException(ErrorCode.RECEIVER_NOT_FOUND));
@@ -395,7 +398,8 @@ public class TransactionServiceImpl implements TransactionService {
         BankAccount bankAccount = bankAccountRepository.findByIdAndUserId(request.getBankAccountId(), user.getId())
                 .orElseThrow(() -> new AppException(ErrorCode.BANK_ACCOUNT_NOT_FOUND));
 
-        Wallet wallet = walletService.getDefaultWallet(user.getId());
+        Wallet wallet = walletRepository.findDefaultWalletForUpdate(user.getId())
+                .orElseThrow(() -> new AppException(ErrorCode.WALLET_NOT_FOUND));
 
         if (wallet.getBalance().compareTo(request.getAmount()) < 0) {
             throw new AppException(ErrorCode.INSUFFICIENT_BALANCE);

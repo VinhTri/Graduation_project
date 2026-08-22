@@ -11,7 +11,7 @@ import {
   View,
 } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
-import { useFocusEffect, useRouter } from 'expo-router'
+import { useFocusEffect, useRouter, useSegments } from 'expo-router'
 import PastelHeaderShell from '@/shared/components/PastelHeaderShell/PastelHeaderShell'
 import { PASTEL_PALETTE } from '@/shared/constants/PastelPalette'
 import { getBudgets } from '@/shared/services/budget.service'
@@ -26,12 +26,18 @@ const PAGE_WIDTH = Dimensions.get('window').width
 
 export default function BudgetListScreen() {
   const router = useRouter()
+  const segments = useSegments()
+  const isTabRoot = segments[0] === '(tabs)'
   const pagerRef = useRef<ScrollView>(null)
   const [budgets, setBudgets] = useState<BudgetResponse[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [pageIndex, setPageIndex] = useState(0)
   const hasLoadedOnce = useRef(false)
+  const currentPeriod = useMemo(() => {
+    const now = new Date()
+    return `Tháng ${String(now.getMonth() + 1).padStart(2, '0')}/${now.getFullYear()}`
+  }, [])
 
   const load = useCallback(async () => {
     const showSpinner = !hasLoadedOnce.current
@@ -78,24 +84,34 @@ export default function BudgetListScreen() {
 
   return (
     <View style={styles.container}>
-      <PastelHeaderShell contentStyle={styles.headerContent}>
-        <View style={styles.headerRow}>
-          <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
-            <Ionicons name="chevron-back-outline" size={24} color="#7C3AED" />
-          </TouchableOpacity>
-          <View style={styles.headerTextWrap}>
-            <Text style={styles.title}>Ngân sách</Text>
-            <Text style={styles.subtitle}>Theo dõi hạn mức theo danh mục</Text>
+      <PastelHeaderShell
+        contentStyle={styles.dashboardHeaderContent}
+        coverImage={require('../../../assets/images/budget-list-header.png')}
+      >
+        <View style={styles.headerTopRow}>
+          <View style={styles.headerEyebrowRow}>
+            {!isTabRoot ? (
+              <TouchableOpacity style={styles.dashboardBackBtn} onPress={() => router.back()}>
+                <Ionicons name="chevron-back-outline" size={22} color="#6D4AAF" />
+              </TouchableOpacity>
+            ) : null}
+            <View style={styles.headerMark}>
+              <Ionicons name="analytics-outline" size={15} color="#6D4AAF" />
+            </View>
+            <Text style={styles.headerEyebrow}>KẾ HOẠCH CHI TIÊU</Text>
           </View>
           <TouchableOpacity
             style={styles.headerCreateBtn}
             onPress={() => router.push('/budget/create')}
             activeOpacity={0.85}
           >
-            <Ionicons name="add" size={20} color={PASTEL_PALETTE.white} />
-            <Text style={styles.headerCreateText}>Tạo</Text>
+            <Ionicons name="add" size={24} color={PASTEL_PALETTE.white} />
           </TouchableOpacity>
         </View>
+
+        <Text style={styles.dashboardTitle}>Ngân sách của bạn</Text>
+        <Text style={styles.dashboardSubtitle}>Nắm rõ số tiền còn lại trước mỗi quyết định chi tiêu.</Text>
+
       </PastelHeaderShell>
 
       {loading ? (
@@ -105,7 +121,7 @@ export default function BudgetListScreen() {
       ) : (
         <View style={styles.body}>
           <View style={styles.summaryPad}>
-            <BudgetSummary budgets={budgets} />
+            <BudgetSummary budgets={budgets} periodLabel={currentPeriod} />
           </View>
 
           <BudgetStatusTabs activeIndex={pageIndex} onChange={goToPage} />

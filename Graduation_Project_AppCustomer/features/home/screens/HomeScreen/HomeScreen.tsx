@@ -10,6 +10,7 @@ import { HomeNotebookCalendar } from "../../components/HomeNotebookCalendar";
 import { DiscoverMore } from "../../components/DiscoverMore";
 import { AIChatModal } from "../../components/AIChatModal";
 import { AIChatButton } from "../../components/AIChatButton/AIChatButton";
+import { HomeBudgetOverview } from "../../components/HomeBudgetOverview";
 
 import { consumePinSetupSuccessPending } from "@/features/auth/pinSetupSuccessFlag";
 import { SuccessModal } from "@/shared/components";
@@ -38,6 +39,7 @@ export default function HomeScreen() {
       >
         <HomeHeader />
         <HomeWalletSummary />
+        <HomeBudgetOverview />
 
         <View style={styles.carouselSection}>
           <HomeInsightCarousel />

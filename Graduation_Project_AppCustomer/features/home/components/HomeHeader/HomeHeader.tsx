@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { View, Text, TextInput, TouchableOpacity } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -8,6 +8,7 @@ import { PastelHeaderShell } from "@/shared/components/PastelHeaderShell";
 import { useRouter } from "expo-router";
 import { notificationService } from "@/shared/api/services/notification.service";
 import { useFocusEffect } from "@react-navigation/native";
+import { HomeReceiveQr } from "../HomeReceiveQr";
 
 import { useLanguage, useTheme } from "@/shared/contexts/ThemeLanguageContext";
 
@@ -15,6 +16,7 @@ export const HomeHeader = () => {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const [unreadCount, setUnreadCount] = useState(0);
+  const [receiveVisible, setReceiveVisible] = useState(false);
   const { language } = useLanguage();
   const { theme } = useTheme();
   const isEn = language === 'en';
@@ -105,6 +107,17 @@ export const HomeHeader = () => {
             style={styles.actionItem}
             activeOpacity={0.7}
             onPress={() => {
+              if (action.id === "receive-qr") {
+                setReceiveVisible(true);
+                return;
+              }
+              if (action.id === "scan-qr") {
+                router.push({
+                  pathname: "/transfer",
+                  params: { scan: "1" },
+                });
+                return;
+              }
               if (action.route) router.push(action.route as any);
             }}
           >
@@ -115,6 +128,10 @@ export const HomeHeader = () => {
           </TouchableOpacity>
         ))}
       </View>
+      <HomeReceiveQr
+        visible={receiveVisible}
+        onClose={() => setReceiveVisible(false)}
+      />
     </PastelHeaderShell>
   );
 };

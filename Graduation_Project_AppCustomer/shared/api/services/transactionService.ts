@@ -45,26 +45,6 @@ export interface WithdrawResponse {
   createdAt: string;
 }
 
-export interface ManualTransactionRequest {
-  amount: number;
-  type: 'EXPENSE' | 'INCOME';
-  categoryId: number;
-  note?: string;
-  walletId?: number;
-  createdAt?: string;
-}
-
-export interface ManualTransactionResponse {
-  transactionCode: string;
-  type: 'EXPENSE' | 'INCOME';
-  status: string;
-  amount: number;
-  categoryId: number;
-  note?: string;
-  cashBalance: number;
-  createdAt: string;
-}
-
 export interface TransactionHistoryItem {
   transactionCode: string;
   type: string;
@@ -94,25 +74,6 @@ export const transactionService = {
   processWithdrawal: async (data: WithdrawRequest): Promise<WithdrawResponse> => {
     const response = await axiosClient.post(ENDPOINTS.TRANSACTION.WITHDRAW, data);
     return response.data;
-  },
-
-  createManualTransaction: async (
-    data: ManualTransactionRequest
-  ): Promise<ManualTransactionResponse> => {
-    const response = await axiosClient.post(ENDPOINTS.TRANSACTION.MANUAL, data);
-    return response.data;
-  },
-
-  updateManualTransaction: async (
-    transactionCode: string,
-    data: ManualTransactionRequest
-  ): Promise<ManualTransactionResponse> => {
-    const response = await axiosClient.put(ENDPOINTS.TRANSACTION.UPDATE_MANUAL(transactionCode), data);
-    return response.data;
-  },
-
-  deleteManualTransaction: async (transactionCode: string): Promise<void> => {
-    await axiosClient.delete(ENDPOINTS.TRANSACTION.DELETE_MANUAL(transactionCode));
   },
 
   getTransactionHistory: async (wallet: 'main' | string = 'main'): Promise<TransactionHistoryItem[]> => {

@@ -64,6 +64,20 @@ export function formatMoney(value: number, prefs: MoneyFormatPrefs = currentPref
   return prefs.suffix === 'vnd' ? `${amount} ${suffix}` : `${amount}${suffix}`
 }
 
+export function formatCompactAmount(value: number) {
+  const amount = Number.isFinite(value) ? value : 0
+  if (Math.abs(amount) >= 1_000_000_000) {
+    return `${(amount / 1_000_000_000).toFixed(1).replace('.0', '')}tỷ`
+  }
+  if (Math.abs(amount) >= 1_000_000) {
+    return `${(amount / 1_000_000).toFixed(1).replace('.0', '')}tr`
+  }
+  if (Math.abs(amount) >= 1_000) {
+    return `${(amount / 1_000).toFixed(0)}k`
+  }
+  return String(Math.round(amount))
+}
+
 export function formatAmountInput(text: string, prefs: MoneyFormatPrefs = currentPrefs) {
   const digits = text.replace(/[^\d]/g, '').slice(0, 12)
   if (!digits) return ''

@@ -1,11 +1,12 @@
-import { useEffect, useState } from 'react'
-import { Text, TouchableOpacity, View } from 'react-native'
+import { useCallback, useState } from 'react'
+import { Text, TouchableOpacity, View, Image } from 'react-native'
 import { Feather, MaterialIcons } from '@expo/vector-icons'
+import { useFocusEffect, useRouter } from 'expo-router'
 import PastelHeaderShell from '@/shared/components/PastelHeaderShell/PastelHeaderShell'
 import { PASTEL_PALETTE } from '@/shared/constants/PastelPalette'
 import { getCustomerProfile } from '@/shared/services'
+import { resolveMediaUrl } from '@/shared/utils/resolveMediaUrl'
 import { styles } from '../SettingsScreen.styles'
-import { ProfileDetailModal } from './ProfileDetailModal'
 
 function getInitials(name: string) {
   if (!name) return 'U'
@@ -14,13 +15,6 @@ function getInitials(name: string) {
     return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase()
   }
   return name.substring(0, 2).toUpperCase()
-}
-
-function formatCreatedAt(iso: string | null) {
-  if (!iso) return '—'
-  const date = new Date(iso)
-  if (Number.isNaN(date.getTime())) return '—'
-  return date.toLocaleDateString('vi-VN')
 }
 
 function nameFromEmail(email: string) {
@@ -34,40 +28,41 @@ function nameFromEmail(email: string) {
 }
 
 export function ProfileHeader() {
+  const router = useRouter()
   const [userName, setUserName] = useState('Người dùng')
   const [userEmail, setUserEmail] = useState('')
   const [accountNumber, setAccountNumber] = useState('Chưa thiết lập')
-  const [createdAt, setCreatedAt] = useState<string | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [profileVisible, setProfileVisible] = useState(false)
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null)
 
-  useEffect(() => {
-    let cancelled = false
-    ;(async () => {
-      try {
-        const profile = await getCustomerProfile()
-        if (cancelled) return
-        setUserEmail(profile.email || '')
-        setUserName(nameFromEmail(profile.email || 'Người dùng'))
-        setAccountNumber(profile.accountNumber || 'Chưa thiết lập')
-        setCreatedAt(profile.createdAt ?? null)
-      } catch {
-        if (!cancelled) {
-          setUserEmail('')
-          setUserName('Người dùng')
-        }
-      } finally {
-        if (!cancelled) setLoading(false)
+  const fetchProfile = async (isCancelled: () => boolean = () => false) => {
+    try {
+      const profile = await getCustomerProfile()
+      if (isCancelled()) return
+      setUserEmail(profile.email || '')
+      setUserName(profile.username || nameFromEmail(profile.email || 'Người dùng'))
+      setAccountNumber(profile.accountNumber || 'Chưa thiết lập')
+      setAvatarUrl(profile.avatarUrl ?? null)
+    } catch {
+      if (!isCancelled()) {
+        setUserEmail('')
+        setUserName('Người dùng')
+        setAvatarUrl(null)
       }
-    })()
-    return () => {
-      cancelled = true
     }
-  }, [])
+  }
+
+  useFocusEffect(
+    useCallback(() => {
+      let cancelled = false
+      fetchProfile(() => cancelled)
+      return () => {
+        cancelled = true
+      }
+    }, []),
+  )
 
   return (
-    <>
-      <PastelHeaderShell
+    <PastelHeaderShell
         contentStyle={styles.headerContent}
         coverImage={require('../../../assets/images/account-list-header.png')}
       >
@@ -79,9 +74,21 @@ export function ProfileHeader() {
           <TouchableOpacity
             style={styles.avatarContainer}
             activeOpacity={0.85}
-            onPress={() => setProfileVisible(true)}
+            onPress={() => router.push('/settings/profile')}
           >
-            <Text style={styles.avatarText}>{getInitials(userName)}</Text>
+            {avatarUrl ? (
+              <View style={{ width: '100%', height: '100%', borderRadius: 999, overflow: 'hidden' }}>
+                <View style={{ width: '100%', height: '100%', backgroundColor: PASTEL_PALETTE.gray200 }}>
+                  <Image
+                    source={{ uri: resolveMediaUrl(avatarUrl) }}
+                    style={{ width: '100%', height: '100%' }}
+                    resizeMode="cover"
+                  />
+                </View>
+              </View>
+            ) : (
+              <Text style={styles.avatarText}>{getInitials(userName)}</Text>
+            )}
           </TouchableOpacity>
 
           <View style={styles.userInfo}>
@@ -106,22 +113,11 @@ export function ProfileHeader() {
           <TouchableOpacity
             style={styles.editBtn}
             activeOpacity={0.75}
-            onPress={() => setProfileVisible(true)}
+            onPress={() => router.push('/settings/profile')}
           >
             <Feather name="edit-2" size={16} color={PASTEL_PALETTE.accentDeep} />
           </TouchableOpacity>
         </View>
-      </PastelHeaderShell>
-
-      <ProfileDetailModal
-        visible={profileVisible}
-        onClose={() => setProfileVisible(false)}
-        loading={loading && !userEmail}
-        userName={userName}
-        userEmail={userEmail}
-        accountNumber={accountNumber}
-        createdAtLabel={formatCreatedAt(createdAt)}
-      />
-    </>
+    </PastelHeaderShell>
   )
 }

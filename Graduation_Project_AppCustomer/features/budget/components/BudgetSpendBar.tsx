@@ -13,14 +13,15 @@ export function BudgetSpendBar({ label, spend }: Props) {
   const remaining = toSafeAmount(spend.remaining)
   const over = spend.overLimit || remaining < 0
   const ratio = progressRatio(spent, spend.limitAmount)
+  const percent = Math.round(ratio * 100)
   const barWidth = `${Math.min(Math.max(ratio, 0) * 100, 100)}%` as `${number}%`
 
   return (
     <View style={styles.wrap}>
       <View style={styles.row}>
         <Text style={styles.label}>{label}</Text>
-        <Text style={[styles.spent, over && styles.over]}>
-          {formatMoney(spent)} / {formatMoney(spend.limitAmount)}
+        <Text style={[styles.percent, ratio >= 0.8 && styles.warning, over && styles.over]}>
+          {percent}%
         </Text>
       </View>
       <View style={styles.track}>
@@ -28,13 +29,16 @@ export function BudgetSpendBar({ label, spend }: Props) {
           style={[
             styles.fill,
             { width: barWidth },
-            over ? styles.fillOver : styles.fillOk,
+            over ? styles.fillOver : ratio >= 0.8 ? styles.fillWarning : styles.fillOk,
           ]}
         />
       </View>
-      <Text style={[styles.remaining, over && styles.over]}>
-        Còn lại: {formatMoney(remaining)}
-      </Text>
+      <View style={styles.captionRow}>
+        <Text style={styles.spent}>{formatMoney(spent)} / {formatMoney(spend.limitAmount)}</Text>
+        <Text style={[styles.remaining, over && styles.over]}>
+          {over ? 'Vượt' : 'Còn'} {formatMoney(Math.abs(remaining))}
+        </Text>
+      </View>
     </View>
   )
 }
@@ -59,6 +63,12 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: PASTEL_PALETTE.textMuted,
   },
+  percent: {
+    fontSize: 12,
+    fontWeight: '900',
+    color: '#7655B4',
+    fontVariant: ['tabular-nums'],
+  },
   track: {
     marginTop: 6,
     height: 8,
@@ -73,14 +83,25 @@ const styles = StyleSheet.create({
   fillOk: {
     backgroundColor: PASTEL_PALETTE.lavender,
   },
+  fillWarning: {
+    backgroundColor: '#E29A55',
+  },
   fillOver: {
     backgroundColor: '#EF4444',
   },
-  remaining: {
+  captionRow: {
     marginTop: 4,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 8,
+  },
+  remaining: {
     fontSize: 12,
-    fontWeight: '600',
+    fontWeight: '800',
     color: PASTEL_PALETTE.subtitle,
+  },
+  warning: {
+    color: '#C8752D',
   },
   over: {
     color: '#DC2626',

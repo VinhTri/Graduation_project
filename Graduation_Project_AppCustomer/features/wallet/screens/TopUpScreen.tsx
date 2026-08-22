@@ -16,7 +16,9 @@ import type { SelectedCategory } from '@/features/notebook/types/transaction'
 import PastelHeaderShell from '@/shared/components/PastelHeaderShell/PastelHeaderShell'
 import { useToast } from '@/shared/components/Toast'
 import { PASTEL_PALETTE } from '@/shared/constants/PastelPalette'
+import { CharacterCounter } from '@/shared/components/CharacterCounter/CharacterCounter'
 import { getDefaultWallet, topUpWallet } from '@/shared/services'
+import { formatCompactAmount } from '@/shared/utils/moneyFormat'
 import { moneyFlowStyles as styles } from '../styles/moneyFlow.styles'
 
 const QUICK_AMOUNTS = [50000, 100000, 200000, 500000, 1000000]
@@ -142,7 +144,7 @@ export default function TopUpScreen() {
               onPress={() => setAmountText(formatInput(String(value)))}
             >
               <Text style={[styles.chipText, amount === value && styles.chipTextActive]}>
-                {value.toLocaleString('vi-VN')} ₫
+                {formatCompactAmount(value)}
               </Text>
             </TouchableOpacity>
           ))}
@@ -172,6 +174,7 @@ export default function TopUpScreen() {
             onChangeText={setNote}
           />
         </View>
+        <CharacterCounter value={note} maxLength={MAX_NOTE} />
 
         {submitError ? <Text style={styles.errorText}>{submitError}</Text> : null}
 

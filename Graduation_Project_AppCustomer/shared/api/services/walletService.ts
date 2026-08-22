@@ -11,7 +11,6 @@ export interface WalletData {
   transactionLimit?: number;
   dailyLimit?: number;
   dailyTransactedAmount?: number;
-  walletType?: 'MAIN' | 'MANUAL' | 'LINKED' | string;
 }
 
 export interface WalletSettingsRequest {
@@ -27,21 +26,8 @@ export const walletService = {
     return response.data;
   },
 
-  getBankWallets: async (): Promise<WalletData[]> => {
-    const response = await axiosClient.get(ENDPOINTS.WALLET.BANK_WALLETS);
-    return response.data;
-  },
-
-  createManualBank: async (data: { bankName: string; accountNumber?: string }): Promise<WalletData> => {
-    const response = await axiosClient.post(ENDPOINTS.WALLET.CREATE_MANUAL_BANK, data);
-    return response.data;
-  },
-
   updateWalletSettings: async (id: number, data: WalletSettingsRequest): Promise<void> => {
     await axiosClient.put(ENDPOINTS.WALLET.UPDATE_SETTINGS(id), data);
   },
 
-  deleteManualBank: async (id: number): Promise<void> => {
-    await axiosClient.delete(ENDPOINTS.WALLET.DELETE_MANUAL_BANK(id));
-  },
 };

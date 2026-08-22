@@ -1,13 +1,14 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity, TextInput, Alert, StyleSheet,
 } from 'react-native';
 import { Feather, Ionicons } from '@expo/vector-icons';
+import { CharacterCounter } from '@/shared/components/CharacterCounter/CharacterCounter';
 import { PinModal } from '../../../../shared/components';
 import { useToast } from '../../../../shared/components/Toast';
 import { fundStore } from '../../store/fundStore';
 import { FUND_PALETTE } from '../../theme';
-import { formatCurrency, parseAmountInput } from '../../utils';
+import { createFundRequestId, formatCompactCurrency, formatCurrency, parseAmountInput } from '../../utils';
 import type { Fund } from '../../types';
 
 const DEPOSIT_QUICK = [50_000, 100_000, 200_000, 500_000, 1_000_000];
@@ -29,13 +30,14 @@ export function FundMoneyForm({ mode, fund, walletBalance, minDeposit, onComplet
   const [pinVisible, setPinVisible] = useState(false);
   const [pinError, setPinError] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const requestIdRef = useRef<string | null>(null);
 
   const parsedAmount = amount ? parseInt(amount, 10) : 0;
   const fundBalance = fund.balance || 0;
   const minAmount = isDeposit ? minDeposit : MIN_WITHDRAW;
   const maxAmount = isDeposit ? walletBalance : fundBalance;
   const isValid = parsedAmount >= minAmount && parsedAmount <= maxAmount && !submitting;
-  const quickAmounts = (isDeposit ? DEPOSIT_QUICK : [100_000, 200_000, 500_000, 1_000_000])
+  const quickAmounts = (isDeposit ? DEPOSIT_QUICK : [100_000, 200_000, 500_000, 1_000_000, 2_000_000])
     .filter((a) => a <= maxAmount);
 
   const handleConfirm = () => {
@@ -53,6 +55,7 @@ export function FundMoneyForm({ mode, fund, walletBalance, minDeposit, onComplet
       return;
     }
     setPinError('');
+    requestIdRef.current = createFundRequestId();
     setPinVisible(true);
   };
 
@@ -61,9 +64,9 @@ export function FundMoneyForm({ mode, fund, walletBalance, minDeposit, onComplet
       setSubmitting(true);
       setPinError('');
       if (isDeposit) {
-        await fundStore.deposit(fund.id, parsedAmount, pin, note.trim() || undefined);
+        await fundStore.deposit(fund.id, parsedAmount, pin, note.trim() || undefined, requestIdRef.current || undefined);
       } else {
-        await fundStore.withdraw(fund.id, parsedAmount, pin, note.trim() || undefined);
+        await fundStore.withdraw(fund.id, parsedAmount, pin, note.trim() || undefined, requestIdRef.current || undefined);
       }
       setPinVisible(false);
       showToast({
@@ -74,6 +77,7 @@ export function FundMoneyForm({ mode, fund, walletBalance, minDeposit, onComplet
       });
       setAmount('');
       setNote('');
+      requestIdRef.current = null;
       onCompleted?.();
     } catch (err: any) {
       setPinError(err?.message || (isDeposit ? 'Nạp tiền thất bại' : 'Rút tiền thất bại'));
@@ -137,7 +141,7 @@ export function FundMoneyForm({ mode, fund, walletBalance, minDeposit, onComplet
                 activeOpacity={0.85}
               >
                 <Text style={[styles.quickChipText, parsedAmount === amt && styles.quickChipTextActive]}>
-                  {formatCurrency(amt)}
+                  {formatCompactCurrency(amt)}
                 </Text>
               </TouchableOpacity>
             ))}
@@ -158,12 +162,13 @@ export function FundMoneyForm({ mode, fund, walletBalance, minDeposit, onComplet
           maxLength={100}
         />
       </View>
+      <CharacterCounter value={note} maxLength={100} />
 
       <View style={styles.securityRow}>
         <Ionicons name="shield-checkmark" size={18} color={FUND_PALETTE.primaryDeep} />
         <Text style={styles.securityText}>
           {isDeposit
-            ? 'Tiền sẽ trừ từ ví và cộng vào quỹ sau khi xác nhận PIN.'
+            ? 'Tiền sẽ chuyển từ ví của bạn vào quỹ chung sau khi xác nhận PIN. Chỉ chủ quỹ có quyền rút.'
             : 'Tiền sẽ trừ khỏi quỹ và cộng về ví sau khi xác nhận PIN.'}
         </Text>
       </View>

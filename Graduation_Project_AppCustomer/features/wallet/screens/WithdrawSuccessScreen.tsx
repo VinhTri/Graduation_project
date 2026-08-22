@@ -1,6 +1,7 @@
 import { type ReactNode, useMemo, useState } from 'react'
 import {
   Image,
+  ImageBackground,
   Modal,
   ScrollView,
   Text,
@@ -26,6 +27,7 @@ import {
 } from '@/shared/constants/commonBanks'
 import { transactionService } from '@/shared/api/services/transactionService'
 import { PASTEL_PALETTE } from '@/shared/constants/PastelPalette'
+import { CharacterCounter } from '@/shared/components/CharacterCounter/CharacterCounter'
 import { formatMoney } from '@/shared/utils/moneyFormat'
 import {
   isFundDepositCategory,
@@ -39,6 +41,7 @@ import {
 import { styles } from './WithdrawSuccessScreen.styles'
 
 const RECEIPT_BG = require('../../../assets/images/wallet-receipt-bg.png')
+const WALLET_TAG_HINT = require('../../../assets/images/wallet-tag-hint.png')
 
 function paramText(value: string | string[] | undefined, fallback = '') {
   if (Array.isArray(value)) return value[0] ?? fallback
@@ -184,7 +187,7 @@ export default function WithdrawSuccessScreen() {
   const hasCategory = !!currentCategory?.id && !!currentCategory.label.trim()
   const canEditNote = fromHistory && !isStructuredHistory && transactionCode !== '—'
   const canEditCategory =
-    fromHistory &&
+    (fromHistory || (isWithdraw && source === 'withdraw')) &&
     !isFundDeposit &&
     !isFundWithdraw &&
     !isSplitCategory(categoryName) &&
@@ -217,6 +220,9 @@ export default function WithdrawSuccessScreen() {
   const hasRecipientInfo =
     bankAccountNumber !== '—' || accountName !== '—' || !!bankNameRaw
   const showRecipient = isWithdraw && !isStructuredHistory && hasRecipientInfo
+  const showCategoryReminder =
+    (isWithdraw && !fromHistory && showRecipient && !hasCategory) ||
+    (fromHistory && canEditCategory && !hasCategory)
   const amountPrefix = isWithdraw ? '-' : '+'
 
   const categoryNode = useMemo(() => {
@@ -393,7 +399,7 @@ export default function WithdrawSuccessScreen() {
                       activeOpacity={0.8}
                     >
                       <Ionicons name="pricetag" size={12} color={PASTEL_PALETTE.accentDeep} />
-                      <Text style={styles.tagBtnText}>Gắn thẻ</Text>
+                      <Text style={styles.tagBtnText}>Gắn danh mục</Text>
                     </TouchableOpacity>
                   ) : null
                 }
@@ -420,6 +426,42 @@ export default function WithdrawSuccessScreen() {
             </View>
           </View>
         </View>
+
+        {showCategoryReminder ? (
+          <TouchableOpacity
+            activeOpacity={canEditCategory ? 0.86 : 1}
+            onPress={canEditCategory ? openCategoryPicker : undefined}
+            disabled={!canEditCategory}
+            accessibilityRole={canEditCategory ? 'button' : undefined}
+            accessibilityLabel={canEditCategory ? 'Chọn danh mục cho giao dịch' : undefined}
+          >
+            <ImageBackground
+              source={WALLET_TAG_HINT}
+              style={styles.categoryReminderCard}
+              imageStyle={styles.categoryReminderBackground}
+              resizeMode="cover"
+            >
+              <View style={styles.categoryReminderContent}>
+                <View style={styles.categoryReminderLabel}>
+                  <Ionicons
+                    name="sparkles"
+                    size={12}
+                    color={PASTEL_PALETTE.accentDeep}
+                  />
+                  <Text style={styles.categoryReminderLabelText}>
+                    {canEditCategory ? 'Chạm để chọn' : 'Mẹo nhỏ'}
+                  </Text>
+                </View>
+                <Text style={styles.categoryReminderTitle}>Đừng quên{`\n`}chọn danh mục</Text>
+                <Text style={styles.categoryReminderText}>
+                  Phân loại giao dịch giúp bạn{`\n`}
+                  theo dõi chi tiêu chính xác và{`\n`}
+                  quản lý tài chính hiệu quả hơn.
+                </Text>
+              </View>
+            </ImageBackground>
+          </TouchableOpacity>
+        ) : null}
 
         <TouchableOpacity style={styles.closeBtn} onPress={handleClose} activeOpacity={0.85}>
           <Text style={styles.closeBtnText}>Đóng</Text>
@@ -484,6 +526,7 @@ export default function WithdrawSuccessScreen() {
               maxLength={100}
               multiline
             />
+            <CharacterCounter value={noteDraft} maxLength={100} />
             <View style={styles.noteActions}>
               <TouchableOpacity
                 style={styles.noteCancelBtn}

@@ -1,6 +1,7 @@
 package com.project.app.fund.dto.request;
 
 import jakarta.validation.constraints.DecimalMin;
+import jakarta.validation.constraints.Digits;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
@@ -19,9 +20,11 @@ public class CreateFundRequest {
 
     @NotNull
     @DecimalMin(value = "10000")
+    @Digits(integer = 17, fraction = 0)
     private BigDecimal targetAmount;
 
     @DecimalMin(value = "2000")
+    @Digits(integer = 17, fraction = 0)
     private BigDecimal minDepositAmount;
 
     @Min(0)

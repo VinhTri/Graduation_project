@@ -142,7 +142,7 @@ public class WalletTransactionServiceImpl implements WalletTransactionService {
     }
 
     private Wallet requireDefaultWallet(Long userId) {
-        return walletRepository.findByUserIdAndIsDefaultTrue(userId)
+        return walletRepository.findDefaultWalletForUpdate(userId)
                 .orElseThrow(() -> new AppException(ErrorCode.WALLET_NOT_FOUND));
     }
 

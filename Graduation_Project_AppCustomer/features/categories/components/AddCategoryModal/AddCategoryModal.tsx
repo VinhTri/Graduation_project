@@ -140,7 +140,7 @@ export function AddCategoryModal({
     try {
       setSaving(true)
       await onSubmit({
-        groupId: selectedGroupId,
+        groupId: selectedGroupId!,
         label: trimmed,
         icon: selectedIcon,
         color: selectedColor.color,

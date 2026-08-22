@@ -37,6 +37,8 @@ public class BudgetResponse {
     private BudgetSourceSpend notebook;
     /** Chi tiêu ví trong kỳ (null nếu không áp dụng ví). */
     private BudgetSourceSpend wallet;
+    /** Tổng chi của tất cả nguồn được áp dụng, dùng chung một hạn mức ngân sách. */
+    private BudgetSourceSpend total;
 
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;

@@ -76,6 +76,7 @@ export interface FundAmountPayload {
   amount: number;
   note?: string;
   pinCode: string;
+  requestId?: string;
 }
 
 const toCategory = (type: FundTransactionType) => {

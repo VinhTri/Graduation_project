@@ -230,7 +230,8 @@ public class SplitBillServiceImpl implements SplitBillService {
         BigDecimal payAmount = member.getAmount();
 
         // 5. Lấy ví người gửi và ví người tạo
-        Wallet senderWallet = walletService.getDefaultWallet(currentUser.getId());
+        Wallet senderWallet = walletRepository.findDefaultWalletForUpdate(currentUser.getId())
+                .orElseThrow(() -> new AppException(ErrorCode.WALLET_NOT_FOUND));
         if (senderWallet.getBalance().compareTo(payAmount) < 0) {
             throw new AppException(ErrorCode.INSUFFICIENT_BALANCE);
         }

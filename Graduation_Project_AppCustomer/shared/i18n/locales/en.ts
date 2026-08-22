@@ -4,6 +4,7 @@ export const en: Record<TranslationKeys, string> = {
   // Tabs
   homeTab: 'Home',
   walletTab: 'Wallet',
+  budgetTab: 'Budget',
   fundsTab: 'Funds',
   notebookTab: 'Notebook',
   moreTab: 'Account',
@@ -105,7 +106,6 @@ export const en: Record<TranslationKeys, string> = {
   recentRecords: 'Recent Records',
   cashBalance: 'Cash Balance',
   addCashBalance: 'Update Cash Balance',
-  bankWalletList: 'Wallets & Banks List',
   createBankWallet: 'Bind New Bank/Wallet',
 
   // Group Fund Screen

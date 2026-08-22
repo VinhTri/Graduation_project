@@ -42,7 +42,6 @@ import com.project.app.wallet.entity.WalletTransaction;
 import com.project.app.wallet.enums.WalletTransactionType;
 import com.project.app.wallet.repository.WalletRepository;
 import com.project.app.wallet.repository.WalletTransactionRepository;
-import com.project.app.wallet.service.WalletService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -68,7 +67,6 @@ public class FundServiceImpl implements FundService {
     private final FundRepository fundRepository;
     private final FundMemberRepository fundMemberRepository;
     private final FundTransactionRepository fundTransactionRepository;
-    private final WalletService walletService;
     private final WalletRepository walletRepository;
     private final AuthService authService;
     private final TransactionRepository transactionRepository;
@@ -168,7 +166,7 @@ public class FundServiceImpl implements FundService {
     @Override
     @Transactional
     public void deleteFund(User user, Long fundId) {
-        Fund fund = requireActiveFund(fundId);
+        Fund fund = requireActiveFundForUpdate(fundId);
         if (!fund.getOwner().getId().equals(user.getId())) {
             throw new AppException(ErrorCode.FUND_NOT_OWNER);
         }
@@ -177,9 +175,9 @@ public class FundServiceImpl implements FundService {
 
         notificationRepository.deleteByTypeAndRelatedId(NotificationType.FUND_INVITE, fundId);
         notificationRepository.deleteByTypeAndRelatedId(NotificationType.FUND_INVITE_ACCEPTED, fundId);
-        fundTransactionRepository.deleteByFundId(fundId);
-        fundMemberRepository.deleteByFundId(fundId);
-        fundRepository.delete(fund);
+        // Đóng mềm để giữ nguyên sổ cái thành viên/giao dịch phục vụ đối soát.
+        fund.setStatus(FundStatus.CLOSED);
+        fundRepository.save(fund);
     }
 
     private void refundRemainingBalanceToOwner(User owner, Fund fund) {
@@ -188,7 +186,7 @@ public class FundServiceImpl implements FundService {
             return;
         }
 
-        Wallet wallet = walletService.getDefaultWallet(owner.getId());
+        Wallet wallet = requireDefaultWalletForUpdate(owner.getId());
         wallet.setBalance(wallet.getBalance().add(remaining));
         walletRepository.save(wallet);
 
@@ -232,8 +230,11 @@ public class FundServiceImpl implements FundService {
     public FundDetailResponse deposit(User user, Long fundId, FundAmountRequest request) {
         verifyPin(user.getId(), request.getPinCode());
 
-        Fund fund = requireActiveFund(fundId);
+        Fund fund = requireActiveFundForUpdate(fundId);
         FundMember member = requireActiveMember(fundId, user.getId());
+        if (isDuplicateRequest(fundId, user.getId(), request.getRequestId())) {
+            return toDetail(fund, user.getId());
+        }
         BigDecimal minDeposit = resolveMinDeposit(fund);
         if (request.getAmount() == null || request.getAmount().compareTo(minDeposit) < 0) {
             throw new AppException(
@@ -242,7 +243,7 @@ public class FundServiceImpl implements FundService {
             );
         }
 
-        Wallet wallet = walletService.getDefaultWallet(user.getId());
+        Wallet wallet = requireDefaultWalletForUpdate(user.getId());
         if (wallet.getBalance().compareTo(request.getAmount()) < 0) {
             throw new AppException(ErrorCode.INSUFFICIENT_BALANCE);
         }
@@ -262,6 +263,7 @@ public class FundServiceImpl implements FundService {
         tx.setAmount(request.getAmount());
         tx.setType(FundTransactionType.DEPOSIT);
         tx.setNote(trimNote(request.getNote()));
+        tx.setRequestId(trimRequestId(request.getRequestId()));
         fundTransactionRepository.save(tx);
 
         // Ghi vào lịch sử ví + báo cáo: nạp quỹ = chi tiêu (WITHDRAW) + danh mục "Nạp quỹ"
@@ -284,11 +286,14 @@ public class FundServiceImpl implements FundService {
         verifyPin(user.getId(), request.getPinCode());
         validateAmount(request.getAmount());
 
-        Fund fund = requireActiveFund(fundId);
+        Fund fund = requireActiveFundForUpdate(fundId);
         if (!fund.getOwner().getId().equals(user.getId())) {
             throw new AppException(ErrorCode.FUND_NOT_OWNER);
         }
         requireActiveMember(fundId, user.getId());
+        if (isDuplicateRequest(fundId, user.getId(), request.getRequestId())) {
+            return toDetail(fund, user.getId());
+        }
 
         if (fund.getBalance().compareTo(request.getAmount()) < 0) {
             throw new AppException(ErrorCode.FUND_INSUFFICIENT_BALANCE);
@@ -297,7 +302,7 @@ public class FundServiceImpl implements FundService {
         fund.setBalance(fund.getBalance().subtract(request.getAmount()));
         fundRepository.save(fund);
 
-        Wallet wallet = walletService.getDefaultWallet(user.getId());
+        Wallet wallet = requireDefaultWalletForUpdate(user.getId());
         wallet.setBalance(wallet.getBalance().add(request.getAmount()));
         walletRepository.save(wallet);
 
@@ -307,6 +312,7 @@ public class FundServiceImpl implements FundService {
         tx.setAmount(request.getAmount());
         tx.setType(FundTransactionType.WITHDRAW);
         tx.setNote(trimNote(request.getNote()));
+        tx.setRequestId(trimRequestId(request.getRequestId()));
         fundTransactionRepository.save(tx);
 
         // Ghi vào lịch sử ví + báo cáo: rút quỹ = thu nhập (TOP_UP) + danh mục "Rút quỹ"
@@ -345,7 +351,7 @@ public class FundServiceImpl implements FundService {
     @Override
     @Transactional
     public FundDetailResponse inviteMember(User user, Long fundId, InviteFundRequest request) {
-        Fund fund = requireActiveFund(fundId);
+        Fund fund = requireActiveFundForUpdate(fundId);
         if (!fund.getOwner().getId().equals(user.getId())) {
             throw new AppException(ErrorCode.FUND_NOT_OWNER);
         }
@@ -405,7 +411,7 @@ public class FundServiceImpl implements FundService {
     @Override
     @Transactional
     public FundDetailResponse acceptInvite(User user, Long fundId) {
-        Fund fund = requireActiveFund(fundId);
+        Fund fund = requireActiveFundForUpdate(fundId);
         FundMember member = fundMemberRepository.findByFundIdAndUserId(fundId, user.getId())
                 .orElseThrow(() -> new AppException(ErrorCode.FUND_INVITE_NOT_FOUND));
 
@@ -521,6 +527,16 @@ public class FundServiceImpl implements FundService {
                 .orElseThrow(() -> new AppException(ErrorCode.FUND_NOT_FOUND));
     }
 
+    private Fund requireActiveFundForUpdate(Long fundId) {
+        return fundRepository.findActiveFundForUpdate(fundId)
+                .orElseThrow(() -> new AppException(ErrorCode.FUND_NOT_FOUND));
+    }
+
+    private Wallet requireDefaultWalletForUpdate(Long userId) {
+        return walletRepository.findDefaultWalletForUpdate(userId)
+                .orElseThrow(() -> new AppException(ErrorCode.WALLET_NOT_FOUND));
+    }
+
     private FundMember requireActiveMember(Long fundId, Long userId) {
         FundMember member = fundMemberRepository.findByFundIdAndUserId(fundId, userId)
                 .orElseThrow(() -> new AppException(ErrorCode.FUND_NOT_MEMBER));
@@ -534,6 +550,18 @@ public class FundServiceImpl implements FundService {
         if (note == null) return null;
         String trimmed = note.trim();
         return trimmed.isEmpty() ? null : trimmed;
+    }
+
+    private String trimRequestId(String requestId) {
+        if (requestId == null) return null;
+        String trimmed = requestId.trim();
+        return trimmed.isEmpty() ? null : trimmed;
+    }
+
+    private boolean isDuplicateRequest(Long fundId, Long userId, String requestId) {
+        String normalized = trimRequestId(requestId);
+        return normalized != null
+                && fundTransactionRepository.findByFundIdAndUserIdAndRequestId(fundId, userId, normalized).isPresent();
     }
 
     private String buildWalletNote(String prefix, String userNote) {

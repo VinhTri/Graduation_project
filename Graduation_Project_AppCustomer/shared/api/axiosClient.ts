@@ -1,6 +1,4 @@
 import axios from 'axios';
-import { Platform } from 'react-native';
-
 import Constants from 'expo-constants';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
@@ -60,11 +58,23 @@ axiosClient.interceptors.response.use(
     // Xử lý lỗi hệ thống chung (ví dụ: 401 Chưa xác thực, 500 Lỗi server)
     console.warn(`Lỗi API [${error.config?.url}]:`, error?.response?.data || error.message);
     
-    // Cách sạch nhất: Bắt lỗi 401 hoặc 403 (Token hết hạn / Không có quyền)
-    if (error?.response?.status === 401 || error?.response?.status === 403) {
-      console.warn("Token hết hạn hoặc lỗi xác thực, đang xoá token và chuyển về trang đăng nhập...");
-      
-      // Xoá token
+    // 401 means the credential is invalid. A 403 only means the current user is
+    // not allowed to perform that action and must not destroy the session.
+    if (error?.response?.status === 401) {
+      const failedAuthorization = error.config?.headers?.get?.('Authorization')
+        ?? error.config?.headers?.Authorization;
+      const failedToken = typeof failedAuthorization === 'string'
+        ? failedAuthorization.replace(/^Bearer\s+/i, '')
+        : null;
+      const currentToken = await AsyncStorage.getItem('token');
+
+      // A profile update can rotate the token while another request is in flight.
+      // Never let a late response for the old token erase the new session.
+      if (!currentToken || (failedToken && currentToken !== failedToken)) {
+        return Promise.reject(error?.response?.data || error);
+      }
+
+      console.warn("Token không còn hợp lệ, đang chuyển về trang đăng nhập...");
       await AsyncStorage.removeItem('token');
       
       // Chuyển hướng người dùng về màn hình đăng nhập

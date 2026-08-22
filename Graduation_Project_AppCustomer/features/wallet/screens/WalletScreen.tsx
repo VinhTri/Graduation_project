@@ -11,8 +11,8 @@ import { useFocusEffect, useRouter } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'
 import PastelHeaderShell from '@/shared/components/PastelHeaderShell/PastelHeaderShell'
 import { PASTEL_PALETTE } from '@/shared/constants/PastelPalette'
-import { getBankAccounts, getDefaultWallet, getWalletTransactions } from '@/shared/services'
-import type { WalletResponse, WalletTransactionResponse } from '@/shared/types/wallet'
+import { getBankAccounts, getDefaultWallet } from '@/shared/services'
+import type { WalletResponse } from '@/shared/types/wallet'
 import { WalletCard } from '../components/WalletCard/WalletCard'
 import { WalletHomePanel } from '../components/WalletHomePanel/WalletHomePanel'
 import { styles } from './WalletScreen.styles'
@@ -21,23 +21,19 @@ export default function WalletScreen() {
   const router = useRouter()
   const [wallet, setWallet] = useState<WalletResponse | null>(null)
   const [bankCount, setBankCount] = useState(0)
-  const [transactions, setTransactions] = useState<WalletTransactionResponse[]>([])
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
-  const [expanded, setExpanded] = useState(true)
   const [error, setError] = useState('')
 
   const loadData = useCallback(async () => {
     try {
       setError('')
-      const [walletData, banks, txs] = await Promise.all([
+      const [walletData, banks] = await Promise.all([
         getDefaultWallet(),
         getBankAccounts(),
-        getWalletTransactions().catch(() => [] as WalletTransactionResponse[]),
       ])
       setWallet(walletData)
       setBankCount(banks.length)
-      setTransactions(Array.isArray(txs) ? txs : [])
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Không tải được thông tin ví')
     } finally {
@@ -106,14 +102,8 @@ export default function WalletScreen() {
                 wallet.transactionLimit != null ? Number(wallet.transactionLimit) : null
               }
               dailyLimit={wallet.dailyLimit != null ? Number(wallet.dailyLimit) : null}
-              expanded={expanded}
-              onToggle={() => setExpanded((prev) => !prev)}
             />
-            <WalletHomePanel
-              wallet={wallet}
-              bankCount={bankCount}
-              transactions={transactions}
-            />
+            <WalletHomePanel />
           </>
         ) : (
           <Text style={styles.errorText}>Chưa có ví SmartSpend</Text>

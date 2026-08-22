@@ -77,18 +77,17 @@ export const fundStore = {
         });
       } else {
         error = getErrorMessage(fundsResult.reason, 'Không tải được danh sách quỹ');
-        funds = [];
       }
 
       if (invitesResult.status === 'fulfilled') {
         invitations = invitesResult.value;
       } else {
-        invitations = [];
+        if (!error) {
+          error = getErrorMessage(invitesResult.reason, 'Không tải được lời mời tham gia quỹ');
+        }
       }
     } catch (err: any) {
       error = getErrorMessage(err, 'Không tải được danh sách quỹ');
-      funds = [];
-      invitations = [];
       throw err;
     } finally {
       loading = false;
@@ -125,15 +124,15 @@ export const fundStore = {
     return created;
   },
 
-  async deposit(id: number, amount: number, pinCode: string, note?: string) {
-    const updated = await fundService.deposit(id, { amount, pinCode, note });
+  async deposit(id: number, amount: number, pinCode: string, note?: string, requestId?: string) {
+    const updated = await fundService.deposit(id, { amount, pinCode, note, requestId });
     upsertFund(updated);
     emit();
     return updated;
   },
 
-  async withdraw(id: number, amount: number, pinCode: string, note?: string) {
-    const updated = await fundService.withdraw(id, { amount, pinCode, note });
+  async withdraw(id: number, amount: number, pinCode: string, note?: string, requestId?: string) {
+    const updated = await fundService.withdraw(id, { amount, pinCode, note, requestId });
     upsertFund(updated);
     emit();
     return updated;
@@ -200,6 +199,14 @@ export const fundStore = {
       return { ok: false, message: getErrorMessage(err, 'Không thể rời quỹ') };
     }
   },
+
+  reset() {
+    funds = [];
+    invitations = [];
+    loading = false;
+    error = null;
+    emit();
+  },
 };
 
 export function useFunds(): Fund[] {
@@ -208,6 +215,14 @@ export function useFunds(): Fund[] {
 
 export function useFundInvitations(): FundInvitation[] {
   return useSyncExternalStore(fundStore.subscribe, fundStore.getInvitationsSnapshot, fundStore.getInvitationsSnapshot);
+}
+
+export function useFundLoading(): boolean {
+  return useSyncExternalStore(fundStore.subscribe, fundStore.getLoading, fundStore.getLoading);
+}
+
+export function useFundError(): string | null {
+  return useSyncExternalStore(fundStore.subscribe, fundStore.getError, fundStore.getError);
 }
 
 export function useFund(id: number): Fund | undefined {

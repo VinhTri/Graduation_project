@@ -1,5 +1,8 @@
 import { TransferScreen } from '../../features/transfer';
+import { useLocalSearchParams } from 'expo-router';
 
 export default function TransferRoute() {
-  return <TransferScreen />;
+  const { scan } = useLocalSearchParams<{ scan?: string }>();
+
+  return <TransferScreen autoOpenScanner={scan === '1'} />;
 }

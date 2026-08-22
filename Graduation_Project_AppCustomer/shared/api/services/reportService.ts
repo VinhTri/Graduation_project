@@ -64,6 +64,17 @@ export interface FinanceCenterResponse {
         totalExpense: FinanceAmountDelta
         net: FinanceAmountDelta
     }
+    budget: FinanceBudgetOverview
+}
+
+export interface FinanceBudgetOverview {
+    activeCount: number
+    totalLimit: number
+    spent: number
+    remaining: number
+    overLimitCount: number
+    atRiskCount: number
+    usagePercent: number
 }
 
 export const reportService = {

@@ -25,6 +25,7 @@ export type BudgetResponse = {
   categoryDeleted: boolean
   notebook: BudgetSourceSpend | null
   wallet: BudgetSourceSpend | null
+  total?: BudgetSourceSpend | null
   createdAt: string
   updatedAt: string
 }

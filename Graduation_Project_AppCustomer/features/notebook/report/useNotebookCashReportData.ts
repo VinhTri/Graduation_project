@@ -1,5 +1,6 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useState } from 'react'
 import { Alert } from 'react-native'
+import { useFocusEffect } from 'expo-router'
 import {
   getCashNotebook,
   getNotebookTransactions,
@@ -31,25 +32,27 @@ export function useNotebookCashReportData(enabled: boolean) {
     setCategories(categoryGroups)
   }, [])
 
-  useEffect(() => {
-    if (!enabled) return
-    let active = true
-    ;(async () => {
-      try {
-        setLoading(true)
-        await load()
-      } catch (e: any) {
-        if (active) {
-          Alert.alert('Lỗi', e?.message || 'Không tải được báo cáo sổ tay')
+  useFocusEffect(
+    useCallback(() => {
+      if (!enabled) return undefined
+      let active = true
+      ;(async () => {
+        try {
+          setLoading(true)
+          await load()
+        } catch (e: any) {
+          if (active) {
+            Alert.alert('Lỗi', e?.message || 'Không tải được báo cáo sổ tay')
+          }
+        } finally {
+          if (active) setLoading(false)
         }
-      } finally {
-        if (active) setLoading(false)
+      })()
+      return () => {
+        active = false
       }
-    })()
-    return () => {
-      active = false
-    }
-  }, [enabled, load])
+    }, [enabled, load]),
+  )
 
   const refresh = useCallback(async () => {
     try {

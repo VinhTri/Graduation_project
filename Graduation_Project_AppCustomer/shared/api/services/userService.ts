@@ -15,6 +15,7 @@ export interface UserProfile {
   language?: 'vi' | 'en';
   notebookReminderEnabled?: boolean;
   notebookReminderTime?: string | null;
+  token?: string;
 }
 
 export type MoneyFormatPayload = {
@@ -36,6 +37,11 @@ export type NotebookReminderPayload = {
 export const userService = {
   getMyProfile: async (): Promise<UserProfile> => {
     const response = await axiosClient.get(ENDPOINTS.USER.PROFILE);
+    return response.data;
+  },
+
+  updateUsername: async (username: string): Promise<UserProfile> => {
+    const response = await axiosClient.put(ENDPOINTS.USER.USERNAME, { username });
     return response.data;
   },
 

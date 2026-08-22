@@ -1,9 +1,8 @@
 import React, { useCallback, useState } from 'react'
 import { Text, TouchableOpacity, View } from 'react-native'
-import { Ionicons } from '@expo/vector-icons'
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons'
 import { useFocusEffect, useRouter } from 'expo-router'
 import { SmartSpendIcon } from '@/shared/components/SmartSpendIcon'
-import { FundIcon } from '@/shared/components/FundIcon/FundIcon'
 import { PASTEL_PALETTE } from '@/shared/constants/PastelPalette'
 import { useLanguage, useTheme } from '@/shared/contexts/ThemeLanguageContext'
 import { useMoneyFormat } from '@/shared/contexts/MoneyFormatContext'
@@ -61,7 +60,7 @@ export const HomeWalletSummary = () => {
       key: 'wallet',
       label: isEn ? 'Wallet' : 'Ví',
       amount: walletBalance,
-      onPress: () => router.push('/(tabs)/wallet'),
+      onPress: () => router.push('/wallet'),
       icon: <SmartSpendIcon size={18} borderRadius={5} />,
     },
     {
@@ -76,7 +75,7 @@ export const HomeWalletSummary = () => {
       label: isEn ? 'Funds' : 'Quỹ',
       amount: fundBalance,
       onPress: () => router.push('/(tabs)/funds'),
-      icon: <FundIcon size={14} borderRadius={4} />,
+      icon: <MaterialCommunityIcons name="piggy-bank-outline" size={15} color={PASTEL_PALETTE.accentDeep} />,
     },
   ]
 

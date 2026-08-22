@@ -17,6 +17,7 @@ export const ENDPOINTS = {
   USER: {
     PROFILE: '/api/v1/user/me',                                 // Lấy thông tin tài khoản đang đăng nhập
     AVATAR: '/api/v1/user/avatar',                              // Upload ảnh đại diện
+    USERNAME: '/api/v1/user/username',                          // Đổi tên hiển thị
     MONEY_FORMAT: '/api/v1/user/money-format',                  // Định dạng tiền tệ theo user
     APPEARANCE: '/api/v1/user/appearance',                      // Giao diện sáng/tối và ngôn ngữ
     NOTEBOOK_REMINDER: '/api/v1/user/notebook-reminder',        // Nhắc nhở ghi chép sổ tay
@@ -25,9 +26,6 @@ export const ENDPOINTS = {
   TRANSACTION: {
     TOP_UP: '/api/v1/transactions/top-up',
     WITHDRAW: '/api/v1/transactions/withdraw',
-    MANUAL: '/api/v1/transactions/manual',
-    UPDATE_MANUAL: (transactionCode: string) => `/api/v1/transactions/manual/${transactionCode}`,
-    DELETE_MANUAL: (transactionCode: string) => `/api/v1/transactions/manual/${transactionCode}`,
     TRANSFER: '/api/v1/transactions/transfer',
   },
   WALLET: {
@@ -37,9 +35,6 @@ export const ENDPOINTS = {
     WITHDRAW: '/api/v1/wallets/withdraw',
     TRANSACTIONS: '/api/v1/wallets/transactions',
     MY_WALLET: '/api/v1/wallets/me',
-    BANK_WALLETS: '/api/v1/wallets/banks',
-    CREATE_MANUAL_BANK: '/api/v1/wallets/manual-bank',
-    DELETE_MANUAL_BANK: (id: number) => `/api/v1/wallets/manual-bank/${id}`,
     UPDATE_SETTINGS: (id: number) => `/api/v1/wallets/${id}/settings`,
   },
   NOTEBOOK: {
@@ -136,4 +131,3 @@ export const ENDPOINTS = {
     SEND_MESSAGE: (ticketId: number) => `/api/v1/support/tickets/${ticketId}/messages`,
   },
 };
-

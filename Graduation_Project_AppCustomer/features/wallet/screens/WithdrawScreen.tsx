@@ -7,21 +7,22 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native'
-import { Feather, Ionicons } from '@expo/vector-icons'
-import { LinearGradient } from 'expo-linear-gradient'
+import { Ionicons } from '@expo/vector-icons'
 import { useFocusEffect, useRouter } from 'expo-router'
 import ConfirmModal from '@/shared/components/ConfirmModal/ConfirmModal'
 import PinModal from '@/shared/components/PinModal/PinModal'
 import PastelHeaderShell from '@/shared/components/PastelHeaderShell/PastelHeaderShell'
 import { BankLogo } from '@/shared/components/BankLogo/BankLogo'
 import { getBankMeta, getBankShortName } from '@/shared/constants/commonBanks'
-import { PASTEL_HEADER_GRADIENT, PASTEL_PALETTE } from '@/shared/constants/PastelPalette'
+import { PASTEL_PALETTE } from '@/shared/constants/PastelPalette'
+import { CharacterCounter } from '@/shared/components/CharacterCounter/CharacterCounter'
 import { getBankAccounts, getDefaultWallet, withdrawWallet } from '@/shared/services'
+import { formatCompactAmount } from '@/shared/utils/moneyFormat'
 import type { BankAccountResponse } from '@/shared/types/bankAccount'
 import { WalletLimitPanel } from '../components/WalletLimitPanel'
 import { moneyFlowStyles as styles } from '../styles/moneyFlow.styles'
 
-const QUICK_AMOUNTS = [100000, 200000, 500000, 1000000]
+const QUICK_AMOUNTS = [100_000, 200_000, 500_000, 1_000_000, 2_000_000]
 const MAX_NOTE = 100
 const DAILY_WARN_RATIO = 0.8
 const MIN_WITHDRAW = 1000
@@ -343,16 +344,9 @@ export default function WithdrawScreen() {
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
-        <LinearGradient
-          colors={[...PASTEL_HEADER_GRADIENT]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={styles.balanceCard}
-        >
-          <View style={styles.balanceDecor} />
-          <View style={styles.balanceDecorSmall} />
+        <View style={styles.withdrawBalanceCard}>
           <View style={styles.balanceTopRow}>
-            <View style={styles.balanceIconWrap}>
+            <View style={styles.withdrawBalanceIconWrap}>
               <Ionicons name="wallet-outline" size={22} color={PASTEL_PALETTE.accentDeep} />
             </View>
             <View style={{ flex: 1 }}>
@@ -361,7 +355,7 @@ export default function WithdrawScreen() {
             </View>
           </View>
           {amount > 0 ? (
-            <View style={styles.balanceMetaRow}>
+            <View style={styles.withdrawBalanceMetaRow}>
               <Text style={styles.balanceMetaLabel}>
                 {remainingOverdrawn ? 'Vượt quá số dư' : 'Còn lại sau khi rút'}
               </Text>
@@ -383,9 +377,13 @@ export default function WithdrawScreen() {
             dailyTransactedAmount={dailyTransactedAmount}
             withdrawAmount={amount}
           />
-        </LinearGradient>
+        </View>
 
-        <Text style={styles.label}>Số tiền rút</Text>
+        <View style={styles.withdrawStepHeader}>
+          <View style={styles.withdrawStepIndex}><Text style={styles.withdrawStepIndexText}>1</Text></View>
+          <Text style={styles.withdrawStepTitle}>Nhập số tiền</Text>
+        </View>
+        <Text style={styles.withdrawFieldHint}>Số tiền sẽ được trừ trực tiếp từ số dư khả dụng.</Text>
         <View style={[styles.inputBox, displayAmountError ? styles.inputBoxError : null]}>
           <TextInput
             style={styles.amountInput}
@@ -407,13 +405,17 @@ export default function WithdrawScreen() {
               onPress={() => handleAmountChange(String(value))}
             >
               <Text style={[styles.chipText, amount === value && styles.chipTextActive]}>
-                {value.toLocaleString('vi-VN')} ₫
+                {formatCompactAmount(value)}
               </Text>
             </TouchableOpacity>
           ))}
         </View>
 
-        <Text style={styles.label}>Tài khoản nhận</Text>
+        <View style={styles.withdrawStepHeader}>
+          <View style={styles.withdrawStepIndex}><Text style={styles.withdrawStepIndexText}>2</Text></View>
+          <Text style={styles.withdrawStepTitle}>Chọn tài khoản nhận</Text>
+        </View>
+        <Text style={styles.withdrawFieldHint}>Tiền sẽ được chuyển về tài khoản ngân hàng đã liên kết.</Text>
         {banks.length === 0 ? (
           <View style={styles.emptyBankBox}>
             <Text style={styles.emptyBankText}>
@@ -464,7 +466,11 @@ export default function WithdrawScreen() {
         )}
         {bankError ? <Text style={styles.errorText}>{bankError}</Text> : null}
 
-        <Text style={[styles.label, { marginTop: 14 }]}>Ghi chú</Text>
+        <View style={styles.withdrawStepHeader}>
+          <View style={styles.withdrawStepIndex}><Text style={styles.withdrawStepIndexText}>3</Text></View>
+          <Text style={styles.withdrawStepTitle}>Thêm ghi chú</Text>
+          <Text style={styles.withdrawOptional}>Tùy chọn</Text>
+        </View>
         <View style={styles.inputBox}>
           <TextInput
             style={styles.noteInput}
@@ -475,6 +481,7 @@ export default function WithdrawScreen() {
             onChangeText={setNote}
           />
         </View>
+        <CharacterCounter value={note} maxLength={MAX_NOTE} />
 
         {submitError ? <Text style={styles.errorText}>{submitError}</Text> : null}
 
@@ -490,7 +497,10 @@ export default function WithdrawScreen() {
           {saving ? (
             <ActivityIndicator color="#fff" />
           ) : (
-            <Text style={styles.primaryBtnText}>Rút tiền</Text>
+            <View style={styles.withdrawButtonContent}>
+              <Text style={styles.primaryBtnText}>Tiếp tục rút tiền</Text>
+              <Ionicons name="arrow-forward" size={18} color={PASTEL_PALETTE.white} />
+            </View>
           )}
         </TouchableOpacity>
       </ScrollView>

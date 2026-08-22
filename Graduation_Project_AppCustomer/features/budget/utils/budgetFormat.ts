@@ -57,10 +57,10 @@ export function formatDisplayDate(iso: string): string {
   })
 }
 
-/** Tuần = start + 8 ngày (inclusive end). */
+/** Kỳ tuần gồm đúng 7 ngày, tính cả ngày bắt đầu và ngày kết thúc. */
 export function weekEndFromStart(start: Date): Date {
   const end = new Date(start)
-  end.setDate(end.getDate() + 8)
+  end.setDate(end.getDate() + 6)
   return end
 }
 

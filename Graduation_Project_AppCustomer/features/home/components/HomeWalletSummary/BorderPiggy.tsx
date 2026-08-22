@@ -1,5 +1,5 @@
 import { useCallback } from 'react'
-import { StyleSheet, type ImageStyle, type LayoutChangeEvent } from 'react-native'
+import { StyleSheet, View, type ImageStyle, type LayoutChangeEvent } from 'react-native'
 import Animated, {
   Easing,
   cancelAnimation,
@@ -130,12 +130,13 @@ export function useBorderPiggy(radius: number) {
 
 export function BorderPiggy({ pigStyle }: { pigStyle: AnimatedStyle<ImageStyle> }) {
   return (
-    <Animated.Image
-      source={PIG_SOURCE}
-      style={[styles.pig, pigStyle]}
-      resizeMode="contain"
-      pointerEvents="none"
-    />
+    <View pointerEvents="none" style={StyleSheet.absoluteFill}>
+      <Animated.Image
+        source={PIG_SOURCE}
+        style={[styles.pig, pigStyle]}
+        resizeMode="contain"
+      />
+    </View>
   )
 }
 

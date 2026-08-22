@@ -10,7 +10,7 @@ import { useRouter, useFocusEffect } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { FundHeaderShell, FundCard, FundInvitationCard } from '../../components';
 import { ConfirmModal, SuccessModal } from '../../../../shared/components';
-import { fundStore, useFunds, useFundInvitations } from '../../store/fundStore';
+import { fundStore, useFunds, useFundError, useFundInvitations } from '../../store/fundStore';
 import { FundInvitation } from '../../types';
 import { FUND_PALETTE } from '../../theme';
 import { MAX_OWNED_FUNDS, MAX_JOINED_FUNDS } from '../../constants';
@@ -51,6 +51,7 @@ export function FundsScreen() {
   const insets = useSafeAreaInsets();
   const funds = useFunds();
   const invitations = useFundInvitations();
+  const loadError = useFundError();
   const { t, language } = useLanguage();
   const { theme } = useTheme();
   const isEn = language === 'en';
@@ -211,6 +212,25 @@ export function FundsScreen() {
           />
         }
       >
+        {loadError ? (
+          <TouchableOpacity
+            onPress={onRefresh}
+            activeOpacity={0.85}
+            style={{
+              marginBottom: 14,
+              borderRadius: 14,
+              borderWidth: 1,
+              borderColor: '#FCA5A5',
+              backgroundColor: theme.isDark ? '#451A1A' : '#FEF2F2',
+              paddingHorizontal: 14,
+              paddingVertical: 12,
+            }}
+          >
+            <Text style={{ color: theme.isDark ? '#FECACA' : '#B91C1C', fontWeight: '700' }}>
+              {loadError} · Chạm để thử lại
+            </Text>
+          </TouchableOpacity>
+        ) : null}
         <View style={styles.bannerSection}>
           <FlatList
             data={FUND_GOAL_BANNERS}

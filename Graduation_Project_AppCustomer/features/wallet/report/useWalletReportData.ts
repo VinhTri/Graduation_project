@@ -1,8 +1,10 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useState } from 'react'
 import { Alert } from 'react-native'
+import { useFocusEffect } from 'expo-router'
 import { getCategories } from '@/shared/services/category.service'
 import { getWalletTransactions } from '@/shared/services/wallet.service'
 import type { CategoryGroup } from '@/shared/types/category'
+import { isFundWalletHistory } from '@/features/wallet/utils/walletHistoryDisplay'
 import {
   mapWalletReportTransaction,
   type WalletReportTx,
@@ -23,29 +25,40 @@ export function useWalletReportData(enabled: boolean) {
       getWalletTransactions(),
       getCategories(),
     ])
-    setTransactions(history.map(mapWalletReportTransaction))
+    setTransactions(
+      history
+        .filter((item) => {
+          const code = item.transactionCode ?? ''
+          return !code.startsWith('FDEP')
+            && !code.startsWith('FWD')
+            && !isFundWalletHistory(item.categoryName)
+        })
+        .map(mapWalletReportTransaction),
+    )
     setCategories(categoryGroups)
   }, [])
 
-  useEffect(() => {
-    if (!enabled) return
-    let active = true
-    ;(async () => {
-      try {
-        setLoading(true)
-        await load()
-      } catch (e: any) {
-        if (active) {
-          Alert.alert('Lỗi', e?.message || 'Không tải được báo cáo ví')
+  useFocusEffect(
+    useCallback(() => {
+      if (!enabled) return undefined
+      let active = true
+      ;(async () => {
+        try {
+          setLoading(true)
+          await load()
+        } catch (e: any) {
+          if (active) {
+            Alert.alert('Lỗi', e?.message || 'Không tải được báo cáo ví')
+          }
+        } finally {
+          if (active) setLoading(false)
         }
-      } finally {
-        if (active) setLoading(false)
+      })()
+      return () => {
+        active = false
       }
-    })()
-    return () => {
-      active = false
-    }
-  }, [enabled, load])
+    }, [enabled, load]),
+  )
 
   const refresh = useCallback(async () => {
     try {

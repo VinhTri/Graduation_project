@@ -2,7 +2,7 @@ import React, { useEffect, useMemo } from "react";
 import { View, Text, Pressable, StyleSheet, LayoutChangeEvent } from "react-native";
 import { BottomTabBarProps } from "@react-navigation/bottom-tabs";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Ionicons } from "@expo/vector-icons";
+import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
@@ -12,25 +12,32 @@ import { useTheme, useLanguage } from "../../contexts/ThemeLanguageContext";
 
 const TAB_ICONS: Record<string, { active: keyof typeof Ionicons.glyphMap; inactive: keyof typeof Ionicons.glyphMap }> = {
   "home/index": { active: "home", inactive: "home-outline" },
-  "wallet/index": { active: "wallet", inactive: "wallet-outline" },
-  "funds/index": { active: "briefcase", inactive: "briefcase-outline" },
+  "budget/index": { active: "pie-chart", inactive: "pie-chart-outline" },
   "notebook/index": { active: "book", inactive: "book-outline" },
   "more/index": { active: "person", inactive: "person-outline" },
 };
 
 const TAB_TRANSLATION_KEYS: Record<string, any> = {
   "home/index": "homeTab",
-  "wallet/index": "walletTab",
+  "budget/index": "budgetTab",
   "funds/index": "fundsTab",
   "notebook/index": "notebookTab",
   "more/index": "moreTab",
 };
 
 const SPRING = { damping: 20, stiffness: 220, mass: 0.8 };
+const VISIBLE_TAB_ROUTES = new Set([
+  "home/index",
+  "budget/index",
+  "funds/index",
+  "notebook/index",
+  "more/index",
+]);
 
 function TabItem({
   label,
   iconName,
+  useFundIcon,
   isFocused,
   onPress,
   onLongPress,
@@ -39,6 +46,7 @@ function TabItem({
 }: {
   label: string;
   iconName: keyof typeof Ionicons.glyphMap;
+  useFundIcon?: boolean;
   isFocused: boolean;
   onPress: () => void;
   onLongPress: () => void;
@@ -67,11 +75,19 @@ function TabItem({
       style={styles.tabButton}
     >
       <Animated.View style={[styles.iconWrap, animatedIconStyle]}>
-        <Ionicons
-          name={iconName}
-          size={22}
-          color={isFocused ? theme.primary : theme.textMuted}
-        />
+        {useFundIcon ? (
+          <MaterialCommunityIcons
+            name={isFocused ? "piggy-bank" : "piggy-bank-outline"}
+            size={22}
+            color={isFocused ? theme.primary : theme.textMuted}
+          />
+        ) : (
+          <Ionicons
+            name={iconName}
+            size={22}
+            color={isFocused ? theme.primary : theme.textMuted}
+          />
+        )}
       </Animated.View>
       <Text
         style={[
@@ -94,7 +110,7 @@ export default function CustomTabBar({ state, descriptors, navigation }: BottomT
   const { t } = useLanguage();
 
   const visibleRoutes = useMemo(
-    () => state.routes.filter((route) => route.name !== "index"),
+    () => state.routes.filter((route) => VISIBLE_TAB_ROUTES.has(route.name)),
     [state.routes]
   );
 
@@ -176,6 +192,7 @@ export default function CustomTabBar({ state, descriptors, navigation }: BottomT
                 key={route.key}
                 label={label as string}
                 iconName={iconName}
+                useFundIcon={route.name === "funds/index"}
                 isFocused={isFocused}
                 onPress={onPress}
                 onLongPress={onLongPress}
@@ -242,4 +259,3 @@ const styles = StyleSheet.create({
     letterSpacing: 0.2,
   },
 });
-
