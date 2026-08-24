@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { Alert, Text, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useRouter } from 'expo-router'
@@ -17,11 +17,13 @@ export default function SetupPinScreen() {
   const [step, setStep] = useState<'create' | 'confirm'>('create')
   const [error, setError] = useState('')
   const [submitting, setSubmitting] = useState(false)
+  const submittingRef = useRef(false)
 
   const currentPin = step === 'create' ? pin : confirmPin
 
   async function submitPin(finalPin: string) {
-    if (submitting) return
+    if (submittingRef.current) return
+    submittingRef.current = true
     setSubmitting(true)
     try {
       const res: any = await axiosClient.post('/api/v1/auth/setup-pin', {
@@ -33,6 +35,19 @@ export default function SetupPinScreen() {
         return
       }
     } catch (err: any) {
+      if (err?.code === 'AUTH_1014') {
+        try {
+          const status: any = await axiosClient.get('/api/v1/auth/pin-status')
+          if (status?.data === true) {
+            markPinSetupSuccessPending()
+            router.replace('/(tabs)/home')
+            return
+          }
+        } catch {
+          // Fall through to the normal error message if PIN status cannot be verified.
+        }
+      }
+
       Alert.alert(
         'Lỗi',
         err?.message || 'Không thể cài đặt mã PIN. Vui lòng thử lại.',
@@ -41,6 +56,7 @@ export default function SetupPinScreen() {
       setPin('')
       setStep('create')
     } finally {
+      submittingRef.current = false
       setSubmitting(false)
     }
   }

@@ -13,6 +13,14 @@ export const authService = {
     return axiosClient.post(ENDPOINTS.AUTH.LOGIN, data);
   },
 
+  sendUnlockOtp: async (email: string) => {
+    return axiosClient.post(ENDPOINTS.AUTH.UNLOCK_SEND_OTP, { email });
+  },
+
+  unlockAccount: async (data: { email: string; otp: string }) => {
+    return axiosClient.post(ENDPOINTS.AUTH.UNLOCK, data);
+  },
+
   /**
    * Gọi API Đăng ký tài khoản mới
    * @param data email + password + otp (tên hiển thị BE lấy từ phần trước @)

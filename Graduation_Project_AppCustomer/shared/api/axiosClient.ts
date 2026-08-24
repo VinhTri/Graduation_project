@@ -2,6 +2,7 @@ import axios from 'axios';
 import Constants from 'expo-constants';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { clearStoredSession } from '@/shared/services/sessionStorage';
+import { showAccountLockedAlert } from '@/features/auth/accountLock';
 
 // Tự động lấy IP của máy tính đang chạy Expo (dành cho chế độ Development)
 const BACKEND_PORT = '9090'; // SỬA CỔNG PORT Ở ĐÂY NẾU ĐỒNG ĐỘI CỦA BẠN DÙNG CỔNG KHÁC
@@ -57,7 +58,30 @@ axiosClient.interceptors.response.use(
   },
   async (error) => {
     // Xử lý lỗi hệ thống chung (ví dụ: 401 Chưa xác thực, 500 Lỗi server)
-    console.warn(`Lỗi API [${error.config?.url}]:`, error?.response?.data || error.message);
+    const errorCode = error?.response?.data?.code;
+    const failedUrl = String(error.config?.url || '');
+    // AUTH_1017 is an expected account state handled by the unlock modal, not
+    // a system failure that should open Expo's red LogBox.
+    if (errorCode !== 'AUTH_1017') {
+      console.warn(`Lỗi API [${failedUrl}]:`, error?.response?.data || error.message);
+    }
+    if (
+      errorCode === 'AUTH_1017'
+      && !failedUrl.endsWith('/auth/login')
+      && !failedUrl.includes('/auth/unlock')
+    ) {
+      let requestEmail: string | null = null;
+      try {
+        const payload = typeof error.config?.data === 'string'
+          ? JSON.parse(error.config.data)
+          : error.config?.data;
+        requestEmail = typeof payload?.email === 'string' ? payload.email : null;
+      } catch {
+        // Ignore malformed request data and fall back to the stored session email.
+      }
+      const email = requestEmail || await AsyncStorage.getItem('userEmail');
+      await showAccountLockedAlert(email);
+    }
     
     // 401 means the credential is invalid. A 403 only means the current user is
     // not allowed to perform that action and must not destroy the session.

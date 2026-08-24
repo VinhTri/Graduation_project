@@ -137,6 +137,11 @@ export const SplitBillDetailScreen = () => {
       }
     } catch (error: any) {
       console.log('Error paying split bill:', error);
+      const code = error?.code ?? error?.response?.data?.code;
+      if (code === 'AUTH_1017') {
+        setIsPinModalVisible(false);
+        return;
+      }
       const msg =
         error?.response?.data?.message || error?.message || 'Đã xảy ra lỗi khi thanh toán.';
       if (msg.toLowerCase().includes('pin')) {

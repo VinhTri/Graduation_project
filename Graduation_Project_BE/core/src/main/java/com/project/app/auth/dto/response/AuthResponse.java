@@ -25,4 +25,6 @@ public class AuthResponse {
     private String themeMode;
     /** Ngôn ngữ: vi | en */
     private String language;
+    /** Tài khoản đang bị khóa bảo mật và cần OTP để mở khóa. */
+    private boolean securityLocked;
 }

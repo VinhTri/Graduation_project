@@ -1,42 +1,102 @@
-/**
- * 24 icon thực tế cho chi tiêu/thu nhập.
- * Dùng chung khi tạo nhóm & danh mục — mỗi cấp không được chọn trùng icon.
- */
+/** 26 icon danh mục theo bộ dữ liệu demo — mỗi danh mục dùng một icon riêng. */
 export const CATEGORY_ICONS = [
-  // Ăn uống
+  // Ăn uống: Ăn sáng, Ăn trưa, Ăn tối, Cà phê, Ăn vặt
+  'sunny',
   'restaurant',
+  'moon',
   'cafe',
   'fast-food',
-  'pizza',
-  // Mua sắm
-  'cart',
-  'bag-handle',
-  'shirt',
-  'pricetag',
-  // Di chuyển
-  'car',
-  'bus',
-  'bicycle',
-  'airplane',
-  // Nhà cửa / hóa đơn
+
+  // Nhà & hóa đơn: Thuê nhà, Điện, Nước, Internet, Điện thoại
   'home',
   'flash',
   'water',
   'wifi',
-  // Sức khỏe / giáo dục
+  'phone-portrait',
+
+  // Đi lại: Xăng xe, Xe buýt, Taxi/Grab, Bảo dưỡng xe
+  'speedometer',
+  'bus',
+  'car-sport',
+  'construct',
+
+  // Mua sắm: Quần áo, Đồ gia dụng, Mỹ phẩm, Mua sắm online
+  'shirt',
+  'bed',
+  'sparkles',
+  'bag-handle',
+
+  // Sức khỏe & học tập: Khám bệnh, Thuốc, Học phí, Sách
   'medkit',
-  'fitness',
+  'medical',
   'school',
   'book',
-  // Giải trí / tài chính
+
+  // Thu nhập: Lương, Thưởng, Làm thêm, Đầu tư
+  'cash',
+  'gift',
+  'briefcase',
+  'trending-up',
+  // Lựa chọn mở rộng
+  'cart',
+  'basket',
+  'pricetag',
+  'pizza',
+  'bicycle',
+  'airplane',
+  'fitness',
   'game-controller',
   'film',
+  'musical-notes',
   'receipt',
-  'cash',
+  'card',
+  'paw',
+  'ellipsis-horizontal-circle',
 ] as const
 
-/** Nhóm cũng chọn trong 24 icon (tối đa 6 nhóm → không trùng icon giữa các nhóm). */
-export const GROUP_ICONS = CATEGORY_ICONS
+/** Icon tổng quát dành riêng cho nhóm; người dùng có nhiều lựa chọn hơn icon danh mục. */
+export const GROUP_ICONS = [
+  'restaurant',
+  'home',
+  'car',
+  'cart',
+  'school',
+  'wallet',
+  'cash',
+  'briefcase',
+  'receipt',
+  'card',
+  'trending-up',
+  'pie-chart',
+  'people',
+  'person',
+  'heart',
+  'medkit',
+  'fitness',
+  'game-controller',
+  'film',
+  'musical-notes',
+  'airplane',
+  'bicycle',
+  'paw',
+  'gift',
+  'book',
+  'build',
+  'leaf',
+  'ellipsis-horizontal-circle',
+  'cafe',
+  'fast-food',
+  'bag-handle',
+  'shirt',
+  'phone-portrait',
+  'bus',
+  'construct',
+  'sparkles',
+  'water',
+  'wifi',
+  'flash',
+  'compass',
+] as const
 
 export type CategoryIconName = (typeof CATEGORY_ICONS)[number]
 export type GroupIconName = (typeof GROUP_ICONS)[number]

@@ -60,6 +60,11 @@ export default function TransferConfirmScreen() {
 
     } catch (error: any) {
       console.log("Lỗi chuyển tiền:", error);
+      const code = error?.code ?? error?.response?.data?.code;
+      if (code === 'AUTH_1017') {
+        setIsPinModalVisible(false);
+        return;
+      }
       const msg = error?.message || error?.response?.data?.message;
       if (msg && msg.toLowerCase().includes("pin")) {
         setPinError(msg);

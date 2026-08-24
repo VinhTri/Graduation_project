@@ -31,6 +31,15 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                 String username = jwtUtil.getUserNameFromJwtToken(jwt);
 
                 UserDetails userDetails = userDetailsService.loadUserByUsername(username);
+                if (userDetails instanceof CustomUserDetails custom
+                        && custom.getUser().isSecurityLocked()
+                        && !request.getRequestURI().startsWith("/api/v1/auth/unlock")) {
+                    response.setStatus(423);
+                    response.setCharacterEncoding("UTF-8");
+                    response.setContentType("application/json");
+                    response.getWriter().write("{\"success\":false,\"code\":\"AUTH_1017\",\"message\":\"Tài khoản đã bị khóa. Vui lòng xác thực OTP để mở khóa!\",\"data\":null}");
+                    return;
+                }
                 UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
                         userDetails, null, userDetails.getAuthorities());
                 authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));

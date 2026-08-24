@@ -14,6 +14,9 @@ async function resolveRouteAfterLogin(): Promise<Href> {
     // Chưa có PIN → giới thiệu rồi mới thiết lập PIN
     return hasPin ? '/(tabs)/home' : '/(auth)/onboarding'
   } catch (error: any) {
+    if (error?.code === 'AUTH_1017' || error?.status === 423) {
+      return '/(tabs)/home'
+    }
     if (error?.status === 401 || error?.status === 403) {
       await clearStoredSession()
       return '/(auth)/login'

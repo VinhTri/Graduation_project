@@ -13,6 +13,8 @@ export const ENDPOINTS = {
     FORGOT_PIN: '/api/v1/auth/forgot-pin',                      // Quên mã PIN
     RESET_PIN: '/api/v1/auth/reset-pin',                        // Đặt lại mã PIN
     CHANGE_PIN: '/api/v1/auth/change-pin',                      // Đổi mã PIN (đã đăng nhập)
+    UNLOCK_SEND_OTP: '/api/v1/auth/unlock/send-otp',
+    UNLOCK: '/api/v1/auth/unlock',
   },
   USER: {
     PROFILE: '/api/v1/user/me',                                 // Lấy thông tin tài khoản đang đăng nhập

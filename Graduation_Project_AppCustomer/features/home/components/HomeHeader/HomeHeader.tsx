@@ -64,8 +64,11 @@ export const HomeHeader = () => {
       if (res && res.success !== undefined) {
          setUnreadCount(Number(res.data));
       }
-    } catch (error) {
-      console.log("Error loading unread count", error);
+    } catch (error: any) {
+      const code = error?.code ?? error?.response?.data?.code;
+      if (code !== 'AUTH_1017') {
+        console.log("Error loading unread count", error);
+      }
     }
   };
 

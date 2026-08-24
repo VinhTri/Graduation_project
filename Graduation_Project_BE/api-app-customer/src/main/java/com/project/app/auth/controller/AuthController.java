@@ -10,6 +10,7 @@ import com.project.app.auth.dto.request.SendOtpRequest;
 import com.project.app.auth.dto.request.SetupPinRequest;
 import com.project.app.auth.dto.request.VerifyOtpRequest;
 import com.project.app.auth.dto.request.VerifyPinRequest;
+import com.project.app.auth.dto.request.UnlockAccountRequest;
 import com.project.app.auth.dto.response.AuthResponse;
 import com.project.app.auth.security.CustomUserDetails;
 import com.project.app.auth.service.AuthService;
@@ -43,6 +44,18 @@ public class AuthController {
     @PostMapping("/login")
     public ResponseEntity<ApiResponse<AuthResponse>> login(@Valid @RequestBody LoginRequest request) {
         return ApiResponse.ok("Đăng nhập thành công!", authService.loginUser(request));
+    }
+
+    @PostMapping("/unlock/send-otp")
+    public ResponseEntity<ApiResponse<Void>> sendUnlockOtp(@Valid @RequestBody SendOtpRequest request) {
+        authService.sendUnlockOtp(request);
+        return ApiResponse.ok("Mã OTP mở khóa đã được gửi đến email của bạn!");
+    }
+
+    @PostMapping("/unlock")
+    public ResponseEntity<ApiResponse<Void>> unlock(@Valid @RequestBody UnlockAccountRequest request) {
+        authService.unlockAccount(request);
+        return ApiResponse.ok("Mở khóa tài khoản thành công!");
     }
 
     // ====================== ĐĂNG KÝ ======================

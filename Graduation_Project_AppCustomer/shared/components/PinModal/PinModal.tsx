@@ -14,6 +14,7 @@ import PinDots from '@/features/onboarding/components/PinDots'
 import PinKeypad from '@/features/onboarding/components/PinKeypad'
 import { styles } from './PinModal.styles'
 import { useBottomSheetPresence } from './useBottomSheetPresence'
+import { getAccountLockModalState, subscribeAccountLockModal } from '@/features/auth/accountLock'
 
 const PIN_LENGTH = 6
 
@@ -39,7 +40,12 @@ export default function PinModal({
   const router = useRouter()
   const [pin, setPin] = useState('')
   const [sendingOtp, setSendingOtp] = useState(false)
+  const [accountLocked, setAccountLocked] = useState(getAccountLockModalState().visible)
   const { presented, backdropOpacity, sheetTranslateY } = useBottomSheetPresence(visible)
+
+  useEffect(() => subscribeAccountLockModal((state) => {
+    setAccountLocked(state.visible)
+  }), [])
 
   useEffect(() => {
     if (visible) {
@@ -85,7 +91,7 @@ export default function PinModal({
 
   return (
     <Modal
-      visible={presented}
+      visible={presented && !accountLocked}
       transparent
       animationType="none"
       statusBarTranslucent

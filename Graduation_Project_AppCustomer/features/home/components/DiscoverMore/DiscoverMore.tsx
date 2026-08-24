@@ -27,8 +27,13 @@ export const DiscoverMore = () => {
         const data = await postService.getActivePosts();
         // Cần map `bgColor` nếu null về màu mặc định hoặc xử lý an toàn
         setBanners(data);
-      } catch (error) {
-        console.error("Failed to fetch banners:", error);
+      } catch (error: any) {
+        // A locked account intentionally returns 423. The global unlock flow
+        // already handles it, so do not show Expo's red LogBox here.
+        const code = error?.code ?? error?.response?.data?.code;
+        if (code !== 'AUTH_1017') {
+          console.error("Failed to fetch banners:", error);
+        }
       } finally {
         setLoading(false);
       }
