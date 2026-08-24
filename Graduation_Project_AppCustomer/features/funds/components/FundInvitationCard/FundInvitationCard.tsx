@@ -152,6 +152,11 @@ export default function FundInvitationCard({
                 </View>
               </View>
             )}
+            {!!invitation.minDepositAmount && invitation.minDepositAmount > 0 && (
+              <Text style={[styles.minDepositText, isDark && styles.textMutedLight]}>
+                Nạp tối thiểu {formatCurrency(invitation.minDepositAmount)} ₫
+              </Text>
+            )}
           </View>
 
           {/* Action Buttons */}

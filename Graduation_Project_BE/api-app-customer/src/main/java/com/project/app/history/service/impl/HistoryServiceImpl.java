@@ -7,7 +7,6 @@ import com.project.app.history.service.HistoryService;
 import com.project.app.transaction.entity.Transaction;
 import com.project.app.transaction.repository.TransactionRepository;
 import com.project.app.user.entity.User;
-import com.project.app.wallet.enums.WalletType;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -36,11 +35,7 @@ public class HistoryServiceImpl implements HistoryService {
     @Override
     public List<TransactionHistoryResponse> getTransactionHistory(User user, String wallet) {
         List<Transaction> transactions;
-        if (wallet != null && wallet.equalsIgnoreCase("cash")) {
-            transactions = transactionRepository.findByUserIdAndWallet_WalletTypeOrderByCreatedAtDesc(
-                    user.getId(), WalletType.CASH);
-        } else if (wallet != null && wallet.matches("\\d+")) {
-            // It's a walletId
+        if (wallet != null && wallet.matches("\\d+")) {
             Long walletId = Long.parseLong(wallet);
             transactions = transactionRepository.findByUserIdAndWalletIdOrderByCreatedAtDesc(user.getId(), walletId);
         } else {

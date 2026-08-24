@@ -1,5 +1,5 @@
-import { StyleSheet } from 'react-native';
-import { PASTEL_PALETTE } from '../../shared/constants/PastelPalette';
+import { StyleSheet } from 'react-native'
+import { PASTEL_PALETTE } from '@/shared/constants/PastelPalette'
 
 export const styles = StyleSheet.create({
   container: {
@@ -10,7 +10,6 @@ export const styles = StyleSheet.create({
     paddingBottom: 40,
   },
 
-  // Header
   headerContent: {
     paddingBottom: 28,
   },
@@ -41,10 +40,6 @@ export const styles = StyleSheet.create({
     alignItems: 'center',
     marginRight: 14,
     overflow: 'hidden',
-  },
-  avatarImage: {
-    width: '100%',
-    height: '100%',
   },
   avatarText: {
     color: PASTEL_PALETTE.white,
@@ -104,14 +99,16 @@ export const styles = StyleSheet.create({
     borderColor: PASTEL_PALETTE.border,
   },
 
-  // Profile detail modal
+  profileModalKeyboardView: {
+    flex: 1,
+  },
   profileModalOverlay: {
     flex: 1,
     justifyContent: 'flex-end',
-    backgroundColor: 'rgba(15, 23, 42, 0.35)',
   },
   profileModalBackdrop: {
     ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(15, 23, 42, 0.42)',
   },
   profileModalSheet: {
     backgroundColor: PASTEL_PALETTE.bg,
@@ -120,6 +117,7 @@ export const styles = StyleSheet.create({
     paddingTop: 10,
     paddingHorizontal: 16,
     maxHeight: '88%',
+    zIndex: 1,
   },
   profileModalHandle: {
     alignSelf: 'center',
@@ -156,62 +154,228 @@ export const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  profileModalScrollContent: {
+    paddingBottom: 4,
+  },
   profileModalHero: {
-    alignItems: 'center',
-    paddingVertical: 18,
+    paddingVertical: 14,
   },
   profileModalAvatar: {
-    width: 80,
-    height: 80,
-    borderRadius: 24,
+    width: 72,
+    height: 72,
+    borderRadius: 22,
     backgroundColor: PASTEL_PALETTE.accentDeep,
     alignItems: 'center',
     justifyContent: 'center',
+    overflow: 'hidden',
   },
-  profileModalAvatarWrap: {
-    width: 80,
-    height: 80,
-    marginBottom: 8,
-  },
-  profileModalAvatarImage: {
-    width: 80,
-    height: 80,
-    borderRadius: 24,
-    backgroundColor: PASTEL_PALETTE.accentSoft,
-  },
-  profileModalAvatarBadge: {
-    position: 'absolute',
-    right: -2,
-    bottom: -2,
-    width: 28,
-    height: 28,
-    borderRadius: 10,
-    backgroundColor: PASTEL_PALETTE.accentDeep,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 2,
-    borderColor: PASTEL_PALETTE.bg,
-  },
-  profileModalChangeHint: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: PASTEL_PALETTE.textMuted,
-    marginBottom: 10,
+  profileAvatarImage: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 28,
   },
   profileModalAvatarText: {
     color: PASTEL_PALETTE.white,
     fontSize: 28,
     fontWeight: '800',
   },
-  profileModalNameRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
   profileModalName: {
-    fontSize: 20,
+    fontSize: 19,
     fontWeight: '800',
     color: PASTEL_PALETTE.title,
+  },
+  profileSummaryRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+    paddingHorizontal: 4,
+  },
+  profileSummaryContent: {
+    flex: 1,
+    minWidth: 0,
+  },
+  profileSummaryEmail: {
+    marginTop: 3,
+    fontSize: 13,
+    fontWeight: '600',
+    color: PASTEL_PALETTE.textMuted,
+  },
+  profileVerifiedBadge: {
+    alignSelf: 'flex-start',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    marginTop: 8,
+    paddingHorizontal: 9,
+    paddingVertical: 4,
+    borderRadius: 999,
+    backgroundColor: PASTEL_PALETTE.accentSoft,
+  },
+  profileEditButton: {
+    height: 44,
+    marginTop: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: PASTEL_PALETTE.border,
+    backgroundColor: PASTEL_PALETTE.white,
+  },
+  profileEditButtonText: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: PASTEL_PALETTE.accentDeep,
+  },
+  profileNameEditor: {
+    height: 52,
+    width: '100%',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingHorizontal: 14,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: PASTEL_PALETTE.border,
+    backgroundColor: PASTEL_PALETTE.white,
+  },
+  profileNameInput: {
+    flex: 1,
+    minWidth: 0,
+    paddingVertical: 0,
+    fontSize: 15,
+    fontWeight: '700',
+    color: PASTEL_PALETTE.title,
+  },
+  profileNameCounter: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: PASTEL_PALETTE.gray400,
+  },
+  profileEditOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    zIndex: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 20,
+  },
+  profileEditBackdrop: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(15, 23, 42, 0.58)',
+  },
+  profileEditCard: {
+    width: '100%',
+    maxWidth: 420,
+    padding: 18,
+    borderRadius: 24,
+    borderWidth: 1,
+    borderColor: PASTEL_PALETTE.border,
+    backgroundColor: PASTEL_PALETTE.bg,
+    shadowColor: '#0F172A',
+    shadowOffset: { width: 0, height: 14 },
+    shadowOpacity: 0.2,
+    shadowRadius: 28,
+    elevation: 12,
+  },
+  profileEditHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 16,
+  },
+  profileEditTitle: {
+    fontSize: 18,
+    fontWeight: '900',
+    color: PASTEL_PALETTE.title,
+  },
+  profileEditSubtitle: {
+    marginTop: 3,
+    fontSize: 12,
+    fontWeight: '600',
+    color: PASTEL_PALETTE.textMuted,
+  },
+  profileEditClose: {
+    width: 36,
+    height: 36,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: PASTEL_PALETTE.border,
+    backgroundColor: PASTEL_PALETTE.white,
+  },
+  profileEditAvatar: {
+    width: 86,
+    height: 86,
+    alignSelf: 'center',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 28,
+    backgroundColor: PASTEL_PALETTE.accentDeep,
+    overflow: 'visible',
+  },
+  profileEditCameraBadge: {
+    position: 'absolute',
+    right: -5,
+    bottom: -5,
+    width: 30,
+    height: 30,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: PASTEL_PALETTE.bg,
+    backgroundColor: PASTEL_PALETTE.accentDeep,
+  },
+  profileEditAvatarHint: {
+    marginTop: 10,
+    marginBottom: 17,
+    textAlign: 'center',
+    fontSize: 12,
+    fontWeight: '600',
+    color: PASTEL_PALETTE.textMuted,
+  },
+  profileEditFieldLabel: {
+    marginBottom: 7,
+    fontSize: 12,
+    fontWeight: '800',
+    color: PASTEL_PALETTE.title,
+  },
+  profileEditActions: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 18,
+  },
+  profileEditCancelButton: {
+    flex: 1,
+    height: 48,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: PASTEL_PALETTE.border,
+    backgroundColor: PASTEL_PALETTE.white,
+  },
+  profileEditCancelText: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: PASTEL_PALETTE.textMuted,
+  },
+  profileEditSaveButton: {
+    flex: 1.45,
+    height: 48,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 7,
+    borderRadius: 14,
+    backgroundColor: PASTEL_PALETTE.accentDeep,
+  },
+  profileEditSaveText: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: PASTEL_PALETTE.white,
   },
   profileModalCard: {
     backgroundColor: PASTEL_PALETTE.white,
@@ -256,7 +420,6 @@ export const styles = StyleSheet.create({
     color: PASTEL_PALETTE.title,
   },
 
-  // Quick actions
   quickActionsContainer: {
     flexDirection: 'row',
     paddingHorizontal: 16,
@@ -310,7 +473,6 @@ export const styles = StyleSheet.create({
     fontWeight: '500',
   },
 
-  // Sections
   section: {
     marginTop: 18,
     paddingHorizontal: 16,
@@ -340,7 +502,6 @@ export const styles = StyleSheet.create({
     borderColor: PASTEL_PALETTE.border,
   },
 
-  // Items
   itemContainer: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -382,11 +543,7 @@ export const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
   },
-  eyeIcon: {
-    marginRight: 10,
-  },
 
-  // Security expand + modals
   securitySubList: {
     backgroundColor: PASTEL_PALETTE.bgSoft,
     borderTopWidth: StyleSheet.hairlineWidth,
@@ -421,111 +578,70 @@ export const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: PASTEL_PALETTE.border,
   },
-  securityModalOverlay: {
-    flex: 1,
-    justifyContent: 'flex-end',
-    backgroundColor: 'rgba(15, 23, 42, 0.35)',
-  },
-  securityModalBackdrop: {
-    ...StyleSheet.absoluteFillObject,
-  },
-  securityModalSheet: {
-    backgroundColor: PASTEL_PALETTE.bg,
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
-    paddingTop: 10,
-    paddingHorizontal: 16,
-    maxHeight: '90%',
-  },
-  securityModalHandle: {
-    alignSelf: 'center',
-    width: 40,
-    height: 4,
-    borderRadius: 999,
-    backgroundColor: PASTEL_PALETTE.border,
-    marginBottom: 12,
-  },
-  securityModalHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 8,
-    paddingHorizontal: 4,
-  },
-  securityModalTitle: {
-    fontSize: 17,
-    fontWeight: '800',
-    color: PASTEL_PALETTE.title,
-  },
-  securityModalHint: {
-    fontSize: 13,
-    color: PASTEL_PALETTE.textMuted,
-    fontWeight: '500',
-    lineHeight: 18,
-    marginBottom: 16,
-    paddingHorizontal: 2,
-  },
-  securityField: {
-    marginBottom: 14,
-  },
-  securityLabel: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: PASTEL_PALETTE.title,
-    marginBottom: 8,
-  },
-  securityInputWrap: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
+  appSettingSwitchList: {
     backgroundColor: PASTEL_PALETTE.white,
-    borderWidth: 1,
-    borderColor: PASTEL_PALETTE.border,
-    borderRadius: 14,
-    paddingHorizontal: 12,
-    minHeight: 48,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: PASTEL_PALETTE.border,
   },
-  securityInputError: {
-    borderColor: '#F87171',
+  appSettingSwitchRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingRight: 14,
+    paddingLeft: 26,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: PASTEL_PALETTE.border,
   },
-  securityInput: {
-    flex: 1,
-    fontSize: 15,
-    color: PASTEL_PALETTE.title,
-    fontWeight: '500',
-    paddingVertical: 10,
-  },
-  securityError: {
-    marginTop: 6,
-    fontSize: 12,
-    color: '#DC2626',
-    fontWeight: '600',
-  },
-  securityForgotLink: {
-    alignSelf: 'flex-end',
-    marginBottom: 16,
-    marginTop: 2,
-  },
-  securityForgotText: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: PASTEL_PALETTE.accentDeep,
-  },
-  securityPrimaryBtn: {
-    backgroundColor: PASTEL_PALETTE.accentDeep,
-    borderRadius: 14,
-    paddingVertical: 15,
+  appSettingSwitchIcon: {
+    width: 30,
+    height: 30,
+    borderRadius: 10,
+    backgroundColor: PASTEL_PALETTE.white,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 8,
+    marginRight: 12,
+    borderWidth: 1,
+    borderColor: PASTEL_PALETTE.border,
   },
-  securityPrimaryBtnText: {
-    color: PASTEL_PALETTE.white,
-    fontSize: 15,
+  appSettingSwitchIconActive: {
+    backgroundColor: PASTEL_PALETTE.accentSoft,
+    borderColor: PASTEL_PALETTE.accentSoft,
+  },
+  appSettingValueWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginRight: 6,
+  },
+  appSettingDefaultBadge: {
+    backgroundColor: PASTEL_PALETTE.accentSoft,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 999,
+  },
+  appSettingDefaultBadgeText: {
+    color: PASTEL_PALETTE.accentDeep,
+    fontSize: 10,
     fontWeight: '800',
   },
+  appSettingSwitchHint: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: PASTEL_PALETTE.subtitle,
+  },
+  notebookTimeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingRight: 14,
+    paddingLeft: 26,
+  },
+  notebookTimeValue: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: PASTEL_PALETTE.accentDeep,
+  },
 
-  // Logout
   logoutContainer: {
     paddingHorizontal: 16,
     marginTop: 24,
@@ -554,4 +670,4 @@ export const styles = StyleSheet.create({
     color: PASTEL_PALETTE.textMuted,
     fontWeight: '500',
   },
-});
+})

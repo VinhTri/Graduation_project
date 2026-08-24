@@ -2,7 +2,8 @@ export const vi = {
   // Tabs
   homeTab: 'Trang chủ',
   walletTab: 'Ví',
-  fundsTab: 'Quỹ nhóm',
+  budgetTab: 'Ngân sách',
+  fundsTab: 'Quỹ',
   notebookTab: 'Sổ tay',
   moreTab: 'Tài khoản',
 
@@ -103,7 +104,6 @@ export const vi = {
   recentRecords: 'Ghi chép gần đây',
   cashBalance: 'Số dư tiền mặt',
   addCashBalance: 'Cập nhật tiền mặt',
-  bankWalletList: 'Danh sách Ví & Ngân hàng',
   createBankWallet: 'Liên kết thẻ/ví mới',
 
   // Group Fund Screen

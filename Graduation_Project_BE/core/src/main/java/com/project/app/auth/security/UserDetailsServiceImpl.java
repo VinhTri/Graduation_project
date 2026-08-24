@@ -17,9 +17,12 @@ public class UserDetailsServiceImpl implements UserDetailsService {
 
     @Override
     @Transactional
-    public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
-        User user = userRepository.findByUsername(username)
-                .orElseThrow(() -> new UsernameNotFoundException("User Not Found with username: " + username));
+    public UserDetails loadUserByUsername(String identity) throws UsernameNotFoundException {
+        // New JWTs use immutable email subjects. Username fallback keeps existing
+        // sessions valid during deployment.
+        User user = userRepository.findByEmail(identity)
+                .or(() -> userRepository.findByUsername(identity))
+                .orElseThrow(() -> new UsernameNotFoundException("User not found"));
 
         return new CustomUserDetails(user);
     }

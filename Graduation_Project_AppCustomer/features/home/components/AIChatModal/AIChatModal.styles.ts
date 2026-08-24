@@ -1,151 +1,155 @@
-import { StyleSheet, Dimensions } from "react-native";
-import Colors from "@/shared/constants/Colors";
-
-const { height } = Dimensions.get("window");
+import { StyleSheet, Platform } from 'react-native'
+import Colors from '@/shared/constants/Colors'
+import { PASTEL_PALETTE } from '@/shared/constants/PastelPalette'
 
 export const styles = StyleSheet.create({
-  modalOverlay: {
+  modalRoot: {
     flex: 1,
-    justifyContent: "flex-end",
-    backgroundColor: "rgba(0,0,0,0.5)",
+    justifyContent: 'flex-end',
   },
   backdropTouchable: {
-    flex: 1,
-    width: "100%",
+    ...StyleSheet.absoluteFillObject,
   },
-  modalContent: {
-    backgroundColor: Colors.white,
+
+  sheet: {
+    width: '100%',
+    backgroundColor: '#F8F9FC',
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
-    height: height * 0.85,
-    overflow: "hidden",
+    overflow: 'hidden',
+    shadowColor: '#0F172A',
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.12,
+    shadowRadius: 16,
+    elevation: 24,
   },
+
   header: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
     paddingHorizontal: 16,
-    paddingVertical: 14,
-    borderBottomWidth: 1,
-    borderBottomColor: "#F3F4F6",
-    backgroundColor: "#FAFAFA",
+    paddingTop: 10,
+    paddingBottom: 14,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: 'rgba(148, 163, 184, 0.35)',
   },
-  headerTitleContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
+  headerTopRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 10,
   },
-  headerIconBadge: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: "#EEF2FF",
-    justifyContent: "center",
-    alignItems: "center",
+  sheetHandle: {
+    position: 'absolute',
+    top: 6,
+    alignSelf: 'center',
+    left: '50%',
+    marginLeft: -20,
+    width: 40,
+    height: 4,
+    borderRadius: 999,
+    backgroundColor: 'rgba(148, 163, 184, 0.55)',
+  },
+  headerBrand: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    marginRight: 8,
+  },
+  headerAvatar: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255,255,255,0.85)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.9)',
   },
   headerTitle: {
-    fontSize: 17,
-    fontWeight: "700",
-    color: "#111827",
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#1E293B',
   },
   headerSubtitle: {
     fontSize: 12,
-    color: "#6B7280",
-  },
-  closeButton: {
-    padding: 6,
-    borderRadius: 20,
-    backgroundColor: "#F3F4F6",
-  },
-
-  // Category Filter Tabs
-  categoryBar: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: "#F3F4F6",
-    backgroundColor: Colors.white,
-  },
-  categoryChip: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
-    backgroundColor: "#F3F4F6",
-    marginRight: 8,
-  },
-  categoryChipActive: {
-    backgroundColor: Colors.primary,
-  },
-  categoryChipText: {
-    fontSize: 12,
-    fontWeight: "600",
-    color: "#4B5563",
-  },
-  categoryChipTextActive: {
-    color: Colors.white,
-  },
-
-  // Quick Suggestion Chips
-  suggestionsContainer: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    backgroundColor: "#F9FAFB",
-  },
-  suggestionChip: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 12,
-    backgroundColor: Colors.white,
-    borderWidth: 1,
-    borderColor: "#E5E7EB",
-    marginRight: 8,
-  },
-  suggestionChipText: {
-    fontSize: 13,
-    color: "#374151",
-    fontWeight: "500",
-  },
-
-  // Chat Area
-  chatArea: {
-    flex: 1,
-    padding: 16,
-  },
-  messageRow: {
-    flexDirection: "row",
-    marginBottom: 16,
-    alignItems: "flex-start",
-  },
-  messageRowUser: {
-    justifyContent: "flex-end",
-  },
-  messageRowAI: {
-    justifyContent: "flex-start",
-  },
-  aiAvatar: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: Colors.primary,
-    justifyContent: "center",
-    alignItems: "center",
-    marginRight: 8,
+    color: '#64748B',
     marginTop: 2,
   },
+  closeButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(255,255,255,0.9)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(148, 163, 184, 0.25)',
+  },
+
+  chatArea: {
+    flex: 1,
+  },
+  chatAreaContent: {
+    paddingHorizontal: 14,
+    paddingTop: 12,
+    paddingBottom: 12,
+    flexGrow: 1,
+  },
+
+  messageRow: {
+    flexDirection: 'row',
+    marginBottom: 16,
+    alignItems: 'flex-end',
+    width: '100%',
+  },
+  messageRowUser: {
+    justifyContent: 'flex-end',
+  },
+  messageRowAI: {
+    justifyContent: 'flex-start',
+  },
+  aiAvatar: {
+    backgroundColor: PASTEL_PALETTE.lavenderSoft,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 8,
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: PASTEL_PALETTE.border,
+  },
   messageBubbleContainer: {
-    maxWidth: "82%",
+    flexShrink: 1,
+    maxWidth: '80%',
+  },
+  messageBubbleContainerUser: {
+    alignItems: 'flex-end',
+    maxWidth: '84%',
   },
   messageBubble: {
-    padding: 14,
+    paddingHorizontal: 14,
+    paddingVertical: 11,
     borderRadius: 18,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#64748B',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.08,
+        shadowRadius: 3,
+      },
+      android: {
+        elevation: 1,
+      },
+    }),
   },
   messageBubbleUser: {
     backgroundColor: Colors.primary,
-    borderBottomRightRadius: 4,
+    borderBottomRightRadius: 6,
   },
   messageBubbleAI: {
-    backgroundColor: "#F3F4F6",
-    borderBottomLeftRadius: 4,
+    backgroundColor: Colors.white,
+    borderBottomLeftRadius: 6,
+    borderWidth: 1,
+    borderColor: 'rgba(226, 232, 240, 0.95)',
   },
   messageTextUser: {
     color: Colors.white,
@@ -153,146 +157,147 @@ export const styles = StyleSheet.create({
     lineHeight: 22,
   },
   messageTextAI: {
-    color: "#1F2937",
-    fontSize: 14.5,
+    color: '#1E293B',
+    fontSize: 15,
     lineHeight: 22,
   },
+  messageTime: {
+    fontSize: 10,
+    color: '#94A3B8',
+    marginTop: 5,
+    marginLeft: 4,
+  },
+  messageTimeUser: {
+    marginRight: 4,
+    marginLeft: 0,
+    textAlign: 'right',
+  },
   moduleBadge: {
-    alignSelf: "flex-start",
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 8,
+    alignSelf: 'flex-start',
+    paddingHorizontal: 9,
+    paddingVertical: 4,
+    borderRadius: 999,
     marginBottom: 6,
   },
   moduleBadgeText: {
     fontSize: 10,
-    fontWeight: "700",
-    textTransform: "uppercase",
+    fontWeight: '700',
+    letterSpacing: 0.2,
   },
 
-  // Metrics & Data Cards
   cardContainer: {
-    marginTop: 10,
-    backgroundColor: Colors.white,
-    borderRadius: 12,
+    marginTop: 8,
+    backgroundColor: '#FAFBFF',
+    borderRadius: 14,
     padding: 12,
     borderWidth: 1,
-    borderColor: "#E5E7EB",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 1,
+    borderColor: '#E2E8F0',
   },
   cardTitle: {
-    fontSize: 13,
-    fontWeight: "700",
-    color: "#111827",
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#0F172A',
     marginBottom: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: "#F3F4F6",
-    paddingBottom: 6,
   },
   cardItemRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingVertical: 4,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    gap: 10,
+    paddingVertical: 5,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: '#EEF2F7',
   },
   cardItemLabel: {
-    fontSize: 13,
-    color: "#4B5563",
-    fontWeight: "500",
+    flex: 1,
+    fontSize: 12,
+    color: '#475569',
+    fontWeight: '500',
   },
   cardItemValue: {
-    fontSize: 13,
-    fontWeight: "700",
+    fontSize: 12,
+    fontWeight: '700',
+    flexShrink: 0,
   },
 
-  // Loading Typing Indicator
-  typingIndicator: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-    padding: 12,
-  },
-  typingText: {
-    fontSize: 13,
-    color: "#6B7280",
-    fontStyle: "italic",
-  },
-
-  // Input Area
-  inputArea: {
-    flexDirection: "row",
-    padding: 12,
-    borderTopWidth: 1,
-    borderTopColor: "#E5E7EB",
-    alignItems: "center",
-    backgroundColor: Colors.white,
-  },
-  input: {
-    flex: 1,
-    backgroundColor: "#F3F4F6",
-    borderRadius: 20,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    maxHeight: 100,
-    fontSize: 15,
-    marginRight: 10,
-    color: "#111827",
-  },
-  sendButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: Colors.primary,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  sendButtonDisabled: {
-    backgroundColor: "#9CA3AF",
-  },
-  // Action Prompt & Interactive Buttons
-  actionPromptContainer: {
-    marginTop: 10,
-    backgroundColor: "#EEF2FF",
-    borderRadius: 12,
-    padding: 12,
-    borderWidth: 1,
-    borderColor: "#C7D2FE",
-  },
-  actionQuestionText: {
-    fontSize: 13,
-    fontWeight: "600",
-    color: "#3730A3",
-    marginBottom: 8,
-  },
-  actionButtonsRow: {
-    flexDirection: "row",
-    flexWrap: "wrap",
+  actionRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: 8,
+    marginTop: 10,
   },
   actionButton: {
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-    borderRadius: 10,
-    backgroundColor: Colors.white,
     borderWidth: 1,
-    borderColor: Colors.primary,
+    borderColor: '#E2E8F0',
+    backgroundColor: Colors.white,
+    borderRadius: 999,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
   },
   actionButtonPrimary: {
     backgroundColor: Colors.primary,
     borderColor: Colors.primary,
   },
   actionButtonText: {
-    fontSize: 12.5,
-    fontWeight: "600",
-    color: Colors.primary,
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#334155',
   },
   actionButtonTextPrimary: {
-    fontSize: 12.5,
-    fontWeight: "600",
     color: Colors.white,
   },
-});
+
+  typingIndicator: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+  },
+  typingText: {
+    fontSize: 13,
+    color: '#64748B',
+  },
+
+  inputWrapper: {
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: '#E2E8F0',
+    backgroundColor: Colors.white,
+    paddingHorizontal: 12,
+    paddingTop: 10,
+  },
+  inputRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    backgroundColor: '#F1F5F9',
+    borderRadius: 22,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    paddingLeft: 14,
+    paddingRight: 6,
+    paddingVertical: 6,
+    minHeight: 48,
+  },
+  input: {
+    flex: 1,
+    maxHeight: 100,
+    minHeight: 36,
+    fontSize: 15,
+    lineHeight: 20,
+    color: '#0F172A',
+    paddingTop: Platform.OS === 'ios' ? 8 : 6,
+    paddingBottom: Platform.OS === 'ios' ? 8 : 6,
+  },
+  sendButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: Colors.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginLeft: 6,
+  },
+  sendButtonDisabled: {
+    backgroundColor: '#CBD5E1',
+  },
+})

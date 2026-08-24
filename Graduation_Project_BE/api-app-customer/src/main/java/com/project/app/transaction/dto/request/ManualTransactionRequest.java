@@ -5,7 +5,6 @@ import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotNull;
 
 import java.math.BigDecimal;
-
 import java.time.LocalDateTime;
 
 public record ManualTransactionRequest(
@@ -20,7 +19,8 @@ public record ManualTransactionRequest(
         Long categoryId,
 
         String note,
-        
+
+        @NotNull(message = "Vui lòng chọn sổ tay ngân hàng")
         Long walletId,
 
         LocalDateTime createdAt

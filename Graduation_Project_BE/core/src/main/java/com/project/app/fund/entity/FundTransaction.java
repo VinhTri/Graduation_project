@@ -8,7 +8,10 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "fund_transactions")
+@Table(
+        name = "fund_transactions",
+        uniqueConstraints = @UniqueConstraint(columnNames = {"fund_id", "user_id", "request_id"})
+)
 public class FundTransaction {
 
     @Id
@@ -32,6 +35,9 @@ public class FundTransaction {
 
     @Column(length = 200)
     private String note;
+
+    @Column(name = "request_id", length = 100)
+    private String requestId;
 
     @org.hibernate.annotations.CreationTimestamp
     @Column(name = "created_at", updatable = false)
@@ -82,6 +88,14 @@ public class FundTransaction {
 
     public void setNote(String note) {
         this.note = note;
+    }
+
+    public String getRequestId() {
+        return requestId;
+    }
+
+    public void setRequestId(String requestId) {
+        this.requestId = requestId;
     }
 
     public LocalDateTime getCreatedAt() {

@@ -1,15 +1,12 @@
 package com.project.app.ai.dto.request;
 
-import lombok.AllArgsConstructor;
-import lombok.Builder;
 import lombok.Data;
-import lombok.NoArgsConstructor;
+import jakarta.validation.constraints.Size;
 
 @Data
-@Builder
-@NoArgsConstructor
-@AllArgsConstructor
 public class ChatMessageHistoryDto {
+    @Size(max = 20)
     private String role;
+    @Size(max = 2000)
     private String content;
 }

@@ -1,39 +1,40 @@
-import { Redirect } from 'expo-router';
-import { useEffect, useState } from 'react';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { View, ActivityIndicator } from 'react-native';
+import { Redirect, type Href } from 'expo-router'
+import { useEffect, useState } from 'react'
+import { ActivityIndicator, View } from 'react-native'
+import { resolveColdStartRoute } from '@/features/auth/resolveColdStartRoute'
+import { PASTEL_PALETTE } from '@/shared/constants/PastelPalette'
 
 export default function Index() {
-  const [isReady, setIsReady] = useState(false);
-  const [initialRoute, setInitialRoute] = useState<any>(null);
+  const [route, setRoute] = useState<Href | null>(null)
 
   useEffect(() => {
-    const checkState = async () => {
-      try {
-        const hasSeenOnboarding = await AsyncStorage.getItem('hasSeenOnboarding');
-        
-        // Luôn luôn bắt người dùng đăng nhập lại mỗi khi mở app
-        if (hasSeenOnboarding) {
-          setInitialRoute('/(auth)/login');
-        } else {
-          setInitialRoute('/(auth)/onboarding');
-        }
-      } catch (error) {
-        setInitialRoute('/(auth)/onboarding');
-      } finally {
-        setIsReady(true);
-      }
-    };
-    checkState();
-  }, []);
+    let cancelled = false
+    resolveColdStartRoute()
+      .then((next) => {
+        if (!cancelled) setRoute(next)
+      })
+      .catch(() => {
+        if (!cancelled) setRoute('/(auth)/login')
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
-  if (!isReady || !initialRoute) {
+  if (!route) {
     return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#FFFFFF' }}>
-        <ActivityIndicator size="large" color="#109185" />
+      <View
+        style={{
+          flex: 1,
+          justifyContent: 'center',
+          alignItems: 'center',
+          backgroundColor: PASTEL_PALETTE.white,
+        }}
+      >
+        <ActivityIndicator size="large" color={PASTEL_PALETTE.accentDeep} />
       </View>
-    );
+    )
   }
 
-  return <Redirect href={initialRoute} />;
+  return <Redirect href={route} />
 }

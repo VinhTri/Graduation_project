@@ -1,5 +1,6 @@
 package com.project.app.otp.entity;
 
+import com.project.app.otp.enums.OtpPurpose;
 import jakarta.persistence.*;
 
 import java.util.Date;

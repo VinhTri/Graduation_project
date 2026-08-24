@@ -8,16 +8,18 @@ import {
   KeyboardAvoidingView,
   Platform,
   ActivityIndicator,
-  Switch,
+  Modal,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { PASTEL_PALETTE } from '@/shared/constants/PastelPalette';
+import { CharacterCounter } from '@/shared/components/CharacterCounter/CharacterCounter';
 import { friendshipService, FriendshipResponse } from '@/shared/api/services/friendship.service';
 import { splitBillService } from '@/shared/api/services/splitBillService';
 import ConfirmModal from '@/shared/components/ConfirmModal/ConfirmModal';
+import UserAvatar from '@/shared/components/UserAvatar/UserAvatar';
 import { styles } from './CreateSplitBillScreen.styles';
 
 export const CreateSplitBillScreen = () => {
@@ -36,6 +38,7 @@ export const CreateSplitBillScreen = () => {
   const [loadingFriends, setLoadingFriends] = useState(true);
   const [friendSearch, setFriendSearch] = useState('');
   const [selectedFriendIds, setSelectedFriendIds] = useState<number[]>([]);
+  const [friendPickerVisible, setFriendPickerVisible] = useState(false);
 
   // Submitting state
   const [submitting, setSubmitting] = useState(false);
@@ -80,10 +83,12 @@ export const CreateSplitBillScreen = () => {
   };
 
   const selectAllFriends = () => {
-    if (selectedFriendIds.length === filteredFriends.length) {
-      setSelectedFriendIds([]);
+    const filteredIds = filteredFriends.map((friend) => friend.friendId);
+    const allFilteredSelected = filteredIds.every((id) => selectedFriendIds.includes(id));
+    if (allFilteredSelected) {
+      setSelectedFriendIds((current) => current.filter((id) => !filteredIds.includes(id)));
     } else {
-      setSelectedFriendIds(filteredFriends.map((f) => f.friendId));
+      setSelectedFriendIds((current) => Array.from(new Set([...current, ...filteredIds])));
     }
   };
 
@@ -105,6 +110,10 @@ export const CreateSplitBillScreen = () => {
   }, [amountStr]);
 
   const selectedCount = selectedFriendIds.length;
+  const selectedFriends = useMemo(
+    () => friends.filter((friend) => selectedFriendIds.includes(friend.friendId)),
+    [friends, selectedFriendIds]
+  );
 
   const perPersonAmount = useMemo(() => {
     if (numericTotalAmount <= 0 || selectedCount === 0) return 0;
@@ -168,6 +177,8 @@ export const CreateSplitBillScreen = () => {
         error?.response?.data?.message ||
         error?.message ||
         'Đã xảy ra lỗi khi tạo yêu cầu chia tiền.';
+      setErrorMessage(msg);
+      setErrorModalVisible(true);
     } finally {
       setSubmitting(false);
     }
@@ -275,77 +286,48 @@ export const CreateSplitBillScreen = () => {
               placeholderTextColor={PASTEL_PALETTE.textMuted}
               maxLength={100}
             />
+            <CharacterCounter value={note} maxLength={100} />
           </View>
 
         </View>
 
         {/* Card 2: Chọn bạn bè */}
         <View style={styles.card}>
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-            <Text style={[styles.cardTitle, { marginBottom: 0 }]}>
-              2. Chọn bạn bè ({selectedCount}/{friends.length})
-            </Text>
-            {friends.length > 0 && (
-              <TouchableOpacity onPress={selectAllFriends} activeOpacity={0.7}>
-                <Text style={{ fontSize: 13, color: PASTEL_PALETTE.accentDeep, fontWeight: '700' }}>
-                  {selectedFriendIds.length === filteredFriends.length ? 'Bỏ chọn tất cả' : 'Chọn tất cả'}
-                </Text>
-              </TouchableOpacity>
-            )}
-          </View>
+          <Text style={styles.cardTitle}>2. Chọn bạn bè</Text>
+          <Text style={styles.friendPickerHint}>Chọn những người sẽ cùng thanh toán khoản này.</Text>
 
-          {/* Search bar */}
-          <View style={styles.searchFriendInput}>
-            <Ionicons name="search-outline" size={18} color={PASTEL_PALETTE.textMuted} style={{ marginRight: 8 }} />
-            <TextInput
-              style={{ flex: 1, fontSize: 14, color: PASTEL_PALETTE.title }}
-              placeholder="Tìm kiếm bạn bè theo tên..."
-              value={friendSearch}
-              onChangeText={setFriendSearch}
-              placeholderTextColor={PASTEL_PALETTE.textMuted}
-            />
-          </View>
-
-          {loadingFriends ? (
-            <ActivityIndicator style={{ paddingVertical: 20 }} color={PASTEL_PALETTE.accentDeep} />
-          ) : filteredFriends.length === 0 ? (
-            <View style={{ paddingVertical: 20, alignItems: 'center' }}>
-              <Ionicons name="people-outline" size={36} color={PASTEL_PALETTE.textMuted} />
-              <Text style={{ color: PASTEL_PALETTE.textMuted, fontSize: 14, marginTop: 8 }}>
-                {friends.length === 0 ? 'Bạn chưa có bạn bè nào để chia tiền' : 'Không tìm thấy bạn bè phù hợp'}
+          <TouchableOpacity
+            style={styles.friendPickerButton}
+            onPress={() => setFriendPickerVisible(true)}
+            activeOpacity={0.78}
+          >
+            <View style={styles.friendPickerIcon}>
+              <Ionicons name="people-outline" size={21} color={PASTEL_PALETTE.accentDeep} />
+            </View>
+            <View style={styles.friendPickerCopy}>
+              <Text style={styles.friendPickerTitle}>
+                {selectedCount > 0 ? `${selectedCount} người đã chọn` : 'Chọn bạn bè'}
+              </Text>
+              <Text style={styles.friendPickerSub}>
+                {loadingFriends ? 'Đang tải danh bạ...' : `${friends.length} người bạn có thể chọn`}
               </Text>
             </View>
-          ) : (
-            <View style={styles.friendListWrap}>
-              {filteredFriends.map((friend) => {
-                const isSelected = selectedFriendIds.includes(friend.friendId);
-                const initial = friend.friendUsername ? friend.friendUsername.charAt(0).toUpperCase() : 'U';
-                return (
-                  <TouchableOpacity
-                    key={friend.id}
-                    style={[styles.friendItem, isSelected ? styles.friendItemSelected : null]}
-                    onPress={() => toggleSelectFriend(friend.friendId)}
-                    activeOpacity={0.7}
-                  >
-                    <View style={styles.friendAvatarCircle}>
-                      <Text style={styles.friendAvatarText}>{initial}</Text>
-                    </View>
-                    <View style={styles.friendInfo}>
-                      <Text style={styles.friendName} numberOfLines={1}>
-                        {friend.friendUsername}
-                      </Text>
-                      <Text style={styles.friendEmail} numberOfLines={1}>
-                        {friend.friendEmail}
-                      </Text>
-                    </View>
-                    <View style={[styles.friendCheckbox, isSelected ? styles.friendCheckboxSelected : null]}>
-                      {isSelected && <Ionicons name="checkmark" size={16} color="#FFF" />}
-                    </View>
+            <Ionicons name="chevron-forward" size={20} color={PASTEL_PALETTE.textMuted} />
+          </TouchableOpacity>
+
+          {selectedFriends.length > 0 ? (
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.selectedFriendsRow}>
+              {selectedFriends.map((friend) => (
+                <View key={friend.id} style={styles.selectedFriendChip}>
+                  <UserAvatar name={friend.friendUsername} avatarUrl={friend.friendAvatarUrl} size={30} />
+                  <Text style={styles.selectedFriendName} numberOfLines={1}>{friend.friendUsername}</Text>
+                  <TouchableOpacity onPress={() => toggleSelectFriend(friend.friendId)} hitSlop={8}>
+                    <Ionicons name="close-circle" size={18} color={PASTEL_PALETTE.textMuted} />
                   </TouchableOpacity>
-                );
-              })}
-            </View>
-          )}
+                </View>
+              ))}
+            </ScrollView>
+          ) : null}
         </View>
 
         {/* Card 3: Phương thức chia & Tổng kết */}
@@ -443,6 +425,103 @@ export const CreateSplitBillScreen = () => {
       </View>
 
       {/* Modals */}
+      <Modal
+        visible={friendPickerVisible}
+        transparent
+        animationType="slide"
+        statusBarTranslucent
+        navigationBarTranslucent
+        onRequestClose={() => setFriendPickerVisible(false)}
+      >
+        <View style={styles.pickerOverlay}>
+          <TouchableOpacity style={styles.pickerBackdrop} activeOpacity={1} onPress={() => setFriendPickerVisible(false)} />
+          <View style={[styles.pickerSheet, { paddingBottom: Math.max(insets.bottom, 18) }]}>
+            <View style={styles.pickerHandle} />
+            <View style={styles.pickerHeader}>
+              <View>
+                <Text style={styles.pickerTitle}>Chọn bạn bè</Text>
+                <Text style={styles.pickerSubtitle}>{selectedCount} người đã chọn</Text>
+              </View>
+              <TouchableOpacity style={styles.pickerCloseButton} onPress={() => setFriendPickerVisible(false)}>
+                <Ionicons name="close" size={22} color={PASTEL_PALETTE.title} />
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.pickerSearch}>
+              <Ionicons name="search-outline" size={19} color={PASTEL_PALETTE.textMuted} />
+              <TextInput
+                style={styles.pickerSearchInput}
+                placeholder="Tìm theo tên hoặc email..."
+                value={friendSearch}
+                onChangeText={setFriendSearch}
+                placeholderTextColor={PASTEL_PALETTE.textMuted}
+                autoCorrect={false}
+              />
+              {friendSearch ? (
+                <TouchableOpacity onPress={() => setFriendSearch('')}>
+                  <Ionicons name="close-circle" size={19} color={PASTEL_PALETTE.textMuted} />
+                </TouchableOpacity>
+              ) : null}
+            </View>
+
+            {friends.length > 0 ? (
+              <View style={styles.pickerToolbar}>
+                <Text style={styles.pickerResultCount}>{filteredFriends.length} kết quả</Text>
+                <TouchableOpacity onPress={selectAllFriends} activeOpacity={0.7}>
+                  <Text style={styles.pickerSelectAll}>
+                    {filteredFriends.length > 0 && filteredFriends.every((friend) => selectedFriendIds.includes(friend.friendId))
+                      ? 'Bỏ chọn kết quả'
+                      : 'Chọn tất cả kết quả'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            ) : null}
+
+            <ScrollView style={styles.pickerList} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+              {loadingFriends ? (
+                <View style={styles.pickerState}>
+                  <ActivityIndicator color={PASTEL_PALETTE.accentDeep} />
+                  <Text style={styles.pickerStateText}>Đang tải danh sách bạn bè...</Text>
+                </View>
+              ) : filteredFriends.length === 0 ? (
+                <View style={styles.pickerState}>
+                  <Ionicons name="people-outline" size={38} color={PASTEL_PALETTE.textMuted} />
+                  <Text style={styles.pickerStateTitle}>
+                    {friends.length === 0 ? 'Bạn chưa có bạn bè' : 'Không tìm thấy người phù hợp'}
+                  </Text>
+                  <Text style={styles.pickerStateText}>
+                    {friends.length === 0 ? 'Hãy kết bạn trước khi tạo khoản chia.' : 'Thử tìm bằng tên hoặc email khác.'}
+                  </Text>
+                </View>
+              ) : filteredFriends.map((friend) => {
+                const isSelected = selectedFriendIds.includes(friend.friendId);
+                return (
+                  <TouchableOpacity
+                    key={friend.id}
+                    style={[styles.pickerFriendRow, isSelected && styles.pickerFriendRowSelected]}
+                    onPress={() => toggleSelectFriend(friend.friendId)}
+                    activeOpacity={0.72}
+                  >
+                    <UserAvatar name={friend.friendUsername} avatarUrl={friend.friendAvatarUrl} size={44} />
+                    <View style={styles.friendInfo}>
+                      <Text style={styles.friendName} numberOfLines={1}>{friend.friendUsername}</Text>
+                      <Text style={styles.friendEmail} numberOfLines={1}>{friend.friendEmail}</Text>
+                    </View>
+                    <View style={[styles.friendCheckbox, isSelected && styles.friendCheckboxSelected]}>
+                      {isSelected ? <Ionicons name="checkmark" size={16} color="#FFF" /> : null}
+                    </View>
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+
+            <TouchableOpacity style={styles.pickerDoneButton} onPress={() => setFriendPickerVisible(false)} activeOpacity={0.82}>
+              <Text style={styles.pickerDoneText}>{selectedCount > 0 ? `Xong · ${selectedCount} người` : 'Xong'}</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
       <ConfirmModal
         visible={errorModalVisible}
         title="Thông báo"

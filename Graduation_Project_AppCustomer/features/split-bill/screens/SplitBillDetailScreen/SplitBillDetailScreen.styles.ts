@@ -189,6 +189,7 @@ export const styles = StyleSheet.create({
     elevation: 2,
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 14,
   },
   creatorAvatar: {
     width: 44,
@@ -249,6 +250,7 @@ export const styles = StyleSheet.create({
   memberItem: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 12,
     paddingVertical: 12,
     borderBottomWidth: 1,
     borderBottomColor: '#F3F4F6',
@@ -415,5 +417,25 @@ export const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '700',
     color: '#EF4444',
+  },
+  cancelLockedNotice: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 10,
+    marginTop: 12,
+    marginBottom: 20,
+    paddingVertical: 13,
+    paddingHorizontal: 14,
+    borderWidth: 1,
+    borderColor: '#FDE68A',
+    borderRadius: 16,
+    backgroundColor: '#FFFBEB',
+  },
+  cancelLockedNoticeText: {
+    flex: 1,
+    color: '#92400E',
+    fontSize: 14,
+    fontWeight: '600',
+    lineHeight: 20,
   },
 });

@@ -7,9 +7,8 @@ import { Swipeable, RectButton } from 'react-native-gesture-handler';
 import { LinearGradient } from 'expo-linear-gradient';
 import { styles, PALETTE } from './ContactsScreen.styles';
 import { friendshipService, FriendshipResponse, SearchUserResult } from '../../../../shared/api/services/friendship.service';
-import SuccessModal from '../../../../shared/components/SuccessModal/SuccessModal';
-import ConfirmModal from '../../../../shared/components/ConfirmModal/ConfirmModal';
 import { UserAvatar } from '../../../../shared/components/UserAvatar';
+import { useToast } from '../../../../shared/components/Toast';
 
 import { useLanguage, useTheme } from '../../../../shared/contexts/ThemeLanguageContext';
 
@@ -18,6 +17,7 @@ export const ContactsScreen = () => {
   const insets = useSafeAreaInsets();
   const { t, language } = useLanguage();
   const { theme } = useTheme();
+  const { showToast } = useToast();
   const isEn = language === 'en';
   const [activeTab, setActiveTab] = useState<'FRIENDS' | 'REQUESTS' | 'SENT'>('FRIENDS');
   const [searchQuery, setSearchQuery] = useState('');
@@ -31,10 +31,6 @@ export const ContactsScreen = () => {
   const [pendingCount, setPendingCount] = useState(0);
   const [sentCount, setSentCount] = useState(0);
   const [isSendingRequest, setIsSendingRequest] = useState(false);
-
-  const [successModal, setSuccessModal] = useState<{ visible: boolean; title: string; message: string }>({ visible: false, title: '', message: '' });
-  const [errorModal, setErrorModal] = useState<{ visible: boolean; title: string; message: string }>({ visible: false, title: '', message: '' });
-  const [confirmModal, setConfirmModal] = useState<{ visible: boolean; id: number; username: string; type: 'remove' | 'accept' | 'reject' | 'cancel_request' | null }>({ visible: false, id: 0, username: '', type: null });
 
   useEffect(() => {
     fetchData();
@@ -78,6 +74,7 @@ export const ContactsScreen = () => {
   const handleSearch = async () => {
     const query = searchQuery.trim();
     if (!query) return;
+    Keyboard.dismiss();
     setSearchError(null);
     setSearchResult(null);
     try {
@@ -111,43 +108,25 @@ export const ContactsScreen = () => {
           friendshipId: res.data.id,
           requester: true,
         });
-        setSuccessModal({ visible: true, title: 'Thành công', message: 'Đã gửi lời mời kết bạn' });
+        showToast({ variant: 'success', message: isEn ? 'Friend request sent' : 'Đã gửi lời mời kết bạn' });
         fetchData();
       } else {
-        setErrorModal({ visible: true, title: 'Lỗi', message: res.message });
+        showToast({ variant: 'error', message: res.message || (isEn ? 'Could not send request' : 'Không thể gửi lời mời') });
       }
     } catch (error: any) {
-      setErrorModal({ visible: true, title: 'Lỗi', message: error?.message || 'Có lỗi xảy ra' });
+      showToast({ variant: 'error', message: error?.message || (isEn ? 'Something went wrong' : 'Có lỗi xảy ra') });
     } finally {
       setIsSendingRequest(false);
     }
   };
 
-  const handleCancelRequest = async () => {
-    if (!searchResult?.friendshipId) return;
+  const handleCancelRequest = async (id?: number, email?: string) => {
+    const requestId = id || searchResult?.friendshipId;
+    if (!requestId) return;
     try {
-      const res = await friendshipService.cancelRequest(searchResult.friendshipId);
+      const res = await friendshipService.cancelRequest(requestId);
       if (res.success) {
-        setSearchResult({
-          ...searchResult,
-          friendshipStatus: 'NONE',
-          friendshipId: undefined,
-          requester: false,
-        });
-        fetchData();
-      } else {
-        setErrorModal({ visible: true, title: 'Lỗi', message: res.message });
-      }
-    } catch (error: any) {
-      setErrorModal({ visible: true, title: 'Lỗi', message: error?.message || 'Không thể hủy lời mời' });
-    }
-  };
-
-  const handleCancelSentRequest = async (id: number, email?: string) => {
-    try {
-      const res = await friendshipService.cancelRequest(id);
-      if (res.success) {
-        if (searchResult && searchResult.email === email) {
+        if (searchResult && (!email || searchResult.email === email || searchResult.friendshipId === requestId)) {
           setSearchResult({
             ...searchResult,
             friendshipStatus: 'NONE',
@@ -155,12 +134,13 @@ export const ContactsScreen = () => {
             requester: false,
           });
         }
+        showToast({ variant: 'success', message: isEn ? 'Friend request cancelled' : 'Đã hủy lời mời kết bạn' });
         fetchData();
       } else {
-        setErrorModal({ visible: true, title: 'Lỗi', message: res.message });
+        showToast({ variant: 'error', message: res.message || (isEn ? 'Could not cancel request' : 'Không thể hủy lời mời') });
       }
     } catch (error: any) {
-      setErrorModal({ visible: true, title: 'Lỗi', message: error?.message || 'Không thể hủy lời mời' });
+      showToast({ variant: 'error', message: error?.message || (isEn ? 'Could not cancel request' : 'Không thể hủy lời mời') });
     }
   };
 
@@ -170,8 +150,8 @@ export const ContactsScreen = () => {
     if (searchResult.friendshipStatus === 'ACCEPTED') {
       return (
         <View style={styles.friendStatusButton}>
-          <Ionicons name="checkmark-circle" size={15} color="#6B7280" />
-          <Text style={styles.friendStatusText}>Bạn bè</Text>
+          <Ionicons name="checkmark-circle" size={15} color="#059669" />
+          <Text style={styles.friendStatusText}>{isEn ? 'Friends' : 'Bạn bè'}</Text>
         </View>
       );
     }
@@ -180,11 +160,11 @@ export const ContactsScreen = () => {
       return (
         <TouchableOpacity
           style={styles.pendingFriendButton}
-          onPress={() => setConfirmModal({ visible: true, id: searchResult.friendshipId || 0, username: searchResult.username, type: 'cancel_request' })}
+          onPress={() => handleCancelRequest(searchResult.friendshipId, searchResult.email)}
           activeOpacity={0.85}
         >
-          <Ionicons name="time-outline" size={14} color="#6B7280" />
-          <Text style={styles.pendingFriendText}>Đã gửi lời mời</Text>
+          <Ionicons name="time-outline" size={14} color="#D97706" />
+          <Text style={styles.pendingFriendText}>{isEn ? 'Sent' : 'Đã gửi'}</Text>
         </TouchableOpacity>
       );
     }
@@ -196,15 +176,15 @@ export const ContactsScreen = () => {
           onPress={() => setActiveTab('REQUESTS')}
           activeOpacity={0.85}
         >
-          <Text style={styles.incomingRequestText}>Phản hồi lời mời</Text>
+          <Text style={styles.incomingRequestText}>{isEn ? 'Respond' : 'Phản hồi'}</Text>
         </TouchableOpacity>
       );
     }
 
     return (
-      <TouchableOpacity 
-        style={[styles.addFriendButton, isSendingRequest && { opacity: 0.6 }]} 
-        onPress={handleSendRequest} 
+      <TouchableOpacity
+        style={[styles.addFriendButton, isSendingRequest && { opacity: 0.6 }]}
+        onPress={handleSendRequest}
         activeOpacity={0.85}
         disabled={isSendingRequest}
       >
@@ -214,7 +194,7 @@ export const ContactsScreen = () => {
           <Ionicons name="person-add" size={14} color="#FFF" />
         )}
         <Text style={styles.addFriendText}>
-          {isSendingRequest ? "Đang gửi..." : "Kết bạn"}
+          {isSendingRequest ? (isEn ? 'Sending...' : 'Đang gửi...') : (isEn ? 'Add' : 'Kết bạn')}
         </Text>
       </TouchableOpacity>
     );
@@ -224,11 +204,13 @@ export const ContactsScreen = () => {
     try {
       const res = await friendshipService.acceptRequest(id);
       if (res.success) {
-        setSuccessModal({ visible: true, title: 'Thành công', message: 'Đã chấp nhận kết bạn' });
+        showToast({ variant: 'success', message: isEn ? 'Friend request accepted' : 'Đã chấp nhận kết bạn' });
         fetchData();
+      } else {
+        showToast({ variant: 'error', message: res.message || (isEn ? 'Could not accept' : 'Không thể chấp nhận') });
       }
-    } catch (error) {
-      setErrorModal({ visible: true, title: 'Lỗi', message: 'Không thể chấp nhận' });
+    } catch {
+      showToast({ variant: 'error', message: isEn ? 'Could not accept' : 'Không thể chấp nhận' });
     }
   };
 
@@ -236,28 +218,27 @@ export const ContactsScreen = () => {
     try {
       const res = await friendshipService.rejectRequest(id);
       if (res.success) {
+        showToast({ variant: 'success', message: isEn ? 'Friend request declined' : 'Đã từ chối lời mời' });
         fetchData();
+      } else {
+        showToast({ variant: 'error', message: res.message || (isEn ? 'Could not decline' : 'Không thể từ chối') });
       }
-    } catch (error) {
-      setErrorModal({ visible: true, title: 'Lỗi', message: 'Không thể từ chối' });
+    } catch {
+      showToast({ variant: 'error', message: isEn ? 'Could not decline' : 'Không thể từ chối' });
     }
   };
 
-  const handleRemoveFriend = (id: number, username: string) => {
-    setConfirmModal({ visible: true, id, username, type: 'remove' });
-  };
-
-  const executeRemoveFriend = async () => {
+  const handleRemoveFriend = async (id: number) => {
     try {
-      const res = await friendshipService.removeFriend(confirmModal.id);
+      const res = await friendshipService.removeFriend(id);
       if (res.success) {
-        setConfirmModal({ ...confirmModal, visible: false });
-        setSuccessModal({ visible: true, title: 'Thành công', message: 'Đã xóa bạn bè' });
+        showToast({ variant: 'success', message: isEn ? 'Unfriended' : 'Đã hủy kết bạn' });
         fetchData();
+      } else {
+        showToast({ variant: 'error', message: res.message || (isEn ? 'Could not unfriend' : 'Không thể hủy kết bạn') });
       }
-    } catch (error) {
-      setConfirmModal({ ...confirmModal, visible: false });
-      setErrorModal({ visible: true, title: 'Lỗi', message: 'Không thể xóa bạn bè' });
+    } catch {
+      showToast({ variant: 'error', message: isEn ? 'Could not unfriend' : 'Không thể hủy kết bạn' });
     }
   };
 
@@ -287,7 +268,7 @@ export const ContactsScreen = () => {
         <RectButton
           style={styles.swipeDeleteButton}
           underlayColor="#DC2626"
-          onPress={() => handleRemoveFriend(item.id, item.friendUsername)}
+          onPress={() => handleRemoveFriend(item.id)}
         >
           <LinearGradient
             colors={['#F43F5E', '#E11D48']}
@@ -305,11 +286,27 @@ export const ContactsScreen = () => {
 
   const renderUserInfo = (item: FriendshipResponse) => (
     <View style={styles.userInfo}>
+      <UserAvatar
+        name={item.friendUsername}
+        avatarUrl={item.friendAvatarUrl}
+        size={44}
+        borderWidth={0}
+      />
       <View style={styles.userTextWrap}>
-        <Text style={[styles.userName, { color: theme.textPrimary }]}>{item.friendUsername}</Text>
-        <Text style={[styles.userEmail, { color: theme.textSecondary }]}>{item.friendEmail}</Text>
+        <Text style={[styles.userName, { color: theme.textPrimary }]} numberOfLines={1}>
+          {item.friendUsername}
+        </Text>
+        <Text
+          style={[styles.userEmail, { color: theme.textSecondary }]}
+          numberOfLines={1}
+          ellipsizeMode="tail"
+        >
+          {item.friendEmail}
+        </Text>
         {item.friendAccountNumber ? (
-          <Text style={styles.userStk}>STK: {item.friendAccountNumber}</Text>
+          <Text style={styles.userStk} numberOfLines={1} ellipsizeMode="tail">
+            STK: {item.friendAccountNumber}
+          </Text>
         ) : null}
       </View>
     </View>
@@ -371,7 +368,7 @@ export const ContactsScreen = () => {
       FRIENDS: {
         icon: 'people-outline' as const,
         title: isEn ? 'No friends yet' : 'Chưa có bạn bè nào',
-        text: isEn ? 'Search for friends using email or username above.' : 'Tìm bạn bè bằng email hoặc tài khoản ở trên để bắt đầu kết nối nhé.',
+        text: isEn ? 'Search for friends using email above.' : 'Tìm bạn bè bằng email ở trên để bắt đầu kết nối nhé.',
       },
       REQUESTS: {
         icon: 'mail-unread-outline' as const,
@@ -439,7 +436,7 @@ export const ContactsScreen = () => {
 
         <View style={[styles.content, { backgroundColor: theme.bg }]}>
           <View style={styles.searchSection}>
-            <Text style={[styles.searchHint, { color: theme.textSecondary }]}>{isEn ? 'Search friends by email, username or account number' : 'Tìm bạn bè bằng email, tên tài khoản hoặc STK ví'}</Text>
+            <Text style={[styles.searchHint, { color: theme.textSecondary }]}>{isEn ? 'Search friends by email or account number' : 'Tìm bạn bè bằng email hoặc STK ví'}</Text>
             <View style={[styles.searchContainer, { backgroundColor: theme.card, borderColor: theme.cardBorder }]}>
               <View style={[styles.searchIconWrap, { backgroundColor: theme.isDark ? theme.bgSoft : PALETTE.accentSoft }]}>
                 <Ionicons name="search" size={18} color={theme.primary} />
@@ -452,6 +449,8 @@ export const ContactsScreen = () => {
                 onChangeText={setSearchQuery}
                 autoCapitalize="none"
                 autoCorrect={false}
+                returnKeyType="search"
+                onSubmitEditing={handleSearch}
               />
               {searchQuery.length > 0 && (
                 <TouchableOpacity
@@ -470,39 +469,27 @@ export const ContactsScreen = () => {
           </View>
 
           {searchResult && (
-            <View style={styles.searchResultCard}>
+            <View style={[styles.searchResultCard, { backgroundColor: theme.card, borderColor: theme.cardBorder }]}>
               <UserAvatar
                 name={searchResult.username}
-                email={searchResult.email}
                 avatarUrl={searchResult.avatarUrl}
-                size={76}
-                borderWidth={3}
+                size={44}
+                borderWidth={0}
               />
-              <Text style={styles.searchResultName}>{searchResult.username}</Text>
-              <Text style={styles.searchResultEmail}>{searchResult.email}</Text>
-
-              {searchResult.friendshipStatus === 'ACCEPTED' ? (
-                <View style={styles.friendStatusButton}>
-                  <Ionicons name="checkmark-circle" size={16} color="#059669" />
-                  <Text style={styles.friendStatusText}>{isEn ? 'Friends' : 'Bạn bè'}</Text>
-                </View>
-              ) : searchResult.friendshipStatus === 'PENDING' ? (
-                <View style={styles.pendingFriendButton}>
-                  <Ionicons name="time" size={16} color="#D97706" />
-                  <Text style={styles.pendingFriendText}>
-                    {searchResult.requester ? (isEn ? 'Request Sent' : 'Đã gửi lời mời') : (isEn ? 'Pending Response' : 'Chờ bạn phản hồi')}
+              <View style={styles.searchResultInfo}>
+                <Text style={[styles.searchResultName, { color: theme.textPrimary }]} numberOfLines={1}>
+                  {searchResult.username}
+                </Text>
+                <Text style={[styles.searchResultEmail, { color: theme.textSecondary }]} numberOfLines={1}>
+                  {searchResult.email}
+                </Text>
+                {searchResult.accountNumber ? (
+                  <Text style={styles.searchResultStk} numberOfLines={1}>
+                    STK: {searchResult.accountNumber}
                   </Text>
-                </View>
-              ) : (
-                <TouchableOpacity
-                  style={styles.addFriendButton}
-                  onPress={handleSendRequest}
-                  activeOpacity={0.85}
-                >
-                  <Ionicons name="person-add" size={16} color="#FFFFFF" />
-                  <Text style={styles.addFriendText}>{isEn ? 'Add Friend' : 'Thêm bạn'}</Text>
-                </TouchableOpacity>
-              )}
+                ) : null}
+              </View>
+              <View style={styles.searchResultAction}>{renderSearchAction()}</View>
             </View>
           )}
 
@@ -561,45 +548,6 @@ export const ContactsScreen = () => {
           )}
         </View>
       </View>
-
-      <SuccessModal
-        visible={successModal.visible}
-        title={successModal.title}
-        message={successModal.message}
-        variant="pastel"
-        onClose={() => setSuccessModal({ ...successModal, visible: false })}
-      />
-      <ConfirmModal
-        visible={errorModal.visible}
-        title={errorModal.title}
-        message={errorModal.message}
-        iconName="alert-circle"
-        hideCancel
-        confirmText="Đóng"
-        onConfirm={() => setErrorModal({ ...errorModal, visible: false })}
-        onCancel={() => setErrorModal({ ...errorModal, visible: false })}
-      />
-      <ConfirmModal
-        visible={confirmModal.visible}
-        title="Xác nhận"
-        message={
-          confirmModal.type === 'cancel_request' 
-            ? `Bạn có chắc chắn muốn thu hồi lời mời kết bạn gửi tới ${confirmModal.username}?`
-            : `Bạn có chắc chắn muốn hủy kết bạn với ${confirmModal.username}?`
-        }
-        confirmText="Đồng ý"
-        cancelText="Hủy"
-        isDestructive={confirmModal.type === 'remove'}
-        onConfirm={
-          confirmModal.type === 'cancel_request' 
-            ? () => {
-                setConfirmModal({ ...confirmModal, visible: false });
-                handleCancelRequest();
-              }
-            : executeRemoveFriend
-        }
-        onCancel={() => setConfirmModal({ ...confirmModal, visible: false })}
-      />
     </View>
   );
 

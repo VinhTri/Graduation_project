@@ -22,8 +22,13 @@ public class JwtUtil {
     private int jwtExpirationMs;
 
     public String generateToken(UserDetails userDetails) {
+        // Email is immutable in our User entity, while username can be edited.
+        // Keep the subject stable so profile edits do not invalidate the session.
+        String subject = userDetails instanceof CustomUserDetails customUserDetails
+                ? customUserDetails.getUser().getEmail()
+                : userDetails.getUsername();
         return Jwts.builder()
-                .subject((userDetails.getUsername()))
+                .subject(subject)
                 .issuedAt(new Date())
                 .expiration(new Date((new Date()).getTime() + jwtExpirationMs))
                 .signWith(key())

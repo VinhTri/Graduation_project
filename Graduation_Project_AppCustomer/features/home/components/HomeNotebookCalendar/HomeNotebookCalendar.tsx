@@ -1,501 +1,370 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react'
 import {
-  View,
-  Text,
-  TouchableOpacity,
   ActivityIndicator,
   Alert,
-} from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { useFocusEffect, useRouter } from 'expo-router';
-import { styles } from './HomeNotebookCalendar.styles';
-import { DayActionModal } from './DayActionModal';
+  Modal,
+  Pressable,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native'
+import { Ionicons } from '@expo/vector-icons'
+import { useFocusEffect } from 'expo-router'
+import { PASTEL_PALETTE } from '@/shared/constants/PastelPalette'
+import { useToast } from '@/shared/components/Toast'
 import {
-  AddCashBalanceModal,
-  CashBalanceMode,
-  CashBalancePayload,
-  InitialCashData,
-} from '@/features/notebook/components/AddCashBalanceModal/AddCashBalanceModal';
-import { TransactionItem } from '@/features/notebook/components/RecentTransactions/RecentTransactions.types';
-import { mapCashHistoryToItem } from '@/features/notebook/utils/cashMappers';
-import { transactionService } from '@/shared/api/services/transactionService';
-import { walletService } from '@/shared/api/services/walletService';
-import { useLanguage, useTheme } from '@/shared/contexts/ThemeLanguageContext';
-import { useCategoryContext } from '@/shared/contexts/CategoryContext';
-import { ConfirmModal } from '@/shared/components';
-import { Toast } from '@/shared/components/Toast/Toast';
-import Colors from '@/shared/constants/Colors';
-import { PASTEL_PALETTE } from '@/shared/constants/PastelPalette';
+  createNotebookTransaction,
+  getCashNotebook,
+  getNotebookTransactions,
+} from '@/shared/services/notebook.service'
+import { AddTransactionModal } from '@/features/notebook/components/AddTransactionModal/AddTransactionModal'
+import type {
+  TransactionMode,
+  TransactionPayload,
+} from '@/features/notebook/types/transaction'
+import { styles } from './HomeNotebookCalendar.styles'
 
-const WEEKDAYS_VI = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'];
-const WEEKDAYS_EN = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+const WEEKDAYS = [
+  { key: 'T2', weekend: false },
+  { key: 'T3', weekend: false },
+  { key: 'T4', weekend: false },
+  { key: 'T5', weekend: false },
+  { key: 'T6', weekend: false },
+  { key: 'T7', weekend: 'sat' as const },
+  { key: 'CN', weekend: 'sun' as const },
+]
 
-export const HomeNotebookCalendar: React.FC = () => {
-  const router = useRouter();
-  const { theme } = useTheme();
-  const { language, t } = useLanguage();
-  const { loadCategories } = useCategoryContext();
-  const isEn = language === 'en';
+type DayCell = {
+  key: string
+  date: Date | null
+  day: number | null
+  inMonth: boolean
+  isToday: boolean
+  isFuture: boolean
+  logged: boolean
+  weekday: number
+}
 
-  const [currentDate, setCurrentDate] = useState<Date>(new Date());
-  const [cashBalance, setCashBalance] = useState<number>(0);
-  const [transactions, setTransactions] = useState<TransactionItem[]>([]);
-  const [loading, setLoading] = useState<boolean>(false);
-  const [saving, setSaving] = useState<boolean>(false);
-  const [toast, setToast] = useState<{ visible: boolean; message: string; type?: 'error' | 'success' | 'info' }>({
-    visible: false,
-    message: '',
-    type: 'info',
-  });
+function startOfMonth(d: Date) {
+  return new Date(d.getFullYear(), d.getMonth(), 1)
+}
 
-  // Day Modal & Add/Edit Cash Modal States
-  const [selectedDayKey, setSelectedDayKey] = useState<string | null>(null);
-  const [isDayModalVisible, setIsDayModalVisible] = useState<boolean>(false);
-  const [isBalanceModalVisible, setIsBalanceModalVisible] = useState<boolean>(false);
-  const [balanceMode, setBalanceMode] = useState<CashBalanceMode>('spend');
-  const [selectedTransaction, setSelectedTransaction] = useState<InitialCashData | null>(null);
-  const [txToDelete, setTxToDelete] = useState<InitialCashData | null>(null);
+function sameDay(a: Date, b: Date) {
+  return (
+    a.getFullYear() === b.getFullYear() &&
+    a.getMonth() === b.getMonth() &&
+    a.getDate() === b.getDate()
+  )
+}
 
-  const loadData = useCallback(async () => {
+function toKey(d: Date) {
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${y}-${m}-${day}`
+}
+
+function parseTxDate(raw: string) {
+  const match = String(raw || '').match(/^(\d{4})-(\d{2})-(\d{2})/)
+  if (match) {
+    return new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]))
+  }
+  const d = new Date(raw)
+  return Number.isNaN(d.getTime()) ? null : d
+}
+
+function buildMonthCells(monthAnchor: Date, loggedKeys: Set<string>): DayCell[] {
+  const today = new Date()
+  today.setHours(12, 0, 0, 0)
+  const first = startOfMonth(monthAnchor)
+  const mondayIndex = (first.getDay() + 6) % 7
+  const daysInMonth = new Date(first.getFullYear(), first.getMonth() + 1, 0).getDate()
+  const cells: DayCell[] = []
+
+  for (let i = 0; i < mondayIndex; i++) {
+    cells.push({
+      key: `pad-start-${i}`,
+      date: null,
+      day: null,
+      inMonth: false,
+      isToday: false,
+      isFuture: false,
+      logged: false,
+      weekday: i,
+    })
+  }
+
+  for (let day = 1; day <= daysInMonth; day++) {
+    const date = new Date(first.getFullYear(), first.getMonth(), day, 12)
+    const key = toKey(date)
+    const weekday = (date.getDay() + 6) % 7
+    cells.push({
+      key,
+      date,
+      day,
+      inMonth: true,
+      isToday: sameDay(date, today),
+      isFuture: date > today,
+      logged: loggedKeys.has(key),
+      weekday,
+    })
+  }
+
+  while (cells.length % 7 !== 0) {
+    cells.push({
+      key: `pad-end-${cells.length}`,
+      date: null,
+      day: null,
+      inMonth: false,
+      isToday: false,
+      isFuture: false,
+      logged: false,
+      weekday: cells.length % 7,
+    })
+  }
+
+  return cells
+}
+
+export function HomeNotebookCalendar() {
+  const { showToast } = useToast()
+  const [monthAnchor, setMonthAnchor] = useState(() => startOfMonth(new Date()))
+  const [loggedKeys, setLoggedKeys] = useState<Set<string>>(new Set())
+  const [loading, setLoading] = useState(true)
+  const [bookId, setBookId] = useState<number | null>(null)
+  const [balance, setBalance] = useState(0)
+  const [selectedDate, setSelectedDate] = useState<Date | null>(null)
+  const [pickVisible, setPickVisible] = useState(false)
+  const [editorVisible, setEditorVisible] = useState(false)
+  const [editorMode, setEditorMode] = useState<TransactionMode>('add')
+  const [saving, setSaving] = useState(false)
+
+  const load = useCallback(async () => {
     try {
-      const [wallet, history] = await Promise.all([
-        walletService.getCashWallet(),
-        transactionService.getTransactionHistory('cash'),
-      ]);
-      setCashBalance(Number(wallet?.balance) || 0);
-      setTransactions(
-        (history || [])
-          .map(mapCashHistoryToItem)
-          .filter((item): item is TransactionItem => item != null)
-      );
-    } catch (e) {
-      console.log('Error loading notebook calendar data:', e);
+      setLoading(true)
+      const book = await getCashNotebook()
+      setBookId(book.id)
+      setBalance(Number(book.balance) || 0)
+      const txs = await getNotebookTransactions(book.id, 'YEAR')
+      const keys = new Set<string>()
+      txs.forEach((tx) => {
+        const d = parseTxDate(tx.createdAt)
+        if (d) keys.add(toKey(d))
+      })
+      setLoggedKeys(keys)
+    } catch {
+      setLoggedKeys(new Set())
+    } finally {
+      setLoading(false)
     }
-  }, []);
+  }, [])
 
   useFocusEffect(
     useCallback(() => {
-      let active = true;
-      (async () => {
-        try {
-          await Promise.all([loadData(), loadCategories()]);
-        } catch (e) {
-          // Silent fallback on home screen
-        }
-      })();
-      return () => {
-        active = false;
-      };
-    }, [loadData, loadCategories])
-  );
+      load()
+    }, [load]),
+  )
 
-  const year = currentDate.getFullYear();
-  const month = currentDate.getMonth(); // 0-indexed
+  const cells = useMemo(
+    () => buildMonthCells(monthAnchor, loggedKeys),
+    [monthAnchor, loggedKeys],
+  )
 
-  // Today key
-  const today = new Date();
-  const todayKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+  const monthLabel = `Tháng ${monthAnchor.getMonth() + 1}/${monthAnchor.getFullYear()}`
 
-  // Group transactions by date key: YYYY-MM-DD
-  const txByDateMap = useMemo(() => {
-    const map: Record<string, TransactionItem[]> = {};
-    transactions.forEach((tx) => {
-      if (!tx.createdAt) return;
-      const txDate = new Date(tx.createdAt);
-      if (Number.isNaN(txDate.getTime())) return;
-      const key = `${txDate.getFullYear()}-${String(txDate.getMonth() + 1).padStart(2, '0')}-${String(txDate.getDate()).padStart(2, '0')}`;
-      if (!map[key]) {
-        map[key] = [];
-      }
-      map[key].push(tx);
-    });
-    return map;
-  }, [transactions]);
+  const canGoNext = () => {
+    const now = startOfMonth(new Date())
+    const next = new Date(monthAnchor.getFullYear(), monthAnchor.getMonth() + 1, 1)
+    return next <= now
+  }
 
-  // Navigate month
-  const handlePrevMonth = () => {
-    setCurrentDate(new Date(year, month - 1, 1));
-  };
+  const shiftMonth = (dir: -1 | 1) => {
+    const next = new Date(monthAnchor.getFullYear(), monthAnchor.getMonth() + dir, 1)
+    if (dir > 0 && next > startOfMonth(new Date())) return
+    setMonthAnchor(next)
+  }
 
-  const handleNextMonth = () => {
-    setCurrentDate(new Date(year, month + 1, 1));
-  };
+  const openDay = (cell: DayCell) => {
+    if (!cell.date || !cell.inMonth) return
 
-  // Generate calendar grid
-  const daysInMonth = new Date(year, month + 1, 0).getDate();
-  const firstDayOfWeek = new Date(year, month, 1).getDay();
-  // Monday = 0, Sunday = 6
-  const startDayOffset = firstDayOfWeek === 0 ? 6 : firstDayOfWeek - 1;
-
-  const totalGridCells = Math.ceil((startDayOffset + daysInMonth) / 7) * 7;
-
-  const gridCells = useMemo(() => {
-    const cells: Array<{
-      dayNum: number | null;
-      dateKey: string | null;
-      isToday: boolean;
-      isFuture: boolean;
-      hasTransactions: boolean;
-      transactions: TransactionItem[];
-    }> = [];
-
-    for (let i = 0; i < totalGridCells; i++) {
-      if (i < startDayOffset || i >= startDayOffset + daysInMonth) {
-        cells.push({
-          dayNum: null,
-          dateKey: null,
-          isToday: false,
-          isFuture: false,
-          hasTransactions: false,
-          transactions: [],
-        });
-      } else {
-        const day = i - startDayOffset + 1;
-        const dateKey = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-        const isToday = dateKey === todayKey;
-        const isFuture = dateKey > todayKey;
-        const dayTxs = txByDateMap[dateKey] || [];
-        const hasTransactions = dayTxs.length > 0;
-
-        cells.push({
-          dayNum: day,
-          dateKey,
-          isToday,
-          isFuture,
-          hasTransactions,
-          transactions: dayTxs,
-        });
-      }
-    }
-    return cells;
-  }, [year, month, startDayOffset, daysInMonth, totalGridCells, todayKey, txByDateMap]);
-
-  // Click on a calendar cell
-  const handlePressCell = (cell: typeof gridCells[0]) => {
-    if (!cell.dateKey || cell.dayNum === null || cell.isFuture) return;
-    setSelectedDayKey(cell.dateKey);
-    setIsDayModalVisible(true);
-  };
-
-  // Selected date details for modals
-  const selectedDayData = useMemo(() => {
-    if (!selectedDayKey) return null;
-    const [y, m, d] = selectedDayKey.split('-').map(Number);
-    const dateObj = new Date(y, m - 1, d);
-    const dayOfWeekNamesVi = ['Chủ nhật', 'Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7'];
-    const dayOfWeekNamesEn = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-    
-    const dayOfWeek = isEn ? dayOfWeekNamesEn[dateObj.getDay()] : dayOfWeekNamesVi[dateObj.getDay()];
-    const displayDateText = `${dayOfWeek}, ${String(d).padStart(2, '0')}/${String(m).padStart(2, '0')}/${y}`;
-    const displayShortDate = `${String(d).padStart(2, '0')}/${String(m).padStart(2, '0')}`;
-    
-    const isToday = selectedDayKey === todayKey;
-    const now = new Date();
-    const targetIsoDate = isToday 
-      ? `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}T${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`
-      : `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}T12:00:00`;
-      
-    const isFuture = selectedDayKey > todayKey;
-
-    const dayTxs = txByDateMap[selectedDayKey] || [];
-
-    return {
-      dateKey: selectedDayKey,
-      displayDateText,
-      displayShortDate,
-      targetIsoDate,
-      isFuture,
-      transactions: dayTxs,
-    };
-  }, [selectedDayKey, isEn, todayKey, txByDateMap]);
-
-  // Open add income modal
-  const handleOpenAddIncome = () => {
-    setBalanceMode('add');
-    setSelectedTransaction(null);
-    setIsDayModalVisible(false);
-    setIsBalanceModalVisible(true);
-  };
-
-  // Open add expense modal
-  const handleOpenAddExpense = () => {
-    setBalanceMode('spend');
-    setSelectedTransaction(null);
-    setIsDayModalVisible(false);
-    setIsBalanceModalVisible(true);
-  };
-
-  // Open edit modal for a transaction
-  const handlePressTransactionItem = (tx: TransactionItem) => {
-    if (!tx.id) return;
-    setSelectedTransaction({
-      transactionCode: tx.id,
-      amount: tx.amount,
-      note: tx.note,
-      category: {
-        id: tx.categoryId || 0,
-        label: tx.categoryLabel || 'Chưa phân loại',
-        icon: tx.categoryIcon || 'list',
-        color: tx.categoryColor || PASTEL_PALETTE.accentDeep,
-      },
-    });
-    setBalanceMode(tx.type === 'INCOME' ? 'add' : 'spend');
-    setIsDayModalVisible(false);
-    setIsBalanceModalVisible(true);
-  };
-
-  // Confirm create or update cash transaction
-  const handleCashBalanceChange = async ({ amount, note, category, date }: CashBalancePayload) => {
-    const categoryId = Number(category.id);
-    if (!categoryId || Number.isNaN(categoryId)) {
-      Alert.alert('Lỗi', 'Danh mục không hợp lệ');
-      throw new Error('Invalid category');
+    if (cell.isFuture) {
+      const today = new Date()
+      const targetLabel = `${cell.date.getDate()}/${cell.date.getMonth() + 1}/${cell.date.getFullYear()}`
+      const todayLabel = `${today.getDate()}/${today.getMonth() + 1}/${today.getFullYear()}`
+      showToast({
+        title: 'Chưa đến ngày',
+        message: `Chưa đến ngày ${targetLabel}. Hôm nay là ngày ${todayLabel}.`,
+        variant: 'warning',
+      })
+      return
     }
 
+    setSelectedDate(cell.date)
+    setPickVisible(true)
+  }
+
+  const openEditor = (mode: TransactionMode) => {
+    setPickVisible(false)
+    setEditorMode(mode)
+    setEditorVisible(true)
+  }
+
+  const handleConfirm = async (payload: TransactionPayload) => {
+    if (!bookId || !selectedDate) return
     try {
-      setSaving(true);
-      if (selectedTransaction) {
-        await transactionService.updateManualTransaction(selectedTransaction.transactionCode, {
-          amount,
-          type: balanceMode === 'add' ? 'INCOME' : 'EXPENSE',
-          categoryId,
-          note,
-          createdAt: date,
-        });
-      } else {
-        await transactionService.createManualTransaction({
-          amount,
-          type: balanceMode === 'add' ? 'INCOME' : 'EXPENSE',
-          categoryId,
-          note,
-          createdAt: date || (selectedDayData ? selectedDayData.targetIsoDate : undefined),
-        });
-      }
-      await loadData();
+      setSaving(true)
+      await createNotebookTransaction({
+        amount: payload.amount,
+        type: editorMode === 'spend' ? 'EXPENSE' : 'INCOME',
+        categoryId: payload.category.id,
+        note: payload.note,
+        bookId,
+        entryDate: toKey(selectedDate),
+      })
+      setEditorVisible(false)
+      await load()
     } catch (e: any) {
-      Alert.alert('Lỗi', e?.message || 'Không lưu được giao dịch tiền mặt');
-      throw e;
+      Alert.alert('Lỗi', e?.message || 'Không ghi chép được')
     } finally {
-      setSaving(false);
+      setSaving(false)
     }
-  };
+  }
 
-  // Delete transaction
-  const handleDeleteTransaction = () => {
-    if (!selectedTransaction) return;
-    setTxToDelete(selectedTransaction);
-  };
-
-  const confirmDeleteTransaction = async () => {
-    if (!txToDelete) return;
-    try {
-      setSaving(true);
-      await transactionService.deleteManualTransaction(txToDelete.transactionCode);
-      setIsBalanceModalVisible(false);
-      await loadData();
-    } catch (e: any) {
-      Alert.alert('Lỗi', e?.message || 'Không xóa được giao dịch');
-    } finally {
-      setSaving(false);
-      setTxToDelete(null);
-    }
-  };
-
-  const weekdays = isEn ? WEEKDAYS_EN : WEEKDAYS_VI;
-  const monthTitle = isEn
-    ? `${currentDate.toLocaleString('en-US', { month: 'long' })} ${year}`
-    : `Tháng ${month + 1}/${year}`;
+  const selectedLabel = selectedDate
+    ? `${selectedDate.getDate()}/${selectedDate.getMonth() + 1}/${selectedDate.getFullYear()}`
+    : ''
 
   return (
-    <View style={styles.container}>
-      {/* Section Header */}
-      <View style={styles.headerSection}>
-        <Text style={[styles.title, { color: theme.primary }]}>{t('quickNotebook')}</Text>
-        <Text style={[styles.subtitle, { color: theme.textSecondary }]}>
-          {t('quickNotebookSubtitle')}
-        </Text>
+    <View style={styles.wrap}>
+      <View style={styles.shell}>
+      <View style={styles.headerRow}>
+        <Text style={styles.title}>Sổ tay nhanh</Text>
+        <Text style={styles.subtitle}>Chạm ngày để ghi thu / chi</Text>
       </View>
 
-      {/* Calendar Card */}
-      <View style={[styles.calendarCard, { backgroundColor: theme.card, borderColor: theme.cardBorder }]}>
-        {/* Month Navigator Header */}
-        <View style={styles.monthNavRow}>
-          <TouchableOpacity
-            style={[styles.navBtn, { backgroundColor: theme.isDark ? theme.bgSoft : '#FAFAFA', borderColor: theme.cardBorder }]}
-            activeOpacity={0.75}
-            onPress={handlePrevMonth}
-          >
-            <Ionicons name="chevron-back" size={18} color={theme.primary} />
-          </TouchableOpacity>
-
-          <View style={styles.monthTitleWrap}>
-            <Text style={[styles.monthTitleText, { color: theme.primary }]}>{monthTitle}</Text>
-          </View>
-
-          <TouchableOpacity
-            style={[styles.navBtn, { backgroundColor: theme.isDark ? theme.bgSoft : '#FAFAFA', borderColor: theme.cardBorder }]}
-            activeOpacity={0.75}
-            onPress={handleNextMonth}
-          >
-            <Ionicons name="chevron-forward" size={18} color={theme.primary} />
-          </TouchableOpacity>
-        </View>
-
-        {/* Weekdays Row */}
-        <View
-          style={[
-            styles.weekdaysRow,
-            {
-              backgroundColor: theme.isDark ? theme.bgSoft : '#F8F6FF',
-              borderColor: theme.cardBorder,
-            },
-          ]}
+      <View style={styles.navRow}>
+        <TouchableOpacity style={styles.navBtn} onPress={() => shiftMonth(-1)} activeOpacity={0.75}>
+          <Ionicons name="chevron-back" size={18} color={PASTEL_PALETTE.title} />
+        </TouchableOpacity>
+        <Text style={styles.navMonth}>{monthLabel}</Text>
+        <TouchableOpacity
+          style={[styles.navBtn, !canGoNext() && { opacity: 0.35 }]}
+          onPress={() => shiftMonth(1)}
+          disabled={!canGoNext()}
+          activeOpacity={0.75}
         >
-          {weekdays.map((dayName, idx) => {
-            const isWeekend = idx >= 5;
-            return (
-              <View key={dayName} style={styles.weekdayCol}>
-                <Text
-                  style={[
-                    styles.weekdayText,
-                    { color: theme.textPrimary },
-                    isWeekend && styles.weekendText,
-                  ]}
-                >
-                  {dayName}
-                </Text>
-              </View>
-            );
-          })}
+          <Ionicons name="chevron-forward" size={18} color={PASTEL_PALETTE.title} />
+        </TouchableOpacity>
+      </View>
+
+      <View style={styles.calendarCard}>
+        <View style={styles.weekdayRow}>
+          {WEEKDAYS.map((d) => (
+            <Text
+              key={d.key}
+              style={[
+                styles.weekday,
+                d.weekend === 'sat' && styles.weekdaySat,
+                d.weekend === 'sun' && styles.weekdaySun,
+              ]}
+            >
+              {d.key}
+            </Text>
+          ))}
         </View>
 
-        {/* Days Grid */}
-        <View style={styles.grid}>
-          {gridCells.map((cell, index) => {
-            const isLastInRow = (index + 1) % 7 === 0;
-
-            if (cell.dayNum === null) {
+        {loading ? (
+          <View style={styles.loadingBox}>
+            <ActivityIndicator color={PASTEL_PALETTE.accentDeep} />
+          </View>
+        ) : (
+          <View style={styles.grid}>
+            {cells.map((cell) => {
+              if (!cell.inMonth || !cell.date) {
+                return <View key={cell.key} style={styles.cellEmpty} />
+              }
+              const isSat = cell.weekday === 5
+              const isSun = cell.weekday === 6
               return (
-                <View
-                  key={`empty-${index}`}
+                <TouchableOpacity
+                  key={cell.key}
                   style={[
                     styles.cell,
-                    styles.cellEmpty,
-                    isLastInRow && styles.cellNoRightBorder,
-                    { borderColor: theme.isDark ? theme.bgSoft : '#F3F4F6' },
+                    cell.isToday && styles.cellToday,
+                    cell.isFuture && styles.cellFuture,
                   ]}
-                />
-              );
-            }
-
-            const isHighlighted = cell.isToday || (cell.hasTransactions && !cell.isFuture);
-
-            return (
-              <TouchableOpacity
-                key={cell.dateKey}
-                style={[
-                  styles.cell,
-                  isLastInRow && styles.cellNoRightBorder,
-                  cell.isToday && styles.cellToday,
-                  cell.hasTransactions && !cell.isToday && styles.cellRecorded,
-                  cell.isFuture && styles.cellFuture,
-                  { borderColor: theme.isDark ? theme.bgSoft : '#F3F4F6' },
-                ]}
-                activeOpacity={0.7}
-                disabled={cell.isFuture}
-                onPress={() => handlePressCell(cell)}
-              >
-                <View style={styles.dayNumWrap}>
+                  activeOpacity={0.75}
+                  onPress={() => openDay(cell)}
+                >
                   <Text
                     style={[
                       styles.dayNum,
-                      { color: theme.textPrimary },
-                      cell.isFuture && styles.dayNumFuture,
-                      cell.isToday && styles.dayNumToday,
+                      isSat && styles.daySat,
+                      isSun && styles.daySun,
+                      cell.isToday && styles.dayToday,
                     ]}
                   >
-                    {cell.dayNum}
+                    {cell.day}
                   </Text>
-                </View>
-
-                {/* Status Text (Chưa ghi chép / Đã ghi chép) */}
-                {!cell.isFuture && (
-                  <View style={styles.statusTextWrap}>
-                    {cell.hasTransactions ? (
-                      <Text style={styles.statusRecorded} numberOfLines={2}>
-                        {isEn ? 'Logged' : 'Đã ghi\nchép'}
-                      </Text>
-                    ) : (
-                      <Text
-                        style={[
-                          styles.statusNotRecorded,
-                          { color: theme.textMuted },
-                        ]}
-                        numberOfLines={2}
-                      >
-                        {isEn ? 'Not\nlogged' : 'Chưa ghi\nchép'}
-                      </Text>
-                    )}
-                  </View>
-                )}
-              </TouchableOpacity>
-            );
-          })}
-        </View>
+                  {!cell.isFuture ? (
+                    <Text
+                      style={[
+                        styles.status,
+                        cell.logged ? styles.statusLogged : styles.statusEmpty,
+                      ]}
+                      numberOfLines={2}
+                    >
+                      {cell.logged ? 'Đã ghi chép' : 'Chưa ghi chép'}
+                    </Text>
+                  ) : (
+                    <Text style={styles.statusMuted}>—</Text>
+                  )}
+                </TouchableOpacity>
+              )
+            })}
+          </View>
+        )}
+      </View>
       </View>
 
-      {/* Day Action Modal */}
-      {selectedDayData && (
-        <DayActionModal
-          visible={isDayModalVisible}
-          dateStr={selectedDayData.dateKey}
-          displayDateText={selectedDayData.displayDateText}
-          transactions={selectedDayData.transactions}
-          isFuture={selectedDayData.isFuture}
-          onClose={() => setIsDayModalVisible(false)}
-          onAddIncome={handleOpenAddIncome}
-          onAddExpense={handleOpenAddExpense}
-          onPressTransaction={handlePressTransactionItem}
-        />
-      )}
+      <Modal visible={pickVisible} transparent animationType="fade" onRequestClose={() => setPickVisible(false)}>
+        <Pressable style={styles.pickOverlay} onPress={() => setPickVisible(false)}>
+          <Pressable style={styles.pickSheet} onPress={(e) => e.stopPropagation()}>
+            <Text style={styles.pickTitle}>Ghi chép · {selectedLabel}</Text>
+            <Text style={styles.pickHint}>Chọn loại giao dịch nhanh</Text>
+            <TouchableOpacity
+              style={[styles.pickBtn, styles.pickIncome]}
+              activeOpacity={0.85}
+              onPress={() => openEditor('add')}
+            >
+              <Ionicons name="add-circle-outline" size={20} color={PASTEL_PALETTE.accentDeep} />
+              <Text style={styles.pickIncomeText}>Thu nhập</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.pickBtn, styles.pickExpense]}
+              activeOpacity={0.85}
+              onPress={() => openEditor('spend')}
+            >
+              <Ionicons name="remove-circle-outline" size={20} color="#DC2626" />
+              <Text style={styles.pickExpenseText}>Chi tiêu</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.pickCancel} onPress={() => setPickVisible(false)}>
+              <Text style={styles.pickCancelText}>Hủy</Text>
+            </TouchableOpacity>
+          </Pressable>
+        </Pressable>
+      </Modal>
 
-      {/* Add / Edit Cash Transaction Modal */}
-      <AddCashBalanceModal
-        visible={isBalanceModalVisible}
-        mode={balanceMode}
-        currentBalance={cashBalance}
+      <AddTransactionModal
+        visible={editorVisible}
+        mode={editorMode}
+        currentBalance={balance}
         saving={saving}
-        initialData={selectedTransaction || undefined}
-        targetDate={selectedDayData ? selectedDayData.targetIsoDate : undefined}
-        displayDate={selectedDayData ? selectedDayData.displayShortDate : undefined}
-        onClose={() => setIsBalanceModalVisible(false)}
-        onConfirm={handleCashBalanceChange}
-        onDelete={handleDeleteTransaction}
-      />
-
-      {/* Confirm Delete Modal */}
-      <ConfirmModal
-        visible={!!txToDelete}
-        title="Xóa giao dịch"
-        message="Bạn có chắc chắn muốn xóa giao dịch này không? Số dư sổ tay và ngân sách sẽ được hoàn lại tự động."
-        iconName="trash-outline"
-        iconColor={Colors.error}
-        confirmText="Xóa"
-        cancelText="Hủy"
-        isDestructive={true}
-        onConfirm={confirmDeleteTransaction}
-        onCancel={() => setTxToDelete(null)}
-      />
-
-      {/* Toast Notification */}
-      <Toast
-        visible={toast.visible}
-        message={toast.message}
-        type={toast.type}
-        onClose={() => setToast((prev) => ({ ...prev, visible: false }))}
+        onClose={() => setEditorVisible(false)}
+        onConfirm={handleConfirm}
       />
     </View>
-  );
-};
+  )
+}
 
-export default HomeNotebookCalendar;
+export default HomeNotebookCalendar

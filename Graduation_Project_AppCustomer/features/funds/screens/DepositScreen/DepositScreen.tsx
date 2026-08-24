@@ -1,9 +1,10 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity, TextInput,
   StatusBar, KeyboardAvoidingView, Platform, Alert,
 } from 'react-native';
 import { Feather, Ionicons } from '@expo/vector-icons';
+import { CharacterCounter } from '@/shared/components/CharacterCounter/CharacterCounter';
 import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { FundHeaderShell, FundTransferFlow } from '../../components';
@@ -11,10 +12,11 @@ import { PinModal, SuccessModal } from '../../../../shared/components';
 import { fundStore, useFund } from '../../store/fundStore';
 import { walletService } from '../../../../shared/api/services/walletService';
 import { FUND_PALETTE } from '../../theme';
-import { formatCurrency, parseAmountInput } from '../../utils';
+import { SYSTEM_MIN_DEPOSIT } from '../../constants';
+import { createFundRequestId, formatCompactCurrency, formatCurrency, parseAmountInput } from '../../utils';
 import { styles } from './DepositScreen.styles';
 
-const QUICK_AMOUNTS = [50_000, 100_000, 200_000, 500_000, 1_000_000, 2_000_000];
+const QUICK_AMOUNTS = [50_000, 100_000, 200_000, 500_000, 1_000_000];
 
 export function DepositScreen() {
   const router = useRouter();
@@ -29,6 +31,7 @@ export function DepositScreen() {
   const [successVisible, setSuccessVisible] = useState(false);
   const [walletBalance, setWalletBalance] = useState(0);
   const [submitting, setSubmitting] = useState(false);
+  const requestIdRef = useRef<string | null>(null);
 
   useFocusEffect(
     useCallback(() => {
@@ -40,11 +43,14 @@ export function DepositScreen() {
   );
 
   const parsedAmount = amount ? parseInt(amount, 10) : 0;
-  const isValid = parsedAmount >= 10_000 && parsedAmount <= walletBalance && !submitting;
+  const minDeposit = fund?.minDepositAmount && fund.minDepositAmount > 0
+    ? fund.minDepositAmount
+    : SYSTEM_MIN_DEPOSIT;
+  const isValid = parsedAmount >= minDeposit && parsedAmount <= walletBalance && !submitting;
 
   const handleConfirm = () => {
-    if (parsedAmount < 10_000) {
-      Alert.alert('Lỗi', 'Số tiền nạp tối thiểu là 10.000đ');
+    if (parsedAmount < minDeposit) {
+      Alert.alert('Lỗi', `Số tiền nạp tối thiểu của quỹ này là ${formatCurrency(minDeposit)}đ`);
       return;
     }
     if (parsedAmount > walletBalance) {
@@ -52,6 +58,7 @@ export function DepositScreen() {
       return;
     }
     setPinError('');
+    requestIdRef.current = createFundRequestId();
     setPinVisible(true);
   };
 
@@ -59,7 +66,7 @@ export function DepositScreen() {
     try {
       setSubmitting(true);
       setPinError('');
-      await fundStore.deposit(Number(id), parsedAmount, pin, note.trim() || undefined);
+      await fundStore.deposit(Number(id), parsedAmount, pin, note.trim() || undefined, requestIdRef.current || undefined);
       setPinVisible(false);
       setSuccessVisible(true);
     } catch (err: any) {
@@ -139,11 +146,14 @@ export function DepositScreen() {
                   activeOpacity={0.85}
                 >
                   <Text style={[styles.quickChipText, parsedAmount === amt && styles.quickChipTextActive]}>
-                    {formatCurrency(amt)}
+                    {formatCompactCurrency(amt)}
                   </Text>
                 </TouchableOpacity>
               ))}
             </ScrollView>
+            <Text style={styles.minDepositHint}>
+              Mỗi lần nạp tối thiểu {formatCurrency(minDeposit)} ₫
+            </Text>
           </View>
 
           {/* Note */}
@@ -160,11 +170,12 @@ export function DepositScreen() {
               maxLength={100}
             />
           </View>
+          <CharacterCounter value={note} maxLength={100} />
 
           <View style={styles.securityRow}>
             <Ionicons name="shield-checkmark" size={20} color={FUND_PALETTE.primaryDeep} />
             <Text style={styles.securityText}>
-              Giao dịch được bảo vệ bằng mã PIN. Tiền sẽ trừ từ ví và cộng vào quỹ.
+              Giao dịch được bảo vệ bằng mã PIN. Tiền sẽ chuyển vào quỹ chung và chỉ chủ quỹ có quyền rút.
             </Text>
           </View>
         </ScrollView>

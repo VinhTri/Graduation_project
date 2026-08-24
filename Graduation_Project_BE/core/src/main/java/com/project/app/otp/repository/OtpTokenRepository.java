@@ -1,6 +1,6 @@
 package com.project.app.otp.repository;
 
-import com.project.app.otp.entity.OtpPurpose;
+import com.project.app.otp.enums.OtpPurpose;
 import com.project.app.otp.entity.OtpToken;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;

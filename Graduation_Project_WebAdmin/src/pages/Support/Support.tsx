@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Avatar,
   Button,
@@ -11,11 +11,14 @@ import {
 } from 'antd';
 import {
   CustomerServiceOutlined,
+  BellOutlined,
   SearchOutlined,
   SendOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
+import axios from 'axios';
 import { apiClient } from '../../services/api';
+import { useNavigate } from 'react-router-dom';
 import './Support.css';
 
 interface SupportTicket {
@@ -58,6 +61,7 @@ const avatarColor = (name: string) => {
 };
 
 export const Support = () => {
+  const navigate = useNavigate();
   const [tickets, setTickets] = useState<SupportTicket[]>([]);
   const [loadingList, setLoadingList] = useState(true);
   const [selectedId, setSelectedId] = useState<number | null>(null);
@@ -79,7 +83,7 @@ export const Support = () => {
     }
   };
 
-  const fetchTickets = async (isSilent = false) => {
+  const fetchTickets = useCallback(async (isSilent = false) => {
     try {
       if (!isSilent) setLoadingList(true);
       const response = await apiClient.get('/api/v1/admin/support/tickets');
@@ -89,53 +93,58 @@ export const Support = () => {
       if (list.length > 0 && selectedId == null) {
         setSelectedId(list[0].id);
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       if (!isSilent) {
-        message.error(error?.response?.data?.message || 'Không thể tải danh sách hỗ trợ');
+        const apiMessage = axios.isAxiosError(error) ? error.response?.data?.message : null;
+        message.error(apiMessage || 'Không thể tải danh sách hỗ trợ');
       }
     } finally {
       if (!isSilent) setLoadingList(false);
     }
-  };
+  }, [selectedId]);
 
-  const fetchDetail = async (id: number, isSilent = false) => {
+  const fetchDetail = useCallback(async (id: number, isSilent = false) => {
     try {
       if (!isSilent) setLoadingDetail(true);
       const response = await apiClient.get(`/api/v1/admin/support/tickets/${id}`);
       const data = response.data?.data || response.data;
       if (data) setDetail(data);
-    } catch (error: any) {
+    } catch (error: unknown) {
       if (!isSilent) {
-        message.error(error?.response?.data?.message || 'Không thể tải hội thoại');
+        const apiMessage = axios.isAxiosError(error) ? error.response?.data?.message : null;
+        message.error(apiMessage || 'Không thể tải hội thoại');
         setDetail(null);
       }
     } finally {
       if (!isSilent) setLoadingDetail(false);
     }
-  };
-
-  useEffect(() => {
-    fetchTickets(false);
   }, []);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    void fetchTickets(false);
+  }, [fetchTickets]);
+
+  useEffect(() => {
     if (selectedId != null) {
-      fetchDetail(selectedId, false);
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      void fetchDetail(selectedId, false);
       setReply('');
     }
-  }, [selectedId]);
+  }, [fetchDetail, selectedId]);
 
-  // Auto-polling interval every 3 seconds for real-time chat updates
+  // Poll only while the Admin tab is visible to avoid unnecessary API traffic.
   useEffect(() => {
     const interval = setInterval(() => {
-      fetchTickets(true);
+      if (document.visibilityState !== 'visible') return;
+      void fetchTickets(true);
       if (selectedId != null) {
-        fetchDetail(selectedId, true);
+        void fetchDetail(selectedId, true);
       }
-    }, 3000);
+    }, 8000);
 
     return () => clearInterval(interval);
-  }, [selectedId]);
+  }, [fetchDetail, fetchTickets, selectedId]);
 
   // Track message count so auto-polling doesn't yank admin down when reading older messages
   const prevMsgCountRef = useRef(0);
@@ -177,8 +186,9 @@ export const Support = () => {
       });
       setReply('');
       await Promise.all([fetchDetail(selectedId), fetchTickets()]);
-    } catch (error: any) {
-      message.error(error?.response?.data?.message || 'Không gửi được phản hồi');
+    } catch (error: unknown) {
+      const apiMessage = axios.isAxiosError(error) ? error.response?.data?.message : null;
+      message.error(apiMessage || 'Không gửi được phản hồi');
     } finally {
       setSending(false);
     }
@@ -191,8 +201,9 @@ export const Support = () => {
       await apiClient.put(`/api/v1/admin/support/tickets/${selectedId}/status`, { status });
       await Promise.all([fetchDetail(selectedId), fetchTickets()]);
       message.success('Đã cập nhật trạng thái');
-    } catch (error: any) {
-      message.error(error?.response?.data?.message || 'Không cập nhật được trạng thái');
+    } catch (error: unknown) {
+      const apiMessage = axios.isAxiosError(error) ? error.response?.data?.message : null;
+      message.error(apiMessage || 'Không cập nhật được trạng thái');
     } finally {
       setUpdatingStatus(false);
     }
@@ -211,6 +222,7 @@ export const Support = () => {
             <div className="support-list-title">
               <CustomerServiceOutlined />
               <strong>Hỗ trợ người dùng</strong>
+              <Button type="text" size="small" icon={<BellOutlined />} onClick={() => navigate('/notifications')}>Thông báo</Button>
             </div>
             <Input
               allowClear

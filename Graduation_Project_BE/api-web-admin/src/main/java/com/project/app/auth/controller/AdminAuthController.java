@@ -16,8 +16,10 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * Auth expose cho cổng Admin — chỉ login quản trị.
- * Nghiệp vụ auth dùng chung nằm ở {@link AuthService} trong module core.
+ * Auth API cho cổng Web Admin.
+ * <p>
+ * Chỉ expose đăng nhập quản trị — nghiệp vụ auth dùng chung {@link AuthService} trong core.
+ * Sau login phải có role {@link Role#ADMIN}, nếu không sẽ bị từ chối.
  */
 @RestController
 @RequestMapping("/api/v1/admin/auth")
@@ -26,6 +28,7 @@ public class AdminAuthController {
 
     private final AuthService authService;
 
+    /** Đăng nhập admin bằng email + mật khẩu → trả JWT (chỉ khi role = ADMIN). */
     @PostMapping("/login")
     public ResponseEntity<ApiResponse<AuthResponse>> login(@Valid @RequestBody LoginRequest request) {
         AuthResponse response = authService.loginUser(request);
@@ -34,10 +37,6 @@ public class AdminAuthController {
             throw new AppException(ErrorCode.UNAUTHORIZED_ACCESS);
         }
 
-        return ResponseEntity.ok(ApiResponse.<AuthResponse>builder()
-                .success(true)
-                .message("Đăng nhập quản trị thành công!")
-                .data(response)
-                .build());
+        return ApiResponse.ok("Đăng nhập quản trị thành công!", response);
     }
 }

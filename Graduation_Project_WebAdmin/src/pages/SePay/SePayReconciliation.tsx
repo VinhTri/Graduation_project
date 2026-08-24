@@ -2,13 +2,10 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Button,
   Card,
-  Col,
   Empty,
   Input,
   Modal,
-  Row,
   Select,
-  Statistic,
   Table,
   Tabs,
   Tag,
@@ -19,12 +16,15 @@ import type { ColumnsType } from 'antd/es/table';
 import {
   AlertOutlined,
   CheckCircleOutlined,
+  ClockCircleOutlined,
+  DatabaseOutlined,
   SearchOutlined,
   SyncOutlined,
   WarningOutlined,
   WalletOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
+import axios from 'axios';
 import { apiClient } from '../../services/api';
 import './SePayReconciliation.css';
 
@@ -110,6 +110,7 @@ export const SePayReconciliation: React.FC = () => {
   const [creditTarget, setCreditTarget] = useState<SePayTransactionRow | null>(null);
   const [creditAccount, setCreditAccount] = useState('');
   const [crediting, setCrediting] = useState(false);
+  const [creditReason, setCreditReason] = useState('');
 
   const loadHistory = useCallback(async () => {
     setLoadingHistory(true);
@@ -142,6 +143,7 @@ export const SePayReconciliation: React.FC = () => {
   }, [loadHistory]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     void loadHistory();
     void loadReport(false);
   }, [loadHistory, loadReport]);
@@ -167,27 +169,37 @@ export const SePayReconciliation: React.FC = () => {
     });
   }, [rows, statusFilter, keyword]);
 
+  const issueCount = report?.issues?.length ?? 0;
+
   const openCredit = (row: SePayTransactionRow) => {
     setCreditTarget(row);
     setCreditAccount(row.parsedWalletAccount || row.walletAccountNumber || '');
+    setCreditReason('');
     setCreditOpen(true);
   };
 
   const submitCredit = async () => {
     if (!creditTarget) return;
+    if (!creditAccount.trim()) {
+      message.warning('Vui lòng nhập số tài khoản ví nội bộ');
+      return;
+    }
+    if (creditReason.trim().length < 10) {
+      message.warning('Lý do phải có ít nhất 10 ký tự');
+      return;
+    }
     setCrediting(true);
     try {
       await apiClient.post(`/api/v1/admin/sepay/transactions/${creditTarget.id}/credit`, {
         walletAccountNumber: creditAccount || undefined,
+        reason: creditReason.trim(),
       });
       message.success('Đã cộng tiền thủ công vào ví');
       setCreditOpen(false);
       await Promise.all([loadHistory(), loadReport(false)]);
     } catch (err: unknown) {
-      const msg =
-        (err as { response?: { data?: { message?: string } } })?.response?.data?.message ||
-        'Cộng tiền thất bại';
-      message.error(msg);
+      const msg = axios.isAxiosError(err) ? err.response?.data?.message : null;
+      message.error(msg || 'Cộng tiền thất bại');
     } finally {
       setCrediting(false);
     }
@@ -198,7 +210,7 @@ export const SePayReconciliation: React.FC = () => {
       title: 'SePay ID',
       dataIndex: 'sepayId',
       width: 110,
-      render: (v) => <Text code>{v}</Text>,
+      render: (v) => <Text className="sepay-code">#{v}</Text>,
     },
     {
       title: 'Thời gian',
@@ -210,13 +222,13 @@ export const SePayReconciliation: React.FC = () => {
       title: 'Số tiền',
       dataIndex: 'transferAmount',
       width: 140,
-      render: (v?: number) => <Text strong>{formatVnd(v)}</Text>,
+      render: (v?: number) => <Text className="sepay-amount">{formatVnd(v)}</Text>,
     },
     {
       title: 'Nội dung CK',
       dataIndex: 'content',
       ellipsis: true,
-      render: (v?: string) => v || '—',
+      render: (v?: string) => <span className="sepay-transfer-content">{v || '—'}</span>,
     },
     {
       title: 'STK ví (parse)',
@@ -230,8 +242,8 @@ export const SePayReconciliation: React.FC = () => {
       width: 180,
       render: (_, row) =>
         row.internalTransactionCode ? (
-          <div>
-            <Text code>{row.internalTransactionCode}</Text>
+          <div className="sepay-internal-cell">
+            <Text className="sepay-code">{row.internalTransactionCode}</Text>
             <div>
               <Text type="secondary">{formatVnd(row.internalAmount)}</Text>
             </div>
@@ -244,7 +256,12 @@ export const SePayReconciliation: React.FC = () => {
       title: 'Người dùng',
       dataIndex: 'username',
       width: 120,
-      render: (v?: string) => v || '—',
+      render: (v: string | undefined, row) => (
+        <div className="sepay-user-cell">
+          <strong>{v || 'Chưa xác định'}</strong>
+          <span>{row.userEmail || row.walletAccountNumber || '—'}</span>
+        </div>
+      ),
     },
     {
       title: 'Trạng thái',
@@ -264,7 +281,7 @@ export const SePayReconciliation: React.FC = () => {
     {
       title: '',
       key: 'actions',
-      width: 120,
+      width: 132,
       fixed: 'right',
       render: (_, row) =>
         row.matchStatus === 'UNMATCHED' ? (
@@ -361,70 +378,50 @@ export const SePayReconciliation: React.FC = () => {
   ];
 
   return (
-    <div className="sepay-page">
-      <div className="sepay-hero">
-        <div>
-          <div className="sepay-hero-kicker">SePay Integration</div>
-          <Title level={2}>Đối soát giao dịch cổng thanh toán</Title>
+    <main className="sepay-page">
+      <section className="sepay-hero">
+        <div className="sepay-hero-copy">
+          <div className="sepay-hero-kicker"><DatabaseOutlined /> Trung tâm đối soát SePay</div>
+          <Title level={2}>Kiểm tra dòng tiền vào ví</Title>
           <Paragraph>
-            Theo dõi webhook SePay và so khớp với Transaction nội bộ để phát hiện tiền vào ngân hàng
-            nhưng chưa cộng ví.
+            So khớp webhook ngân hàng với giao dịch nội bộ, nhận diện khoản tiền chưa cộng ví và xử lý sai lệch tại một nơi.
           </Paragraph>
+          <div className="sepay-last-run">
+            <ClockCircleOutlined />
+            Lần kiểm tra gần nhất: <strong>{report?.runAt ? dayjs(report.runAt).format('HH:mm · DD/MM/YYYY') : 'Chưa có dữ liệu'}</strong>
+          </div>
         </div>
-        <Button
-          type="primary"
-          icon={<SyncOutlined />}
-          loading={loadingReport}
-          onClick={() => void loadReport(true)}
-        >
-          Chạy đối soát
-        </Button>
-      </div>
+        <div className="sepay-hero-action">
+          <span>Quét lại dữ liệu mới nhất từ hệ thống</span>
+          <Button
+            type="primary"
+            size="large"
+            icon={<SyncOutlined />}
+            loading={loadingReport}
+            onClick={() => void loadReport(true)}
+          >
+            Chạy đối soát
+          </Button>
+        </div>
+      </section>
 
-      <Row gutter={[14, 14]} className="sepay-stats">
-        <Col xs={12} md={6} lg={4}>
-          <Card className="sepay-stat-card">
-            <Statistic title="Tổng log SePay" value={report?.totalSePayRecords ?? rows.length} />
-          </Card>
-        </Col>
-        <Col xs={12} md={6} lg={4}>
-          <Card className="sepay-stat-card sepay-stat-ok">
-            <Statistic
-              title="Đã khớp"
-              value={report?.matchedCount ?? 0}
-              prefix={<CheckCircleOutlined />}
-            />
-          </Card>
-        </Col>
-        <Col xs={12} md={6} lg={4}>
-          <Card className="sepay-stat-card sepay-stat-bad">
-            <Statistic
-              title="Chưa khớp"
-              value={report?.unmatchedCount ?? 0}
-              prefix={<AlertOutlined />}
-            />
-          </Card>
-        </Col>
-        <Col xs={12} md={6} lg={4}>
-          <Card className="sepay-stat-card sepay-stat-warn">
-            <Statistic title="Lệch số tiền" value={report?.amountMismatchCount ?? 0} />
-          </Card>
-        </Col>
-        <Col xs={12} md={6} lg={4}>
-          <Card className="sepay-stat-card">
-            <Statistic title="Orphan nội bộ" value={report?.orphanInternalCount ?? 0} />
-          </Card>
-        </Col>
-        <Col xs={12} md={6} lg={4}>
-          <Card className="sepay-stat-card">
-            <Statistic
-              title="Tiền chưa cộng ví"
-              value={report?.unmatchedAmountTotal ?? 0}
-              formatter={(v) => formatVnd(Number(v))}
-            />
-          </Card>
-        </Col>
-      </Row>
+      <section className="sepay-overview" aria-label="Tổng quan đối soát">
+        <article className={`sepay-health-card ${issueCount ? 'has-issues' : 'is-clear'}`}>
+          <div className="sepay-health-icon">{issueCount ? <AlertOutlined /> : <CheckCircleOutlined />}</div>
+          <div>
+            <span>Trạng thái hệ thống</span>
+            <strong>{issueCount ? `${issueCount} khoản cần kiểm tra` : 'Dữ liệu đang khớp'}</strong>
+            <small>{issueCount ? 'Ưu tiên xử lý các khoản chưa cộng ví' : 'Chưa phát hiện sai lệch trong lần đối soát gần nhất'}</small>
+          </div>
+        </article>
+        <div className="sepay-metrics">
+          <article><span>Tổng webhook</span><strong>{report?.totalSePayRecords ?? rows.length}</strong><small>Bản ghi SePay</small></article>
+          <article className="metric-success"><span>Đã khớp</span><strong>{report?.matchedCount ?? 0}</strong><small>Giao dịch hợp lệ</small></article>
+          <article className="metric-danger"><span>Chưa khớp</span><strong>{report?.unmatchedCount ?? 0}</strong><small>{formatVnd(report?.unmatchedAmountTotal ?? 0)} chưa cộng</small></article>
+          <article className="metric-warning"><span>Lệch số tiền</span><strong>{report?.amountMismatchCount ?? 0}</strong><small>Chênh {formatVnd(report?.mismatchAmountDelta ?? 0)}</small></article>
+          <article><span>Thiếu log SePay</span><strong>{report?.orphanInternalCount ?? 0}</strong><small>Giao dịch nội bộ</small></article>
+        </div>
+      </section>
 
       <Card className="sepay-panel">
         <Tabs
@@ -435,25 +432,23 @@ export const SePayReconciliation: React.FC = () => {
               children: (
                 <>
                   <div className="sepay-toolbar">
-                    <Input
-                      allowClear
-                      prefix={<SearchOutlined />}
-                      placeholder="Tìm SePay ID, nội dung, mã GD, user..."
-                      value={keyword}
-                      onChange={(e) => setKeyword(e.target.value)}
-                      style={{ maxWidth: 360 }}
-                    />
-                    <Select
-                      allowClear
-                      placeholder="Lọc trạng thái"
-                      style={{ width: 180 }}
-                      value={statusFilter}
-                      onChange={setStatusFilter}
-                      options={Object.entries(STATUS_META).map(([value, meta]) => ({
-                        value,
-                        label: meta.label,
-                      }))}
-                    />
+                    <div className="sepay-search-group">
+                      <Input
+                        allowClear
+                        prefix={<SearchOutlined />}
+                        placeholder="Tìm theo SePay ID, nội dung, mã giao dịch hoặc người dùng"
+                        value={keyword}
+                        onChange={(e) => setKeyword(e.target.value)}
+                      />
+                      <Select
+                        allowClear
+                        placeholder="Tất cả trạng thái"
+                        value={statusFilter}
+                        onChange={setStatusFilter}
+                        options={Object.entries(STATUS_META).map(([value, meta]) => ({ value, label: meta.label }))}
+                      />
+                    </div>
+                    <span className="sepay-result-count">{filteredRows.length} bản ghi</span>
                   </div>
                   <Table
                     rowKey="id"
@@ -461,7 +456,7 @@ export const SePayReconciliation: React.FC = () => {
                     columns={historyColumns}
                     dataSource={filteredRows}
                     scroll={{ x: 1200 }}
-                    pagination={{ pageSize: 10, showSizeChanger: true }}
+                    pagination={{ pageSize: 10, showSizeChanger: false, showTotal: (total) => `${total} giao dịch` }}
                     locale={{ emptyText: <Empty description="Chưa có webhook SePay nào" /> }}
                   />
                 </>
@@ -502,6 +497,7 @@ export const SePayReconciliation: React.FC = () => {
         onOk={() => void submitCredit()}
         confirmLoading={crediting}
         okText="Xác nhận cộng ví"
+        okButtonProps={{ danger: true, disabled: !creditAccount.trim() || creditReason.trim().length < 10 }}
       >
         <Paragraph>
           SePay ID <Text code>{creditTarget?.sepayId}</Text> —{' '}
@@ -513,7 +509,18 @@ export const SePayReconciliation: React.FC = () => {
           value={creditAccount}
           onChange={(e) => setCreditAccount(e.target.value)}
         />
+        <label className="sepay-credit-reason">
+          <span>Lý do xử lý thủ công</span>
+          <Input.TextArea
+            value={creditReason}
+            onChange={(event) => setCreditReason(event.target.value)}
+            maxLength={300}
+            showCount
+            autoSize={{ minRows: 4, maxRows: 6 }}
+            placeholder="Nêu rõ căn cứ đối soát và lý do cần cộng tiền thủ công..."
+          />
+        </label>
       </Modal>
-    </div>
+    </main>
   );
 };

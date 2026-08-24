@@ -1,8 +1,7 @@
 import axios from 'axios';
-import { Platform } from 'react-native';
-
 import Constants from 'expo-constants';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { clearStoredSession } from '@/shared/services/sessionStorage';
 
 // Tự động lấy IP của máy tính đang chạy Expo (dành cho chế độ Development)
 const BACKEND_PORT = '9090'; // SỬA CỔNG PORT Ở ĐÂY NẾU ĐỒNG ĐỘI CỦA BẠN DÙNG CỔNG KHÁC
@@ -56,9 +55,42 @@ axiosClient.interceptors.response.use(
     // Xử lý dữ liệu trả về thành công tại đây, trả về trực tiếp response.data cho gọn
     return response.data;
   },
-  (error) => {
+  async (error) => {
     // Xử lý lỗi hệ thống chung (ví dụ: 401 Chưa xác thực, 500 Lỗi server)
     console.warn(`Lỗi API [${error.config?.url}]:`, error?.response?.data || error.message);
-    return Promise.reject(error?.response?.data || error);
+    
+    // 401 means the credential is invalid. A 403 only means the current user is
+    // not allowed to perform that action and must not destroy the session.
+    if (error?.response?.status === 401) {
+      const failedAuthorization = error.config?.headers?.get?.('Authorization')
+        ?? error.config?.headers?.Authorization;
+      const failedToken = typeof failedAuthorization === 'string'
+        ? failedAuthorization.replace(/^Bearer\s+/i, '')
+        : null;
+      const currentToken = await AsyncStorage.getItem('token');
+
+      // A profile update can rotate the token while another request is in flight.
+      // Never let a late response for the old token erase the new session.
+      if (!currentToken || (failedToken && currentToken !== failedToken)) {
+        return Promise.reject(error?.response?.data || error);
+      }
+
+      console.warn("Token không còn hợp lệ, đang chuyển về trang đăng nhập...");
+      await clearStoredSession();
+      
+      // Chuyển hướng người dùng về màn hình đăng nhập
+      // Yêu cầu import { router } from 'expo-router'; ở đầu file
+      const { router } = require('expo-router');
+      if (router) {
+        // Tuỳ thuộc vào cấu trúc thư mục của bạn, đường dẫn có thể khác
+        router.replace('/(auth)/login'); 
+      }
+    }
+
+    const rejected = error?.response?.data || error;
+    if (rejected && typeof rejected === 'object' && rejected.status == null) {
+      rejected.status = error?.response?.status;
+    }
+    return Promise.reject(rejected);
   }
 );

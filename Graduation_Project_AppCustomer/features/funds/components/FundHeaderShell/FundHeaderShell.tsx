@@ -1,5 +1,6 @@
 import React from 'react';
-import { View, StyleSheet, ViewStyle, StyleProp } from 'react-native';
+import { View, StyleSheet, ViewStyle, StyleProp, type ImageSourcePropType } from 'react-native';
+import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { FUND_HEADER_GRADIENT } from '../../theme';
@@ -8,14 +9,55 @@ interface FundHeaderShellProps {
   children: React.ReactNode;
   style?: StyleProp<ViewStyle>;
   contentStyle?: StyleProp<ViewStyle>;
+  /** Ảnh nền header */
+  coverImage?: ImageSourcePropType;
+  /** dark = màn chi tiết (chữ trắng); light = danh sách quỹ (chữ tím) */
+  coverTone?: 'dark' | 'light';
 }
 
 export default function FundHeaderShell({
   children,
   style,
   contentStyle,
+  coverImage,
+  coverTone = 'dark',
 }: FundHeaderShellProps) {
   const insets = useSafeAreaInsets();
+  const padded = [styles.gradient, { paddingTop: insets.top + 12 }, contentStyle];
+
+  if (coverImage) {
+    const overlay =
+      coverTone === 'light'
+        ? (['rgba(255,248,252,0.42)', 'rgba(255,241,248,0.62)'] as const)
+        : (['rgba(15,23,42,0.28)', 'rgba(15,23,42,0.78)'] as const);
+
+    return (
+      <View style={[styles.wrap, style]}>
+        <View style={padded}>
+          <Image
+            source={coverImage}
+            style={StyleSheet.absoluteFillObject}
+            contentFit="cover"
+            cachePolicy="memory-disk"
+            transition={0}
+          />
+          <LinearGradient
+            colors={[...overlay]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 0, y: 1 }}
+            style={StyleSheet.absoluteFillObject}
+          />
+          {coverTone === 'light' && (
+            <>
+              <View style={styles.decorCircleLarge} />
+              <View style={styles.decorCircleSmall} />
+            </>
+          )}
+          {children}
+        </View>
+      </View>
+    );
+  }
 
   return (
     <View style={[styles.wrap, style]}>
@@ -23,7 +65,7 @@ export default function FundHeaderShell({
         colors={[...FUND_HEADER_GRADIENT]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
-        style={[styles.gradient, { paddingTop: insets.top + 12 }, contentStyle]}
+        style={padded}
       >
         <View style={styles.decorCircleLarge} />
         <View style={styles.decorCircleSmall} />

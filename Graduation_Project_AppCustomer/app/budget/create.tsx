@@ -1,5 +1,5 @@
-import { CreateBudgetScreen } from '../../features/budget/screens/CreateBudgetScreen';
+import BudgetCreateScreen from '@/features/budget/screens/BudgetCreateScreen'
 
-export default function CreateBudgetRoute() {
-  return <CreateBudgetScreen />;
+export default function BudgetCreatePage() {
+  return <BudgetCreateScreen />
 }

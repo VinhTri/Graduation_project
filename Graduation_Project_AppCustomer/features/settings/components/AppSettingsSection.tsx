@@ -1,271 +1,402 @@
-import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, Pressable, StyleSheet } from 'react-native';
-import { Ionicons, Feather } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import { useEffect, useState, type ReactNode } from 'react'
+import { Pressable, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
+import { Feather, Ionicons } from '@expo/vector-icons'
 import Animated, {
   Easing,
   interpolate,
   useAnimatedStyle,
   useSharedValue,
   withTiming,
-} from 'react-native-reanimated';
-import { useTheme, useLanguage } from '../../../shared/contexts/ThemeLanguageContext';
-import { styles } from '../SettingsScreen.styles';
+} from 'react-native-reanimated'
+import { useToast } from '@/shared/components/Toast'
+import { PASTEL_PALETTE } from '@/shared/constants/PastelPalette'
+import { useLanguage, useTheme, type ThemeMode } from '@/shared/contexts/ThemeLanguageContext'
+import { useMoneyFormat } from '@/shared/contexts/MoneyFormatContext'
+import { DEFAULT_MONEY_FORMAT, formatAmount, formatMoney, type CurrencySuffix, type ThousandSeparator } from '@/shared/utils/moneyFormat'
+import type { Language } from '@/shared/i18n'
+import { styles } from '../SettingsScreen.styles'
 
 const ANIM_CONFIG = {
   duration: 320,
   easing: Easing.bezier(0.22, 1, 0.36, 1),
-};
+}
 
-// ─── Sub-options rendered inside the collapse panel ──────────────────────────
-const AppSettingsSubItems = () => {
-  const { theme, isDark, themeMode, setThemeMode } = useTheme();
-  const { language, setLanguage, t } = useLanguage();
+const ICON = PASTEL_PALETTE.accentDeep
+const SAMPLE = 100000
 
-  const themeOptions: { mode: 'system' | 'light' | 'dark'; icon: string; label: string }[] = [
-    { mode: 'system', icon: 'phone-portrait-outline', label: t('themeSystem') },
-    { mode: 'light',  icon: 'sunny-outline',          label: t('themeLight')  },
-    { mode: 'dark',   icon: 'moon-outline',            label: t('themeDark')   },
-  ];
+function suffixLabel(suffix: CurrencySuffix) {
+  return suffix === 'vnd' ? 'VND' : 'đ'
+}
 
-  const langOptions: { code: 'vi' | 'en'; flag: string; label: string }[] = [
-    { code: 'vi', flag: '🇻🇳', label: 'Tiếng Việt' },
-    { code: 'en', flag: '🇬🇧', label: 'English'    },
-  ];
+function separatorLabel(separator: ThousandSeparator) {
+  return formatAmount(SAMPLE, { suffix: 'dong', separator })
+}
 
-  return (
-    <View style={[styles.securitySubList, { backgroundColor: theme.bgSoft, borderTopColor: theme.divider }]}>
+function separatorShort(separator: ThousandSeparator) {
+  return separator === 'comma' ? ',' : '.'
+}
 
-      {/* ── Theme label ── */}
-      <View style={[localStyles.groupLabel, { borderBottomColor: theme.divider }]}>
-        <Ionicons name={isDark ? 'moon' : 'sunny'} size={13} color={theme.textMuted} style={{ marginRight: 5 }} />
-        <Text style={[localStyles.groupLabelText, { color: theme.textMuted }]}>{t('darkMode')}</Text>
-      </View>
+function CollapsibleBlock({ expanded, children }: { expanded: boolean; children: ReactNode }) {
+  const [measuredHeight, setMeasuredHeight] = useState(0)
+  const progress = useSharedValue(expanded ? 1 : 0)
 
-      {/* ── Theme options ── */}
-      {themeOptions.map((opt, idx) => {
-        const isSelected = themeMode === opt.mode;
-        const isLast = idx === themeOptions.length - 1;
-        return (
-          <TouchableOpacity
-            key={opt.mode}
-            style={[
-              styles.securitySubItem,
-              {
-                borderBottomColor: theme.divider,
-                borderBottomWidth: isLast ? StyleSheet.hairlineWidth : StyleSheet.hairlineWidth,
-              },
-            ]}
-            activeOpacity={0.75}
-            onPress={() => setThemeMode(opt.mode)}
-          >
-            <View
-              style={[
-                styles.securitySubIcon,
-                {
-                  backgroundColor: isSelected ? theme.primarySoft : theme.card,
-                  borderColor: isSelected ? theme.primary : theme.cardBorder,
-                },
-              ]}
-            >
-              <Ionicons
-                name={opt.icon as any}
-                size={15}
-                color={isSelected ? theme.primary : theme.textSecondary}
-              />
-            </View>
-            <View style={styles.itemContent}>
-              <Text style={[styles.itemTitle, { color: isSelected ? theme.primary : theme.textPrimary }]}>
-                {opt.label}
-              </Text>
-            </View>
-            {isSelected && <Feather name="check" size={15} color={theme.primary} />}
-          </TouchableOpacity>
-        );
-      })}
-
-      {/* ── Language label ── */}
-      <View style={[localStyles.groupLabel, { borderBottomColor: theme.divider, borderTopColor: theme.divider, borderTopWidth: StyleSheet.hairlineWidth }]}>
-        <Ionicons name="globe-outline" size={13} color={theme.textMuted} style={{ marginRight: 5 }} />
-        <Text style={[localStyles.groupLabelText, { color: theme.textMuted }]}>{t('language')}</Text>
-      </View>
-
-      {/* ── Language options ── */}
-      {langOptions.map((opt, idx) => {
-        const isSelected = language === opt.code;
-        const isLast = idx === langOptions.length - 1;
-        return (
-          <TouchableOpacity
-            key={opt.code}
-            style={[
-              styles.securitySubItem,
-              {
-                borderBottomColor: theme.divider,
-                borderBottomWidth: isLast ? 0 : StyleSheet.hairlineWidth,
-              },
-            ]}
-            activeOpacity={0.75}
-            onPress={() => setLanguage(opt.code)}
-          >
-            <View
-              style={[
-                styles.securitySubIcon,
-                {
-                  backgroundColor: isSelected ? theme.primarySoft : theme.card,
-                  borderColor: isSelected ? theme.primary : theme.cardBorder,
-                },
-              ]}
-            >
-              <Text style={localStyles.flagText}>{opt.flag}</Text>
-            </View>
-            <View style={styles.itemContent}>
-              <Text style={[styles.itemTitle, { color: isSelected ? theme.primary : theme.textPrimary }]}>
-                {opt.label}
-              </Text>
-            </View>
-            {isSelected && <Feather name="check" size={15} color={theme.primary} />}
-          </TouchableOpacity>
-        );
-      })}
-    </View>
-  );
-};
-
-// ─── Main exported section (mirrors SecuritySection structure exactly) ─────────
-export const AppSettingsSection = () => {
-  const router = useRouter();
-  const { theme, isDark, themeMode } = useTheme();
-  const { language, t } = useLanguage();
-
-  const [expanded, setExpanded] = useState(false);
-  const [measuredHeight, setMeasuredHeight] = useState(0);
-  const progress = useSharedValue(0);
-
-  const toggle = () => {
-    const next = !expanded;
-    setExpanded(next);
-    progress.value = withTiming(next ? 1 : 0, ANIM_CONFIG);
-  };
+  useEffect(() => {
+    progress.value = withTiming(expanded ? 1 : 0, ANIM_CONFIG)
+  }, [expanded, progress])
 
   const panelStyle = useAnimatedStyle(() => {
-    const h = measuredHeight > 0 ? measuredHeight : 0;
+    const h = measuredHeight > 0 ? measuredHeight : 0
     return {
       height: progress.value * h,
       opacity: interpolate(progress.value, [0, 0.35, 1], [0, 0.55, 1]),
       transform: [{ translateY: interpolate(progress.value, [0, 1], [-6, 0]) }],
-    };
-  });
+    }
+  })
+
+  return (
+    <>
+      <View
+        style={styles.securityMeasure}
+        pointerEvents="none"
+        onLayout={(e) => {
+          const next = Math.ceil(e.nativeEvent.layout.height)
+          if (next > 0 && next !== measuredHeight) setMeasuredHeight(next)
+        }}
+      >
+        {children}
+      </View>
+      <Animated.View
+        style={[styles.securityCollapse, panelStyle]}
+        pointerEvents={expanded ? 'auto' : 'none'}
+      >
+        {children}
+      </Animated.View>
+    </>
+  )
+}
+
+function DefaultBadge() {
+  return (
+    <View style={styles.appSettingDefaultBadge}>
+      <Text style={styles.appSettingDefaultBadgeText}>Mặc định</Text>
+    </View>
+  )
+}
+
+function SettingRow({
+  icon,
+  title,
+  value,
+  expanded,
+  isLast,
+  onPress,
+}: {
+  icon: ReactNode
+  title: string
+  value: string
+  expanded: boolean
+  isLast?: boolean
+  onPress: () => void
+}) {
+  const chevron = useSharedValue(expanded ? 1 : 0)
+
+  useEffect(() => {
+    chevron.value = withTiming(expanded ? 1 : 0, ANIM_CONFIG)
+  }, [chevron, expanded])
+
+  const chevronStyle = useAnimatedStyle(() => ({
+    transform: [{ rotate: `${interpolate(chevron.value, [0, 1], [0, 180])}deg` }],
+  }))
+
+  return (
+    <TouchableOpacity
+      style={[styles.securitySubItem, isLast && { borderBottomWidth: 0 }]}
+      activeOpacity={0.75}
+      onPress={onPress}
+    >
+      <View style={styles.securitySubIcon}>{icon}</View>
+      <View style={styles.itemContent}>
+        <Text style={styles.itemTitle}>{title}</Text>
+      </View>
+      <Text style={styles.itemValue}>{value}</Text>
+      <Animated.View style={chevronStyle}>
+        <Feather name="chevron-down" size={16} color={PASTEL_PALETTE.lavender} />
+      </Animated.View>
+    </TouchableOpacity>
+  )
+}
+
+function OptionRow({
+  label,
+  example,
+  selected,
+  systemDefault,
+  isLast,
+  onPress,
+}: {
+  label: string
+  example: string
+  selected: boolean
+  systemDefault: boolean
+  isLast?: boolean
+  onPress?: () => void
+}) {
+  return (
+    <TouchableOpacity
+      style={[styles.appSettingSwitchRow, isLast && { borderBottomWidth: 0 }]}
+      activeOpacity={selected ? 1 : 0.75}
+      disabled={selected}
+      onPress={onPress}
+    >
+      <View style={[styles.appSettingSwitchIcon, selected && styles.appSettingSwitchIconActive]}>
+        <Ionicons
+          name={selected ? 'checkmark' : 'swap-horizontal'}
+          size={16}
+          color={ICON}
+        />
+      </View>
+      <View style={styles.itemContent}>
+        <Text style={styles.itemTitle}>{label}</Text>
+        <Text style={styles.itemSubtitle}>{example}</Text>
+      </View>
+      <View style={styles.appSettingValueWrap}>
+        {selected && !systemDefault ? (
+          <Text style={styles.appSettingSwitchHint}>Đang dùng</Text>
+        ) : null}
+        {systemDefault ? <DefaultBadge /> : null}
+        {!selected ? <Text style={styles.appSettingSwitchHint}>Đổi sang</Text> : null}
+      </View>
+    </TouchableOpacity>
+  )
+}
+
+export function AppSettingsSection() {
+  const { showToast } = useToast()
+  const { prefs, setSuffix, setSeparator } = useMoneyFormat()
+  const { themeMode, setThemeMode } = useTheme()
+  const { language, setLanguage, t } = useLanguage()
+  const [expanded, setExpanded] = useState(false)
+  const [themeOpen, setThemeOpen] = useState(false)
+  const [languageOpen, setLanguageOpen] = useState(false)
+  const [currencyOpen, setCurrencyOpen] = useState(false)
+  const [numberOpen, setNumberOpen] = useState(false)
+
+  const nextSuffix: CurrencySuffix = prefs.suffix === 'dong' ? 'vnd' : 'dong'
+  const nextSeparator: ThousandSeparator = prefs.separator === 'dot' ? 'comma' : 'dot'
+  const currentSuffix = suffixLabel(prefs.suffix)
+  const currentSeparator = separatorLabel(prefs.separator)
+  const nextLanguage: Language = language === 'vi' ? 'en' : 'vi'
+
+  const themeOptions: { id: ThemeMode; label: string; example: string }[] = [
+    { id: 'light', label: t('themeLight'), example: t('themeLightSub') },
+    { id: 'dark', label: t('themeDark'), example: t('themeDarkSub') },
+    { id: 'system', label: t('themeSystem'), example: t('themeSystemSub') },
+  ]
+  const selectedTheme = themeOptions.find((item) => item.id === themeMode) ?? themeOptions[0]
+  const otherThemes = themeOptions.filter((item) => item.id !== selectedTheme.id)
+  const currentThemeLabel = selectedTheme.label
+  const currentLanguageLabel = language === 'en' ? t('english') : t('vietnamese')
+
+  const toggleRoot = () => {
+    const next = !expanded
+    setExpanded(next)
+    if (!next) {
+      setThemeOpen(false)
+      setLanguageOpen(false)
+      setCurrencyOpen(false)
+      setNumberOpen(false)
+    }
+  }
+
+  const switchTheme = (mode: ThemeMode) => {
+    const from = currentThemeLabel
+    const to = themeOptions.find((item) => item.id === mode)?.label ?? mode
+    void setThemeMode(mode)
+    showToast({
+      variant: 'success',
+      message: `Đổi từ ${from} sang ${to} thành công`,
+    })
+  }
+
+  const switchLanguage = () => {
+    const from = currentLanguageLabel
+    const to = nextLanguage === 'en' ? t('english') : t('vietnamese')
+    void setLanguage(nextLanguage)
+    showToast({
+      variant: 'success',
+      message: `Đổi từ ${from} sang ${to} thành công`,
+    })
+  }
+
+  const switchSuffix = () => {
+    const from = currentSuffix
+    const to = suffixLabel(nextSuffix)
+    setSuffix(nextSuffix)
+    showToast({
+      variant: 'success',
+      message: `Đổi từ ${from} sang ${to} thành công`,
+    })
+  }
+
+  const switchSeparator = () => {
+    const from = currentSeparator
+    const to = separatorLabel(nextSeparator)
+    setSeparator(nextSeparator)
+    showToast({
+      variant: 'success',
+      message: `Đổi từ ${from} sang ${to} thành công`,
+    })
+  }
+
+  return (
+    <>
+      <Pressable
+        style={[
+          styles.itemContainer,
+          { borderBottomWidth: expanded ? StyleSheet.hairlineWidth : 0 },
+        ]}
+        onPress={toggleRoot}
+        android_ripple={{ color: PASTEL_PALETTE.accentSoft }}
+      >
+        <View style={styles.itemIconContainer}>
+          <Ionicons name="settings-outline" size={20} color={ICON} />
+        </View>
+        <View style={styles.itemContent}>
+          <Text style={styles.itemTitle}>{t('appSettings')}</Text>
+          <Text style={styles.itemSubtitle}>{t('appSettingsSubtitle')}</Text>
+        </View>
+        <RootChevron expanded={expanded} />
+      </Pressable>
+
+      <CollapsibleBlock expanded={expanded}>
+        <View style={styles.securitySubList}>
+          <SettingRow
+            icon={<Ionicons name="moon-outline" size={16} color={ICON} />}
+            title={t('darkMode')}
+            value={currentThemeLabel}
+            expanded={themeOpen}
+            onPress={() => setThemeOpen((open) => !open)}
+          />
+          <CollapsibleBlock expanded={themeOpen}>
+            <View style={styles.appSettingSwitchList}>
+              <OptionRow
+                label={selectedTheme.label}
+                example={selectedTheme.example}
+                selected
+                systemDefault={selectedTheme.id === 'light'}
+              />
+              {otherThemes.map((item, index) => (
+                <OptionRow
+                  key={item.id}
+                  label={item.label}
+                  example={item.example}
+                  selected={false}
+                  systemDefault={item.id === 'light'}
+                  isLast={index === otherThemes.length - 1}
+                  onPress={() => switchTheme(item.id)}
+                />
+              ))}
+            </View>
+          </CollapsibleBlock>
+
+          <SettingRow
+            icon={<Ionicons name="language-outline" size={16} color={ICON} />}
+            title={t('language')}
+            value={currentLanguageLabel}
+            expanded={languageOpen}
+            onPress={() => setLanguageOpen((open) => !open)}
+          />
+          <CollapsibleBlock expanded={languageOpen}>
+            <View style={styles.appSettingSwitchList}>
+              <OptionRow
+                label={currentLanguageLabel}
+                example={language === 'en' ? 'English (US/UK)' : 'Vietnamese'}
+                selected
+                systemDefault={language === 'vi'}
+              />
+              <OptionRow
+                label={nextLanguage === 'en' ? t('english') : t('vietnamese')}
+                example={nextLanguage === 'en' ? 'English (US/UK)' : 'Vietnamese'}
+                selected={false}
+                systemDefault={nextLanguage === 'vi'}
+                isLast
+                onPress={switchLanguage}
+              />
+            </View>
+          </CollapsibleBlock>
+
+          <SettingRow
+            icon={<Ionicons name="cash-outline" size={16} color={ICON} />}
+            title="Ký hiệu tiền tệ"
+            value={currentSuffix}
+            expanded={currencyOpen}
+            onPress={() => setCurrencyOpen((open) => !open)}
+          />
+          <CollapsibleBlock expanded={currencyOpen}>
+            <View style={styles.appSettingSwitchList}>
+              <OptionRow
+                label={currentSuffix}
+                example={formatMoney(SAMPLE, prefs)}
+                selected
+                systemDefault={prefs.suffix === DEFAULT_MONEY_FORMAT.suffix}
+              />
+              <OptionRow
+                label={suffixLabel(nextSuffix)}
+                example={formatMoney(SAMPLE, { ...prefs, suffix: nextSuffix })}
+                selected={false}
+                systemDefault={nextSuffix === DEFAULT_MONEY_FORMAT.suffix}
+                isLast
+                onPress={switchSuffix}
+              />
+            </View>
+          </CollapsibleBlock>
+
+          <SettingRow
+            icon={<Ionicons name="text-outline" size={16} color={ICON} />}
+            title="Cách viết số"
+            value={currentSeparator}
+            expanded={numberOpen}
+            isLast={!numberOpen}
+            onPress={() => setNumberOpen((open) => !open)}
+          />
+          <CollapsibleBlock expanded={numberOpen}>
+            <View style={[styles.appSettingSwitchList, { borderBottomWidth: 0 }]}>
+              <OptionRow
+                label={separatorShort(prefs.separator)}
+                example={formatMoney(SAMPLE, prefs)}
+                selected
+                systemDefault={prefs.separator === DEFAULT_MONEY_FORMAT.separator}
+              />
+              <OptionRow
+                label={separatorShort(nextSeparator)}
+                example={formatMoney(SAMPLE, { ...prefs, separator: nextSeparator })}
+                selected={false}
+                systemDefault={nextSeparator === DEFAULT_MONEY_FORMAT.separator}
+                isLast
+                onPress={switchSeparator}
+              />
+            </View>
+          </CollapsibleBlock>
+        </View>
+      </CollapsibleBlock>
+    </>
+  )
+}
+
+function RootChevron({ expanded }: { expanded: boolean }) {
+  const progress = useSharedValue(expanded ? 1 : 0)
+
+  useEffect(() => {
+    progress.value = withTiming(expanded ? 1 : 0, ANIM_CONFIG)
+  }, [expanded, progress])
 
   const chevronStyle = useAnimatedStyle(() => ({
     transform: [{ rotate: `${interpolate(progress.value, [0, 1], [0, 180])}deg` }],
-  }));
-
-  // Subtitle shows current theme + language
-  const getSubtitle = () => {
-    const themePart =
-      themeMode === 'system' ? t('themeSystem')
-      : themeMode === 'dark'   ? t('themeDark')
-      : t('themeLight');
-    const langPart = language === 'vi' ? 'Tiếng Việt' : 'English';
-    return `${themePart} · ${langPart}`;
-  };
+  }))
 
   return (
-    <View style={styles.section}>
-      <View style={styles.sectionHeader}>
-        <Text style={[styles.sectionTitle, { color: theme.textPrimary }]}>
-          {t('supportAndSettings')}
-        </Text>
-      </View>
-
-      <View style={[styles.sectionBody, { backgroundColor: theme.card, borderColor: theme.cardBorder }]}>
-        {/* ── Header row (tap to expand) ── */}
-        {/* ── Item 1: Trung tâm hỗ trợ ── */}
-        <Pressable
-          style={[
-            styles.itemContainer,
-            {
-              borderBottomWidth: StyleSheet.hairlineWidth,
-              borderBottomColor: theme.divider,
-            },
-          ]}
-          onPress={() => router.push('/settings/support')}
-        >
-          <View style={[styles.itemIconContainer, { backgroundColor: isDark ? '#1E293B' : theme.primarySoft }]}>
-            <Feather name="headphones" size={19} color={theme.primary} />
-          </View>
-          <View style={styles.itemContent}>
-            <Text style={[styles.itemTitle, { color: theme.textPrimary }]}>Trung tâm hỗ trợ</Text>
-            <Text style={[styles.itemSubtitle, { color: theme.textSecondary }]} numberOfLines={1}>
-              FAQ, gửi yêu cầu hỗ trợ
-            </Text>
-          </View>
-          <Feather name="chevron-right" size={18} color={theme.textMuted} />
-        </Pressable>
-
-        {/* ── Item 2: Cài đặt ứng dụng ── */}
-        <Pressable
-          style={[
-            styles.itemContainer,
-            {
-              borderBottomWidth: expanded ? StyleSheet.hairlineWidth : 0,
-              borderBottomColor: theme.divider,
-            },
-          ]}
-          onPress={toggle}
-        >
-          <View style={[styles.itemIconContainer, { backgroundColor: isDark ? '#1E293B' : theme.primarySoft }]}>
-            <Ionicons name="settings-outline" size={19} color={theme.primary} />
-          </View>
-          <View style={styles.itemContent}>
-            <Text style={[styles.itemTitle, { color: theme.textPrimary }]}>{t('appSettings')}</Text>
-            <Text style={[styles.itemSubtitle, { color: theme.textSecondary }]} numberOfLines={1}>
-              {getSubtitle()}
-            </Text>
-          </View>
-          <Animated.View style={chevronStyle}>
-            <Feather name="chevron-down" size={18} color={theme.textMuted} />
-          </Animated.View>
-        </Pressable>
-
-        {/* Hidden ghost for height measurement */}
-        <View
-          style={styles.securityMeasure}
-          pointerEvents="none"
-          onLayout={(e) => {
-            const next = Math.ceil(e.nativeEvent.layout.height);
-            if (next > 0 && next !== measuredHeight) {
-              setMeasuredHeight(next);
-            }
-          }}
-        >
-          <AppSettingsSubItems />
-        </View>
-
-        {/* Animated collapse panel */}
-        <Animated.View style={[styles.securityCollapse, panelStyle]}>
-          <AppSettingsSubItems />
-        </Animated.View>
-      </View>
-    </View>
-  );
-};
-
-const localStyles = StyleSheet.create({
-  groupLabel: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-  },
-  groupLabelText: {
-    fontSize: 11,
-    fontWeight: '700',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-  flagText: {
-    fontSize: 17,
-  },
-});
+    <Animated.View style={chevronStyle}>
+      <Feather name="chevron-down" size={18} color={PASTEL_PALETTE.lavender} />
+    </Animated.View>
+  )
+}

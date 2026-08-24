@@ -1,168 +1,150 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, Modal, Alert } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { Feather, Ionicons } from '@expo/vector-icons';
-import { styles } from '../PinModal/PinModal.styles';
-import { PASTEL_PALETTE } from '../../constants/PastelPalette';
+import { useEffect, useState } from 'react'
+import { Animated, Modal, Pressable, Text, View } from 'react-native'
+import { SafeAreaView } from 'react-native-safe-area-context'
+import PinDots from '@/features/onboarding/components/PinDots'
+import PinKeypad from '@/features/onboarding/components/PinKeypad'
+import { styles } from '../PinModal/PinModal.styles'
+import { useBottomSheetPresence } from '../PinModal/useBottomSheetPresence'
+
+const PIN_LENGTH = 6
 
 interface ResetPinModalProps {
-  visible: boolean;
-  onClose: () => void;
-  onConfirm: (newPin: string) => void;
-  errorMessage?: string;
+  visible: boolean
+  onClose: () => void
+  onConfirm: (newPin: string) => void
+  errorMessage?: string
 }
 
-export default function ResetPinModal({ visible, onClose, onConfirm, errorMessage }: ResetPinModalProps) {
-  const [pin, setPin] = useState('');
-  const [confirmPin, setConfirmPin] = useState('');
-  const [step, setStep] = useState<1 | 2>(1);
-  const [localError, setLocalError] = useState('');
+export default function ResetPinModal({
+  visible,
+  onClose,
+  onConfirm,
+  errorMessage,
+}: ResetPinModalProps) {
+  const [pin, setPin] = useState('')
+  const [confirmPin, setConfirmPin] = useState('')
+  const [step, setStep] = useState<1 | 2>(1)
+  const [localError, setLocalError] = useState('')
+  const { presented, backdropOpacity, sheetTranslateY } = useBottomSheetPresence(visible)
 
   useEffect(() => {
     if (visible) {
-      setPin('');
-      setConfirmPin('');
-      setStep(1);
-      setLocalError('');
+      setPin('')
+      setConfirmPin('')
+      setStep(1)
+      setLocalError('')
     }
-  }, [visible]);
+  }, [visible])
 
-  const handleKeyPress = (key: string) => {
-    setLocalError('');
-    
-    if (key === 'cancel') {
-      onClose();
-      return;
+  useEffect(() => {
+    if (errorMessage) {
+      setConfirmPin('')
+      setPin('')
+      setStep(1)
     }
-    
+  }, [errorMessage])
+
+  const currentPin = step === 1 ? pin : confirmPin
+  const displayError = localError || errorMessage
+
+  function handleKeyPress(key: string) {
+    setLocalError('')
+
     if (key === 'backspace') {
       if (step === 1) {
-        setPin(prev => prev.slice(0, -1));
+        setPin((prev) => prev.slice(0, -1))
       } else {
-        setConfirmPin(prev => prev.slice(0, -1));
+        setConfirmPin((prev) => prev.slice(0, -1))
       }
-      return;
+      return
     }
 
     if (step === 1) {
-      if (pin.length < 6) {
-        const newPin = pin + key;
-        setPin(newPin);
-        if (newPin.length === 6) {
-          setTimeout(() => setStep(2), 300);
-        }
+      if (pin.length >= PIN_LENGTH) return
+      const nextPin = pin + key
+      setPin(nextPin)
+      if (nextPin.length === PIN_LENGTH) {
+        setTimeout(() => setStep(2), 200)
       }
-    } else {
-      if (confirmPin.length < 6) {
-        const newConfirm = confirmPin + key;
-        setConfirmPin(newConfirm);
-        if (newConfirm.length === 6) {
-          setTimeout(() => {
-            if (pin === newConfirm) {
-              onConfirm(newConfirm);
-            } else {
-              setLocalError('Mã PIN không khớp. Vui lòng nhập lại.');
-              setConfirmPin('');
-            }
-          }, 300);
-        }
-      }
+      return
     }
-  };
 
-  const renderKeypad = () => {
-    const keys = [
-      ['1', '2', '3'],
-      ['4', '5', '6'],
-      ['7', '8', '9'],
-      ['cancel', '0', 'backspace']
-    ];
-
-    return (
-      <View style={styles.keypadContainer}>
-        {keys.map((row, rowIndex) => (
-          <View key={rowIndex} style={styles.keypadRow}>
-            {row.map((key, colIndex) => {
-              if (key === 'cancel') {
-                return (
-                  <TouchableOpacity 
-                    key={colIndex} 
-                    style={styles.key} 
-                    onPress={() => handleKeyPress(key)}
-                  >
-                    <Text style={[styles.keyText, { fontSize: 18, color: '#6B7280' }]}>Hủy</Text>
-                  </TouchableOpacity>
-                );
-              }
-              if (key === 'backspace') {
-                return (
-                  <TouchableOpacity 
-                    key={colIndex} 
-                    style={styles.key} 
-                    onPress={() => handleKeyPress(key)}
-                  >
-                    <Feather name="delete" size={24} color="#1F2937" />
-                  </TouchableOpacity>
-                );
-              }
-              return (
-                <TouchableOpacity 
-                  key={colIndex} 
-                  style={styles.key} 
-                  onPress={() => handleKeyPress(key)}
-                >
-                  <Text style={styles.keyText}>{key}</Text>
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-        ))}
-      </View>
-    );
-  };
-
-  const currentPin = step === 1 ? pin : confirmPin;
-  const displayError = localError || errorMessage;
+    if (confirmPin.length >= PIN_LENGTH) return
+    const nextConfirm = confirmPin + key
+    setConfirmPin(nextConfirm)
+    if (nextConfirm.length === PIN_LENGTH) {
+      setTimeout(() => {
+        if (pin === nextConfirm) {
+          onConfirm(nextConfirm)
+        } else {
+          setLocalError('Mã PIN không khớp. Vui lòng nhập lại.')
+          setConfirmPin('')
+        }
+      }, 200)
+    }
+  }
 
   return (
-    <Modal visible={visible} transparent animationType="slide">
+    <Modal
+      visible={presented}
+      transparent
+      animationType="none"
+      statusBarTranslucent
+      onRequestClose={onClose}
+    >
       <View style={styles.overlay}>
-        <SafeAreaView style={styles.modalContainer}>
-          <View style={styles.dragIndicator} />
-          
-          <View style={styles.headerIconContainer}>
-            <Ionicons name="key" size={28} color={PASTEL_PALETTE.primary} />
-          </View>
+        <Animated.View style={[styles.backdrop, { opacity: backdropOpacity }]}>
+          <Pressable style={styles.backdropPressable} onPress={onClose} />
+        </Animated.View>
 
-          <View style={styles.headerRow}>
-            <Text style={styles.title}>
-              {step === 1 ? 'Đặt lại mã PIN mới' : 'Xác nhận mã PIN'}
-            </Text>
-          </View>
+        <Animated.View
+          style={[styles.sheetWrap, { transform: [{ translateY: sheetTranslateY }] }]}
+        >
+          <SafeAreaView edges={['bottom']} style={styles.modalContainer}>
+            <View style={styles.dragIndicator} />
 
-          <Text style={styles.subtitle}>
-            {step === 1 
-              ? 'Vui lòng nhập 6 số cho mã PIN mới của bạn.' 
-              : 'Vui lòng nhập lại 6 số để xác nhận.'}
-          </Text>
+            <View style={styles.content}>
+              <View style={styles.pinHeader}>
+                <Text style={styles.pinTitle}>
+                  {step === 1 ? 'Đặt lại mã PIN mới' : 'Xác nhận mã PIN'}
+                </Text>
+                <Text style={styles.pinSubtitle}>
+                  {step === 1
+                    ? 'Nhập mã PIN 6 số mới của bạn.'
+                    : 'Nhập lại mã PIN vừa tạo để xác nhận.'}
+                </Text>
+              </View>
 
-          <View style={styles.pinContainer}>
-            {[...Array(6)].map((_, i) => (
-              <View 
-                key={i} 
-                style={[styles.pinDot, i < currentPin.length ? styles.pinDotActive : null]} 
+              <PinDots
+                length={PIN_LENGTH}
+                filled={currentPin.length}
+                style={styles.pinDots}
               />
-            ))}
-          </View>
 
-          {displayError ? <Text style={styles.errorText}>{displayError}</Text> : null}
-          
-          {/* Add empty space to maintain layout height when error is hidden or forgot pin is removed */}
-          <View style={{ height: 32 }} />
+              {displayError ? (
+                <Text style={styles.pinErrorText}>{displayError}</Text>
+              ) : null}
 
-          {renderKeypad()}
-        </SafeAreaView>
+              <PinKeypad
+                onPressKey={handleKeyPress}
+                style={styles.keypad}
+                leftAction={{
+                  label: step === 2 ? 'Quay lại' : 'Hủy',
+                  onPress: () => {
+                    if (step === 2) {
+                      setConfirmPin('')
+                      setLocalError('')
+                      setStep(1)
+                      return
+                    }
+                    onClose()
+                  },
+                }}
+              />
+            </View>
+          </SafeAreaView>
+        </Animated.View>
       </View>
     </Modal>
-  );
+  )
 }

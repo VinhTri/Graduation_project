@@ -20,6 +20,4 @@ public class TransferRequest {
     private String pinCode;
 
     private String note;
-
-    private Long categoryId;
 }

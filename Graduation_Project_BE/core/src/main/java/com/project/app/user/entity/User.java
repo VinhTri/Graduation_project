@@ -22,12 +22,6 @@ public class User {
     @Column(length = 100)
     private String pinCode;
 
-    @Column(name = "failed_pin_attempts", nullable = false)
-    private int failedPinAttempts = 0;
-
-    @Column(name = "lockout_time")
-    private java.time.LocalDateTime lockoutTime;
-
     @Enumerated(EnumType.STRING)
     @Column(length = 20, nullable = false, updatable = false)
     private Role role;
@@ -41,6 +35,34 @@ public class User {
 
     @Column(name = "avatar_url", length = 500)
     private String avatarUrl;
+
+    /** Ký hiệu tiền tệ: dong | vnd. Mặc định hệ thống: dong (đ). */
+    @Column(name = "money_suffix", length = 10)
+    private String moneySuffix;
+
+    /** Cách viết số: comma | dot. Mặc định hệ thống: comma (100,000). */
+    @Column(name = "money_separator", length = 10)
+    private String moneySeparator;
+
+    /** Giao diện: light | dark | system. Mặc định: light. */
+    @Column(name = "theme_mode", length = 10)
+    private String themeMode;
+
+    /** Ngôn ngữ: vi | en. Mặc định: vi. */
+    @Column(name = "app_language", length = 10)
+    private String language;
+
+    /** Bật nhắc nhở ghi chép sổ tay mỗi ngày. */
+    @Column(name = "notebook_reminder_enabled", nullable = false)
+    private boolean notebookReminderEnabled = false;
+
+    /** Giờ nhắc trong ngày (HH:mm). */
+    @Column(name = "notebook_reminder_time")
+    private java.time.LocalTime notebookReminderTime;
+
+    /** Ngày đã gửi nhắc gần nhất, tránh gửi trùng trong cùng ngày. */
+    @Column(name = "notebook_reminder_last_sent_on")
+    private java.time.LocalDate notebookReminderLastSentOn;
 
     public User() {
     }
@@ -109,36 +131,78 @@ public class User {
         this.avatarUrl = avatarUrl;
     }
 
-    public int getFailedPinAttempts() {
-        return failedPinAttempts;
+    public String getMoneySuffix() {
+        return moneySuffix;
     }
 
-    public void incrementFailedPin() {
-        this.failedPinAttempts++;
+    public void setMoneySuffix(String moneySuffix) {
+        this.moneySuffix = moneySuffix;
     }
 
-    public void resetFailedPin() {
-        this.failedPinAttempts = 0;
-        this.lockoutTime = null;
+    public String getMoneySeparator() {
+        return moneySeparator;
     }
 
-    public java.time.LocalDateTime getLockoutTime() {
-        return lockoutTime;
+    public void setMoneySeparator(String moneySeparator) {
+        this.moneySeparator = moneySeparator;
     }
 
-    public void setLockoutTime(java.time.LocalDateTime lockoutTime) {
-        this.lockoutTime = lockoutTime;
+    public String resolvedMoneySuffix() {
+        return "vnd".equalsIgnoreCase(moneySuffix) ? "vnd" : "dong";
     }
 
-    public boolean isLocked() {
-        if (lockoutTime == null) {
-            return false;
+    public String resolvedMoneySeparator() {
+        return "dot".equalsIgnoreCase(moneySeparator) ? "dot" : "comma";
+    }
+
+    public String getThemeMode() {
+        return themeMode;
+    }
+
+    public void setThemeMode(String themeMode) {
+        this.themeMode = themeMode;
+    }
+
+    public String getLanguage() {
+        return language;
+    }
+
+    public void setLanguage(String language) {
+        this.language = language;
+    }
+
+    public String resolvedThemeMode() {
+        if ("dark".equalsIgnoreCase(themeMode) || "system".equalsIgnoreCase(themeMode)) {
+            return themeMode.toLowerCase();
         }
-        if (java.time.LocalDateTime.now().isAfter(lockoutTime)) {
-            lockoutTime = null;
-            failedPinAttempts = 0;
-            return false;
-        }
-        return true;
+        return "light";
+    }
+
+    public String resolvedLanguage() {
+        return "en".equalsIgnoreCase(language) ? "en" : "vi";
+    }
+
+    public boolean isNotebookReminderEnabled() {
+        return notebookReminderEnabled;
+    }
+
+    public void setNotebookReminderEnabled(boolean notebookReminderEnabled) {
+        this.notebookReminderEnabled = notebookReminderEnabled;
+    }
+
+    public java.time.LocalTime getNotebookReminderTime() {
+        return notebookReminderTime;
+    }
+
+    public void setNotebookReminderTime(java.time.LocalTime notebookReminderTime) {
+        this.notebookReminderTime = notebookReminderTime;
+    }
+
+    public java.time.LocalDate getNotebookReminderLastSentOn() {
+        return notebookReminderLastSentOn;
+    }
+
+    public void setNotebookReminderLastSentOn(java.time.LocalDate notebookReminderLastSentOn) {
+        this.notebookReminderLastSentOn = notebookReminderLastSentOn;
     }
 }

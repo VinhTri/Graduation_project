@@ -1,0 +1,196 @@
+import { StyleSheet } from 'react-native'
+import { PASTEL_PALETTE } from '@/shared/constants/PastelPalette'
+
+export const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: PASTEL_PALETTE.bg,
+  },
+  headerContent: {
+    paddingHorizontal: 16,
+    paddingBottom: 18,
+  },
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  backBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.75)',
+  },
+  headerTextWrap: {
+    flex: 1,
+  },
+  title: {
+    fontSize: 22,
+    fontWeight: '900',
+    color: PASTEL_PALETTE.title,
+  },
+  subtitle: {
+    marginTop: 2,
+    fontSize: 13,
+    fontWeight: '600',
+    color: PASTEL_PALETTE.subtitle,
+  },
+  filterRow: {
+    flexDirection: 'row',
+    gap: 8,
+    paddingHorizontal: 20,
+    paddingTop: 14,
+    paddingBottom: 10,
+    flexWrap: 'wrap',
+  },
+  filterChip: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 999,
+    backgroundColor: PASTEL_PALETTE.white,
+    borderWidth: 1,
+    borderColor: PASTEL_PALETTE.border,
+  },
+  filterChipActive: {
+    backgroundColor: PASTEL_PALETTE.accentSoft,
+    borderColor: PASTEL_PALETTE.accent,
+  },
+  filterText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: PASTEL_PALETTE.textMuted,
+  },
+  filterTextActive: {
+    color: PASTEL_PALETTE.accentDeep,
+    fontWeight: '800',
+  },
+  dateSelector: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 10,
+    gap: 12,
+    paddingHorizontal: 20,
+  },
+  dateNavBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: PASTEL_PALETTE.white,
+    borderWidth: 1,
+    borderColor: PASTEL_PALETTE.border,
+  },
+  dateTextContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+  },
+  dateText: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: PASTEL_PALETTE.title,
+    marginLeft: 8,
+  },
+  pickerOverlay: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    backgroundColor: 'rgba(0,0,0,0.4)',
+  },
+  pickerSheet: {
+    backgroundColor: PASTEL_PALETTE.white,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    padding: 16,
+    paddingBottom: 32,
+  },
+  pickerHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    borderBottomWidth: 1,
+    borderBottomColor: '#E2E8F0',
+    paddingBottom: 12,
+    marginBottom: 12,
+  },
+  pickerTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: PASTEL_PALETTE.title,
+  },
+  pickerDone: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: PASTEL_PALETTE.accentDeep,
+  },
+  listContent: {
+    paddingHorizontal: 20,
+    paddingBottom: 40,
+  },
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: PASTEL_PALETTE.white,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: PASTEL_PALETTE.border,
+    padding: 14,
+    marginBottom: 10,
+    gap: 12,
+  },
+  iconWrap: {
+    width: 42,
+    height: 42,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  rowContent: {
+    flex: 1,
+    minWidth: 0,
+  },
+  rowTitle: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: PASTEL_PALETTE.title,
+  },
+  rowMeta: {
+    marginTop: 2,
+    fontSize: 12,
+    color: PASTEL_PALETTE.textMuted,
+  },
+  rowNote: {
+    marginTop: 4,
+    fontSize: 12,
+    color: PASTEL_PALETTE.subtitle,
+  },
+  amount: {
+    fontSize: 14,
+    fontWeight: '800',
+  },
+  amountCol: {
+    alignItems: 'flex-end',
+    gap: 6,
+  },
+  detailHint: {
+    marginTop: 6,
+    fontSize: 11,
+    fontWeight: '700',
+    color: PASTEL_PALETTE.accentDeep,
+  },
+  emptyText: {
+    textAlign: 'center',
+    marginTop: 40,
+    color: PASTEL_PALETTE.textMuted,
+    fontWeight: '600',
+  },
+  errorText: {
+    textAlign: 'center',
+    marginTop: 40,
+    color: '#EF4444',
+    fontWeight: '600',
+  },
+})

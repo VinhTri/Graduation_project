@@ -1,8 +1,10 @@
 import { Stack } from 'expo-router';
-import { CategoryProvider } from '../shared/contexts/CategoryContext';
-import { ThemeLanguageProvider, useTheme } from '../shared/contexts/ThemeLanguageContext';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
+import { ToastProvider } from '@/shared/components/Toast';
+import { MoneyFormatProvider } from '@/shared/contexts/MoneyFormatContext';
+import { ThemeLanguageProvider, useTheme } from '../shared/contexts/ThemeLanguageContext';
 
 function RootStack() {
   const { theme } = useTheme();
@@ -17,11 +19,15 @@ function RootStack() {
 export default function RootLayout() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <ThemeLanguageProvider>
-        <CategoryProvider>
-          <RootStack />
-        </CategoryProvider>
-      </ThemeLanguageProvider>
+      <SafeAreaProvider>
+        <ThemeLanguageProvider>
+          <MoneyFormatProvider>
+            <ToastProvider>
+              <RootStack />
+            </ToastProvider>
+          </MoneyFormatProvider>
+        </ThemeLanguageProvider>
+      </SafeAreaProvider>
     </GestureHandlerRootView>
   );
 }

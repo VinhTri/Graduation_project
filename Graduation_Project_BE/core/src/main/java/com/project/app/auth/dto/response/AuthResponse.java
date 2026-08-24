@@ -13,7 +13,16 @@ public class AuthResponse {
     private String token;
     private String type = "Bearer";
     private Long id;
+    /** Tên hiển thị = phần trước @ của email (lưu trong DB column username). */
     private String username;
     private String email;
     private String role;
+    /** Ký hiệu tiền tệ: dong | vnd */
+    private String moneySuffix;
+    /** Cách viết số: comma | dot */
+    private String moneySeparator;
+    /** Giao diện: light | dark | system */
+    private String themeMode;
+    /** Ngôn ngữ: vi | en */
+    private String language;
 }
