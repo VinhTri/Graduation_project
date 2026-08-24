@@ -30,6 +30,7 @@ import { parseSmartSpendTransferQr } from '@/shared/utils/smartSpendQr'
 import { styles } from './TransferScreen.styles'
 
 const MIN_TRANSFER = 1_000;
+const MAX_AMOUNT_DIGITS = 12;
 const DAILY_WARN_RATIO = 0.8;
 
 function formatMoney(value: number) {
@@ -200,7 +201,7 @@ export const TransferScreen = ({ autoOpenScanner = false }: TransferScreenProps)
   };
 
   const handleAmountChange = (text: string) => {
-    let numericValue = text.replace(/[^0-9]/g, '');
+    let numericValue = text.replace(/[^0-9]/g, '').slice(0, MAX_AMOUNT_DIGITS);
     numericValue = numericValue.replace(/^0+/, '');
     if (!numericValue) {
       setAmount('');
@@ -606,6 +607,7 @@ export const TransferScreen = ({ autoOpenScanner = false }: TransferScreenProps)
                 }}
                 onChangeText={handleAmountChange}
                 keyboardType="numeric"
+                maxLength={15}
                 placeholderTextColor={PASTEL_PALETTE.textMuted}
               />
               <Text style={styles.currencySuffix}>đ</Text>
