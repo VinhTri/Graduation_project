@@ -1,5 +1,5 @@
 import { StyleSheet } from 'react-native';
-import Colors from '@/shared/constants/Colors';
+import { Colors } from '@/shared/constants/Colors';
 import Constants from 'expo-constants';
 
 export const PALETTE = {
@@ -95,6 +95,9 @@ export const styles = StyleSheet.create({
     marginBottom: 8,
     fontWeight: '500',
   },
+  required: {
+    color: '#EF4444',
+  },
   input: {
     backgroundColor: '#F1F5F9',
     borderRadius: 12,
@@ -111,6 +114,18 @@ export const styles = StyleSheet.create({
     borderRadius: 12,
     height: 48,
     paddingHorizontal: 16,
+  },
+  inputError: {
+    borderWidth: 1.5,
+    borderColor: '#EF4444',
+    backgroundColor: '#FEF2F2',
+  },
+  errorText: {
+    marginTop: 6,
+    color: '#DC2626',
+    fontSize: 12,
+    fontWeight: '600',
+    lineHeight: 17,
   },
   amountInput: {
     flex: 1,

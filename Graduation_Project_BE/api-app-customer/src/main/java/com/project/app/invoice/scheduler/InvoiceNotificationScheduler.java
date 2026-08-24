@@ -4,6 +4,7 @@ import com.project.app.invoice.entity.Invoice;
 import com.project.app.invoice.repository.InvoiceRepository;
 import com.project.app.notification.service.NotificationService;
 import com.project.app.notification.enums.NotificationType;
+import com.project.app.notification.repository.NotificationRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -20,6 +21,39 @@ public class InvoiceNotificationScheduler {
 
     private final InvoiceRepository invoiceRepository;
     private final NotificationService notificationService;
+    private final NotificationRepository notificationRepository;
+
+    @Scheduled(cron = "0 0 8 * * *")
+    public void processDueAndOverdueInvoices() {
+        LocalDate today = LocalDate.now();
+        for (Invoice invoice : invoiceRepository.findByIsPaidFalse()) {
+            NotificationType type;
+            String title;
+            String message;
+            if (invoice.getDueDate().isEqual(today)) {
+                // Lịch "Đúng ngày" sẽ gửi theo giờ người dùng đã chọn ở scheduler bên dưới.
+                if ("Đúng ngày".equals(invoice.getReminderOption())
+                        && invoice.getReminderTime() != null) {
+                    continue;
+                }
+                type = NotificationType.INVOICE_DUE_TODAY;
+                title = "Hóa đơn đến hạn hôm nay";
+                message = "Hóa đơn '" + invoice.getInvoiceName() + "' cần được thanh toán hôm nay.";
+            } else if (invoice.getDueDate().isBefore(today)) {
+                type = NotificationType.INVOICE_OVERDUE;
+                title = "Hóa đơn đã quá hạn";
+                message = "Hóa đơn '" + invoice.getInvoiceName() + "' đã quá hạn thanh toán.";
+            } else {
+                continue;
+            }
+
+            if (!notificationRepository.existsByUserIdAndTypeAndRelatedId(
+                    invoice.getUser().getId(), type, invoice.getId())) {
+                notificationService.createNotification(
+                        invoice.getUser(), title, message, type, invoice.getId());
+            }
+        }
+    }
 
     // Run every minute
     @Scheduled(cron = "0 * * * * *")

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -6,17 +6,19 @@ import {
   ScrollView,
   RefreshControl,
   ActivityIndicator,
-  Image,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { PASTEL_PALETTE } from '@/shared/constants/PastelPalette';
 import { splitBillService, SplitBillDetail } from '@/shared/api/services/splitBillService';
-import { resolveMediaUrl } from '@/shared/utils/resolveMediaUrl';
+import { walletService } from '@/shared/api/services/walletService';
+import UserAvatar from '@/shared/components/UserAvatar/UserAvatar';
 import PinModal from '@/shared/components/PinModal/PinModal';
 import ConfirmModal from '@/shared/components/ConfirmModal/ConfirmModal';
+import InsufficientBalanceModal from '../../components/InsufficientBalanceModal';
 import { styles } from './SplitBillDetailScreen.styles';
 
 export const SplitBillDetailScreen = () => {
@@ -31,12 +33,13 @@ export const SplitBillDetailScreen = () => {
 
   // Payment states
   const [isPinModalVisible, setIsPinModalVisible] = useState(false);
-  const [pinLoading, setPinLoading] = useState(false);
   const [pinError, setPinError] = useState('');
+  const [checkingBalance, setCheckingBalance] = useState(false);
 
   // Modals
   const [errorModalVisible, setErrorModalVisible] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
+  const [insufficientBalanceModalVisible, setInsufficientBalanceModalVisible] = useState(false);
   const [successModalVisible, setSuccessModalVisible] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
   const [cancelModalVisible, setCancelModalVisible] = useState(false);
@@ -60,9 +63,11 @@ export const SplitBillDetailScreen = () => {
     }
   }, [billId]);
 
-  useEffect(() => {
-    loadBillDetail();
-  }, [loadBillDetail]);
+  useFocusEffect(
+    useCallback(() => {
+      loadBillDetail();
+    }, [loadBillDetail])
+  );
 
   const onRefresh = () => {
     setRefreshing(true);
@@ -77,15 +82,45 @@ export const SplitBillDetailScreen = () => {
     }
   };
 
-  const handleOpenPay = () => {
-    setPinError('');
-    setIsPinModalVisible(true);
+  const showInsufficientBalance = (afterPin = false) => {
+    setIsPinModalVisible(false);
+
+    if (afterPin) {
+      setTimeout(() => setInsufficientBalanceModalVisible(true), 300);
+      return;
+    }
+
+    setInsufficientBalanceModalVisible(true);
+  };
+
+  const handleOpenPay = async () => {
+    if (checkingBalance || !bill?.myAmount) return;
+
+    try {
+      setCheckingBalance(true);
+      const wallet = await walletService.getMyWallet();
+      const availableBalance = Number(wallet?.balance ?? 0);
+
+      if (availableBalance < Number(bill.myAmount)) {
+        showInsufficientBalance();
+        return;
+      }
+
+      setPinError('');
+      setIsPinModalVisible(true);
+    } catch (error) {
+      // Nếu chưa đọc được số dư, vẫn để backend kiểm tra khi thanh toán.
+      console.log('Error checking wallet balance:', error);
+      setPinError('');
+      setIsPinModalVisible(true);
+    } finally {
+      setCheckingBalance(false);
+    }
   };
 
   const handleConfirmPin = async (pin: string) => {
     if (!billId) return;
     try {
-      setPinLoading(true);
       setPinError('');
 
       const res: any = await splitBillService.paySplitBill(billId, { pinCode: pin });
@@ -106,13 +141,18 @@ export const SplitBillDetailScreen = () => {
         error?.response?.data?.message || error?.message || 'Đã xảy ra lỗi khi thanh toán.';
       if (msg.toLowerCase().includes('pin')) {
         setPinError(msg);
+      } else if (
+        error?.code === 'WALL_2003' ||
+        error?.response?.data?.code === 'WALL_2003' ||
+        msg.toLowerCase().includes('số dư')
+      ) {
+        showInsufficientBalance(true);
       } else {
         setIsPinModalVisible(false);
         setErrorMessage(msg);
         setErrorModalVisible(true);
       }
     } finally {
-      setPinLoading(false);
     }
   };
 
@@ -291,22 +331,7 @@ export const SplitBillDetailScreen = () => {
 
         {/* Creator Card */}
         <View style={styles.creatorCard}>
-          <View style={styles.creatorAvatar}>
-            {bill.creatorAvatarUrl ? (
-              <Image
-                source={{ uri: resolveMediaUrl(bill.creatorAvatarUrl) || '' }}
-                style={styles.creatorAvatarImage}
-              />
-            ) : (
-              <Text style={styles.creatorAvatarText}>
-                {(() => {
-                  if (!bill.creatorUsername || !bill.creatorUsername.trim()) return 'U';
-                  const parts = bill.creatorUsername.trim().split(/\s+/);
-                  return parts[parts.length - 1].charAt(0).toUpperCase();
-                })()}
-              </Text>
-            )}
-          </View>
+          <UserAvatar name={bill.creatorUsername} avatarUrl={bill.creatorAvatarUrl} size={52} />
           <View style={styles.creatorInfo}>
             <Text style={styles.creatorRoleText}>Người tạo yêu cầu</Text>
             <Text style={styles.creatorName}>
@@ -325,21 +350,9 @@ export const SplitBillDetailScreen = () => {
           {bill.members.map((member) => {
             const isPaid = member.status === 'PAID';
             const isReminding = remindingUserId === member.userId;
-            const parts = (member.username || '').trim().split(/\s+/);
-            const initial = parts.length > 0 && parts[0] ? parts[parts.length - 1].charAt(0).toUpperCase() : 'U';
-
             return (
               <View key={member.id} style={styles.memberItem}>
-                <View style={styles.memberAvatar}>
-                  {member.avatarUrl ? (
-                    <Image
-                      source={{ uri: resolveMediaUrl(member.avatarUrl) || '' }}
-                      style={styles.memberAvatarImage}
-                    />
-                  ) : (
-                    <Text style={styles.memberAvatarText}>{initial}</Text>
-                  )}
-                </View>
+                <UserAvatar name={member.username} avatarUrl={member.avatarUrl} size={44} />
 
                 <View style={styles.memberInfo}>
                   <Text style={styles.memberName} numberOfLines={1}>
@@ -392,7 +405,7 @@ export const SplitBillDetailScreen = () => {
         </View>
 
         {/* Nút Hủy yêu cầu chia tiền cho người tạo khi bill còn PENDING */}
-        {bill.creator && bill.status === 'PENDING' && (
+        {bill.creator && bill.status === 'PENDING' && bill.paidMembersCount === 0 && (
           <TouchableOpacity
             style={styles.cancelBillButton}
             onPress={() => setCancelModalVisible(true)}
@@ -401,6 +414,15 @@ export const SplitBillDetailScreen = () => {
             <Ionicons name="trash-outline" size={18} color="#EF4444" />
             <Text style={styles.cancelBillButtonText}>Hủy yêu cầu chia tiền</Text>
           </TouchableOpacity>
+        )}
+
+        {bill.creator && bill.status === 'PENDING' && bill.paidMembersCount > 0 && (
+          <View style={styles.cancelLockedNotice}>
+            <Ionicons name="information-circle" size={21} color="#B45309" />
+            <Text style={styles.cancelLockedNoticeText}>
+              Đã có {bill.paidMembersCount} thành viên thanh toán khoản chia này nên bạn không thể hủy.
+            </Text>
+          </View>
         )}
 
         <View style={{ height: 100 }} />
@@ -417,11 +439,16 @@ export const SplitBillDetailScreen = () => {
           </View>
 
           <TouchableOpacity
-            style={styles.payBtn}
+            style={[styles.payBtn, checkingBalance && { opacity: 0.75 }]}
             onPress={handleOpenPay}
             activeOpacity={0.8}
+            disabled={checkingBalance}
           >
-            <Text style={styles.payBtnText}>Thanh toán ngay bằng ví</Text>
+            {checkingBalance ? (
+              <ActivityIndicator color="#FFFFFF" />
+            ) : (
+              <Text style={styles.payBtnText}>Thanh toán ngay bằng ví</Text>
+            )}
           </TouchableOpacity>
         </View>
       )}
@@ -445,6 +472,11 @@ export const SplitBillDetailScreen = () => {
         errorMessage={pinError}
         title="Nhập mã PIN ví"
         subtitle="Vui lòng nhập mã PIN bảo mật để xác nhận thanh toán chia tiền."
+      />
+
+      <InsufficientBalanceModal
+        visible={insufficientBalanceModalVisible}
+        onUnderstood={() => setInsufficientBalanceModalVisible(false)}
       />
 
       {/* Error Modal */}

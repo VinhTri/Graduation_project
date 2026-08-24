@@ -202,6 +202,7 @@ export const styles = StyleSheet.create({
   billMainRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 12,
   },
   avatarCircle: {
     width: 44,

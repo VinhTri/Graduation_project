@@ -1,25 +1,18 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import {
   View,
   Text,
-  FlatList,
+  SectionList,
   TouchableOpacity,
   StyleSheet,
   ActivityIndicator,
   Alert,
-  Animated,
 } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import { LinearGradient } from "expo-linear-gradient";
-import Colors from "../../../shared/constants/Colors";
-
-const PALETTE = {
-  headerStart: '#FFD6EC',
-  headerMid: '#E9D5FF',
-  headerEnd: '#BFDBFE',
-};
+import PastelHeaderShell from "../../../shared/components/PastelHeaderShell/PastelHeaderShell";
+import { PASTEL_PALETTE } from "../../../shared/constants/PastelPalette";
+import { useTheme } from "../../../shared/contexts/ThemeLanguageContext";
 import {
   notificationService,
   NotificationResponse,
@@ -27,8 +20,6 @@ import {
 import { fundService } from "../../../shared/api/services/fundService";
 import { fundStore } from "../../funds/store/fundStore";
 import { ConfirmModal, SuccessModal } from "../../../shared/components";
-
-import { Swipeable, RectButton } from "react-native-gesture-handler";
 
 const timeAgo = (dateInput: string) => {
   const date = new Date(dateInput);
@@ -55,9 +46,11 @@ const timeAgo = (dateInput: string) => {
 
 export default function NotificationScreen() {
   const router = useRouter();
-  const insets = useSafeAreaInsets();
+  const { theme } = useTheme();
   const [notifications, setNotifications] = useState<NotificationResponse[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
+  const [markingAll, setMarkingAll] = useState(false);
   const [actingId, setActingId] = useState<number | null>(null);
 
   const [selectedNotification, setSelectedNotification] = useState<NotificationResponse | null>(null);
@@ -66,11 +59,29 @@ export default function NotificationScreen() {
   const [successModalVisible, setSuccessModalVisible] = useState(false);
   const [joinedFundId, setJoinedFundId] = useState<number | null>(null);
 
+  const unreadCount = notifications.filter((item) => !item.isRead).length;
+  const sections = useMemo(() => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const recent: NotificationResponse[] = [];
+    const older: NotificationResponse[] = [];
+    notifications.forEach((item) => {
+      const createdAt = new Date(item.createdAt);
+      (createdAt >= today ? recent : older).push(item);
+    });
+    return [
+      { title: "Hôm nay", data: recent },
+      { title: "Trước đó", data: older },
+    ].filter((section) => section.data.length > 0);
+  }, [notifications]);
+
   useEffect(() => {
     loadNotifications();
   }, []);
 
   const loadNotifications = async () => {
+    setLoading(true);
+    setLoadError(false);
     try {
       const res: any = await notificationService.getAll();
       if (res && res.success) {
@@ -78,21 +89,25 @@ export default function NotificationScreen() {
       } else {
         setNotifications([]);
       }
-      await notificationService.readAll();
     } catch (error) {
       console.log("Error loading notifications:", error);
+      setLoadError(true);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleDelete = async (id: number) => {
+  const handleMarkAllAsRead = async () => {
+    if (unreadCount === 0 || markingAll) return;
+    setMarkingAll(true);
     try {
-      setNotifications((prev) => prev.filter((n) => n.id !== id));
-      await notificationService.delete(id);
+      await notificationService.readAll();
+      setNotifications((current) => current.map((item) => ({ ...item, isRead: true })));
     } catch (error) {
-      console.log("Error deleting notification:", error);
-      loadNotifications();
+      console.log("Error marking notifications as read:", error);
+      Alert.alert("Không thể cập nhật", "Vui lòng thử lại sau.");
+    } finally {
+      setMarkingAll(false);
     }
   };
 
@@ -168,6 +183,8 @@ export default function NotificationScreen() {
         router.push("/funds");
         break;
       case "INVOICE_REMINDER":
+      case "INVOICE_DUE_TODAY":
+      case "INVOICE_OVERDUE":
         if (item.relatedId) router.push(`/invoice/${item.relatedId}`);
         else router.push("/invoice");
         break;
@@ -181,7 +198,8 @@ export default function NotificationScreen() {
         break;
       case "BUDGET_WARNING":
       case "BUDGET_EXCEEDED":
-        router.push("/budget");
+        if (item.relatedId) router.push(`/budget/${item.relatedId}` as any);
+        else router.push("/budget");
         break;
       case "NOTEBOOK_REMINDER":
         router.push("/(tabs)/notebook");
@@ -189,8 +207,26 @@ export default function NotificationScreen() {
       case "SPLIT_BILL_REQUEST":
       case "SPLIT_BILL_PAID":
       case "SPLIT_BILL_REMINDER":
+      case "SPLIT_BILL_COMPLETED":
+      case "SPLIT_BILL_CANCELLED":
         if (item.relatedId) router.push(`/split-bill/${item.relatedId}` as any);
         else router.push("/split-bill" as any);
+        break;
+      case "TRANSFER_RECEIVED":
+      case "WITHDRAW_SUCCESS":
+      case "TOP_UP_SUCCESS":
+        router.push("/wallet/history");
+        break;
+      case "FUND_DEPOSIT":
+      case "FUND_WITHDRAW":
+      case "FUND_GOAL_REACHED":
+      case "FUND_CLOSED":
+        if (item.relatedId && item.type !== "FUND_CLOSED") router.push(`/funds/${item.relatedId}`);
+        else router.push("/funds");
+        break;
+      case "INVOICE_PAYMENT_SUCCESS":
+        if (item.relatedId) router.push(`/invoice/${item.relatedId}`);
+        else router.push("/invoice");
         break;
       case "GENERAL":
       default:
@@ -216,86 +252,61 @@ export default function NotificationScreen() {
     }
   };
 
-  const renderRightActions = (
-    progress: Animated.AnimatedInterpolation<number>,
-    _dragX: Animated.AnimatedInterpolation<number>,
-    id: number
-  ) => {
-    const scale = progress.interpolate({
-      inputRange: [0, 1],
-      outputRange: [0.88, 1],
-      extrapolate: 'clamp',
-    });
-    const translateX = progress.interpolate({
-      inputRange: [0, 1],
-      outputRange: [20, 0],
-      extrapolate: 'clamp',
-    });
-
-    return (
-      <Animated.View
-        style={[
-          styles.swipeDeleteActionWrap,
-          { transform: [{ scale }, { translateX }] },
-        ]}
-      >
-        <RectButton
-          style={styles.swipeDeleteButton}
-          onPress={() => handleDelete(id)}
-        >
-          <LinearGradient
-            colors={['#FCA5A5', '#EF4444', '#DC2626']}
-            start={{ x: 0, y: 0.5 }}
-            end={{ x: 1, y: 0.5 }}
-            style={styles.swipeDeleteGradient}
-          >
-            <View style={styles.swipeDeleteIconCircle}>
-              <Ionicons name="trash" size={20} color="#FFFFFF" />
-            </View>
-            <Text style={styles.swipeDeleteText}>Xóa</Text>
-          </LinearGradient>
-        </RectButton>
-      </Animated.View>
-    );
-  };
-
   const renderItem = ({ item }: { item: NotificationResponse }) => {
     const isFundInvite = item.type === "FUND_INVITE" && !!item.relatedId;
-    const busy = actingId === item.id;
-
     const getIconName = () => {
       if (isFundInvite) return "people";
       if (item.type === "SPLIT_BILL_REQUEST" || item.type === "SPLIT_BILL_PAID" || item.type === "SPLIT_BILL_REMINDER") return "wallet-outline";
+      if (item.type === "SPLIT_BILL_COMPLETED") return "checkmark-done-outline";
+      if (item.type === "SPLIT_BILL_CANCELLED") return "close-circle-outline";
       if (item.type === "NOTEBOOK_REMINDER") return "book-outline";
-      if (item.type === "INVOICE_REMINDER") return "receipt-outline";
+      if (item.type === "INVOICE_REMINDER" || item.type === "INVOICE_PAYMENT_SUCCESS" || item.type === "INVOICE_DUE_TODAY" || item.type === "INVOICE_OVERDUE") return "receipt-outline";
       if (item.type === "BUDGET_WARNING" || item.type === "BUDGET_EXCEEDED") return "pie-chart-outline";
       if (item.type === "FRIEND_REQUEST" || item.type === "FRIEND_ACCEPTED") return "person-add-outline";
+      if (item.type === "TRANSFER_RECEIVED" || item.type === "TOP_UP_SUCCESS") return "arrow-down-circle-outline";
+      if (item.type === "WITHDRAW_SUCCESS") return "arrow-up-circle-outline";
+      if (item.type === "FUND_DEPOSIT" || item.type === "FUND_WITHDRAW" || item.type === "FUND_GOAL_REACHED" || item.type === "FUND_CLOSED") return "file-tray-full-outline";
       return "notifications";
     };
 
+    const getVisual = () => {
+      if (item.type?.includes("BUDGET") || item.type === "INVOICE_OVERDUE") return { color: "#C2415D", bg: "#FDECF2" };
+      if (item.type?.includes("FUND")) return { color: "#6D4BA0", bg: "#F2ECFA" };
+      if (item.type?.includes("SPLIT_BILL")) return { color: "#317A72", bg: "#E7F5F2" };
+      if (item.type?.includes("INVOICE")) return { color: "#A56624", bg: "#FFF3E3" };
+      if (item.type === "TRANSFER_RECEIVED" || item.type === "TOP_UP_SUCCESS") return { color: "#16835A", bg: "#E8F7F0" };
+      if (item.type === "WITHDRAW_SUCCESS") return { color: "#3866A8", bg: "#EAF1FB" };
+      return { color: PASTEL_PALETTE.accentDeep, bg: PASTEL_PALETTE.accentSoft };
+    };
+    const visual = getVisual();
+
     return (
-      <Swipeable 
-        renderRightActions={(progress, dragX) => renderRightActions(progress, dragX, item.id)}
-        overshootRight={false}
-        friction={2}
-        rightThreshold={36}
-      >
-        <TouchableOpacity 
-          style={[styles.notificationCard, !item.isRead && styles.unreadCard]}
+        <TouchableOpacity
+          style={[
+            styles.notificationCard,
+            { backgroundColor: theme.card, borderColor: theme.cardBorder },
+            !item.isRead && styles.unreadCard,
+          ]}
           onPress={() => handleNotificationPress(item)}
           activeOpacity={0.7}
         >
-          <View style={styles.iconContainer}>
+          <View style={[styles.iconContainer, { backgroundColor: visual.bg }]}>
             <Ionicons
               name={getIconName() as any}
               size={24}
-              color="#EC4899"
+              color={visual.color}
             />
           </View>
           <View style={styles.contentContainer}>
-            <Text style={styles.title}>{item.title}</Text>
-            <Text style={styles.message}>{item.message}</Text>
-            <Text style={styles.time}>{timeAgo(item.createdAt)}</Text>
+            <View style={styles.cardTopLine}>
+              <Text style={[styles.title, { color: theme.textPrimary }]} numberOfLines={2}>{item.title}</Text>
+              {!item.isRead ? <View style={styles.newBadge}><Text style={styles.newBadgeText}>Mới</Text></View> : null}
+            </View>
+            <Text style={[styles.message, { color: theme.textSecondary }]}>{item.message}</Text>
+            <View style={styles.cardMeta}>
+              <Ionicons name="time-outline" size={13} color={theme.textMuted} />
+              <Text style={[styles.time, { color: theme.textMuted }]}>{timeAgo(item.createdAt)}</Text>
+            </View>
 
             {isFundInvite && (
               <View style={styles.actionRow}>
@@ -323,55 +334,79 @@ export default function NotificationScreen() {
               </View>
             )}
           </View>
-          {!item.isRead && <View style={styles.unreadDot} />}
         </TouchableOpacity>
-      </Swipeable>
     );
   };
 
   return (
-    <View style={styles.container}>
-      {/* Header */}
-      <View style={styles.headerWrap}>
-        <LinearGradient
-          colors={[PALETTE.headerStart, PALETTE.headerMid, PALETTE.headerEnd]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={[styles.header, { paddingTop: insets.top + 12 }]}
-        >
-          <View style={styles.headerDecorCircleLarge} />
-          <View style={styles.headerDecorCircleSmall} />
-
-          <View style={styles.headerTopRow}>
-            <View style={styles.headerLeft}>
-              <TouchableOpacity onPress={() => router.back()} style={styles.backButton} activeOpacity={0.7}>
-                <Ionicons name="chevron-back-outline" size={22} color="#7C3AED" />
-              </TouchableOpacity>
-              <Text style={styles.headerTitle}>Thông báo</Text>
-            </View>
+    <View style={[styles.container, { backgroundColor: theme.bg }]}>
+      <PastelHeaderShell contentStyle={styles.headerContent}>
+        <View style={styles.headerTopRow}>
+          <TouchableOpacity onPress={() => router.back()} style={styles.backButton} activeOpacity={0.7}>
+            <Ionicons name="chevron-back" size={22} color={theme.primaryDark} />
+          </TouchableOpacity>
+          <View style={styles.headerCopy}>
+            <Text style={[styles.headerTitle, { color: theme.textPrimary }]}>Thông báo</Text>
+            <Text style={[styles.headerSubtitle, { color: theme.textSecondary }]}>
+              {!loading && unreadCount > 0
+                ? `${unreadCount} thông báo chưa đọc`
+                : 'Bạn đã đọc tất cả thông báo'}
+            </Text>
           </View>
-        </LinearGradient>
-      </View>
+          {!loading && unreadCount > 0 ? (
+            <TouchableOpacity
+              style={styles.markAllButton}
+              onPress={handleMarkAllAsRead}
+              disabled={markingAll}
+              activeOpacity={0.75}
+              accessibilityRole="button"
+              accessibilityLabel="Đánh dấu tất cả thông báo là đã đọc"
+            >
+              {markingAll ? (
+                <ActivityIndicator size="small" color="#7C3AED" />
+              ) : (
+                <Ionicons name="checkmark-done" size={17} color="#7C3AED" />
+              )}
+              <Text style={styles.markAllText}>Đọc tất cả</Text>
+            </TouchableOpacity>
+          ) : null}
+        </View>
+      </PastelHeaderShell>
 
-      <View style={styles.content}>
+      <View style={[styles.content, { backgroundColor: theme.bg }]}>
           {loading ? (
             <View style={styles.loadingContainer}>
-              <ActivityIndicator size="large" color="#EC4899" />
+              {[0, 1, 2].map((item) => <View key={item} style={[styles.skeletonCard, { backgroundColor: theme.card }]} />)}
+            </View>
+          ) : loadError ? (
+            <View style={styles.emptyContainer}>
+              <View style={[styles.emptyIconWrap, { backgroundColor: theme.primarySoft }]}>
+                <Ionicons name="cloud-offline-outline" size={30} color={theme.primary} />
+              </View>
+              <Text style={[styles.emptyTitle, { color: theme.textPrimary }]}>Không tải được thông báo</Text>
+              <Text style={[styles.emptyText, { color: theme.textSecondary }]}>Kiểm tra kết nối rồi thử lại.</Text>
+              <TouchableOpacity style={[styles.retryBtn, { backgroundColor: theme.primary }]} onPress={loadNotifications}>
+                <Text style={styles.retryText}>Thử lại</Text>
+              </TouchableOpacity>
             </View>
           ) : (
-            <FlatList
-              data={notifications}
+            <SectionList
+              sections={sections}
               keyExtractor={(item) => item.id.toString()}
               renderItem={renderItem}
               contentContainerStyle={styles.listContainer}
+              stickySectionHeadersEnabled={false}
+              showsVerticalScrollIndicator={false}
+              renderSectionHeader={({ section }) => (
+                <Text style={[styles.sectionTitle, { color: theme.textSecondary }]}>{section.title}</Text>
+              )}
               ListEmptyComponent={
                 <View style={styles.emptyContainer}>
-                  <Ionicons
-                    name="notifications-off-outline"
-                    size={48}
-                    color={Colors.textMuted}
-                  />
-                  <Text style={styles.emptyText}>Bạn chưa có thông báo nào.</Text>
+                  <View style={[styles.emptyIconWrap, { backgroundColor: theme.primarySoft }]}>
+                    <Ionicons name="notifications-outline" size={32} color={theme.primary} />
+                  </View>
+                  <Text style={[styles.emptyTitle, { color: theme.textPrimary }]}>Mọi thứ đã được cập nhật</Text>
+                  <Text style={[styles.emptyText, { color: theme.textSecondary }]}>Thông báo về giao dịch, ngân sách và lời mời sẽ xuất hiện tại đây.</Text>
                 </View>
               }
             />
@@ -427,109 +462,118 @@ export default function NotificationScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.background,
+    backgroundColor: '#FFF8FC',
   },
-  headerWrap: {
-    borderBottomLeftRadius: 32,
-    borderBottomRightRadius: 32,
-    overflow: 'hidden',
-    marginBottom: 4,
-  },
-  header: {
+  headerContent: {
+    paddingHorizontal: 16,
     paddingBottom: 18,
-    paddingHorizontal: 24,
-  },
-  headerDecorCircleLarge: {
-    position: 'absolute',
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    backgroundColor: 'rgba(255, 255, 255, 0.28)',
-    top: -24,
-    right: -20,
-  },
-  headerDecorCircleSmall: {
-    position: 'absolute',
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: 'rgba(255, 255, 255, 0.22)',
-    bottom: 18,
-    left: 18,
   },
   headerTopRow: {
     flexDirection: 'row',
     alignItems: 'center',
   },
-  headerLeft: {
+  headerCopy: {
     flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
   },
   backButton: {
     width: 40,
     height: 40,
+    borderRadius: 12,
     justifyContent: "center",
     alignItems: "center",
-    marginRight: 10,
-    marginLeft: -8,
+    marginRight: 12,
+    backgroundColor: 'rgba(255,255,255,0.76)',
   },
   headerTitle: {
     fontSize: 22,
     fontWeight: "900",
-    color: '#5B21B6',
-    letterSpacing: 0.2,
+    letterSpacing: -0.35,
+  },
+  headerSubtitle: {
+    marginTop: 2,
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  markAllButton: {
+    minHeight: 34,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+    borderRadius: 11,
+    backgroundColor: 'rgba(255,255,255,0.8)',
+  },
+  markAllText: {
+    color: '#7C3AED',
+    fontSize: 11,
+    fontWeight: '800',
   },
   content: {
     flex: 1,
-    backgroundColor: Colors.background,
   },
   listContainer: {
-    padding: 16,
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    paddingBottom: 36,
+  },
+  sectionTitle: {
+    marginTop: 8,
+    marginBottom: 9,
+    paddingHorizontal: 4,
+    fontSize: 12,
+    fontWeight: '800',
   },
   notificationCard: {
     flexDirection: "row",
-    backgroundColor: Colors.white,
-    padding: 16,
-    borderRadius: 12,
-    marginBottom: 12,
+    padding: 14,
+    borderRadius: 18,
+    marginBottom: 9,
     alignItems: "flex-start",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
+    borderWidth: 1,
   },
   unreadCard: {
-    backgroundColor: "#F0F9FF",
+    borderColor: '#DCC8F2',
+    borderLeftWidth: 3,
   },
   iconContainer: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: "#EC48991A",
+    width: 44,
+    height: 44,
+    borderRadius: 14,
     justifyContent: "center",
     alignItems: "center",
-    marginRight: 16,
+    marginRight: 12,
   },
   contentContainer: {
     flex: 1,
   },
+  cardTopLine: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 8,
+  },
   title: {
-    fontSize: 16,
-    fontWeight: "700",
-    color: Colors.text,
-    marginBottom: 4,
-  },
-  message: {
+    flex: 1,
     fontSize: 14,
-    color: Colors.text,
-    marginBottom: 8,
-    lineHeight: 20,
+    fontWeight: "800",
+    lineHeight: 19,
   },
-  time: {
+  newBadge: {
+    paddingHorizontal: 7,
+    paddingVertical: 3,
+    borderRadius: 7,
+    backgroundColor: '#F3E8FF',
+  },
+  newBadgeText: { color: '#7C3AED', fontSize: 9, fontWeight: '900' },
+  message: {
+    marginTop: 5,
     fontSize: 12,
-    color: Colors.textMuted,
+    lineHeight: 18,
+  },
+  cardMeta: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 8 },
+  time: {
+    fontSize: 11,
+    fontWeight: '600',
   },
   actionRow: {
     flexDirection: "row",
@@ -544,7 +588,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   acceptText: {
-    color: Colors.white,
+    color: '#FFFFFF',
     fontWeight: "700",
     fontSize: 14,
   },
@@ -563,68 +607,47 @@ const styles = StyleSheet.create({
   btnDisabled: {
     opacity: 0.7,
   },
-  unreadDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    backgroundColor: "#EC4899",
-    marginLeft: 8,
-    marginTop: 6,
-  },
   loadingContainer: {
     flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
+    paddingHorizontal: 16,
+    paddingTop: 24,
+    gap: 10,
+  },
+  skeletonCard: {
+    height: 92,
+    borderRadius: 18,
+    opacity: 0.72,
   },
   emptyContainer: {
     alignItems: "center",
     justifyContent: "center",
-    paddingTop: 100,
+    paddingHorizontal: 36,
+    paddingTop: 90,
+  },
+  emptyIconWrap: {
+    width: 66,
+    height: 66,
+    borderRadius: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 16,
+  },
+  emptyTitle: {
+    fontSize: 17,
+    fontWeight: '900',
+    textAlign: 'center',
   },
   emptyText: {
+    marginTop: 7,
+    fontSize: 13,
+    lineHeight: 19,
+    textAlign: 'center',
+  },
+  retryBtn: {
     marginTop: 16,
-    fontSize: 16,
-    color: Colors.textMuted,
+    paddingHorizontal: 20,
+    paddingVertical: 11,
+    borderRadius: 12,
   },
-  swipeDeleteActionWrap: {
-    width: 90,
-    marginLeft: 8,
-    marginBottom: 12,
-  },
-  swipeDeleteButton: {
-    flex: 1,
-    borderRadius: 16,
-    overflow: 'hidden',
-    shadowColor: '#DC2626',
-    shadowOffset: { width: -2, height: 2 },
-    shadowOpacity: 0.22,
-    shadowRadius: 6,
-    elevation: 4,
-  },
-  swipeDeleteGradient: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: 8,
-    paddingVertical: 14,
-    borderRadius: 16,
-    minHeight: '100%',
-  },
-  swipeDeleteIconCircle: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    backgroundColor: 'rgba(255, 255, 255, 0.22)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 6,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.35)',
-  },
-  swipeDeleteText: {
-    color: '#FFFFFF',
-    fontWeight: '800',
-    fontSize: 12,
-    letterSpacing: 0.2,
-  },
+  retryText: { color: '#FFFFFF', fontSize: 13, fontWeight: '800' },
 });

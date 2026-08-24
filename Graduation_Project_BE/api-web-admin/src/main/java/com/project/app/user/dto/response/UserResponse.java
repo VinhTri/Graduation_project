@@ -15,6 +15,7 @@ public class UserResponse {
     private Long id;
     private String username;
     private String email;
+    private String avatarUrl;
     private String role;
     private boolean isActive;
     private LocalDateTime createdAt;

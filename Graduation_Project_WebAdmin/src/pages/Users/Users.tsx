@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Table,
   Tag,
@@ -8,13 +8,11 @@ import {
   Card,
   Typography,
   Drawer,
-  Descriptions,
   Input,
   Select,
-  Avatar,
   Tooltip,
-  Popconfirm,
   Empty,
+  Modal,
 } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import {
@@ -29,12 +27,16 @@ import {
   MailOutlined,
   ArrowDownOutlined,
   ArrowUpOutlined,
+  ExclamationCircleOutlined,
+  BankOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
+import axios from 'axios';
 import { apiClient } from '../../services/api';
+import { UserAvatar } from '../../components/UserAvatar';
 import './Users.css';
 
-const { Text, Title } = Typography;
+const { Text } = Typography;
 
 interface UserResponse {
   id: number;
@@ -44,6 +46,7 @@ interface UserResponse {
   active?: boolean;
   isActive?: boolean;
   createdAt: string;
+  avatarUrl?: string;
 }
 
 interface TransactionHistory {
@@ -61,7 +64,10 @@ interface UserDetailsResponse {
   totalTopUp?: number;
   totalWithdraw?: number;
   recentTransactions: TransactionHistory[];
+  bankAccounts?: BankAccount[];
 }
+
+interface BankAccount { id: number; bankCode: string; bankName: string; accountNumber: string; accountName: string; default: boolean; isDefault?: boolean; createdAt: string }
 
 const TYPE_LABEL: Record<string, string> = {
   TOP_UP: 'Nạp tiền',
@@ -101,23 +107,31 @@ export const Users = () => {
   const [selectedUser, setSelectedUser] = useState<UserDetailsResponse | null>(null);
   const [drawerLoading, setDrawerLoading] = useState(false);
   const [togglingId, setTogglingId] = useState<number | null>(null);
+  const [statusTarget, setStatusTarget] = useState<UserResponse | null>(null);
+  const [statusReason, setStatusReason] = useState('');
+  const [historyRows, setHistoryRows] = useState<TransactionHistory[]>([]);
+  const [historyPage, setHistoryPage] = useState(1);
+  const [historyTotal, setHistoryTotal] = useState(0);
+  const [historyLoading, setHistoryLoading] = useState(false);
 
-  const fetchUsers = async () => {
+  const fetchUsers = useCallback(async () => {
     try {
       setLoading(true);
       const response = await apiClient.get('/api/v1/admin/users');
       const data = response.data?.data || response.data || [];
       setUsers(Array.isArray(data) ? data : []);
-    } catch (error: any) {
-      message.error(error?.response?.data?.message || error?.message || 'Không thể tải danh sách người dùng');
+    } catch (error: unknown) {
+      const apiMessage = axios.isAxiosError(error) ? error.response?.data?.message : null;
+      message.error(apiMessage || 'Không thể tải danh sách người dùng');
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
-    fetchUsers();
-  }, []);
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    void fetchUsers();
+  }, [fetchUsers]);
 
   const stats = useMemo(() => {
     const endUsers = users.filter((u) => u.role !== 'ADMIN');
@@ -149,16 +163,29 @@ export const Users = () => {
     });
   }, [users, search, roleFilter, statusFilter]);
 
-  const handleToggleStatus = async (id: number) => {
+  const handleUpdateStatus = async () => {
+    if (!statusTarget || statusReason.trim().length < 5) {
+      message.warning('Vui lòng nhập lý do ít nhất 5 ký tự');
+      return;
+    }
     try {
-      setTogglingId(id);
-      const response = await apiClient.put(`/api/v1/admin/users/${id}/toggle-status`);
+      setTogglingId(statusTarget.id);
+      const response = await apiClient.put(`/api/v1/admin/users/${statusTarget.id}/status`, {
+        active: !isActiveUser(statusTarget),
+        reason: statusReason.trim(),
+      });
       if (response.data?.success !== false) {
         message.success(response.data?.message || 'Đã cập nhật trạng thái');
-        fetchUsers();
+        setSelectedUser((current) => current && current.userInfo.id === statusTarget.id
+          ? { ...current, userInfo: { ...current.userInfo, active: !isActiveUser(statusTarget), isActive: !isActiveUser(statusTarget) } }
+          : current);
+        setStatusTarget(null);
+        setStatusReason('');
+        await fetchUsers();
       }
-    } catch (error: any) {
-      message.error(error?.response?.data?.message || 'Không thể thay đổi trạng thái');
+    } catch (error: unknown) {
+      const apiMessage = axios.isAxiosError(error) ? error.response?.data?.message : null;
+      message.error(apiMessage || 'Không thể thay đổi trạng thái');
     } finally {
       setTogglingId(null);
     }
@@ -169,15 +196,31 @@ export const Users = () => {
     setDrawerLoading(true);
     setSelectedUser(null);
     try {
-      const response = await apiClient.get(`/api/v1/admin/users/${id}/details`);
+      const [response, historyResponse] = await Promise.all([
+        apiClient.get(`/api/v1/admin/users/${id}/details`),
+        apiClient.get(`/api/v1/admin/users/${id}/transactions?page=0&size=10`),
+      ]);
       const data = response.data?.data || response.data;
       if (data) setSelectedUser(data);
+      const history = historyResponse.data?.data || historyResponse.data;
+      setHistoryRows(history?.content || []); setHistoryTotal(Number(history?.totalElements || 0)); setHistoryPage(1);
     } catch {
       message.error('Không thể tải chi tiết người dùng');
       setDrawerVisible(false);
     } finally {
       setDrawerLoading(false);
     }
+  };
+
+  const changeHistoryPage = async (page: number) => {
+    if (!selectedUser) return;
+    setHistoryLoading(true);
+    try {
+      const response = await apiClient.get(`/api/v1/admin/users/${selectedUser.userInfo.id}/transactions?page=${page - 1}&size=10`);
+      const data = response.data?.data || response.data;
+      setHistoryRows(data?.content || []); setHistoryTotal(Number(data?.totalElements || 0)); setHistoryPage(page);
+    } catch { message.error('Không thể tải trang lịch sử giao dịch'); }
+    finally { setHistoryLoading(false); }
   };
 
   const formatDate = (date?: string) => {
@@ -198,12 +241,7 @@ export const Users = () => {
       key: 'user',
       render: (_, record) => (
         <div className="users-cell-user">
-          <Avatar
-            size={40}
-            style={{ background: avatarColor(record.username || 'U'), flexShrink: 0 }}
-          >
-            {(record.username || 'U').slice(0, 1).toUpperCase()}
-          </Avatar>
+          <UserAvatar name={record.username} avatarUrl={record.avatarUrl} size={40} color={avatarColor(record.username || 'U')} />
           <div>
             <strong>{record.username}</strong>
             <span>
@@ -275,21 +313,15 @@ export const Users = () => {
               </Button>
             </Tooltip>
             {record.role !== 'ADMIN' && (
-              <Popconfirm
-                title={active ? 'Khóa tài khoản này?' : 'Mở khóa tài khoản này?'}
-                okText="Xác nhận"
-                cancelText="Hủy"
-                onConfirm={() => handleToggleStatus(record.id)}
-              >
                 <Button
                   danger={active}
                   type={active ? 'default' : 'primary'}
                   icon={active ? <LockOutlined /> : <UnlockOutlined />}
                   loading={togglingId === record.id}
+                  onClick={() => { setStatusTarget(record); setStatusReason(''); }}
                 >
                   {active ? 'Khóa' : 'Mở'}
                 </Button>
-              </Popconfirm>
             )}
           </Space>
         );
@@ -344,6 +376,10 @@ export const Users = () => {
   ];
 
   const detailActive = selectedUser ? isActiveUser(selectedUser.userInfo) : false;
+  const isLocking = !!statusTarget && isActiveUser(statusTarget);
+  const reasonPresets = isLocking
+    ? ['Phát hiện hoạt động bất thường', 'Vi phạm điều khoản sử dụng', 'Cần xác minh thông tin tài khoản']
+    : ['Đã hoàn tất xác minh', 'Đã xử lý vi phạm', 'Mở lại theo yêu cầu hỗ trợ'];
 
   return (
     <div className="users-page">
@@ -448,7 +484,7 @@ export const Users = () => {
       <Drawer
         className="users-drawer"
         title={null}
-        width={820}
+        width={760}
         placement="right"
         onClose={() => setDrawerVisible(false)}
         open={drawerVisible}
@@ -457,89 +493,86 @@ export const Users = () => {
       >
         {selectedUser && (
           <div className="users-drawer-body">
-            <div className="users-drawer-head">
-              <Avatar
-                size={64}
-                style={{ background: avatarColor(selectedUser.userInfo.username || 'U') }}
-              >
-                {(selectedUser.userInfo.username || 'U').slice(0, 1).toUpperCase()}
-              </Avatar>
-              <div>
-                <h3>{selectedUser.userInfo.username}</h3>
-                <p>{selectedUser.userInfo.email}</p>
-                <Space size={8} wrap>
-                  <Tag className={`users-tag ${selectedUser.userInfo.role === 'ADMIN' ? 'admin' : 'user'}`}>
-                    {selectedUser.userInfo.role === 'ADMIN' ? 'Quản trị viên' : 'Người dùng'}
-                  </Tag>
-                  <span className={`users-status ${detailActive ? 'on' : 'off'}`}>
-                    <i />
-                    {detailActive ? 'Hoạt động' : 'Đã khóa'}
-                  </span>
-                </Space>
+            <header className="users-profile-head">
+              <div className="users-profile-identity">
+                <UserAvatar name={selectedUser.userInfo.username} avatarUrl={selectedUser.userInfo.avatarUrl} size={58} color={avatarColor(selectedUser.userInfo.username || 'U')} />
+                <div><span>Hồ sơ người dùng · #{selectedUser.userInfo.id}</span><h3>{selectedUser.userInfo.username}</h3><p><MailOutlined /> {selectedUser.userInfo.email}</p></div>
               </div>
-            </div>
+              <div className="users-profile-actions">
+                <Tag className={`users-tag ${selectedUser.userInfo.role === 'ADMIN' ? 'admin' : 'user'}`}>{selectedUser.userInfo.role === 'ADMIN' ? 'Quản trị viên' : 'Người dùng'}</Tag>
+                <span className={`users-status ${detailActive ? 'on' : 'off'}`}><i />{detailActive ? 'Hoạt động' : 'Đã khóa'}</span>
+                {selectedUser.userInfo.role !== 'ADMIN' && <Button danger={detailActive} icon={detailActive ? <LockOutlined /> : <UnlockOutlined />} onClick={() => { setStatusTarget(selectedUser.userInfo); setStatusReason(''); }}>{detailActive ? 'Khóa tài khoản' : 'Mở tài khoản'}</Button>}
+              </div>
+            </header>
 
             <div className="users-money-grid">
-              <div className="users-balance-card">
-                <div className="users-balance-icon users-balance-icon--logo">
-                  <img src="/brand/smartspend-icon.png" alt="SmartSpend" />
-                </div>
-                <div>
-                  <span>Số dư ví SmartSpend</span>
-                  <Title level={3}>{formatVND(Number(selectedUser.totalBalance || 0))}</Title>
-                </div>
+              <div className="users-balance-card users-balance-card--main">
+                <div className="users-balance-card-top"><div className="users-balance-icon users-balance-icon--logo"><img src="/brand/smartspend-icon.png" alt="SmartSpend" /></div><span>Số dư hiện tại</span></div>
+                <strong>{formatVND(Number(selectedUser.totalBalance || 0))}</strong>
+                <small>Số dư ví chính của người dùng</small>
               </div>
               <div className="users-balance-card users-balance-card--topup">
-                <div className="users-balance-icon users-balance-icon--topup">
-                  <ArrowDownOutlined />
-                </div>
-                <div>
-                  <span>Tổng nạp (thành công)</span>
-                  <Title level={3}>{formatVND(Number(selectedUser.totalTopUp || 0))}</Title>
-                </div>
+                <div className="users-balance-icon users-balance-icon--topup"><ArrowDownOutlined /></div>
+                <div><span>Đã nạp thành công</span><strong>{formatVND(Number(selectedUser.totalTopUp || 0))}</strong></div>
               </div>
               <div className="users-balance-card users-balance-card--withdraw">
-                <div className="users-balance-icon users-balance-icon--withdraw">
-                  <ArrowUpOutlined />
-                </div>
-                <div>
-                  <span>Tổng rút (thành công)</span>
-                  <Title level={3}>{formatVND(Number(selectedUser.totalWithdraw || 0))}</Title>
-                </div>
+                <div className="users-balance-icon users-balance-icon--withdraw"><ArrowUpOutlined /></div>
+                <div><span>Đã rút thành công</span><strong>{formatVND(Number(selectedUser.totalWithdraw || 0))}</strong></div>
               </div>
             </div>
 
-            <Descriptions
-              className="users-desc"
-              title="Thông tin cơ bản"
-              column={2}
-              size="middle"
-              items={[
-                { key: 'id', label: 'ID', children: `#${selectedUser.userInfo.id}` },
-                { key: 'username', label: 'Tên', children: selectedUser.userInfo.username },
-                { key: 'email', label: 'Email', children: selectedUser.userInfo.email },
-                {
-                  key: 'joined',
-                  label: 'Ngày tham gia',
-                  children: formatDate(selectedUser.userInfo.createdAt),
-                },
-              ]}
-            />
+            <section className="users-profile-meta">
+              <div><span>Mã người dùng</span><strong>#{selectedUser.userInfo.id}</strong></div>
+              <div><span>Ngày tham gia</span><strong>{formatDate(selectedUser.userInfo.createdAt)}</strong></div>
+              <div><span>Tổng lịch sử nạp / rút</span><strong>{historyTotal}</strong></div>
+            </section>
+
+            <section className="users-bank-section">
+              <div className="users-section-heading"><div><span>Liên kết tài chính</span><h4>Ngân hàng đã liên kết</h4></div><Tag>{selectedUser.bankAccounts?.length || 0} tài khoản</Tag></div>
+              {(selectedUser.bankAccounts || []).length ? <div className="users-bank-list">{selectedUser.bankAccounts!.map((bank) => <article className="users-bank-card" key={bank.id}><div className="users-bank-icon"><BankOutlined /></div><div><div><strong>{bank.bankName}</strong>{(bank.default ?? bank.isDefault) && <Tag color="magenta">Mặc định</Tag>}</div><span>{bank.accountNumber}</span><small>{bank.accountName} · {bank.bankCode}</small></div></article>)}</div> : <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="Chưa liên kết ngân hàng" />}
+            </section>
 
             <div className="users-drawer-section">
-              <h4>Lịch sử nạp / rút gần đây</h4>
+              <div className="users-section-heading"><div><span>Hoạt động ví</span><h4>Lịch sử nạp / rút</h4></div><Tag>{historyTotal} giao dịch</Tag></div>
               <Table
+                className="users-detail-table"
                 columns={transactionColumns}
-                dataSource={selectedUser.recentTransactions || []}
+                dataSource={historyRows}
                 rowKey={(r) => `${r.transactionCode}-${r.createdAt}`}
-                pagination={false}
+                loading={historyLoading}
+                pagination={{ current: historyPage, pageSize: 10, total: historyTotal, showSizeChanger: false, onChange: (page) => void changeHistoryPage(page), showTotal: (total) => `${total} giao dịch` }}
                 size="small"
+                scroll={{ x: 650 }}
                 locale={{ emptyText: <Empty description="Chưa có giao dịch" /> }}
               />
             </div>
           </div>
         )}
       </Drawer>
+
+      <Modal
+        className={`users-status-modal ${isLocking ? 'is-locking' : 'is-unlocking'}`}
+        title={null}
+        width={560}
+        centered
+        open={!!statusTarget}
+        footer={null}
+        onCancel={() => { setStatusTarget(null); setStatusReason(''); }}
+        destroyOnClose
+      >
+        <header className="users-status-modal-head">
+          <div className="users-status-modal-icon">{isLocking ? <LockOutlined /> : <UnlockOutlined />}</div>
+          <div><span>{isLocking ? 'Kiểm soát tài khoản' : 'Khôi phục truy cập'}</span><h3>{isLocking ? 'Khóa tài khoản người dùng' : 'Mở khóa tài khoản'}</h3><p>{isLocking ? 'Người dùng sẽ không thể tiếp tục sử dụng hệ thống.' : 'Người dùng sẽ có thể đăng nhập và sử dụng lại hệ thống.'}</p></div>
+        </header>
+        <div className="users-status-target"><UserAvatar name={statusTarget?.username} avatarUrl={statusTarget?.avatarUrl} size={42} color={avatarColor(statusTarget?.username || 'U')} /><div><strong>{statusTarget?.username}</strong><span>{statusTarget?.email}</span></div><Tag>#{statusTarget?.id}</Tag></div>
+        <div className="users-status-warning"><ExclamationCircleOutlined /><span>Hành động và lý do sẽ được lưu trong nhật ký quản trị để phục vụ kiểm tra.</span></div>
+        <label className="users-status-reason">
+          <span>Lý do {isLocking ? 'khóa tài khoản' : 'mở khóa'} <i>Bắt buộc</i></span>
+          <div className="users-reason-presets">{reasonPresets.map((reason) => <Button key={reason} size="small" type={statusReason === reason ? 'primary' : 'default'} onClick={() => setStatusReason(reason)}>{reason}</Button>)}</div>
+          <Input.TextArea value={statusReason} onChange={(event) => setStatusReason(event.target.value)} maxLength={300} showCount rows={4} placeholder="Nhập lý do cụ thể, tối thiểu 5 ký tự..." />
+        </label>
+        <footer className="users-status-modal-actions"><Button onClick={() => { setStatusTarget(null); setStatusReason(''); }}>Hủy bỏ</Button><Button type="primary" danger={isLocking} icon={isLocking ? <LockOutlined /> : <UnlockOutlined />} loading={togglingId === statusTarget?.id} disabled={statusReason.trim().length < 5} onClick={() => void handleUpdateStatus()}>{isLocking ? 'Xác nhận khóa' : 'Xác nhận mở khóa'}</Button></footer>
+      </Modal>
     </div>
   );
 };

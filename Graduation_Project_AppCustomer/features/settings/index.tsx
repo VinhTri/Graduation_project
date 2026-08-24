@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { Alert, ScrollView, View } from 'react-native'
+import { ScrollView, View } from 'react-native'
 import { Feather, Ionicons } from '@expo/vector-icons'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
@@ -20,10 +20,6 @@ const ICON = PASTEL_PALETTE.accentDeep
 const SECURITY_TOAST_MESSAGE: Record<string, string> = {
   password: 'Mật khẩu đã đổi thành công!',
   pin: 'Mã PIN đã thay đổi thành công!',
-}
-
-function comingSoon(title: string) {
-  Alert.alert(title, 'Tính năng sẽ sớm được cập nhật.')
 }
 
 export function SettingsScreen() {
@@ -62,22 +58,6 @@ export function SettingsScreen() {
           />
           <WalletSmartSpendSection />
           <NotebookSettingsSection />
-        </SettingsSection>
-
-        <SettingsSection title="Tiện ích">
-          <SettingsItem
-            icon={<Ionicons name="receipt-outline" size={20} color={ICON} />}
-            title="Quản lý hóa đơn"
-            subtitle="Theo dõi và thanh toán hóa đơn"
-            onPress={() => comingSoon('Quản lý hóa đơn')}
-          />
-          <SettingsItem
-            icon={<Ionicons name="people-outline" size={20} color={ICON} />}
-            title="Quỹ nhóm"
-            subtitle="Quỹ chung cùng bạn bè"
-            onPress={() => router.push('/(tabs)/funds')}
-            isLast
-          />
         </SettingsSection>
 
         <SecuritySection />

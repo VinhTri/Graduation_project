@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo, useEffect } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -6,16 +6,14 @@ import {
   ScrollView,
   RefreshControl,
   ActivityIndicator,
-  Image,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import PastelHeaderShell, { PASTEL_PALETTE } from '@/shared/components/PastelHeaderShell/PastelHeaderShell';
 import { splitBillService, SplitBillDetail } from '@/shared/api/services/splitBillService';
-import { resolveMediaUrl } from '@/shared/utils/resolveMediaUrl';
+import UserAvatar from '@/shared/components/UserAvatar/UserAvatar';
 import { EmptyBoxIllustration } from '../../components/EmptyBoxIllustration';
 import ConfirmModal from '@/shared/components/ConfirmModal/ConfirmModal';
 import { styles } from './SplitBillListScreen.styles';
@@ -29,17 +27,6 @@ export const SplitBillListScreen = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [activeTab, setActiveTab] = useState<'PENDING' | 'COMPLETED'>('PENDING');
 
-  const [currentUserName, setCurrentUserName] = useState<string>('');
-  const [currentUserAvatar, setCurrentUserAvatar] = useState<string>('');
-
-  useEffect(() => {
-    AsyncStorage.getItem('userName').then((name) => {
-      if (name) setCurrentUserName(name);
-    });
-    AsyncStorage.getItem('userAvatarUrl').then((avatar) => {
-      if (avatar) setCurrentUserAvatar(avatar);
-    });
-  }, []);
 
   // Success / Info Toast Modal
   const [infoModalVisible, setInfoModalVisible] = useState(false);
@@ -107,14 +94,6 @@ export const SplitBillListScreen = () => {
     } catch {
       return dateStr;
     }
-  };
-
-  // Lấy chữ cái đầu của từ cuối trong tên (VD: "Giang" -> "G", "Hương Giang" -> "G", "Hậu" -> "H")
-  const getInitialLetter = (name?: string | null) => {
-    if (!name || !name.trim()) return 'U';
-    const parts = name.trim().split(/\s+/);
-    const lastWord = parts[parts.length - 1];
-    return lastWord.charAt(0).toUpperCase();
   };
 
   const handleRemindAll = async (bill: SplitBillDetail) => {
@@ -225,7 +204,7 @@ export const SplitBillListScreen = () => {
                 <EmptyBoxIllustration />
                 <Text style={styles.emptyTitle}>Tất cả các lời nhắc đã được hoàn thành</Text>
                 <Text style={styles.emptySubtitle}>
-                  Bạn có thể xem lại các lời nhắc trong quá khứ ở phần 'Đã xong'
+                  Bạn có thể xem lại các lời nhắc trong quá khứ ở phần “Đã xong”
                 </Text>
               </View>
             ) : (
@@ -264,18 +243,7 @@ export const SplitBillListScreen = () => {
                       </View>
 
                       <View style={styles.billMainRow}>
-                        <View style={styles.avatarCircle}>
-                          {bill.creatorAvatarUrl ? (
-                            <Image
-                              source={{ uri: resolveMediaUrl(bill.creatorAvatarUrl) || '' }}
-                              style={styles.avatarImage}
-                            />
-                          ) : (
-                            <Text style={styles.avatarText}>
-                              {getInitialLetter(bill.creatorUsername)}
-                            </Text>
-                          )}
-                        </View>
+                        <UserAvatar name={bill.creatorUsername} avatarUrl={bill.creatorAvatarUrl} size={46} />
 
                         <View style={styles.billMiddleCol}>
                           <Text style={styles.billLabel}>Cần trả {bill.creatorUsername}</Text>
@@ -347,18 +315,7 @@ export const SplitBillListScreen = () => {
 
                         {/* Card Main Row */}
                         <View style={styles.billMainRow}>
-                          <View style={styles.avatarCircle}>
-                            {currentUserAvatar || bill.creatorAvatarUrl ? (
-                              <Image
-                                source={{ uri: resolveMediaUrl(currentUserAvatar || bill.creatorAvatarUrl) || '' }}
-                                style={styles.avatarImage}
-                              />
-                            ) : (
-                              <Text style={styles.avatarText}>
-                                {getInitialLetter(currentUserName || bill.creatorUsername)}
-                              </Text>
-                            )}
-                          </View>
+                          <UserAvatar name={bill.creatorUsername} avatarUrl={bill.creatorAvatarUrl} size={46} />
 
                           <View style={styles.billMiddleCol}>
                             <Text style={styles.billLabel}>Tổng cần thu</Text>
@@ -431,18 +388,7 @@ export const SplitBillListScreen = () => {
                           </View>
 
                           <View style={styles.billMainRow}>
-                            <View style={styles.avatarCircle}>
-                              {bill.creatorAvatarUrl ? (
-                                <Image
-                                  source={{ uri: resolveMediaUrl(bill.creatorAvatarUrl) || '' }}
-                                  style={styles.avatarImage}
-                                />
-                              ) : (
-                                <Text style={styles.avatarText}>
-                                  {getInitialLetter(bill.creatorUsername)}
-                                </Text>
-                              )}
-                            </View>
+                            <UserAvatar name={bill.creatorUsername} avatarUrl={bill.creatorAvatarUrl} size={46} />
                             <View style={styles.billMiddleCol}>
                               <Text style={styles.billLabel}>Đã trả {bill.creatorUsername}</Text>
                               <Text style={styles.billAmountText}>
@@ -490,18 +436,7 @@ export const SplitBillListScreen = () => {
                           </View>
 
                           <View style={styles.billMainRow}>
-                            <View style={styles.avatarCircle}>
-                              {currentUserAvatar || bill.creatorAvatarUrl ? (
-                                <Image
-                                  source={{ uri: resolveMediaUrl(currentUserAvatar || bill.creatorAvatarUrl) || '' }}
-                                  style={styles.avatarImage}
-                                />
-                              ) : (
-                                <Text style={styles.avatarText}>
-                                  {getInitialLetter(currentUserName || bill.creatorUsername)}
-                                </Text>
-                              )}
-                            </View>
+                            <UserAvatar name={bill.creatorUsername} avatarUrl={bill.creatorAvatarUrl} size={46} />
                             <View style={styles.billMiddleCol}>
                               <Text style={styles.billLabel}>Tổng đã thu</Text>
                               <Text style={styles.billAmountText}>

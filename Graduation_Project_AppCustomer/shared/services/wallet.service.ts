@@ -3,7 +3,6 @@ import { axiosClient } from '@/shared/api/axiosClient'
 import type {
   WalletResponse,
   WalletSettingsRequest,
-  WalletTopUpRequest,
   WalletTransactionResponse,
   WalletWithdrawRequest,
 } from '@/shared/types/wallet'
@@ -64,15 +63,6 @@ export async function updateWalletSettings(
     return unwrap(response, 'Cập nhật thiết lập ví thất bại')
   } catch (err) {
     throw toError(err, 'Cập nhật thiết lập ví thất bại')
-  }
-}
-
-export async function topUpWallet(payload: WalletTopUpRequest): Promise<WalletTransactionResponse> {
-  try {
-    const response = await axiosClient.post(ENDPOINTS.WALLET.TOP_UP, payload)
-    return unwrap(response, 'Nạp tiền thất bại')
-  } catch (err) {
-    throw toError(err, 'Nạp tiền thất bại')
   }
 }
 

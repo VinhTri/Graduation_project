@@ -91,18 +91,6 @@ public class InvoiceController {
                 .build());
     }
 
-    @PostMapping("/{id}/pay")
-    public ResponseEntity<ApiResponse<InvoiceResponse>> payInvoiceWithCash(
-            @PathVariable Long id,
-            @AuthenticationPrincipal CustomUserDetails userDetails) {
-        InvoiceResponse response = invoiceService.payInvoiceWithCash(id, userDetails.getUser());
-        return ResponseEntity.ok(ApiResponse.<InvoiceResponse>builder()
-                .success(true)
-                .message("Thanh toán hóa đơn thành công")
-                .data(response)
-                .build());
-    }
-
     @DeleteMapping("/{id}")
     public ResponseEntity<ApiResponse<Void>> deleteInvoice(
             @AuthenticationPrincipal CustomUserDetails userDetails,

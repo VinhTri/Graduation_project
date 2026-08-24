@@ -8,7 +8,6 @@ import com.project.app.common.exception.ErrorCode;
 import com.project.app.wallet.dto.WalletResponse;
 import com.project.app.wallet.dto.WalletTransactionResponse;
 import com.project.app.wallet.dto.request.WalletSettingsRequest;
-import com.project.app.wallet.dto.request.WalletTopUpRequest;
 import com.project.app.wallet.dto.request.WalletWithdrawRequest;
 import com.project.app.wallet.entity.Wallet;
 import com.project.app.wallet.enums.WalletType;
@@ -54,15 +53,6 @@ public class WalletController {
     public ResponseEntity<ApiResponse<List<WalletTransactionResponse>>> getTransactions(
             @AuthenticationPrincipal CustomUserDetails userDetails) {
         return ApiResponse.ok("Lấy lịch sử giao dịch ví thành công", walletTransactionService.getHistory(userDetails.getUser().getId()));
-    }
-
-    @PostMapping("/top-up")
-    public ResponseEntity<ApiResponse<WalletTransactionResponse>> topUp(
-            @AuthenticationPrincipal CustomUserDetails userDetails,
-            @Valid @RequestBody WalletTopUpRequest request) {
-        WalletTransactionResponse response =
-                walletTransactionService.topUp(userDetails.getUser().getId(), request);
-        return ApiResponse.ok("Nạp tiền thành công!", response);
     }
 
     @PostMapping("/withdraw")

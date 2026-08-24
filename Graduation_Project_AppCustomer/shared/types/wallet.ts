@@ -42,12 +42,6 @@ export type WalletTransactionResponse = {
   createdAt: string
 }
 
-export type WalletTopUpRequest = {
-  amount: number
-  categoryId: number
-  note?: string
-}
-
 export type WalletWithdrawRequest = {
   amount: number
   bankAccountId: number

@@ -298,6 +298,12 @@ public class SplitBillServiceImpl implements SplitBillService {
         if (allPaid) {
             bill.setStatus(SplitBillStatus.COMPLETED);
             splitBillRepository.save(bill);
+            notificationService.createNotification(
+                    bill.getCreator(),
+                    "Khoản chia đã hoàn tất",
+                    "Tất cả thành viên đã thanh toán khoản chia '" + bill.getTitle() + "'.",
+                    NotificationType.SPLIT_BILL_COMPLETED,
+                    bill.getId());
         }
 
         // 10. Gửi thông báo chuông và email cho người tạo bill A
@@ -400,12 +406,29 @@ public class SplitBillServiceImpl implements SplitBillService {
             throw new AppException(ErrorCode.UNAUTHORIZED_ACCESS);
         }
 
-        if (bill.getStatus() == SplitBillStatus.COMPLETED) {
+        if (bill.getStatus() != SplitBillStatus.PENDING) {
             throw new AppException(ErrorCode.SPLIT_BILL_COMPLETED);
+        }
+
+        boolean hasPaidMember = bill.getMembers().stream()
+                .anyMatch(member -> member.getStatus() == SplitBillMemberStatus.PAID);
+        if (hasPaidMember) {
+            throw new AppException(ErrorCode.SPLIT_BILL_HAS_PAID_MEMBER);
         }
 
         bill.setStatus(SplitBillStatus.CANCELLED);
         splitBillRepository.save(bill);
+
+        for (SplitBillMember member : bill.getMembers()) {
+            if (!member.getUser().getId().equals(currentUser.getId())) {
+                notificationService.createNotification(
+                        member.getUser(),
+                        "Khoản chia đã bị hủy",
+                        currentUser.getUsername() + " đã hủy khoản chia '" + bill.getTitle() + "'.",
+                        NotificationType.SPLIT_BILL_CANCELLED,
+                        bill.getId());
+            }
+        }
     }
 
     private SplitBillResponse toResponse(SplitBill bill, User currentUser) {

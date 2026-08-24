@@ -35,6 +35,8 @@ import com.project.app.transaction.entity.SePayTransaction;
 import com.project.app.transaction.enums.SePayMatchStatus;
 import com.project.app.category.entity.CategoryItem;
 import com.project.app.category.repository.CategoryItemRepository;
+import com.project.app.notification.enums.NotificationType;
+import com.project.app.notification.service.NotificationService;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -63,6 +65,7 @@ public class TransactionServiceImpl implements TransactionService {
     private final UserRepository userRepository;
     private final CategoryItemRepository categoryItemRepository;
     private final WalletLimitHelper walletLimitHelper;
+    private final NotificationService notificationService;
 
     public TransactionServiceImpl(TransactionRepository transactionRepository, WalletService walletService,
                                   WalletRepository walletRepository,
@@ -71,7 +74,8 @@ public class TransactionServiceImpl implements TransactionService {
                                   SePayService sePayService, PasswordEncoder passwordEncoder,
                                   SePayTransactionRepository sePayTransactionRepository, UserRepository userRepository,
                                   CategoryItemRepository categoryItemRepository,
-                                  WalletLimitHelper walletLimitHelper) {
+                                  WalletLimitHelper walletLimitHelper,
+                                  NotificationService notificationService) {
         this.transactionRepository = transactionRepository;
         this.walletService = walletService;
         this.walletRepository = walletRepository;
@@ -84,6 +88,7 @@ public class TransactionServiceImpl implements TransactionService {
         this.userRepository = userRepository;
         this.categoryItemRepository = categoryItemRepository;
         this.walletLimitHelper = walletLimitHelper;
+        this.notificationService = notificationService;
     }
 
     // ====================== NẠP TIỀN ======================
@@ -92,21 +97,54 @@ public class TransactionServiceImpl implements TransactionService {
     public TopUpResponse initiateTopUp(User user, TopUpRequest request) {
         Wallet wallet = getWalletForTopUp(user, request.walletId());
 
-        if (wallet.getAccountNumber() == null || wallet.getAccountNumber().isEmpty()) {
-            throw new AppException(ErrorCode.ACCOUNT_NUMBER_NOT_FOUND);
+        // TEMP: SePay is frozen while the remaining wallet flows are tested.
+        // Restore the VietQR generation block here when SePay is enabled again.
+        BigDecimal amount = request.amount();
+        if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new AppException(ErrorCode.INVALID_AMOUNT);
         }
 
-        // Mô hình QR tĩnh: nội dung chuyển khoản cố định theo số tài khoản của ví.
-        String transferContent = "NAP " + wallet.getAccountNumber();
-        String qrUrl = sePayService.generateVietQrUrl(request.amount(), transferContent);
-        LocalDateTime expiresAt = LocalDateTime.now().plusYears(100);
+        String transactionCode = "TX" + System.currentTimeMillis()
+                + UUID.randomUUID().toString().substring(0, 4).toUpperCase();
+        String note = "Nạp tiền vào ví (chế độ kiểm thử)";
+        LocalDateTime createdAt = LocalDateTime.now();
+
+        Transaction transaction = new Transaction();
+        transaction.setUser(user);
+        transaction.setWallet(wallet);
+        transaction.setAmount(amount);
+        transaction.setType(TransactionType.TOP_UP);
+        transaction.setStatus(TransactionStatus.SUCCESS);
+        transaction.setTransactionCode(transactionCode);
+        transaction.setNote(note);
+        transactionRepository.save(transaction);
+
+        saveWalletTransaction(
+                user,
+                wallet,
+                amount,
+                WalletTransactionType.TOP_UP,
+                null,
+                transactionCode,
+                note);
+
+        wallet.addBalance(amount);
+        walletRepository.save(wallet);
+
+        notificationService.createNotification(
+                user,
+                "Nạp tiền thành công",
+                "Đã nạp " + amount.toPlainString() + "đ vào ví SmartSpend.",
+                NotificationType.TOP_UP_SUCCESS,
+                null);
 
         return new TopUpResponse(
-                transferContent,
-                qrUrl,
-                expiresAt,
-                request.amount(),
-                LocalDateTime.now()
+                transactionCode,
+                null,
+                null,
+                null,
+                amount,
+                createdAt
         );
     }
 
@@ -200,9 +238,27 @@ public class TransactionServiceImpl implements TransactionService {
 
         transactionRepository.save(transaction);
 
+        // Màn lịch sử ví đọc từ wallet_transactions, vì vậy phải ghi đồng bộ
+        // cùng mã giao dịch để người dùng thấy khoản nạp và có thể gắn danh mục sau.
+        saveWalletTransaction(
+                wallet.getUser(),
+                wallet,
+                request.getTransferAmount(),
+                WalletTransactionType.TOP_UP,
+                null,
+                transactionCode,
+                transaction.getNote());
+
         // 2. Cộng đúng số tiền thực tế khách đã chuyển vào ví
         wallet.addBalance(request.getTransferAmount());
         walletRepository.save(wallet);
+
+        notificationService.createNotification(
+                wallet.getUser(),
+                "Nạp tiền thành công",
+                "Đã nạp " + request.getTransferAmount().toPlainString() + "đ vào ví qua SePay.",
+                NotificationType.TOP_UP_SUCCESS,
+                null);
 
         // 3. Lưu log SePay đã khớp với Transaction nội bộ
         sePayLog.setTransaction(transaction);
@@ -374,6 +430,13 @@ public class TransactionServiceImpl implements TransactionService {
                 receiverWallet.getUser(), receiverWallet, request.getAmount(), WalletTransactionType.TOP_UP,
                 null, receiverTxCode, receiverNote);
 
+        notificationService.createNotification(
+                receiverWallet.getUser(),
+                "Bạn vừa nhận được tiền",
+                user.getUsername() + " đã chuyển cho bạn " + request.getAmount().toPlainString() + "đ.",
+                NotificationType.TRANSFER_RECEIVED,
+                null);
+
         return new TransferResponse(
                 senderTxCode,
                 senderTx.getStatus(),
@@ -444,6 +507,13 @@ public class TransactionServiceImpl implements TransactionService {
 
             transaction.setStatus(TransactionStatus.SUCCESS);
             transactionRepository.save(transaction);
+
+            notificationService.createNotification(
+                    user,
+                    "Rút tiền thành công",
+                    "Đã rút " + request.getAmount().toPlainString() + "đ về " + bankAccount.getBankName() + ".",
+                    NotificationType.WITHDRAW_SUCCESS,
+                    null);
 
         } catch (Exception e) {
             transaction.setStatus(TransactionStatus.FAILED);

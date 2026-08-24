@@ -1,11 +1,12 @@
 import { useCallback, useMemo, useState } from 'react'
-import { ActivityIndicator, Modal, Pressable, Share, Text, TouchableOpacity, View } from 'react-native'
+import { ActivityIndicator, Image, Modal, Pressable, Share, Text, TouchableOpacity, View } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
 import { useFocusEffect } from 'expo-router'
 import QRCode from 'react-native-qrcode-svg'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { PASTEL_PALETTE } from '@/shared/constants/PastelPalette'
 import { userService } from '@/shared/api/services/userService'
+import { transactionService, type TopUpResponse } from '@/shared/api/services/transactionService'
 import { getDefaultWallet } from '@/shared/services'
 import { createSmartSpendTransferQr } from '@/shared/utils/smartSpendQr'
 import { styles } from './HomeReceiveQr.styles'
@@ -20,14 +21,16 @@ export function HomeReceiveQr({ visible, onClose }: Props) {
   const [activeTab, setActiveTab] = useState<'internal' | 'sepay'>('internal')
   const [accountNumber, setAccountNumber] = useState('')
   const [displayName, setDisplayName] = useState('SmartSpend')
+  const [sepayQr, setSepayQr] = useState<TopUpResponse | null>(null)
   const [loading, setLoading] = useState(true)
 
   const loadWallet = useCallback(async () => {
     setLoading(true)
     try {
-      const [walletResult, profileResult] = await Promise.allSettled([
+      const [walletResult, profileResult, sepayResult] = await Promise.allSettled([
         getDefaultWallet(),
         userService.getMyProfile(),
+        transactionService.initiateTopUp({}),
       ])
       if (walletResult.status === 'fulfilled') {
         setAccountNumber(String(walletResult.value?.accountNumber || '').trim())
@@ -36,6 +39,7 @@ export function HomeReceiveQr({ visible, onClose }: Props) {
         const profile = profileResult.value
         setDisplayName(profile.username || profile.email?.split('@')[0] || 'SmartSpend')
       }
+      setSepayQr(sepayResult.status === 'fulfilled' ? sepayResult.value : null)
     } catch {
       setAccountNumber('')
     } finally {
@@ -45,11 +49,6 @@ export function HomeReceiveQr({ visible, onClose }: Props) {
 
   useFocusEffect(useCallback(() => { loadWallet() }, [loadWallet]))
 
-  // Giá trị minh họa sẽ được thay bằng VietQR do SePay/backend trả về khi tích hợp thật.
-  const demoQrValue = useMemo(
-    () => `SMARTSPEND_SEPAY_DEMO|NAP ${accountNumber || '0000000000'}`,
-    [accountNumber],
-  )
   const internalQrValue = useMemo(
     () => accountNumber ? createSmartSpendTransferQr(accountNumber) : '',
     [accountNumber],
@@ -106,7 +105,6 @@ export function HomeReceiveQr({ visible, onClose }: Props) {
             >
               <Ionicons name="business-outline" size={17} color={activeTab === 'sepay' ? '#6D4AAF' : '#8D818F'} />
               <Text style={[styles.tabText, activeTab === 'sepay' && styles.tabTextActive]}>Ngân hàng</Text>
-              <View style={styles.tabDemoBadge}><Text style={styles.tabDemoText}>DEMO</Text></View>
             </TouchableOpacity>
           </View>
 
@@ -142,30 +140,29 @@ export function HomeReceiveQr({ visible, onClose }: Props) {
             )
           ) : (
             <View style={styles.transferContent}>
-              <View style={styles.demoBanner}>
-                <Ionicons name="flask-outline" size={17} color="#A32768" />
-                <Text style={styles.demoBannerText}>MÃ DEMO · CHƯA KẾT NỐI SEPAY</Text>
-              </View>
-              <View style={styles.bankQrFrame}>
-                <View style={styles.qrInner}>
-                  <QRCode value={demoQrValue} size={220} color="#37253F" backgroundColor="#FFFFFF" ecl="M" />
+              {sepayQr ? (
+                <>
+                  <View style={styles.bankQrFrame}>
+                    <View style={styles.qrInner}>
+                      <Image source={{ uri: sepayQr.qrUrl }} style={{ width: 220, height: 220 }} resizeMode="contain" />
+                    </View>
+                  </View>
+                  <Text style={styles.ownerName}>Nạp tiền vào ví SmartSpend</Text>
+                  <Text style={styles.accountLabel}>Nội dung chuyển khoản</Text>
+                  <Text style={styles.accountNumber} selectable>{sepayQr.transferContent}</Text>
+                  <Text style={styles.hint}>Quét mã bằng ứng dụng ngân hàng và tự nhập số tiền muốn nạp.</Text>
+                  <View style={styles.demoNotice}>
+                    <Ionicons name="shield-checkmark-outline" size={19} color="#36735A" />
+                    <Text style={styles.demoNoticeText}>SePay sẽ đối soát và tự động cộng tiền vào ví.</Text>
+                  </View>
+                </>
+              ) : (
+                <View style={styles.unavailableState}>
+                  <Ionicons name="cloud-offline-outline" size={42} color="#A78BBA" />
+                  <Text style={styles.unavailableTitle}>Chưa tải được QR SePay</Text>
+                  <Text style={styles.unavailableText}>Đóng cửa sổ và thử lại sau khi kiểm tra kết nối backend.</Text>
                 </View>
-                <View style={styles.bankQrMark}>
-                  <Ionicons name="business" size={18} color="#FFF" />
-                </View>
-              </View>
-              <Text style={styles.ownerName}>Nạp tiền vào ví SmartSpend</Text>
-              <Text style={styles.accountLabel}>Nội dung chuyển khoản minh họa</Text>
-              <Text style={styles.accountNumber}>NAP {accountNumber || '0000000000'}</Text>
-              <Text style={styles.hint}>
-                Khi tích hợp SePay, số tiền chuyển thành công sẽ được đối soát và cộng vào ví.
-              </Text>
-              <View style={styles.demoNotice}>
-                <Ionicons name="warning-outline" size={19} color="#B33B6E" />
-                <Text style={styles.demoNoticeText}>
-                  Không dùng mã này để chuyển tiền thật. QR chính thức sẽ được thay khi kết nối SePay.
-                </Text>
-              </View>
+              )}
             </View>
           )}
         </View>

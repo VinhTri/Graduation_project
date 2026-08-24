@@ -58,17 +58,6 @@ public class WalletServiceImpl implements WalletService {
         return wallet;
     }
 
-    // ====================== CẬP NHẬT SỐ DƯ ======================
-    @Override
-    @Transactional
-    public void addBalance(Long walletId, BigDecimal amount) {
-        Wallet wallet = walletRepository.findById(walletId)
-                .orElseThrow(() -> new AppException(ErrorCode.WALLET_NOT_FOUND));
-        
-        wallet.setBalance(wallet.getBalance().add(amount));
-        walletRepository.save(wallet);
-    }
-
     // ====================== CẬP NHẬT THIẾT LẬP VÍ ======================
     @Override
     @Transactional

@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Table,
   Tag,
@@ -24,7 +24,11 @@ import {
   EyeOutlined,
   WalletOutlined,
   UserOutlined,
+  ReloadOutlined,
+  ArrowDownOutlined,
+  ArrowUpOutlined,
 } from '@ant-design/icons';
+import axios from 'axios';
 import dayjs from 'dayjs';
 import { apiClient } from '../../services/api';
 import './TransactionHistory.css';
@@ -48,23 +52,11 @@ interface AdminTransaction {
 const TYPE_LABEL: Record<string, string> = {
   TOP_UP: 'Nạp tiền',
   WITHDRAW: 'Rút tiền',
-  TRANSFER: 'Chuyển khoản',
-  RECEIVE_TRANSFER: 'Nhận chuyển',
-  PAYMENT: 'Thanh toán',
-  EXPENSE: 'Chi tiêu',
-  INCOME: 'Thu nhập',
-  BANK_LINK_FEE: 'Phí liên kết NH',
 };
 
 const TYPE_COLOR: Record<string, string> = {
   TOP_UP: 'green',
   WITHDRAW: 'magenta',
-  TRANSFER: 'blue',
-  RECEIVE_TRANSFER: 'cyan',
-  PAYMENT: 'purple',
-  EXPENSE: 'orange',
-  INCOME: 'lime',
-  BANK_LINK_FEE: 'gold',
 };
 
 const STATUS_META: Record<string, { color: string; label: string; icon: React.ReactNode }> = {
@@ -78,10 +70,10 @@ const STATUS_META: Record<string, { color: string; label: string; icon: React.Re
 
 const WALLET_LABEL: Record<string, string> = {
   MAIN: 'Ví MAIN',
-  CASH: 'Sổ tay CASH',
 };
 
-const OUTFLOW_TYPES = new Set(['WITHDRAW', 'TRANSFER', 'EXPENSE', 'PAYMENT', 'BANK_LINK_FEE']);
+const OUTFLOW_TYPES = new Set(['WITHDRAW']);
+const FINANCIAL_SUPPORT_TYPES = new Set(['TOP_UP', 'WITHDRAW']);
 
 const avatarColor = (name: string) => {
   const colors = ['#ec4899', '#8b5cf6', '#3b82f6', '#14b8a6', '#f59e0b', '#ef4444'];
@@ -103,31 +95,48 @@ export const TransactionHistory = () => {
   const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState<string>('ALL');
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
+  const [reviewOnly, setReviewOnly] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [selected, setSelected] = useState<AdminTransaction | null>(null);
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     try {
       setLoading(true);
       const response = await apiClient.get('/api/v1/admin/transactions');
       const data = response.data?.data || response.data || [];
-      setRows(Array.isArray(data) ? data : []);
-    } catch (error: any) {
-      message.error(error?.response?.data?.message || error?.message || 'Không thể tải lịch sử giao dịch');
+      setRows(Array.isArray(data) ? data.filter((row: AdminTransaction) => FINANCIAL_SUPPORT_TYPES.has(row.type)) : []);
+    } catch (error: unknown) {
+      const apiMessage = axios.isAxiosError(error) ? error.response?.data?.message : null;
+      message.error(apiMessage || 'Không thể tải lịch sử giao dịch');
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
-    fetchData();
-  }, []);
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    void fetchData();
+  }, [fetchData]);
+
+  const stats = useMemo(() => {
+    const success = rows.filter((row) => row.status === 'SUCCESS' || row.status === 'COMPLETED');
+    const topUps = success.filter((row) => row.type === 'TOP_UP');
+    const withdrawals = success.filter((row) => row.type === 'WITHDRAW');
+    const needsReview = rows.filter((row) => ['PENDING', 'PROCESSING', 'FAILED'].includes(row.status));
+    return {
+      total: rows.length,
+      topUp: topUps.reduce((sum, row) => sum + Number(row.amount || 0), 0),
+      withdraw: withdrawals.reduce((sum, row) => sum + Number(row.amount || 0), 0),
+      needsReview: needsReview.length,
+    };
+  }, [rows]);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     return rows.filter((r) => {
       if (typeFilter !== 'ALL' && r.type !== typeFilter) return false;
       if (statusFilter !== 'ALL' && r.status !== statusFilter) return false;
+      if (reviewOnly && !['PENDING', 'PROCESSING', 'FAILED'].includes(r.status)) return false;
       if (!q) return true;
       return (
         r.transactionCode?.toLowerCase().includes(q) ||
@@ -138,7 +147,7 @@ export const TransactionHistory = () => {
         String(r.id).includes(q)
       );
     });
-  }, [rows, search, typeFilter, statusFilter]);
+  }, [rows, search, typeFilter, statusFilter, reviewOnly]);
 
   const openDetail = (record: AdminTransaction) => {
     setSelected(record);
@@ -220,9 +229,18 @@ export const TransactionHistory = () => {
           <div className="txh-hero-kicker">
             <TransactionOutlined /> Quản lý
           </div>
-          <h2>Lịch sử giao dịch</h2>
+          <h2>Tra cứu nạp và rút tiền</h2>
+          <p>Kiểm tra giao dịch tiền vào, tiền ra và tập trung hỗ trợ các trường hợp đang chờ hoặc thất bại.</p>
         </div>
+        <Button icon={<ReloadOutlined />} loading={loading} onClick={() => void fetchData()}>Làm mới</Button>
       </div>
+
+      <section className="txh-stats">
+        <div className="txh-stat-card"><span className="txh-stat-icon total"><TransactionOutlined /></span><div><span>Tổng giao dịch</span><strong>{stats.total.toLocaleString('vi-VN')}</strong></div></div>
+        <div className="txh-stat-card"><span className="txh-stat-icon in"><ArrowDownOutlined /></span><div><span>Nạp thành công</span><strong>{formatVND(stats.topUp)}</strong></div></div>
+        <div className="txh-stat-card"><span className="txh-stat-icon out"><ArrowUpOutlined /></span><div><span>Rút thành công</span><strong>{formatVND(stats.withdraw)}</strong></div></div>
+        <div className="txh-stat-card"><span className="txh-stat-icon pending"><ClockCircleOutlined /></span><div><span>Cần kiểm tra</span><strong>{stats.needsReview}</strong></div></div>
+      </section>
 
       <Card className="txh-table-card" bordered={false}>
         <div className="txh-toolbar">
@@ -235,12 +253,20 @@ export const TransactionHistory = () => {
             onChange={(e) => setSearch(e.target.value)}
           />
           <Space wrap>
+            <Button
+              danger={reviewOnly}
+              type={reviewOnly ? 'primary' : 'default'}
+              icon={<ClockCircleOutlined />}
+              onClick={() => setReviewOnly((value) => !value)}
+            >
+              Cần kiểm tra ({stats.needsReview})
+            </Button>
             <Select
               value={typeFilter}
               onChange={setTypeFilter}
               style={{ width: 160 }}
               options={[
-                { value: 'ALL', label: 'Tất cả loại' },
+                { value: 'ALL', label: 'Tất cả nạp / rút' },
                 ...Object.entries(TYPE_LABEL).map(([value, label]) => ({ value, label })),
               ]}
             />

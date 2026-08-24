@@ -28,9 +28,8 @@ export const styles = StyleSheet.create({
   searchIcon: {
     marginRight: 8,
   },
-  searchInput: {
+  searchPlaceholder: {
     flex: 1,
-    color: PASTEL_PALETTE.title,
     fontSize: 14,
     fontWeight: "500",
   },

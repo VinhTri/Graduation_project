@@ -31,7 +31,6 @@ export const ENDPOINTS = {
   WALLET: {
     LIST: '/api/v1/wallets',
     DETAIL: (id: number) => `/api/v1/wallets/${id}`,
-    TOP_UP: '/api/v1/wallets/top-up',
     WITHDRAW: '/api/v1/wallets/withdraw',
     TRANSACTIONS: '/api/v1/wallets/transactions',
     MY_WALLET: '/api/v1/wallets/me',
@@ -116,6 +115,7 @@ export const ENDPOINTS = {
   AI: {
     CHAT: '/api/v1/ai/chat',
     HOME_INSIGHT: '/api/v1/ai/home-insight',
+    FEEDBACK: '/api/v1/ai/feedback',
   },
   SPLIT_BILL: {
     BASE: '/api/v1/split-bills',

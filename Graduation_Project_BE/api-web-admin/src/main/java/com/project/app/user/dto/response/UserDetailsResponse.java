@@ -20,5 +20,6 @@ public class UserDetailsResponse {
     private BigDecimal totalTopUp;
     /** Tổng tiền đã rút thành công (WITHDRAW SUCCESS) */
     private BigDecimal totalWithdraw;
+    private List<AdminBankAccountResponse> bankAccounts;
     private List<TransactionHistoryResponse> recentTransactions;
 }

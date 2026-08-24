@@ -5,6 +5,7 @@ import java.time.LocalDateTime;
 
 public class TopUpResponse {
 
+    private String transactionCode;
     private String transferContent;
     private String qrUrl;
     private LocalDateTime expiresAt;
@@ -14,7 +15,8 @@ public class TopUpResponse {
     public TopUpResponse() {
     }
 
-    public TopUpResponse(String transferContent, String qrUrl, LocalDateTime expiresAt, BigDecimal amount, LocalDateTime createdAt) {
+    public TopUpResponse(String transactionCode, String transferContent, String qrUrl, LocalDateTime expiresAt, BigDecimal amount, LocalDateTime createdAt) {
+        this.transactionCode = transactionCode;
         this.transferContent = transferContent;
         this.qrUrl = qrUrl;
         this.expiresAt = expiresAt;
@@ -23,6 +25,14 @@ public class TopUpResponse {
     }
 
     // Getter và Setter
+
+    public String getTransactionCode() {
+        return transactionCode;
+    }
+
+    public void setTransactionCode(String transactionCode) {
+        this.transactionCode = transactionCode;
+    }
 
     public String getTransferContent() {
         return transferContent;

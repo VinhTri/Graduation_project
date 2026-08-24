@@ -1,6 +1,9 @@
 package com.project.app.ai.controller;
 
 import com.project.app.ai.dto.request.AiChatRequest;
+import com.project.app.ai.dto.request.AiFeedbackRequest;
+import com.project.app.ai.entity.AiFeedback;
+import com.project.app.ai.repository.AiFeedbackRepository;
 import com.project.app.ai.dto.response.AiChatResponse;
 import com.project.app.ai.dto.response.HomeInsightResponse;
 import com.project.app.ai.service.AiChatService;
@@ -8,6 +11,7 @@ import com.project.app.ai.service.AiInsightService;
 import com.project.app.auth.security.CustomUserDetails;
 import com.project.app.common.dto.ApiResponse;
 import lombok.RequiredArgsConstructor;
+import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -23,6 +27,7 @@ public class AiChatController {
 
     private final AiChatService aiChatService;
     private final AiInsightService aiInsightService;
+    private final AiFeedbackRepository aiFeedbackRepository;
 
     @GetMapping("/home-insight")
     public ResponseEntity<ApiResponse<HomeInsightResponse>> homeInsight(
@@ -41,7 +46,7 @@ public class AiChatController {
     @PostMapping("/chat")
     public ResponseEntity<ApiResponse<AiChatResponse>> chat(
             @AuthenticationPrincipal CustomUserDetails userDetails,
-            @RequestBody AiChatRequest request) {
+            @Valid @RequestBody AiChatRequest request) {
 
         AiChatResponse data = aiChatService.chat(
                 userDetails != null ? userDetails.getUser() : null,
@@ -52,5 +57,15 @@ public class AiChatController {
                 .message("OK")
                 .data(data)
                 .build());
+    }
+
+    @PostMapping("/feedback")
+    public ResponseEntity<ApiResponse<Void>> feedback(@AuthenticationPrincipal CustomUserDetails userDetails,
+                                                       @Valid @RequestBody AiFeedbackRequest request) {
+        Long userId=userDetails.getUser().getId();
+        AiFeedback feedback=aiFeedbackRepository.findByUserIdAndMessageId(userId,request.getMessageId()).orElseGet(AiFeedback::new);
+        feedback.setUserId(userId); feedback.setMessageId(request.getMessageId()); feedback.setRating(request.getRating());
+        aiFeedbackRepository.save(feedback);
+        return ApiResponse.ok("Đã ghi nhận đánh giá");
     }
 }
