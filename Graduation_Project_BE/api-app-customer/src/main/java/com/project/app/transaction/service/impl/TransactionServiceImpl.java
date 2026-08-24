@@ -2,6 +2,7 @@ package com.project.app.transaction.service.impl;
 
 import com.project.app.common.exception.AppException;
 import com.project.app.common.exception.ErrorCode;
+import com.project.app.auth.service.AuthService;
 import com.project.app.transaction.dto.request.SePayWebhookRequest;
 import com.project.app.transaction.dto.request.TopUpRequest;
 import com.project.app.transaction.dto.response.TopUpResponse;
@@ -40,7 +41,6 @@ import com.project.app.notification.service.NotificationService;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -60,7 +60,7 @@ public class TransactionServiceImpl implements TransactionService {
     private final BankAccountRepository bankAccountRepository;
     private final PayOsPayoutService payOsPayoutService;
     private final SePayService sePayService;
-    private final PasswordEncoder passwordEncoder;
+    private final AuthService authService;
     private final SePayTransactionRepository sePayTransactionRepository;
     private final UserRepository userRepository;
     private final CategoryItemRepository categoryItemRepository;
@@ -71,7 +71,7 @@ public class TransactionServiceImpl implements TransactionService {
                                   WalletRepository walletRepository,
                                   WalletTransactionRepository walletTransactionRepository,
                                   BankAccountRepository bankAccountRepository, PayOsPayoutService payOsPayoutService,
-                                  SePayService sePayService, PasswordEncoder passwordEncoder,
+                                  SePayService sePayService, AuthService authService,
                                   SePayTransactionRepository sePayTransactionRepository, UserRepository userRepository,
                                   CategoryItemRepository categoryItemRepository,
                                   WalletLimitHelper walletLimitHelper,
@@ -83,7 +83,7 @@ public class TransactionServiceImpl implements TransactionService {
         this.bankAccountRepository = bankAccountRepository;
         this.payOsPayoutService = payOsPayoutService;
         this.sePayService = sePayService;
-        this.passwordEncoder = passwordEncoder;
+        this.authService = authService;
         this.sePayTransactionRepository = sePayTransactionRepository;
         this.userRepository = userRepository;
         this.categoryItemRepository = categoryItemRepository;
@@ -364,7 +364,7 @@ public class TransactionServiceImpl implements TransactionService {
             throw new AppException(ErrorCode.INVALID_PIN);
         }
 
-        if (!passwordEncoder.matches(request.getPinCode(), user.getPinCode())) {
+        if (!authService.verifyPinCode(user.getId(), request.getPinCode())) {
             throw new AppException(ErrorCode.INVALID_PIN);
         }
 
@@ -454,7 +454,7 @@ public class TransactionServiceImpl implements TransactionService {
             throw new AppException(ErrorCode.INVALID_PIN);
         }
 
-        if (!passwordEncoder.matches(request.getPinCode(), user.getPinCode())) {
+        if (!authService.verifyPinCode(user.getId(), request.getPinCode())) {
             throw new AppException(ErrorCode.INVALID_PIN);
         }
 

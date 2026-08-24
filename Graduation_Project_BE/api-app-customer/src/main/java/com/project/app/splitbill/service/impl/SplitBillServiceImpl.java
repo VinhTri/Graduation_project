@@ -4,6 +4,7 @@ import com.project.app.category.entity.CategoryItem;
 import com.project.app.category.repository.CategoryItemRepository;
 import com.project.app.common.exception.AppException;
 import com.project.app.common.exception.ErrorCode;
+import com.project.app.auth.service.AuthService;
 import com.project.app.common.service.EmailService;
 import com.project.app.notification.enums.NotificationType;
 import com.project.app.notification.service.NotificationService;
@@ -34,7 +35,6 @@ import com.project.app.wallet.service.WalletLimitHelper;
 import com.project.app.wallet.service.WalletService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -59,7 +59,7 @@ public class SplitBillServiceImpl implements SplitBillService {
     private final TransactionRepository transactionRepository;
     private final NotificationService notificationService;
     private final EmailService emailService;
-    private final PasswordEncoder passwordEncoder;
+    private final AuthService authService;
 
     private static final BigDecimal MIN_AMOUNT_PER_PERSON = new BigDecimal("2000.00");
     private static final String SPLIT_CATEGORY_LABEL = "Chia tiền";
@@ -205,7 +205,7 @@ public class SplitBillServiceImpl implements SplitBillService {
             throw new AppException(ErrorCode.PIN_NOT_SET);
         }
 
-        if (!passwordEncoder.matches(request.getPinCode(), currentUser.getPinCode())) {
+        if (!authService.verifyPinCode(currentUser.getId(), request.getPinCode())) {
             throw new AppException(ErrorCode.INVALID_PIN);
         }
 

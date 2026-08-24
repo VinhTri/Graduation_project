@@ -78,8 +78,11 @@ export const ServicesGrid = () => {
       if (res.success) {
         setPendingRequests(res.data.length);
       }
-    } catch (error) {
-      console.log('Error fetching requests in grid', error);
+    } catch (error: any) {
+      const code = error?.code ?? error?.response?.data?.code;
+      if (code !== 'AUTH_1017') {
+        console.log('Error fetching requests in grid', error);
+      }
     }
   };
 

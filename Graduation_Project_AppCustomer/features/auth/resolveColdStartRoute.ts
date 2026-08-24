@@ -17,6 +17,9 @@ export async function resolveColdStartRoute(): Promise<Href> {
       return '/(auth)/onboarding'
     }
   } catch (error: any) {
+    if (error?.code === 'AUTH_1017' || error?.status === 423) {
+      return '/(tabs)/home'
+    }
     if (error?.status === 401 || error?.status === 403) {
       await clearStoredSession()
     }

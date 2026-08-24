@@ -29,6 +29,18 @@ public class User {
     @Column(nullable = false)
     private boolean isActive = true;
 
+    @Column(name = "failed_password_attempts", nullable = false)
+    private int failedPasswordAttempts = 0;
+
+    @Column(name = "failed_pin_attempts", nullable = false)
+    private int failedPinAttempts = 0;
+
+    @Column(name = "security_locked", nullable = false)
+    private boolean securityLocked = false;
+
+    @Column(name = "security_locked_at")
+    private java.time.LocalDateTime securityLockedAt;
+
     @org.hibernate.annotations.CreationTimestamp
     @Column(name = "created_at", updatable = false)
     private java.time.LocalDateTime createdAt;
@@ -118,6 +130,15 @@ public class User {
     public void setActive(boolean active) {
         isActive = active;
     }
+
+    public int getFailedPasswordAttempts() { return failedPasswordAttempts; }
+    public void setFailedPasswordAttempts(int value) { failedPasswordAttempts = value; }
+    public int getFailedPinAttempts() { return failedPinAttempts; }
+    public void setFailedPinAttempts(int value) { failedPinAttempts = value; }
+    public boolean isSecurityLocked() { return securityLocked; }
+    public void setSecurityLocked(boolean value) { securityLocked = value; }
+    public java.time.LocalDateTime getSecurityLockedAt() { return securityLockedAt; }
+    public void setSecurityLockedAt(java.time.LocalDateTime value) { securityLockedAt = value; }
 
     public java.time.LocalDateTime getCreatedAt() {
         return createdAt;

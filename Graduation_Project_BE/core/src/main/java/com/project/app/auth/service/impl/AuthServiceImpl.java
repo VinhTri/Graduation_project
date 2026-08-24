@@ -7,10 +7,12 @@ import com.project.app.auth.dto.request.RegisterRequest;
 import com.project.app.auth.dto.request.ResetPasswordRequest;
 import com.project.app.auth.dto.request.SendOtpRequest;
 import com.project.app.auth.dto.request.VerifyOtpRequest;
+import com.project.app.auth.dto.request.UnlockAccountRequest;
 import com.project.app.auth.dto.response.AuthResponse;
 import com.project.app.auth.security.CustomUserDetails;
 import com.project.app.auth.security.JwtUtil;
 import com.project.app.auth.service.AuthService;
+import com.project.app.auth.service.AccountSecurityService;
 import com.project.app.common.exception.AppException;
 import com.project.app.common.exception.ErrorCode;
 import com.project.app.common.util.GmailDisplayName;
@@ -29,6 +31,7 @@ import com.project.app.wallet.repository.WalletRepository;
 import com.project.app.wallet.util.WalletAccountNumberGenerator;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -53,6 +56,7 @@ public class AuthServiceImpl implements AuthService {
     private final WalletRepository walletRepository;
     private final NotebookBookRepository notebookBookRepository;
     private final PasswordEncoder passwordEncoder;
+    private final AccountSecurityService accountSecurityService;
 
     // ====================== ĐĂNG NHẬP / ĐĂNG KÝ ======================
 
@@ -63,13 +67,53 @@ public class AuthServiceImpl implements AuthService {
         User user = userRepository.searchByEmail(email)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
 
-        Authentication authentication = authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(user.getUsername(), request.getPassword())
-        );
+        Authentication authentication;
+        try {
+            authentication = authenticationManager.authenticate(
+                    new UsernamePasswordAuthenticationToken(user.getUsername(), request.getPassword())
+            );
+        } catch (BadCredentialsException ex) {
+            if (user.isSecurityLocked()) {
+                throw new AppException(ErrorCode.ACCOUNT_SECURITY_LOCKED);
+            }
+            boolean locked = accountSecurityService.recordPasswordFailure(user.getId());
+            throw new AppException(locked ? ErrorCode.ACCOUNT_SECURITY_LOCKED : ErrorCode.INVALID_CREDENTIALS);
+        }
+        // Đăng nhập đúng vẫn được cấp phiên khi tài khoản đang khóa để người dùng
+        // vào Trang chủ và thực hiện luồng OTP. Chỉ OTP mới được phép mở khóa.
+        if (!user.isSecurityLocked()) {
+            accountSecurityService.resetPasswordFailures(user.getId());
+        }
         SecurityContextHolder.getContext().setAuthentication(authentication);
 
         CustomUserDetails userDetails = (CustomUserDetails) authentication.getPrincipal();
         return toAuthResponse(userDetails.getUser(), jwtUtil.generateToken(userDetails));
+    }
+
+    @Override
+    @Transactional
+    public void sendUnlockOtp(SendOtpRequest request) {
+        User user = requireUserByEmail(request.getEmail());
+        if (!user.isSecurityLocked()) {
+            throw new AppException(ErrorCode.ACCOUNT_NOT_SECURITY_LOCKED);
+        }
+        otpService.generateAndSendOtp(
+                user.getEmail(), OtpPurpose.ACCOUNT_UNLOCK,
+                "Mã OTP mở khóa tài khoản SmartSpend",
+                "Mã OTP mở khóa tài khoản của bạn là: %s\nMã có hiệu lực trong 5 phút."
+        );
+    }
+
+    @Override
+    @Transactional
+    public void unlockAccount(UnlockAccountRequest request) {
+        User user = requireUserByEmail(request.getEmail());
+        if (!user.isSecurityLocked()) {
+            throw new AppException(ErrorCode.ACCOUNT_NOT_SECURITY_LOCKED);
+        }
+        OtpToken token = otpService.verifyOtp(user.getEmail(), request.getOtp(), OtpPurpose.ACCOUNT_UNLOCK);
+        otpService.markOtpAsUsed(token);
+        accountSecurityService.unlock(user.getId());
     }
 
     /** {@inheritDoc} */
@@ -121,7 +165,8 @@ public class AuthServiceImpl implements AuthService {
     @Override
     @Transactional
     public void processForgotPassword(SendOtpRequest request) {
-        requireUserByEmail(request.getEmail());
+        User user = requireUserByEmail(request.getEmail());
+        ensureNotSecurityLocked(user);
         otpService.generateAndSendOtp(
                 request.getEmail(),
                 OtpPurpose.RESET_PASSWORD,
@@ -134,6 +179,7 @@ public class AuthServiceImpl implements AuthService {
     @Override
     @Transactional
     public void processResetPassword(ResetPasswordRequest request) {
+        ensureNotSecurityLocked(requireUserByEmail(request.getEmail()));
         OtpToken otpToken = otpService.verifyOtp(
                 request.getEmail(), request.getOtp(), OtpPurpose.RESET_PASSWORD);
 
@@ -149,6 +195,7 @@ public class AuthServiceImpl implements AuthService {
     @Transactional
     public void changePassword(Long userId, ChangePasswordRequest request) {
         User user = requireUserById(userId);
+        ensureNotSecurityLocked(user);
 
         if (!passwordEncoder.matches(request.getCurrentPassword(), user.getPassword())) {
             throw new AppException(ErrorCode.INVALID_CREDENTIALS);
@@ -165,6 +212,7 @@ public class AuthServiceImpl implements AuthService {
     @Override
     public void verifyCurrentPassword(Long userId, String currentPassword) {
         User user = requireUserById(userId);
+        ensureNotSecurityLocked(user);
         if (!passwordEncoder.matches(currentPassword, user.getPassword())) {
             throw new AppException(ErrorCode.INVALID_CREDENTIALS);
         }
@@ -183,6 +231,7 @@ public class AuthServiceImpl implements AuthService {
     @Transactional
     public void setupPinCode(Long userId, String pinCode) {
         User user = requireUserById(userId);
+        ensureNotSecurityLocked(user);
         if (hasPin(user)) {
             throw new AppException(ErrorCode.PIN_ALREADY_SET);
         }
@@ -195,6 +244,7 @@ public class AuthServiceImpl implements AuthService {
     @Transactional
     public void sendForgotPinOtp(Long userId) {
         User user = requireUserById(userId);
+        ensureNotSecurityLocked(user);
         otpService.generateAndSendOtp(
                 user.getEmail(),
                 OtpPurpose.RESET_PIN,
@@ -208,6 +258,7 @@ public class AuthServiceImpl implements AuthService {
     @Transactional
     public void resetPinCode(Long userId, String otp, String newPinCode) {
         User user = requireUserById(userId);
+        ensureNotSecurityLocked(user);
         OtpToken otpToken = otpService.verifyOtp(user.getEmail(), otp, OtpPurpose.RESET_PIN);
 
         user.setPinCode(passwordEncoder.encode(newPinCode));
@@ -219,10 +270,17 @@ public class AuthServiceImpl implements AuthService {
     @Override
     public boolean verifyPinCode(Long userId, String pinCode) {
         User user = requireUserById(userId);
+        ensureNotSecurityLocked(user);
         if (!hasPin(user)) {
             return false;
         }
-        return passwordEncoder.matches(pinCode, user.getPinCode());
+        if (passwordEncoder.matches(pinCode, user.getPinCode())) {
+            accountSecurityService.resetPinFailures(userId);
+            return true;
+        }
+        boolean locked = accountSecurityService.recordPinFailure(userId);
+        if (locked) throw new AppException(ErrorCode.ACCOUNT_SECURITY_LOCKED);
+        return false;
     }
 
     /** {@inheritDoc} */
@@ -238,10 +296,11 @@ public class AuthServiceImpl implements AuthService {
     @Transactional
     public void changePinCode(Long userId, ChangePinRequest request) {
         User user = requireUserById(userId);
+        ensureNotSecurityLocked(user);
         if (!hasPin(user)) {
             throw new AppException(ErrorCode.PIN_NOT_SET);
         }
-        if (!passwordEncoder.matches(request.getCurrentPin(), user.getPinCode())) {
+        if (!verifyPinCode(userId, request.getCurrentPin())) {
             throw new AppException(ErrorCode.INVALID_PIN);
         }
         if (passwordEncoder.matches(request.getNewPinCode(), user.getPinCode())) {
@@ -282,6 +341,12 @@ public class AuthServiceImpl implements AuthService {
         return user.getPinCode() != null && !user.getPinCode().isEmpty();
     }
 
+    private static void ensureNotSecurityLocked(User user) {
+        if (user.isSecurityLocked()) {
+            throw new AppException(ErrorCode.ACCOUNT_SECURITY_LOCKED);
+        }
+    }
+
     private void createDefaultWallets(User user) {
         Wallet main = new Wallet(
                 user, "Ví SmartSpend", BigDecimal.ZERO, true, false, WalletType.MAIN);
@@ -308,6 +373,7 @@ public class AuthServiceImpl implements AuthService {
                 .moneySeparator(user.resolvedMoneySeparator())
                 .themeMode(user.resolvedThemeMode())
                 .language(user.resolvedLanguage())
+                .securityLocked(user.isSecurityLocked())
                 .build();
     }
 }

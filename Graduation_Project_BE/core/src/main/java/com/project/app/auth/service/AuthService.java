@@ -7,6 +7,7 @@ import com.project.app.auth.dto.request.RegisterRequest;
 import com.project.app.auth.dto.request.ResetPasswordRequest;
 import com.project.app.auth.dto.request.SendOtpRequest;
 import com.project.app.auth.dto.request.VerifyOtpRequest;
+import com.project.app.auth.dto.request.UnlockAccountRequest;
 import com.project.app.auth.dto.response.AuthResponse;
 
 /**
@@ -18,6 +19,10 @@ public interface AuthService {
 
     /** Đăng nhập bằng email + mật khẩu → JWT. */
     AuthResponse loginUser(LoginRequest request);
+
+    void sendUnlockOtp(SendOtpRequest request);
+
+    void unlockAccount(UnlockAccountRequest request);
 
     /** Gửi OTP đăng ký ({@code REGISTER}) nếu email chưa tồn tại. */
     void sendRegisterOtp(SendOtpRequest request);

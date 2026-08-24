@@ -61,7 +61,9 @@ public class SecurityConfig {
                                         "/api/v1/auth/register/send-otp",
                                         "/api/v1/auth/forgot-password",
                                         "/api/v1/auth/reset-password",
-                                        "/api/v1/auth/verify-otp"
+                                        "/api/v1/auth/verify-otp",
+                                        "/api/v1/auth/unlock",
+                                        "/api/v1/auth/unlock/send-otp"
                                 ).permitAll()
                                 .requestMatchers("/api/v1/admin/auth/**").permitAll()
                                 .requestMatchers("/api/v1/transactions/sepay-webhook").permitAll()

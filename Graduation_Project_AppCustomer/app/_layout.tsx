@@ -5,6 +5,7 @@ import { StatusBar } from 'expo-status-bar';
 import { ToastProvider } from '@/shared/components/Toast';
 import { MoneyFormatProvider } from '@/shared/contexts/MoneyFormatContext';
 import { ThemeLanguageProvider, useTheme } from '../shared/contexts/ThemeLanguageContext';
+import { AccountLockedModal } from '@/features/auth/components/AccountLockedModal';
 
 function RootStack() {
   const { theme } = useTheme();
@@ -12,6 +13,7 @@ function RootStack() {
     <>
       <StatusBar style={theme.statusBarStyle === 'dark-content' ? 'dark' : 'light'} />
       <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: theme.bg } }} />
+      <AccountLockedModal />
     </>
   );
 }

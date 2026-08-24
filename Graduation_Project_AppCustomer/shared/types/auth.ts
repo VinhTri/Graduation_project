@@ -10,6 +10,7 @@ export type AuthResponse = {
   setupCompleted: boolean
   accountNumberSetup: boolean
   pinSetup: boolean
+  securityLocked?: boolean
 }
 
 export type LoginRequest = {

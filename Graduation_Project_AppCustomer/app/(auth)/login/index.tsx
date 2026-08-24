@@ -22,6 +22,7 @@ import {
 import AuthBrandHeader from '@/shared/components/AuthBrandHeader/AuthBrandHeader';
 import LoginFeatureSlider from '@/features/auth/components/LoginFeatureSlider/LoginFeatureSlider';
 import { authService } from '@/shared/api/services/auth.service';
+import { showAccountLockedAlert } from '@/features/auth/accountLock';
 
 const isValidEmail = (email: string) => /^[^\s@]+@gmail\.com$/.test(email);
 
@@ -74,11 +75,24 @@ export default function LoginScreen() {
         });
       }
 
+      if (response.data?.securityLocked) {
+        router.replace('/(tabs)/home');
+        setTimeout(() => {
+          void showAccountLockedAlert(trimmedEmail);
+        }, 300);
+        return;
+      }
+
       router.replace('/(auth)/success?mode=login');
     } catch (error: any) {
       const message = error?.message || 'Đăng nhập thất bại';
       const code = error?.code as string | undefined;
       const fieldErrors = error?.data as Record<string, string> | undefined;
+
+      if (code === 'AUTH_1017') {
+        await showAccountLockedAlert(trimmedEmail);
+        return;
+      }
 
       // Tài khoản chưa đăng ký
       if (

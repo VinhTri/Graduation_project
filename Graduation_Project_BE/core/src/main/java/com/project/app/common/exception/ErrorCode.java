@@ -18,6 +18,8 @@ public enum ErrorCode {
     PIN_MISMATCH("AUTH_1016", "Mã PIN xác nhận không khớp!", HttpStatus.BAD_REQUEST),
     PIN_NOT_SET("AUTH_1013", "Bạn chưa thiết lập mã PIN!", HttpStatus.BAD_REQUEST),
     PIN_ALREADY_SET("AUTH_1014", "Bạn đã thiết lập mã PIN rồi!", HttpStatus.CONFLICT),
+    ACCOUNT_SECURITY_LOCKED("AUTH_1017", "Tài khoản đã bị khóa do nhập sai thông tin bảo mật quá 5 lần. Vui lòng xác thực OTP để mở khóa!", HttpStatus.LOCKED),
+    ACCOUNT_NOT_SECURITY_LOCKED("AUTH_1018", "Tài khoản hiện không bị khóa!", HttpStatus.BAD_REQUEST),
 
     // ---- LỖI VÍ & GIAO DỊCH ----
     INVALID_PIN("WALL_2001", "Mã PIN không chính xác!", HttpStatus.BAD_REQUEST),
