@@ -3,11 +3,12 @@ package com.project.app.auth.dto.request;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
-public class RegisterRequest {
 
-    @NotBlank(message = "Tên đăng nhập không được để trống")
-    @Size(min = 3, max = 50, message = "Tên đăng nhập phải từ 3 đến 50 ký tự")
-    private String username;
+/**
+ * Đăng ký chỉ cần email + password + OTP.
+ * Tên hiển thị được BE lấy từ phần trước {@code @} của email.
+ */
+public class RegisterRequest {
 
     @NotBlank(message = "Email không được để trống")
     @Email(message = "Định dạng email không hợp lệ")
@@ -20,9 +21,6 @@ public class RegisterRequest {
     @NotBlank(message = "Mã OTP không được để trống")
     @Size(min = 6, max = 6, message = "Mã OTP phải có đúng 6 ký tự")
     private String otp;
-
-    public String getUsername() { return username; }
-    public void setUsername(String username) { this.username = username; }
 
     public String getEmail() { return email; }
     public void setEmail(String email) { this.email = email; }

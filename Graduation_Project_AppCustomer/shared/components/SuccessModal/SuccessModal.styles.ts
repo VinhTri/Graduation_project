@@ -28,6 +28,18 @@ export const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 20,
   },
+  heroImageWrap: {
+    width: 168,
+    height: 168,
+    borderRadius: 84,
+    overflow: 'hidden',
+    marginBottom: 16,
+    backgroundColor: '#FCE7F3',
+  },
+  heroImage: {
+    width: '100%',
+    height: '100%',
+  },
   title: {
     fontSize: 22,
     fontWeight: 'bold',

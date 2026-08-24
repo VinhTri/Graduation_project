@@ -6,91 +6,8 @@ import {
   AUTH_INPUT_TEXT,
 } from '../constants/authInputColors';
 
+/** Styles dùng chung cho form auth (đăng nhập, đăng ký, quên mật khẩu). */
 export const authScreenStyles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: PASTEL_PALETTE.bg,
-  },
-  bgCircle: {
-    position: 'absolute',
-    borderRadius: 999,
-    opacity: 0.55,
-  },
-  circleTopLeft: {
-    width: 250,
-    height: 250,
-    backgroundColor: PASTEL_PALETTE.headerStart,
-    top: -50,
-    left: -50,
-  },
-  circleMiddleRight: {
-    width: 300,
-    height: 300,
-    backgroundColor: PASTEL_PALETTE.headerMid,
-    top: 150,
-    right: -100,
-  },
-  scrollContainer: {
-    flexGrow: 1,
-    justifyContent: 'space-between',
-  },
-  bottomSection: {
-    backgroundColor: PASTEL_PALETTE.white,
-    borderTopLeftRadius: 36,
-    borderTopRightRadius: 36,
-    paddingHorizontal: 24,
-    paddingTop: 16,
-    paddingBottom: 40,
-    shadowColor: PASTEL_PALETTE.lavender,
-    shadowOffset: { width: 0, height: -2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 10,
-    elevation: 5,
-    flex: 1,
-    borderWidth: 1,
-    borderColor: PASTEL_PALETTE.border,
-    borderBottomWidth: 0,
-  },
-  dragHandle: {
-    width: 40,
-    height: 4,
-    backgroundColor: PASTEL_PALETTE.border,
-    borderRadius: 2,
-    alignSelf: 'center',
-    marginBottom: 20,
-  },
-  brandRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 12,
-    marginBottom: 8,
-  },
-  brandLogo: {
-    width: 52,
-    height: 52,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: PASTEL_PALETTE.border,
-  },
-  brandTitle: {
-    fontSize: 28,
-    fontWeight: '900',
-    letterSpacing: 0.3,
-  },
-  brandSmart: {
-    color: PASTEL_PALETTE.title,
-  },
-  brandSpend: {
-    color: PASTEL_PALETTE.accent,
-  },
-  brandSubtitle: {
-    fontSize: 14,
-    color: PASTEL_PALETTE.textMuted,
-    textAlign: 'center',
-    marginBottom: 24,
-    lineHeight: 20,
-  },
   formContainer: {
     marginTop: 10,
   },
@@ -113,6 +30,10 @@ export const authScreenStyles = StyleSheet.create({
     height: 52,
     paddingHorizontal: 16,
   },
+  inputContainerInvalid: {
+    borderColor: '#EF4444',
+    borderLeftWidth: 4,
+  },
   inputIcon: {
     marginRight: 12,
   },
@@ -120,6 +41,9 @@ export const authScreenStyles = StyleSheet.create({
     flex: 1,
     fontSize: 14,
     color: AUTH_INPUT_TEXT,
+    paddingVertical: 0,
+    textAlignVertical: 'center',
+    includeFontPadding: false,
   },
   eyeIcon: {
     padding: 8,
@@ -149,16 +73,17 @@ export const authScreenStyles = StyleSheet.create({
   linkRow: {
     flexDirection: 'row',
     justifyContent: 'center',
-    marginTop: 20,
+    alignSelf: 'center',
+    marginTop: 24,
   },
   linkText: {
-    color: PASTEL_PALETTE.textMuted,
     fontSize: 14,
+    color: PASTEL_PALETTE.textMuted,
   },
   linkAction: {
-    color: PASTEL_PALETTE.accentDeep,
     fontSize: 14,
-    fontWeight: 'bold',
+    fontWeight: '700',
+    color: PASTEL_PALETTE.accentDeep,
   },
   forgotPasswordContainer: {
     alignItems: 'flex-end',

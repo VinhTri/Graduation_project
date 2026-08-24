@@ -1,12 +1,12 @@
 package com.project.app.budget.controller;
 
 import com.project.app.auth.security.CustomUserDetails;
-import com.project.app.budget.dto.request.BudgetCreateRequest;
-import com.project.app.budget.dto.request.BudgetUpdateRequest;
+import com.project.app.budget.dto.request.CreateBudgetRequest;
+import com.project.app.budget.dto.request.UpdateBudgetRequest;
 import com.project.app.budget.dto.response.BudgetResponse;
-import com.project.app.budget.dto.response.BudgetSummaryResponse;
 import com.project.app.budget.service.BudgetService;
 import com.project.app.common.dto.ApiResponse;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -15,86 +15,47 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/budgets")
+@RequestMapping("/api/v1/budgets")
 @RequiredArgsConstructor
 public class BudgetController {
 
     private final BudgetService budgetService;
 
     @GetMapping
-    public ResponseEntity<ApiResponse<List<BudgetResponse>>> getUserBudgets(
+    public ResponseEntity<ApiResponse<List<BudgetResponse>>> list(
             @AuthenticationPrincipal CustomUserDetails userDetails) {
-        return ResponseEntity.ok(ApiResponse.<List<BudgetResponse>>builder()
-                .success(true)
-                .message("Lấy danh sách ngân sách thành công")
-                .data(budgetService.getUserBudgets(userDetails.getUser()))
-                .build());
+        return ApiResponse.ok("Thành công", budgetService.listBudgets(userDetails.getUser().getId()));
     }
 
-    @GetMapping("/{id}")
-    public ResponseEntity<ApiResponse<BudgetResponse>> getBudgetById(
+    @GetMapping("/{budgetId}")
+    public ResponseEntity<ApiResponse<BudgetResponse>> get(
             @AuthenticationPrincipal CustomUserDetails userDetails,
-            @PathVariable Long id) {
-        return ResponseEntity.ok(ApiResponse.<BudgetResponse>builder()
-                .success(true)
-                .message("Lấy thông tin ngân sách thành công")
-                .data(budgetService.getBudgetById(userDetails.getUser(), id))
-                .build());
-    }
-
-    @GetMapping("/summary")
-    public ResponseEntity<ApiResponse<BudgetSummaryResponse>> getBudgetSummary(
-            @AuthenticationPrincipal CustomUserDetails userDetails) {
-        return ResponseEntity.ok(ApiResponse.<BudgetSummaryResponse>builder()
-                .success(true)
-                .message("Lấy tổng quan ngân sách thành công")
-                .data(budgetService.getBudgetSummary(userDetails.getUser()))
-                .build());
+            @PathVariable Long budgetId) {
+        return ApiResponse.ok("Thành công", budgetService.getBudget(userDetails.getUser().getId(), budgetId));
     }
 
     @PostMapping
-    public ResponseEntity<ApiResponse<BudgetResponse>> createBudget(
+    public ResponseEntity<ApiResponse<BudgetResponse>> create(
             @AuthenticationPrincipal CustomUserDetails userDetails,
-            @RequestBody BudgetCreateRequest request) {
-        return ResponseEntity.ok(ApiResponse.<BudgetResponse>builder()
-                .success(true)
-                .message("Tạo ngân sách thành công")
-                .data(budgetService.createBudget(userDetails.getUser(), request))
-                .build());
+            @Valid @RequestBody CreateBudgetRequest request) {
+        BudgetResponse budget = budgetService.createBudget(userDetails.getUser().getId(), request);
+        return ApiResponse.ok("Tạo ngân sách thành công!", budget);
     }
 
-    @PutMapping("/{id}")
-    public ResponseEntity<ApiResponse<BudgetResponse>> updateBudget(
+    @PatchMapping("/{budgetId}")
+    public ResponseEntity<ApiResponse<BudgetResponse>> update(
             @AuthenticationPrincipal CustomUserDetails userDetails,
-            @PathVariable Long id,
-            @RequestBody BudgetUpdateRequest request) {
-        return ResponseEntity.ok(ApiResponse.<BudgetResponse>builder()
-                .success(true)
-                .message("Cập nhật ngân sách thành công")
-                .data(budgetService.updateBudget(userDetails.getUser(), id, request))
-                .build());
+            @PathVariable Long budgetId,
+            @Valid @RequestBody UpdateBudgetRequest request) {
+        BudgetResponse budget = budgetService.updateBudget(userDetails.getUser().getId(), budgetId, request);
+        return ApiResponse.ok("Cập nhật ngân sách thành công!", budget);
     }
 
-    @PostMapping("/{id}/cheat-spent")
-    public ResponseEntity<ApiResponse<BudgetResponse>> cheatSpent(
+    @DeleteMapping("/{budgetId}")
+    public ResponseEntity<ApiResponse<Void>> delete(
             @AuthenticationPrincipal CustomUserDetails userDetails,
-            @PathVariable Long id,
-            @RequestBody com.project.app.budget.dto.request.BudgetCheatRequest request) {
-        return ResponseEntity.ok(ApiResponse.<BudgetResponse>builder()
-                .success(true)
-                .message("Cập nhật chi tiêu test thành công")
-                .data(budgetService.cheatSpent(userDetails.getUser(), id, request.spentAmount()))
-                .build());
-    }
-
-    @DeleteMapping("/{id}")
-    public ResponseEntity<ApiResponse<Void>> deleteBudget(
-            @AuthenticationPrincipal CustomUserDetails userDetails,
-            @PathVariable Long id) {
-        budgetService.deleteBudget(userDetails.getUser(), id);
-        return ResponseEntity.ok(ApiResponse.<Void>builder()
-                .success(true)
-                .message("Xóa ngân sách thành công")
-                .build());
+            @PathVariable Long budgetId) {
+        budgetService.deleteBudget(userDetails.getUser().getId(), budgetId);
+        return ApiResponse.ok("Xóa ngân sách thành công!");
     }
 }

@@ -1,31 +1,25 @@
-import React, { ReactNode } from 'react';
-import { View, Text, TouchableOpacity } from 'react-native';
-import { useTheme } from '../../../shared/contexts/ThemeLanguageContext';
-import { styles } from '../SettingsScreen.styles';
+import { type ReactNode } from 'react'
+import { Text, TouchableOpacity, View } from 'react-native'
+import { styles } from '../SettingsScreen.styles'
 
-interface SettingsSectionProps {
-  title: string;
-  rightLink?: string;
-  children: ReactNode;
+type SettingsSectionProps = {
+  title: string
+  rightLink?: string
+  children: ReactNode
 }
 
-export const SettingsSection = ({ title, rightLink, children }: SettingsSectionProps) => {
-  const { theme } = useTheme();
-
+export function SettingsSection({ title, rightLink, children }: SettingsSectionProps) {
   return (
     <View style={styles.section}>
       <View style={styles.sectionHeader}>
-        <Text style={[styles.sectionTitle, { color: theme.textPrimary }]}>{title}</Text>
-        {rightLink && (
+        <Text style={styles.sectionTitle}>{title}</Text>
+        {rightLink ? (
           <TouchableOpacity activeOpacity={0.7}>
-            <Text style={[styles.sectionLink, { color: theme.primary }]}>{rightLink}</Text>
+            <Text style={styles.sectionLink}>{rightLink}</Text>
           </TouchableOpacity>
-        )}
+        ) : null}
       </View>
-      <View style={[styles.sectionBody, { backgroundColor: theme.card, borderColor: theme.cardBorder }]}>
-        {children}
-      </View>
+      <View style={styles.sectionBody}>{children}</View>
     </View>
-  );
-};
-
+  )
+}

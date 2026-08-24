@@ -1,19 +1,29 @@
-import { StyleSheet } from 'react-native';
-import Colors from '../../constants/Colors';
-import { PASTEL_PALETTE } from '../../constants/PastelPalette';
+import { StyleSheet } from 'react-native'
+import { PASTEL_PALETTE } from '../../constants/PastelPalette'
 
 export const styles = StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.6)',
     justifyContent: 'flex-end',
   },
+  backdrop: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(15, 23, 42, 0.42)',
+  },
+  backdropPressable: {
+    flex: 1,
+  },
+  sheetWrap: {
+    width: '100%',
+    zIndex: 1,
+  },
   modalContainer: {
-    backgroundColor: Colors.white,
-    borderTopLeftRadius: 32,
-    borderTopRightRadius: 32,
+    backgroundColor: PASTEL_PALETTE.white,
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
     paddingTop: 12,
-    paddingBottom: 40,
+    paddingBottom: 12,
+    paddingHorizontal: 24,
     alignItems: 'center',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: -5 },
@@ -21,107 +31,56 @@ export const styles = StyleSheet.create({
     shadowRadius: 15,
     elevation: 10,
   },
+  content: {
+    width: '100%',
+  },
   dragIndicator: {
     width: 40,
     height: 5,
-    backgroundColor: '#E5E7EB',
+    backgroundColor: PASTEL_PALETTE.border,
     borderRadius: 3,
-    marginBottom: 20,
-  },
-  headerIconContainer: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: PASTEL_PALETTE.accentSoft,
-    justifyContent: 'center',
-    alignItems: 'center',
     marginBottom: 16,
+    alignSelf: 'center',
   },
-  headerRow: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    width: '100%',
-    paddingHorizontal: 24,
-    marginBottom: 8,
+  pinHeader: {
     alignItems: 'center',
-    position: 'relative',
+    paddingHorizontal: 8,
+    marginBottom: 4,
   },
-  title: {
+  pinTitle: {
     fontSize: 22,
-    fontWeight: '700',
-    color: Colors.text,
-  },
-  closeButton: {
-    position: 'absolute',
-    right: 24,
-    padding: 8,
-    backgroundColor: '#F3F4F6',
-    borderRadius: 20,
-  },
-  subtitle: {
-    fontSize: 15,
-    color: Colors.textMuted,
-    marginBottom: 32,
+    fontWeight: '800',
+    color: PASTEL_PALETTE.title,
+    marginBottom: 8,
     textAlign: 'center',
-    paddingHorizontal: 32,
-    lineHeight: 22,
   },
-  pinContainer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 16,
-    gap: 16,
-  },
-  pinDot: {
-    width: 16,
-    height: 16,
-    borderRadius: 8,
-    borderWidth: 1.5,
-    borderColor: '#D1D5DB',
-    backgroundColor: 'transparent',
-  },
-  pinDotActive: {
-    backgroundColor: PASTEL_PALETTE.primary,
-    borderColor: PASTEL_PALETTE.primary,
-    transform: [{ scale: 1.2 }],
-  },
-  errorText: {
-    color: Colors.error,
+  pinSubtitle: {
     fontSize: 14,
-    marginBottom: 16,
+    color: PASTEL_PALETTE.textMuted,
+    textAlign: 'center',
+    lineHeight: 21,
+    maxWidth: 300,
+  },
+  pinDots: {
+    marginVertical: 16,
+  },
+  pinErrorText: {
+    color: '#EF4444',
+    textAlign: 'center',
+    marginTop: -8,
+    marginBottom: 8,
+    fontSize: 13,
+    fontWeight: '600',
   },
   forgotPinText: {
-    color: PASTEL_PALETTE.primary,
+    color: PASTEL_PALETTE.accentDeep,
     fontSize: 14,
-    fontWeight: '600',
-    marginBottom: 32,
+    fontWeight: '700',
+    textAlign: 'center',
+    marginBottom: 8,
   },
-  keypadContainer: {
-    width: '100%',
-    paddingHorizontal: 40,
+  keypad: {
+    marginTop: 8,
+    paddingBottom: 8,
   },
-  keypadRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 16,
-  },
-  key: {
-    width: 76,
-    height: 76,
-    borderRadius: 38,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: 'transparent',
-  },
-  keyEmpty: {
-    width: 76,
-    height: 76,
-    backgroundColor: 'transparent',
-  },
-  keyText: {
-    fontSize: 30,
-    fontWeight: '400',
-    color: '#1F2937',
-  },
-});
+})

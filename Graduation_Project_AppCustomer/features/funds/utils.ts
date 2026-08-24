@@ -1,18 +1,15 @@
-export const formatCurrency = (value: number): string => {
-  if (!value && value !== 0) return '0';
-  // Use regex to add comma (,) as thousands separator
-  return value.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
-};
+import { formatAmount, formatCompactAmount, formatMoney } from '@/shared/utils/moneyFormat'
 
-export const formatCurrencyWithSymbol = (value: number): string =>
-  `${formatCurrency(value)}\u00A0₫`;
+export const formatCurrency = (value: number): string => {
+  if (!value && value !== 0) return formatAmount(0)
+  return formatAmount(value)
+}
+
+export const formatCurrencyWithSymbol = (value: number): string => formatMoney(value)
 
 // Rút gọn số lớn: 1.500.000 -> 1.5tr
 export const formatCompactCurrency = (value: number): string => {
-  if (value >= 1_000_000_000) return `${(value / 1_000_000_000).toFixed(1).replace('.0', '')} tỷ`;
-  if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(1).replace('.0', '')} tr`;
-  if (value >= 1_000) return `${(value / 1_000).toFixed(0)}k`;
-  return formatCurrency(value);
+  return formatCompactAmount(value);
 };
 
 export const getInitials = (name: string): string => {
@@ -22,3 +19,6 @@ export const getInitials = (name: string): string => {
 };
 
 export const parseAmountInput = (text: string): string => text.replace(/[^0-9]/g, '');
+
+export const createFundRequestId = (): string =>
+  `fund-${Date.now()}-${Math.random().toString(36).slice(2, 12)}`;

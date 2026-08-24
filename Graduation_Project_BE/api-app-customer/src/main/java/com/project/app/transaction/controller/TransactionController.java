@@ -2,21 +2,15 @@ package com.project.app.transaction.controller;
 
 import com.project.app.auth.security.CustomUserDetails;
 import com.project.app.common.dto.ApiResponse;
-import com.project.app.transaction.dto.request.TopUpRequest;
-import com.project.app.transaction.dto.response.TopUpResponse;
+import com.project.app.transaction.dto.request.TransferRequest;
+import com.project.app.transaction.dto.response.TransferResponse;
+import com.project.app.transaction.dto.response.TransactionStatusResponse;
+import com.project.app.transaction.entity.Transaction;
 import com.project.app.transaction.service.TransactionService;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
-
-import com.project.app.transaction.dto.request.SePayWebhookRequest;
-import com.project.app.transaction.dto.request.WithdrawRequest;
-import com.project.app.transaction.dto.request.TransferRequest;
-import com.project.app.transaction.dto.response.TransferResponse;
-import com.project.app.transaction.dto.response.TransactionStatusResponse;
-import com.project.app.transaction.dto.response.WithdrawResponse;
-import com.project.app.transaction.entity.Transaction;
 
 @RestController
 @RequestMapping("/api/v1/transactions")
@@ -26,32 +20,6 @@ public class TransactionController {
 
     public TransactionController(TransactionService transactionService) {
         this.transactionService = transactionService;
-    }
-
-    // ====================== NẠP TIỀN ======================
-    @PostMapping("/top-up")
-    public ResponseEntity<ApiResponse<TopUpResponse>> initiateTopUp(
-            @AuthenticationPrincipal CustomUserDetails userDetails,
-            @Valid @RequestBody TopUpRequest request) {
-        
-        TopUpResponse response = transactionService.initiateTopUp(userDetails.getUser(), request);
-        return ResponseEntity.ok(ApiResponse.<TopUpResponse>builder()
-                .success(true)
-                .message("Khởi tạo giao dịch nạp tiền thành công")
-                .data(response)
-                .build());
-    }
-
-    // ====================== WEBHOOK SEPAY ======================
-    @PostMapping("/sepay-webhook")
-    public ResponseEntity<ApiResponse<Void>> handleSePayWebhook(
-            @RequestHeader(value = "Authorization", required = false) String apikey,
-            @RequestBody SePayWebhookRequest request) {
-        transactionService.processSePayWebhook(apikey, request);
-        return ResponseEntity.ok(ApiResponse.<Void>builder()
-                .success(true)
-                .message("Webhook processed successfully")
-                .build());
     }
 
     // ====================== CẬP NHẬT GIAO DỊCH ======================
@@ -76,21 +44,7 @@ public class TransactionController {
                 .build());
     }
 
-    // ====================== RÚT TIỀN ======================
-    @PostMapping("/withdraw")
-    public ResponseEntity<ApiResponse<WithdrawResponse>> processWithdrawal(
-            @AuthenticationPrincipal CustomUserDetails userDetails,
-            @Valid @RequestBody WithdrawRequest request) {
-        
-        WithdrawResponse response = transactionService.processWithdrawal(userDetails.getUser(), request);
-        return ResponseEntity.ok(ApiResponse.<WithdrawResponse>builder()
-                .success(true)
-                .message("Rút tiền thành công")
-                .data(response)
-                .build());
-    }
-
-    // ====================== GIAO DỊCH THỦ CÔNG TIỀN MẶT ======================
+    // ====================== GIAO DỊCH THỦ CÔNG SỔ TAY NGÂN HÀNG ======================
     @PostMapping("/manual")
     public ResponseEntity<ApiResponse<com.project.app.transaction.dto.response.ManualTransactionResponse>> createManualTransaction(
             @AuthenticationPrincipal CustomUserDetails userDetails,
@@ -99,7 +53,7 @@ public class TransactionController {
         var response = transactionService.createManualTransaction(userDetails.getUser(), request);
         return ResponseEntity.ok(ApiResponse.<com.project.app.transaction.dto.response.ManualTransactionResponse>builder()
                 .success(true)
-                .message("Ghi giao dịch tiền mặt thành công")
+                .message("Ghi giao dịch sổ tay ngân hàng thành công")
                 .data(response)
                 .build());
     }

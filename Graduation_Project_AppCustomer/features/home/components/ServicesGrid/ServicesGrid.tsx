@@ -52,15 +52,6 @@ export const ServicesGrid = () => {
       bgColor: theme.isDark ? theme.bgSoft : "#F5F3FF",
       route: "/split-bill",
     },
-    {
-      id: "budget",
-      label: isEn ? "Budget" : "Ngân sách",
-      iconFamily: "Ionicons",
-      icon: "pie-chart-outline",
-      color: "#D97706",
-      bgColor: theme.isDark ? theme.bgSoft : "#FFFBEB",
-      route: "/budget",
-    },
   ];
 
   const fixedServices: ServiceDef[] = [

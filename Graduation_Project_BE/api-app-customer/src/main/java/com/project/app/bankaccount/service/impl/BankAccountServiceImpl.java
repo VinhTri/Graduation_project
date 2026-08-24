@@ -1,33 +1,29 @@
 package com.project.app.bankaccount.service.impl;
 
-import com.project.app.bankaccount.service.BankAccountService;
-
-import com.project.app.common.exception.AppException;
-import com.project.app.common.exception.ErrorCode;
 import com.project.app.bankaccount.dto.request.BankAccountRequest;
 import com.project.app.bankaccount.dto.response.BankAccountResponse;
 import com.project.app.bankaccount.entity.BankAccount;
-import com.project.app.user.entity.User;
 import com.project.app.bankaccount.repository.BankAccountRepository;
-import com.project.app.transaction.service.PayOsPayoutService;
-
+import com.project.app.bankaccount.service.BankAccountService;
+import com.project.app.common.exception.AppException;
+import com.project.app.common.exception.ErrorCode;
+import com.project.app.user.entity.User;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
-import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
 public class BankAccountServiceImpl implements BankAccountService {
 
-    private final BankAccountRepository bankAccountRepository;
-    private final PayOsPayoutService payOsPayoutService;
-    private final com.project.app.wallet.repository.WalletRepository walletRepository;
+    private static final int MAX_BANK_ACCOUNTS = 3;
 
-    // ====================== LẤY DANH SÁCH ======================
+    private final BankAccountRepository bankAccountRepository;
+
+    @Override
     @Transactional(readOnly = true)
     public List<BankAccountResponse> getBankAccounts(User user) {
         return bankAccountRepository.findByUserId(user.getId())
@@ -36,13 +32,12 @@ public class BankAccountServiceImpl implements BankAccountService {
                 .collect(Collectors.toList());
     }
 
-    // Số tài khoản ngân hàng tối đa mỗi người dùng được liên kết.
-    private static final int MAX_BANK_ACCOUNTS = 3;
-
-    // ====================== THÊM MỚI ======================
+    @Override
     @Transactional
     public BankAccountResponse addBankAccount(User user, BankAccountRequest request) {
-        if (bankAccountRepository.existsByAccountNumberAndUserId(request.getAccountNumber(), user.getId())) {
+        String accountNumber = request.getAccountNumber().trim();
+
+        if (bankAccountRepository.existsByAccountNumberAndUserId(accountNumber, user.getId())) {
             throw new AppException(ErrorCode.BANK_ACCOUNT_ALREADY_EXISTS);
         }
 
@@ -51,71 +46,29 @@ public class BankAccountServiceImpl implements BankAccountService {
             throw new AppException(ErrorCode.BANK_ACCOUNT_LIMIT_REACHED);
         }
 
-        // Liên kết miễn phí: KHÔNG trừ tiền trong ví. Hệ thống vẫn chi thật 2.000đ
-        // tới STK để xác minh & lấy tên chủ tài khoản -> khách được nhận 2.000đ.
-        int verifyPayoutAmount = 2000;
-        String reference = "LINK" + System.currentTimeMillis() + UUID.randomUUID().toString().substring(0, 4).toUpperCase();
-
-        // Nội dung chuyển khoản bị Napas giới hạn ngắn (thường < 25 ký tự).
-        String description = "KIEM TRA TEN " + request.getAccountNumber();
-        if (description.length() > 25) {
-            description = "KIEM TRA TEN";
-        }
-
-        String accountName = payOsPayoutService.verifyAndPayout(
-                request.getBankCode(),
-                request.getAccountNumber(),
-                verifyPayoutAmount,
-                description,
-                reference
-        );
-
-        if (accountName == null) {
-            throw new AppException(ErrorCode.BANK_VERIFICATION_FAILED);
-        }
-
+        String accountName = resolveAccountName(user, request.getAccountName());
         boolean isFirstAccount = existingAccounts.isEmpty();
 
         BankAccount bankAccount = BankAccount.builder()
                 .user(user)
-                .bankCode(request.getBankCode())
-                .bankName(request.getBankName())
-                .accountNumber(request.getAccountNumber())
+                .bankCode(request.getBankCode().trim())
+                .bankName(request.getBankName().trim())
+                .accountNumber(accountNumber)
                 .accountName(accountName)
-                .isDefault(isFirstAccount) // Nếu là tài khoản đầu tiên, tự động đặt làm mặc định
+                .isDefault(isFirstAccount)
                 .build();
 
-        BankAccount savedAccount = bankAccountRepository.save(bankAccount);
-
-        // Tạo Wallet tương ứng cho sổ tay tài khoản ngân hàng (LINKED)
-        com.project.app.wallet.entity.Wallet linkedWallet = new com.project.app.wallet.entity.Wallet(
-                user,
-                request.getBankName() + " - " + request.getAccountNumber().substring(Math.max(0, request.getAccountNumber().length() - 4)),
-                java.math.BigDecimal.ZERO,
-                false,
-                true,
-                com.project.app.wallet.enums.WalletType.LINKED
-        );
-        linkedWallet.setAccountNumber(request.getAccountNumber());
-        walletRepository.save(linkedWallet);
-
-        return mapToResponse(savedAccount);
+        return mapToResponse(bankAccountRepository.save(bankAccount));
     }
 
-    // ====================== XÓA TÀI KHOẢN ======================
+    @Override
     @Transactional
     public void deleteBankAccount(User user, Long accountId) {
         BankAccount bankAccount = bankAccountRepository.findByIdAndUserId(accountId, user.getId())
                 .orElseThrow(() -> new AppException(ErrorCode.BANK_ACCOUNT_NOT_FOUND));
 
         bankAccountRepository.delete(bankAccount);
-        
-        // Xóa Wallet tương ứng (dựa vào accountNumber và loại LINKED)
-        walletRepository.findByAccountNumber(bankAccount.getAccountNumber())
-                .filter(w -> w.getWalletType() == com.project.app.wallet.enums.WalletType.LINKED && w.getUser().getId().equals(user.getId()))
-                .ifPresent(walletRepository::delete);
 
-        // Nếu tài khoản bị xóa là mặc định, chuyển trạng thái mặc định sang tài khoản đầu tiên còn lại (nếu có)
         if (bankAccount.isDefault()) {
             List<BankAccount> remainingAccounts = bankAccountRepository.findByUserId(user.getId());
             if (!remainingAccounts.isEmpty()) {
@@ -126,7 +79,17 @@ public class BankAccountServiceImpl implements BankAccountService {
         }
     }
 
-    // ====================== MAPPER ======================
+    private String resolveAccountName(User user, String requestedName) {
+        if (requestedName != null && !requestedName.isBlank()) {
+            return requestedName.trim().toUpperCase();
+        }
+        if (user.getUsername() != null && !user.getUsername().isBlank()) {
+            return user.getUsername().trim().toUpperCase();
+        }
+        String localPart = user.getEmail().split("@")[0];
+        return localPart.replace('.', ' ').replace('_', ' ').trim().toUpperCase();
+    }
+
     private BankAccountResponse mapToResponse(BankAccount account) {
         return BankAccountResponse.builder()
                 .id(account.getId())

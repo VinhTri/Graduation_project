@@ -5,3 +5,4 @@ export { default as FundCard } from './FundCard/FundCard';
 export { default as FundInvitationCard } from './FundInvitationCard/FundInvitationCard';
 export { FundTransferFlow } from './FundTransferFlow/FundTransferFlow';
 export { InviteFriendsModal } from './InviteFriendsModal/InviteFriendsModal';
+export { FundMoneyForm } from './FundMoneyForm/FundMoneyForm';

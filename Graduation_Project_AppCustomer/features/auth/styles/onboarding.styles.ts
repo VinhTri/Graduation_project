@@ -1,30 +1,39 @@
-import { StyleSheet, Dimensions } from 'react-native';
+import { StyleSheet, Dimensions } from 'react-native'
+import { PASTEL_PALETTE } from '@/shared/constants/PastelPalette'
 
-const { width } = Dimensions.get('window');
+const { width } = Dimensions.get('window')
 
 export const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: PASTEL_PALETTE.white,
   },
   bgCircle: {
     position: 'absolute',
     borderRadius: 999,
-    opacity: 0.5,
+    opacity: 0.55,
   },
   circleTopLeft: {
     width: 350,
     height: 350,
-    backgroundColor: '#E5F7F3',
+    backgroundColor: PASTEL_PALETTE.accentSoft,
     top: -100,
     left: -100,
   },
   circleBottomRight: {
     width: 450,
     height: 450,
-    backgroundColor: '#EEF0FF',
+    backgroundColor: PASTEL_PALETTE.lavenderSoft,
     bottom: -200,
     right: -150,
+  },
+  screenBody: {
+    flex: 1,
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingTop: 12,
+    paddingBottom: 16,
+    zIndex: 1,
   },
   scrollView: {
     flex: 1,
@@ -39,6 +48,54 @@ export const styles = StyleSheet.create({
   textContainer: {
     alignItems: 'center',
     width: '100%',
+    paddingHorizontal: 20,
+  },
+  heroFrame: {
+    width: Math.min(width * 0.92, 400),
+    height: Math.min(width * 0.92, 400),
+    borderRadius: Math.min(width * 0.92, 400) / 2,
+    overflow: 'hidden',
+    marginBottom: 22,
+    backgroundColor: PASTEL_PALETTE.accentSoft,
+    position: 'relative',
+  },
+  heroLayer: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  heroImage: {
+    width: '100%',
+    height: '100%',
+  },
+  copyStack: {
+    width: '100%',
+    minHeight: 96,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  copyLayer: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    alignItems: 'center',
+    paddingHorizontal: 8,
+  },
+  stepTitle: {
+    fontSize: 22,
+    fontWeight: '800',
+    color: PASTEL_PALETTE.title,
+    textAlign: 'center',
+    lineHeight: 30,
+    marginBottom: 8,
+    paddingHorizontal: 8,
+  },
+  stepSubtitle: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: PASTEL_PALETTE.textMuted,
+    textAlign: 'center',
+    lineHeight: 21,
+    maxWidth: 340,
+    paddingHorizontal: 8,
   },
   title1: {
     fontSize: 28,
@@ -55,19 +112,19 @@ export const styles = StyleSheet.create({
     lineHeight: 44,
   },
   highlight: {
-    color: '#109185',
+    color: PASTEL_PALETTE.accentDeep,
   },
   badge: {
     paddingHorizontal: 16,
     paddingVertical: 6,
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: '#E5F7F3',
-    backgroundColor: '#FFFFFF',
+    borderColor: PASTEL_PALETTE.border,
+    backgroundColor: PASTEL_PALETTE.white,
     marginBottom: 24,
   },
   badgeText: {
-    color: '#109185',
+    color: PASTEL_PALETTE.accentDeep,
     fontWeight: '800',
     fontSize: 12,
     letterSpacing: 2,
@@ -86,6 +143,11 @@ export const styles = StyleSheet.create({
     textAlign: 'center',
     lineHeight: 24,
   },
+  ctaWrap: {
+    width: '100%',
+    paddingHorizontal: 32,
+    paddingBottom: 28,
+  },
   bottomContainer: {
     position: 'absolute',
     bottom: 50,
@@ -93,15 +155,15 @@ export const styles = StyleSheet.create({
     right: 32,
   },
   button: {
-    backgroundColor: '#109185',
+    backgroundColor: PASTEL_PALETTE.accentDeep,
     height: 56,
     borderRadius: 16,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#109185',
+    shadowColor: PASTEL_PALETTE.accentDeep,
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
+    shadowOpacity: 0.25,
     shadowRadius: 8,
     elevation: 4,
   },
@@ -130,7 +192,7 @@ export const styles = StyleSheet.create({
   },
   progressBarFill: {
     height: '100%',
-    backgroundColor: '#109185',
+    backgroundColor: PASTEL_PALETTE.accentDeep,
     borderRadius: 2,
   },
-});
+})

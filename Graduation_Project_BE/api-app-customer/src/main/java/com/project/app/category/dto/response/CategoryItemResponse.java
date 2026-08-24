@@ -1,20 +1,32 @@
 package com.project.app.category.dto.response;
 
-import lombok.AllArgsConstructor;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import com.project.app.category.entity.CategoryItem;
 import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.Value;
 
-@Data
+@Value
 @Builder
-@NoArgsConstructor
-@AllArgsConstructor
 public class CategoryItemResponse {
-    private String id;
-    private String label;
-    private String icon;
-    private String color;
-    private String bgColor;
-    private String groupId;
-    private boolean isCustom;
+
+    Long id;
+    String label;
+    String icon;
+    String color;
+    String bgColor;
+    Long groupId;
+    @JsonProperty("custom")
+    boolean custom;
+
+    public static CategoryItemResponse from(CategoryItem item) {
+        return CategoryItemResponse.builder()
+                .id(item.getId())
+                .label(item.getLabel())
+                .icon(item.getIcon())
+                .color(item.getColor())
+                .bgColor(item.getBgColor())
+                .groupId(item.getGroup().getId())
+                .custom(item.getUser() != null)
+                .build();
+    }
 }

@@ -20,6 +20,7 @@ public class FundInvitationResponse {
     private String fundName;
     private BigDecimal balance;
     private BigDecimal targetAmount;
+    private BigDecimal minDepositAmount;
     private Integer coverColorSeed;
     private Long ownerId;
     private String ownerName;

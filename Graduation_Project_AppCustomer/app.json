@@ -47,6 +47,12 @@
           "cameraPermission": "Cho phép SmartSpend dùng máy ảnh để chụp ảnh đại diện."
         }
       ],
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Cho phép SmartSpend sử dụng camera để quét mã QR chuyển tiền nội bộ."
+        }
+      ],
       "expo-asset",
       "expo-font"
     ],

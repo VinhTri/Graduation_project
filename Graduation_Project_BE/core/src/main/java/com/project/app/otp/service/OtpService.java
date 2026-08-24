@@ -1,6 +1,6 @@
 package com.project.app.otp.service;
 
-import com.project.app.otp.entity.OtpPurpose;
+import com.project.app.otp.enums.OtpPurpose;
 import com.project.app.otp.entity.OtpToken;
 
 public interface OtpService {

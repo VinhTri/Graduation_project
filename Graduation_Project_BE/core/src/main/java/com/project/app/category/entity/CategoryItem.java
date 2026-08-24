@@ -20,13 +20,13 @@ public class CategoryItem {
     @Column(nullable = false, length = 20)
     private String label;
 
-    @Column(nullable = false)
+    @Column(nullable = false, length = 50)
     private String icon;
 
-    @Column(nullable = false)
+    @Column(nullable = false, length = 20)
     private String color;
 
-    @Column(name = "bg_color", nullable = false)
+    @Column(name = "bg_color", nullable = false, length = 20)
     private String bgColor;
 
     @ManyToOne(fetch = FetchType.LAZY)

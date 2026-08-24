@@ -17,33 +17,59 @@ export const ENDPOINTS = {
   USER: {
     PROFILE: '/api/v1/user/me',                                 // Lấy thông tin tài khoản đang đăng nhập
     AVATAR: '/api/v1/user/avatar',                              // Upload ảnh đại diện
+    USERNAME: '/api/v1/user/username',                          // Đổi tên hiển thị
+    MONEY_FORMAT: '/api/v1/user/money-format',                  // Định dạng tiền tệ theo user
+    APPEARANCE: '/api/v1/user/appearance',                      // Giao diện sáng/tối và ngôn ngữ
+    NOTEBOOK_REMINDER: '/api/v1/user/notebook-reminder',        // Nhắc nhở ghi chép sổ tay
     SEARCH: (query: string) => `/api/v1/user/search?query=${encodeURIComponent(query)}`, // Tra cứu user theo email hoặc tài khoản
   },
   TRANSACTION: {
     TOP_UP: '/api/v1/transactions/top-up',
     WITHDRAW: '/api/v1/transactions/withdraw',
-    MANUAL: '/api/v1/transactions/manual',
-    UPDATE_MANUAL: (transactionCode: string) => `/api/v1/transactions/manual/${transactionCode}`,
-    DELETE_MANUAL: (transactionCode: string) => `/api/v1/transactions/manual/${transactionCode}`,
     TRANSFER: '/api/v1/transactions/transfer',
   },
   WALLET: {
+    LIST: '/api/v1/wallets',
+    DETAIL: (id: number) => `/api/v1/wallets/${id}`,
+    TOP_UP: '/api/v1/wallets/top-up',
+    WITHDRAW: '/api/v1/wallets/withdraw',
+    TRANSACTIONS: '/api/v1/wallets/transactions',
     MY_WALLET: '/api/v1/wallets/me',
-    CASH_WALLET: '/api/v1/wallets/cash',
-    BANK_WALLETS: '/api/v1/wallets/banks',
-    CREATE_MANUAL_BANK: '/api/v1/wallets/manual-bank',
-    DELETE_MANUAL_BANK: (id: number) => `/api/v1/wallets/manual-bank/${id}`,
     UPDATE_SETTINGS: (id: number) => `/api/v1/wallets/${id}/settings`,
+  },
+  NOTEBOOK: {
+    CASH: '/api/v1/notebooks/cash',
+    TRANSACTIONS: (bookId: number, period: string) =>
+      `/api/v1/notebooks/${bookId}/transactions?period=${period}`,
+    CREATE_TRANSACTION: '/api/v1/notebooks/transactions',
+    TRANSACTION_DETAIL: (code: string) => `/api/v1/notebooks/transactions/${code}`,
+    UPDATE_TRANSACTION: (code: string) => `/api/v1/notebooks/transactions/${code}`,
+    DELETE_TRANSACTION: (code: string) => `/api/v1/notebooks/transactions/${code}`,
+  },
+  CATEGORY: {
+    LIST: '/api/v1/categories',
+    GROUPS: '/api/v1/categories/groups',
+    ITEMS: '/api/v1/categories/items',
+    DELETE_ITEM: (itemId: number) => `/api/v1/categories/items/${itemId}`,
+    DELETE_GROUP: (groupId: number) => `/api/v1/categories/groups/${groupId}`,
   },
   HISTORY: {
     TRANSACTIONS: '/api/v1/history/transactions',
   },
   BANK_ACCOUNT: {
     GET_ALL: '/api/v1/bank-accounts',
+    DELETE: (id: number) => `/api/v1/bank-accounts/${id}`,
+  },
+  ACCOUNT: {
+    VERIFY_PASSWORD: '/api/v1/account/verify-password',
+    VERIFY_PIN: '/api/v1/account/verify-pin',
+    CHANGE_PASSWORD: '/api/v1/account/change-password',
+    CHANGE_PIN: '/api/v1/account/change-pin',
   },
   REPORT: {
     DISTRIBUTION: '/api/v1/reports/distribution',
     TREND: '/api/v1/reports/trend',
+    FINANCE_CENTER: '/api/v1/reports/finance-center',
   },
   INVOICE: {
     BASE: '/api/v1/invoices',
@@ -84,12 +110,12 @@ export const ENDPOINTS = {
     PUBLIC_ALL: '/api/v1/public/posts',
   },
   BUDGET: {
-    BASE: '/api/budgets',
-    DETAIL: (id: number) => `/api/budgets/${id}`,
-    SUMMARY: '/api/budgets/summary',
+    LIST: '/api/v1/budgets',
+    DETAIL: (id: number) => `/api/v1/budgets/${id}`,
   },
   AI: {
     CHAT: '/api/v1/ai/chat',
+    HOME_INSIGHT: '/api/v1/ai/home-insight',
   },
   SPLIT_BILL: {
     BASE: '/api/v1/split-bills',
@@ -105,4 +131,3 @@ export const ENDPOINTS = {
     SEND_MESSAGE: (ticketId: number) => `/api/v1/support/tickets/${ticketId}/messages`,
   },
 };
-

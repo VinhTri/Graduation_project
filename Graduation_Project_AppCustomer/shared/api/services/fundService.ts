@@ -18,6 +18,7 @@ export interface FundInvitationDto {
   fundName: string;
   balance: number;
   targetAmount?: number;
+  minDepositAmount?: number;
   coverColorSeed: number;
   ownerId: number;
   ownerName: string;
@@ -31,6 +32,7 @@ export interface FundSummaryDto {
   name: string;
   balance: number;
   targetAmount?: number;
+  minDepositAmount?: number;
   coverColorSeed: number;
   isOwner: boolean;
   memberCount: number;
@@ -66,6 +68,7 @@ export interface FundDetailDto extends FundSummaryDto {
 export interface CreateFundPayload {
   name: string;
   targetAmount: number;
+  minDepositAmount?: number;
   coverColorSeed: number;
 }
 
@@ -73,6 +76,7 @@ export interface FundAmountPayload {
   amount: number;
   note?: string;
   pinCode: string;
+  requestId?: string;
 }
 
 const toCategory = (type: FundTransactionType) => {
@@ -116,6 +120,7 @@ const mapSummary = (f: FundSummaryDto): Fund => ({
   name: f.name,
   balance: Number(f.balance) || 0,
   targetAmount: f.targetAmount != null ? Number(f.targetAmount) : undefined,
+  minDepositAmount: f.minDepositAmount != null ? Number(f.minDepositAmount) : undefined,
   coverColorSeed: f.coverColorSeed,
   isOwner: !!f.isOwner,
   memberCount: Number(f.memberCount) || 0,
@@ -145,6 +150,7 @@ export const fundService = {
       fundName: inv.fundName,
       balance: Number(inv.balance) || 0,
       targetAmount: inv.targetAmount != null ? Number(inv.targetAmount) : undefined,
+      minDepositAmount: inv.minDepositAmount != null ? Number(inv.minDepositAmount) : undefined,
       coverColorSeed: inv.coverColorSeed,
       ownerId: inv.ownerId,
       ownerName: inv.ownerName,

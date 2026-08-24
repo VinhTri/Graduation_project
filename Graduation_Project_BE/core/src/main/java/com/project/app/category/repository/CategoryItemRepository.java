@@ -12,5 +12,11 @@ public interface CategoryItemRepository extends JpaRepository<CategoryItem, Long
 
     Optional<CategoryItem> findFirstByLabelAndUserIsNullAndIsDeletedFalse(String label);
 
+    Optional<CategoryItem> findFirstByLabelAndGroup_IdAndUserIsNullAndIsDeletedFalse(String label, Long groupId);
+
+    Optional<CategoryItem> findFirstByLabelAndGroup_TitleAndUserIsNullAndIsDeletedFalse(String label, String groupTitle);
+
+    Optional<CategoryItem> findByIdAndIsDeletedFalse(Long id);
+
     boolean existsByUserAndColorIgnoreCaseAndIsDeletedFalse(User user, String color);
 }

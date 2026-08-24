@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity, TextInput,
-  StatusBar, KeyboardAvoidingView, Platform, Alert,
+  StatusBar, KeyboardAvoidingView, Platform, Alert, ActivityIndicator, Switch,
 } from 'react-native';
 import { Feather, Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -9,19 +9,21 @@ import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { FundHeaderShell } from '../../components';
-import { SuccessModal } from '../../../../shared/components';
+import { useToast } from '../../../../shared/components/Toast';
 import { fundStore, useFunds } from '../../store/fundStore';
 import { FUND_PALETTE, FUND_THEMES, FUND_THEME_COUNT, pickFundTheme } from '../../theme';
-import { MAX_OWNED_FUNDS } from '../../constants';
+import { MAX_OWNED_FUNDS, SYSTEM_MIN_DEPOSIT } from '../../constants';
 import { formatCurrency, parseAmountInput } from '../../utils';
 import { styles } from './CreateFundScreen.styles';
 
 const TARGET_SUGGESTIONS = [1_000_000, 3_000_000, 5_000_000, 10_000_000];
 const MIN_TARGET = 10_000;
+const MIN_DEPOSIT_SUGGESTIONS = [2_000, 10_000, 50_000, 100_000];
 
 export function CreateFundScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { showToast } = useToast();
   const funds = useFunds();
 
   const myFunds = useMemo(() => funds.filter((f) => f.isOwner), [funds]);
@@ -41,8 +43,9 @@ export function CreateFundScreen() {
 
   const [name, setName] = useState('');
   const [target, setTarget] = useState('');
+  const [minDeposit, setMinDeposit] = useState(String(SYSTEM_MIN_DEPOSIT));
+  const [minDepositEnabled, setMinDepositEnabled] = useState(false);
   const [themeIndex, setThemeIndex] = useState(() => availableThemes[0]?.index ?? 0);
-  const [successVisible, setSuccessVisible] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
@@ -57,11 +60,16 @@ export function CreateFundScreen() {
   }, [availableThemes, themeIndex]);
 
   const parsedTarget = target ? parseInt(target, 10) : 0;
+  const parsedMinDeposit = minDeposit ? parseInt(minDeposit, 10) : 0;
+  const minDepositValid =
+    !minDepositEnabled ||
+    (parsedMinDeposit >= SYSTEM_MIN_DEPOSIT && parsedMinDeposit <= parsedTarget);
   const isValid =
     !reachedLimit &&
     !submitting &&
     name.trim().length >= 2 &&
     parsedTarget >= MIN_TARGET &&
+    minDepositValid &&
     availableThemes.some((t) => t.index === themeIndex);
 
   const handleCreate = async () => {
@@ -75,9 +83,11 @@ export function CreateFundScreen() {
       await fundStore.addFund({
         name: name.trim(),
         targetAmount: parsedTarget,
+        ...(minDepositEnabled ? { minDepositAmount: parsedMinDeposit } : {}),
         coverColorSeed: themeIndex,
       });
-      setSuccessVisible(true);
+      showToast({ variant: 'success', message: `Tạo quỹ "${name.trim()}" thành công` });
+      router.back();
     } catch (err: any) {
       Alert.alert('Lỗi', err?.message || 'Không thể tạo quỹ');
     } finally {
@@ -125,6 +135,11 @@ export function CreateFundScreen() {
               <Text style={styles.previewBalance}>0 ₫</Text>
               {parsedTarget > 0 && (
                 <Text style={styles.previewTarget}>Mục tiêu: {formatCurrency(parsedTarget)} ₫</Text>
+              )}
+              {minDepositEnabled && parsedMinDeposit > 0 && (
+                <Text style={styles.previewTarget}>
+                  Nạp tối thiểu: {formatCurrency(parsedMinDeposit)} ₫
+                </Text>
               )}
             </LinearGradient>
           </View>
@@ -197,6 +212,65 @@ export function CreateFundScreen() {
             Mỗi quỹ cần có mục tiêu cụ thể (tối thiểu {formatCurrency(MIN_TARGET)} ₫).
           </Text>
 
+          <View style={styles.switchCard}>
+            <View style={styles.switchTextWrap}>
+              <Text style={styles.switchTitle}>Nạp tối thiểu mỗi thành viên</Text>
+              <Text style={styles.switchHint}>
+                Bật nếu muốn đặt mức nạp tối thiểu riêng. Tắt thì chỉ áp dụng sàn hệ thống {formatCurrency(SYSTEM_MIN_DEPOSIT)} ₫.
+              </Text>
+            </View>
+            <Switch
+              value={minDepositEnabled}
+              onValueChange={(on) => {
+                setMinDepositEnabled(on);
+                if (on && !minDeposit) setMinDeposit(String(SYSTEM_MIN_DEPOSIT));
+              }}
+              disabled={reachedLimit}
+              trackColor={{ false: FUND_PALETTE.border, true: FUND_PALETTE.primarySoft }}
+              thumbColor={minDepositEnabled ? FUND_PALETTE.primary : FUND_PALETTE.white}
+              ios_backgroundColor={FUND_PALETTE.border}
+            />
+          </View>
+
+          {minDepositEnabled ? (
+            <>
+              <View style={[styles.inputWrap, { marginTop: 12 }]}>
+                <Feather name="arrow-down-circle" size={18} color={FUND_PALETTE.textMuted} />
+                <TextInput
+                  style={[styles.input, { color: '#7C3AED', fontWeight: 'bold' }]}
+                  placeholder="0"
+                  placeholderTextColor="#9CA3AF"
+                  keyboardType="numeric"
+                  value={minDeposit ? formatCurrency(parseInt(minDeposit, 10)) : ''}
+                  onChangeText={(t) => setMinDeposit(parseAmountInput(t))}
+                  maxLength={14}
+                  editable={!reachedLimit}
+                />
+                <Text style={[styles.currency, { color: '#7C3AED', fontWeight: 'bold' }]}>₫</Text>
+              </View>
+
+              <View style={styles.chipRow}>
+                {MIN_DEPOSIT_SUGGESTIONS.map((amt) => (
+                  <TouchableOpacity
+                    key={amt}
+                    style={[styles.chip, parsedMinDeposit === amt && styles.chipActive]}
+                    onPress={() => !reachedLimit && setMinDeposit(amt.toString())}
+                    activeOpacity={0.85}
+                    disabled={reachedLimit}
+                  >
+                    <Text style={[styles.chipText, parsedMinDeposit === amt && styles.chipTextActive]}>
+                      {formatCurrency(amt)}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              <Text style={styles.hint}>
+                Mỗi lần nạp phải từ {formatCurrency(SYSTEM_MIN_DEPOSIT)} ₫ và không vượt mục tiêu quỹ.
+              </Text>
+            </>
+          ) : null}
+
           <Text style={styles.label}>Chủ đề quỹ</Text>
           {availableThemes.length === 0 ? (
             <Text style={styles.hint}>Không còn chủ đề khả dụng. Hãy xóa bớt quỹ để tạo mới.</Text>
@@ -253,23 +327,16 @@ export function CreateFundScreen() {
             onPress={handleCreate}
             activeOpacity={0.85}
           >
-            <Text style={styles.submitBtnText}>
-              {reachedLimit ? 'Đã đạt tối đa' : 'Tạo quỹ'}
-            </Text>
+            {submitting ? (
+              <ActivityIndicator color="#FFFFFF" />
+            ) : (
+              <Text style={styles.submitBtnText}>
+                {reachedLimit ? 'Đã đạt tối đa' : 'Tạo quỹ'}
+              </Text>
+            )}
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
-
-      <SuccessModal
-        visible={successVisible}
-        variant="pastel"
-        title="Tạo quỹ thành công"
-        message={`Quỹ "${name.trim()}" đã được tạo. Hãy mời bạn bè cùng tham gia nhé!`}
-        onClose={() => {
-          setSuccessVisible(false);
-          router.back();
-        }}
-      />
     </View>
   );
 }

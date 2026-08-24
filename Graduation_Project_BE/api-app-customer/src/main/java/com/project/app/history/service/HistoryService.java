@@ -8,6 +8,6 @@ import java.util.List;
 public interface HistoryService {
     List<TransactionHistoryResponse> getTransactionHistory(User user);
 
-    /** wallet=cash → sổ tay; còn lại → ví SmartSpend (MAIN) */
+    /** wallet = walletId số → sổ tay ngân hàng; còn lại → ví MAIN */
     List<TransactionHistoryResponse> getTransactionHistory(User user, String wallet);
 }

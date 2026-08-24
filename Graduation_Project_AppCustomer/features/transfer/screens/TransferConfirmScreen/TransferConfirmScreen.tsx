@@ -8,7 +8,6 @@ import { PASTEL_PALETTE } from '@/shared/constants/PastelPalette';
 import PinModal from '@/shared/components/PinModal/PinModal';
 import ConfirmModal from '@/shared/components/ConfirmModal/ConfirmModal';
 import { transactionService } from '@/shared/api/services/transactionService';
-import { ChangePinFlow } from '@/features/settings/components/ChangePinFlow';
 import { styles } from './TransferConfirmScreen.styles';
 
 export default function TransferConfirmScreen() {
@@ -20,22 +19,10 @@ export default function TransferConfirmScreen() {
   const accountNumber = (params.accountNumber as string) || '';
   const receiverName = (params.receiverName as string) || '';
   const note = (params.note as string) || '';
-  
-  const categoryId = params.categoryId ? parseInt(params.categoryId as string, 10) : undefined;
-  const categoryLabel = (params.categoryLabel as string) || '';
-  const categoryIconStr = params.categoryIcon as string;
-  const categoryIcon = (!categoryIconStr || categoryIconStr === 'undefined') ? 'pricetag' : categoryIconStr;
-  
-  const categoryColorStr = params.categoryColor as string;
-  const categoryColor = (!categoryColorStr || categoryColorStr === 'undefined') ? '' : categoryColorStr;
-  
-  const categoryBgColorStr = params.categoryBgColor as string;
-  const categoryBgColor = (!categoryBgColorStr || categoryBgColorStr === 'undefined') ? '' : categoryBgColorStr;
 
   const formattedAmount = amount.toLocaleString('vi-VN');
 
   const [isPinModalVisible, setIsPinModalVisible] = useState(false);
-  const [isForgotPinFlowVisible, setIsForgotPinFlowVisible] = useState(false);
   const [pinError, setPinError] = useState("");
   const [loading, setLoading] = useState(false);
   const [errorModalVisible, setErrorModalVisible] = useState(false);
@@ -51,7 +38,6 @@ export default function TransferConfirmScreen() {
         amount: amount,
         pinCode: pin,
         note: note,
-        categoryId: categoryId
       };
 
       const res = await transactionService.internalTransfer(requestData);
@@ -68,10 +54,6 @@ export default function TransferConfirmScreen() {
             receiverName: res.receiverName || receiverName,
             note: note,
             createdAt: res.createdAt,
-            categoryLabel: categoryLabel,
-            categoryIcon: categoryIcon,
-            categoryColor: categoryColor,
-            categoryBgColor: categoryBgColor
           }
         });
       }, 300);
@@ -147,18 +129,6 @@ export default function TransferConfirmScreen() {
             </View>
           )}
 
-          {!!categoryId && (
-            <View style={styles.detailRow}>
-              <Text style={styles.detailLabel}>Danh mục</Text>
-              <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, justifyContent: 'flex-end' }}>
-                <View style={{ width: 28, height: 28, borderRadius: 14, backgroundColor: categoryBgColor || PASTEL_PALETTE.lavenderSoft, justifyContent: 'center', alignItems: 'center', marginRight: 8 }}>
-                  <Ionicons name={categoryIcon as any} size={16} color={categoryColor || PASTEL_PALETTE.accentDeep} />
-                </View>
-                <Text style={[styles.detailValue, { flex: 0, textAlign: 'left' }]} numberOfLines={1}>{categoryLabel}</Text>
-              </View>
-            </View>
-          )}
-
           <View style={styles.detailRow}>
             <Text style={styles.detailLabel}>Phí giao dịch</Text>
             <Text style={[styles.detailValue, { color: PASTEL_PALETTE.success }]}>Miễn phí</Text>
@@ -190,11 +160,6 @@ export default function TransferConfirmScreen() {
           setPinError("");
         }}
         onConfirm={handleConfirmPin}
-        onForgotPin={() => {
-          setIsPinModalVisible(false);
-          setPinError("");
-          setIsForgotPinFlowVisible(true);
-        }}
         errorMessage={pinError}
         title="Xác thực giao dịch"
         subtitle="Vui lòng nhập mã PIN bảo mật để hoàn tất chuyển tiền."
@@ -212,12 +177,6 @@ export default function TransferConfirmScreen() {
         confirmButtonColor={PASTEL_PALETTE.accentDeep}
         onConfirm={() => setErrorModalVisible(false)}
         onCancel={() => setErrorModalVisible(false)}
-      />
-
-      <ChangePinFlow 
-        visible={isForgotPinFlowVisible} 
-        onClose={() => setIsForgotPinFlowVisible(false)} 
-        startMode="forgot" 
       />
     </View>
   );

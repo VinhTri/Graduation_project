@@ -21,7 +21,6 @@ export interface TransferRequest {
   amount: number;
   pinCode: string;
   note?: string;
-  categoryId?: number;
 }
 
 export interface TransferResponse {
@@ -37,33 +36,12 @@ export interface WithdrawRequest {
   bankAccountId: number;
   pinCode: string;
   note?: string;
-  categoryId?: number;
 }
 
 export interface WithdrawResponse {
   transactionCode: string;
   status: 'PENDING' | 'SUCCESS' | 'FAILED' | 'CANCELLED';
   amount: number;
-  createdAt: string;
-}
-
-export interface ManualTransactionRequest {
-  amount: number;
-  type: 'EXPENSE' | 'INCOME';
-  categoryId: number;
-  note?: string;
-  walletId?: number;
-  createdAt?: string;
-}
-
-export interface ManualTransactionResponse {
-  transactionCode: string;
-  type: 'EXPENSE' | 'INCOME';
-  status: string;
-  amount: number;
-  categoryId: number;
-  note?: string;
-  cashBalance: number;
   createdAt: string;
 }
 
@@ -98,26 +76,7 @@ export const transactionService = {
     return response.data;
   },
 
-  createManualTransaction: async (
-    data: ManualTransactionRequest
-  ): Promise<ManualTransactionResponse> => {
-    const response = await axiosClient.post(ENDPOINTS.TRANSACTION.MANUAL, data);
-    return response.data;
-  },
-
-  updateManualTransaction: async (
-    transactionCode: string,
-    data: ManualTransactionRequest
-  ): Promise<ManualTransactionResponse> => {
-    const response = await axiosClient.put(ENDPOINTS.TRANSACTION.UPDATE_MANUAL(transactionCode), data);
-    return response.data;
-  },
-
-  deleteManualTransaction: async (transactionCode: string): Promise<void> => {
-    await axiosClient.delete(ENDPOINTS.TRANSACTION.DELETE_MANUAL(transactionCode));
-  },
-
-  getTransactionHistory: async (wallet: 'main' | 'cash' = 'main'): Promise<TransactionHistoryItem[]> => {
+  getTransactionHistory: async (wallet: 'main' | string = 'main'): Promise<TransactionHistoryItem[]> => {
     const response = await axiosClient.get(ENDPOINTS.HISTORY.TRANSACTIONS, {
       params: { wallet },
     });

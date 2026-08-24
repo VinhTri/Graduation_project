@@ -1,19 +1,32 @@
 package com.project.app.wallet.controller;
 
 import com.project.app.auth.security.CustomUserDetails;
+import com.project.app.auth.service.AuthService;
 import com.project.app.common.dto.ApiResponse;
+import com.project.app.common.exception.AppException;
+import com.project.app.common.exception.ErrorCode;
+import com.project.app.wallet.dto.WalletResponse;
+import com.project.app.wallet.dto.WalletTransactionResponse;
+import com.project.app.wallet.dto.request.WalletSettingsRequest;
+import com.project.app.wallet.dto.request.WalletTopUpRequest;
+import com.project.app.wallet.dto.request.WalletWithdrawRequest;
 import com.project.app.wallet.entity.Wallet;
+import com.project.app.wallet.enums.WalletType;
+import com.project.app.wallet.repository.WalletRepository;
+import com.project.app.wallet.service.WalletLimitHelper;
 import com.project.app.wallet.service.WalletService;
+import com.project.app.wallet.service.WalletTransactionService;
+import jakarta.validation.Valid;
 import lombok.Builder;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/v1/wallets")
@@ -21,47 +34,147 @@ import java.math.BigDecimal;
 public class WalletController {
 
     private final WalletService walletService;
-    private final com.project.app.transaction.repository.TransactionRepository transactionRepository;
+    private final WalletTransactionService walletTransactionService;
+    private final WalletRepository walletRepository;
+    private final AuthService authService;
+    private final WalletLimitHelper walletLimitHelper;
 
-    @Data
-    @Builder
-    public static class WalletDto {
-        private Long id;
-        private String name;
-        private BigDecimal balance;
-        private String accountNumber;
-        @com.fasterxml.jackson.annotation.JsonProperty("isDefault")
-        private boolean isDefault;
-        
-        @com.fasterxml.jackson.annotation.JsonProperty("isLimitEnabled")
-        private boolean isLimitEnabled;
-        private BigDecimal transactionLimit;
-        private BigDecimal dailyLimit;
-        private BigDecimal dailyTransactedAmount;
-        private String walletType;
+    @GetMapping
+    public ResponseEntity<ApiResponse<List<WalletResponse>>> getMyWallets(
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+        Long userId = userDetails.getUser().getId();
+        List<WalletResponse> wallets = walletRepository.findByUserId(userId).stream()
+                .filter(w -> w.isDefault() && w.getWalletType() == WalletType.MAIN)
+                .map(w -> WalletResponse.from(w, dailyWithdrawnInLimitWindow(userId, w)))
+                .toList();
+        return ApiResponse.ok("Lấy danh sách ví thành công", wallets);
     }
 
-    // ====================== LẤY THÔNG TIN V�? ======================
+    @GetMapping("/transactions")
+    public ResponseEntity<ApiResponse<List<WalletTransactionResponse>>> getTransactions(
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+        return ApiResponse.ok("Lấy lịch sử giao dịch ví thành công", walletTransactionService.getHistory(userDetails.getUser().getId()));
+    }
+
+    @PostMapping("/top-up")
+    public ResponseEntity<ApiResponse<WalletTransactionResponse>> topUp(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @Valid @RequestBody WalletTopUpRequest request) {
+        WalletTransactionResponse response =
+                walletTransactionService.topUp(userDetails.getUser().getId(), request);
+        return ApiResponse.ok("Nạp tiền thành công!", response);
+    }
+
+    @PostMapping("/withdraw")
+    public ResponseEntity<ApiResponse<WalletTransactionResponse>> withdraw(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @Valid @RequestBody WalletWithdrawRequest request) {
+        WalletTransactionResponse response =
+                walletTransactionService.withdraw(userDetails.getUser().getId(), request);
+        return ApiResponse.ok("Rút tiền thành công!", response);
+    }
+
+    @PutMapping("/{id}/settings")
+    public ResponseEntity<ApiResponse<WalletResponse>> updateSettings(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @PathVariable Long id,
+            @Valid @RequestBody WalletSettingsRequest request) {
+        authService.verifyCurrentPin(userDetails.getUser().getId(), request.getCurrentPinCode());
+
+        Wallet wallet = walletRepository.findByIdAndUserId(id, userDetails.getUser().getId())
+                .orElseThrow(() -> new AppException(ErrorCode.WALLET_NOT_FOUND));
+
+        boolean enabled = Boolean.TRUE.equals(request.getEnabled());
+        boolean wasDisabled = !wallet.isLimitEnabled();
+
+        BigDecimal transactionLimit = normalizeAmount(request.getTransactionLimit());
+        BigDecimal dailyLimit = normalizeAmount(request.getDailyLimit());
+
+        if (enabled) {
+            if (transactionLimit == null && dailyLimit == null) {
+                throw new AppException(ErrorCode.WALLET_LIMIT_REQUIRED);
+            }
+            if (transactionLimit != null && dailyLimit != null
+                    && transactionLimit.compareTo(dailyLimit) > 0) {
+                throw new AppException(ErrorCode.WALLET_LIMIT_INVALID);
+            }
+            if (wasDisabled) {
+                wallet.setLimitActivatedAt(LocalDateTime.now());
+            }
+            wallet.setLimitEnabled(true);
+            wallet.setTransactionLimit(transactionLimit);
+            wallet.setDailyLimit(dailyLimit);
+        } else {
+            wallet.setLimitEnabled(false);
+            wallet.setTransactionLimit(null);
+            wallet.setDailyLimit(null);
+            wallet.setLimitActivatedAt(null);
+        }
+
+        Wallet saved = walletRepository.save(wallet);
+        return ApiResponse.ok(
+                "Cập nhật thiết lập ví thành công!",
+                WalletResponse.from(saved, dailyWithdrawnInLimitWindow(userDetails.getUser().getId(), saved))
+        );
+    }
+
     @GetMapping("/me")
-    public ResponseEntity<ApiResponse<WalletDto>> getMyDefaultWallet(@AuthenticationPrincipal CustomUserDetails userDetails) {
+    public ResponseEntity<ApiResponse<WalletDto>> getMyDefaultWallet(
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
         Wallet wallet = walletService.getDefaultWallet(userDetails.getUser().getId());
-        
-        // Tính tổng giao dịch trong ngày
-        java.time.LocalDateTime startOfDay = java.time.LocalDate.now().atStartOfDay();
-        java.util.List<com.project.app.transaction.enums.TransactionType> types = java.util.Arrays.asList(
-            com.project.app.transaction.enums.TransactionType.WITHDRAW,
-            com.project.app.transaction.enums.TransactionType.TRANSFER,
-            com.project.app.transaction.enums.TransactionType.PAYMENT
-        );
-        
-        BigDecimal dailyTransactedAmount = transactionRepository.sumDailyTransactedAmount(
-            wallet.getId(), 
-            types, 
-            com.project.app.transaction.enums.TransactionStatus.SUCCESS, 
-            startOfDay
-        );
-        
-        WalletDto dto = WalletDto.builder()
+        WalletDto dto = toLegacyDto(wallet, dailyWithdrawnInLimitWindow(userDetails.getUser().getId(), wallet));
+        return ApiResponse.ok("Lấy thông tin ví thành công", dto);
+    }
+
+    @PostMapping("/setup-account")
+    public ResponseEntity<ApiResponse<WalletDto>> setupAccount(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @RequestBody(required = false) com.project.app.wallet.dto.request.SetupAccountRequest request) {
+        Wallet wallet = walletService.setupAccount(userDetails.getUser(), request);
+        WalletDto dto = toLegacyDto(wallet, dailyWithdrawnInLimitWindow(userDetails.getUser().getId(), wallet));
+        return ApiResponse.ok("Số tài khoản ví đã sẵn sàng", dto);
+    }
+
+    @GetMapping("/banks")
+    public ResponseEntity<ApiResponse<List<WalletDto>>> getBankWallets(
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+        List<WalletDto> dtoList = walletService.getBankWallets(userDetails.getUser().getId()).stream()
+                .map(w -> toLegacyDto(w, BigDecimal.ZERO))
+                .toList();
+        return ApiResponse.ok("Lấy danh sách ví ngân hàng thành công", dtoList);
+    }
+
+    @PostMapping("/manual-bank")
+    public ResponseEntity<ApiResponse<WalletDto>> createManualBankWallet(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @Valid @RequestBody CreateManualBankRequest request) {
+        Wallet wallet = walletService.createManualBankWallet(
+                userDetails.getUser().getId(), request.getBankName(), request.getAccountNumber());
+        WalletDto dto = toLegacyDto(wallet, BigDecimal.ZERO);
+        return ApiResponse.ok("Thêm sổ tay tài khoản ngân hàng thành công", dto);
+    }
+
+    @DeleteMapping("/manual-bank/{id}")
+    public ResponseEntity<ApiResponse<Void>> deleteManualBankWallet(
+            @PathVariable Long id,
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+        walletService.deleteManualBankWallet(id, userDetails.getUser().getId());
+        return ApiResponse.ok("Xóa sổ tay tài khoản ngân hàng thành công");
+    }
+
+    private BigDecimal dailyWithdrawnInLimitWindow(Long userId, Wallet wallet) {
+        return walletLimitHelper.dailyUsedAmount(userId, wallet);
+    }
+
+    private BigDecimal normalizeAmount(BigDecimal amount) {
+        if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0) {
+            return null;
+        }
+        return amount;
+    }
+
+    private WalletDto toLegacyDto(Wallet wallet, BigDecimal dailyTransactedAmount) {
+        return WalletDto.builder()
                 .id(wallet.getId())
                 .name(wallet.getName())
                 .balance(wallet.getBalance())
@@ -73,143 +186,29 @@ public class WalletController {
                 .dailyTransactedAmount(dailyTransactedAmount)
                 .walletType(wallet.getWalletType() != null ? wallet.getWalletType().name() : "MAIN")
                 .build();
-
-        return ResponseEntity.ok(ApiResponse.<WalletDto>builder()
-                .success(true)
-                .message("Lấy thông tin ví thành công")
-                .data(dto)
-                .build());
     }
 
-    // ====================== LẤY VÍ TIỀN MẶT (SỔ TAY) ======================
-    @GetMapping("/cash")
-    public ResponseEntity<ApiResponse<WalletDto>> getMyCashWallet(@AuthenticationPrincipal CustomUserDetails userDetails) {
-        Wallet wallet = walletService.getOrCreateCashWallet(userDetails.getUser().getId());
-
-        WalletDto dto = WalletDto.builder()
-                .id(wallet.getId())
-                .name(wallet.getName())
-                .balance(wallet.getBalance())
-                .accountNumber(null)
-                .isDefault(wallet.isDefault())
-                .isLimitEnabled(false)
-                .walletType(wallet.getWalletType() != null ? wallet.getWalletType().name() : "CASH")
-                .build();
-
-        return ResponseEntity.ok(ApiResponse.<WalletDto>builder()
-                .success(true)
-                .message("Lấy thông tin ví tiền mặt thành công")
-                .data(dto)
-                .build());
+    @Data
+    @Builder
+    public static class WalletDto {
+        private Long id;
+        private String name;
+        private BigDecimal balance;
+        private String accountNumber;
+        @com.fasterxml.jackson.annotation.JsonProperty("isDefault")
+        private boolean isDefault;
+        @com.fasterxml.jackson.annotation.JsonProperty("isLimitEnabled")
+        private boolean isLimitEnabled;
+        private BigDecimal transactionLimit;
+        private BigDecimal dailyLimit;
+        private BigDecimal dailyTransactedAmount;
+        private String walletType;
     }
 
-    // ====================== CẬP NHẬT THIẾT LẬP VÍ ======================
-    @org.springframework.web.bind.annotation.PutMapping("/{id}/settings")
-    public ResponseEntity<ApiResponse<Void>> updateWalletSettings(
-            @org.springframework.web.bind.annotation.PathVariable Long id,
-            @org.springframework.web.bind.annotation.RequestBody com.project.app.wallet.dto.WalletSettingsDto request,
-            @AuthenticationPrincipal CustomUserDetails userDetails) {
-        
-        walletService.updateWalletSettings(id, userDetails.getUser().getId(), request);
-        
-        return ResponseEntity.ok(ApiResponse.<Void>builder()
-                .success(true)
-                .message("Cập nhật thiết lập ví thành công")
-                .build());
-    }
-
-    // ====================== THIẾT LẬP S�? TÀI KHOẢN ======================
-    @org.springframework.web.bind.annotation.PostMapping("/setup-account")
-    public ResponseEntity<ApiResponse<WalletDto>> setupAccount(
-            @AuthenticationPrincipal CustomUserDetails userDetails,
-            @jakarta.validation.Valid @org.springframework.web.bind.annotation.RequestBody com.project.app.wallet.dto.request.SetupAccountRequest request) {
-        
-        Wallet wallet = walletService.setupAccount(userDetails.getUser(), request);
-        
-        WalletDto dto = WalletDto.builder()
-                .id(wallet.getId())
-                .name(wallet.getName())
-                .balance(wallet.getBalance())
-                .accountNumber(wallet.getAccountNumber())
-                .isDefault(wallet.isDefault())
-                .isLimitEnabled(wallet.isLimitEnabled())
-                .transactionLimit(wallet.getTransactionLimit())
-                .dailyLimit(wallet.getDailyLimit())
-                // Không tính giao dịch ngày ở endpoint này để trả v? nhanh
-                .build();
-
-        return ResponseEntity.ok(ApiResponse.<WalletDto>builder()
-                .success(true)
-                .message("Thiết lập số tài khoản ví thành công")
-                .data(dto)
-                .build());
-    }
-
-    // ====================== LẤY DANH SÁCH VÍ NGÂN HÀNG ======================
-    @GetMapping("/banks")
-    public ResponseEntity<ApiResponse<java.util.List<WalletDto>>> getBankWallets(@AuthenticationPrincipal CustomUserDetails userDetails) {
-        java.util.List<Wallet> wallets = walletService.getBankWallets(userDetails.getUser().getId());
-        
-        java.util.List<WalletDto> dtoList = wallets.stream().map(wallet -> WalletDto.builder()
-                .id(wallet.getId())
-                .name(wallet.getName())
-                .balance(wallet.getBalance())
-                .accountNumber(wallet.getAccountNumber())
-                .isDefault(wallet.isDefault())
-                .isLimitEnabled(wallet.isLimitEnabled())
-                .transactionLimit(wallet.getTransactionLimit())
-                .dailyLimit(wallet.getDailyLimit())
-                .walletType(wallet.getWalletType() != null ? wallet.getWalletType().name() : "MANUAL")
-                .build()).toList();
-
-        return ResponseEntity.ok(ApiResponse.<java.util.List<WalletDto>>builder()
-                .success(true)
-                .message("Lấy danh sách ví ngân hàng thành công")
-                .data(dtoList)
-                .build());
-    }
-
-    // ====================== TẠO VÍ NGÂN HÀNG THỦ CÔNG ======================
     @Data
     public static class CreateManualBankRequest {
         @jakarta.validation.constraints.NotBlank(message = "Tên ngân hàng không được để trống")
         private String bankName;
         private String accountNumber;
-    }
-
-    @org.springframework.web.bind.annotation.PostMapping("/manual-bank")
-    public ResponseEntity<ApiResponse<WalletDto>> createManualBankWallet(
-            @AuthenticationPrincipal CustomUserDetails userDetails,
-            @jakarta.validation.Valid @org.springframework.web.bind.annotation.RequestBody CreateManualBankRequest request) {
-        
-        Wallet wallet = walletService.createManualBankWallet(userDetails.getUser().getId(), request.getBankName(), request.getAccountNumber());
-        
-        WalletDto dto = WalletDto.builder()
-                .id(wallet.getId())
-                .name(wallet.getName())
-                .balance(wallet.getBalance())
-                .accountNumber(wallet.getAccountNumber())
-                .isDefault(wallet.isDefault())
-                .isLimitEnabled(wallet.isLimitEnabled())
-                .walletType(wallet.getWalletType().name())
-                .build();
-
-        return ResponseEntity.ok(ApiResponse.<WalletDto>builder()
-                .success(true)
-                .message("Thêm sổ tay tài khoản ngân hàng thành công")
-                .data(dto)
-                .build());
-    }
-    @org.springframework.web.bind.annotation.DeleteMapping("/manual-bank/{id}")
-    public ResponseEntity<ApiResponse<Void>> deleteManualBankWallet(
-            @org.springframework.web.bind.annotation.PathVariable Long id,
-            @AuthenticationPrincipal CustomUserDetails userDetails) {
-        
-        walletService.deleteManualBankWallet(id, userDetails.getUser().getId());
-
-        return ResponseEntity.ok(ApiResponse.<Void>builder()
-                .success(true)
-                .message("Xóa sổ tay tài khoản ngân hàng thành công")
-                .build());
     }
 }

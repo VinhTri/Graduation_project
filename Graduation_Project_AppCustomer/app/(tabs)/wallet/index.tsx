@@ -1,5 +1,5 @@
-import { WalletScreen } from '../../../features/wallet';
+import WalletScreen from '@/features/wallet/screens/WalletScreen'
 
-export default function WalletRoute() {
-  return <WalletScreen />;
+export default function WalletTab() {
+  return <WalletScreen />
 }

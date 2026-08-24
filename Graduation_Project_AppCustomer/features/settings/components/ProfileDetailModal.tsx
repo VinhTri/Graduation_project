@@ -1,199 +1,168 @@
-import React, { useEffect, useState } from 'react';
 import {
-  Modal,
-  View,
-  Text,
-  TouchableOpacity,
   ActivityIndicator,
+  Animated,
+  Modal,
+  Pressable,
   ScrollView,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
   Alert,
-  ActionSheetIOS,
+  Image,
+  Keyboard,
+  KeyboardAvoidingView,
   Platform,
-} from 'react-native';
-import { Feather, MaterialIcons } from '@expo/vector-icons';
-import { Image } from 'expo-image';
-import * as ImagePicker from 'expo-image-picker';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { PASTEL_PALETTE } from '../../../shared/constants/PastelPalette';
-import { userService, UserProfile } from '../../../shared/api/services/userService';
-import { resolveMediaUrl } from '../../../shared/utils/resolveMediaUrl';
-import { styles } from '../SettingsScreen.styles';
+} from 'react-native'
+import React, { useState } from 'react'
+import { Feather } from '@expo/vector-icons'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import { useBottomSheetPresence } from '@/shared/components/PinModal/useBottomSheetPresence'
+import { PASTEL_PALETTE } from '@/shared/constants/PastelPalette'
+import { styles } from '../SettingsScreen.styles'
+import * as ImagePicker from 'expo-image-picker'
+import { userService } from '@/shared/api/services/userService'
+import { resolveMediaUrl } from '@/shared/utils/resolveMediaUrl'
+import AsyncStorage from '@react-native-async-storage/async-storage'
 
 type Props = {
-  visible: boolean;
-  onClose: () => void;
-  fallbackName?: string;
-  fallbackEmail?: string;
-  fallbackAccountNumber?: string;
-  fallbackAvatarUrl?: string;
-  onAvatarChanged?: (avatarUrl: string) => void;
-};
+  visible: boolean
+  onClose: () => void
+  loading?: boolean
+  userName: string
+  userEmail: string
+  accountNumber?: string
+  createdAtLabel?: string
+  verified?: boolean
+  avatarUrl?: string | null
+  onProfileUpdate?: () => void
+}
 
-const formatCreatedAt = (iso?: string) => {
-  if (!iso) return '—';
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return '—';
-  return d.toLocaleDateString('vi-VN', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-  });
-};
-
-const getInitials = (name: string) => {
-  if (!name) return 'U';
-  const parts = name.trim().split(/\s+/);
+function getInitials(name: string) {
+  if (!name) return 'U'
+  const parts = name.trim().split(/\s+/)
   if (parts.length >= 2) {
-    return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase();
+    return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase()
   }
-  return name.substring(0, 2).toUpperCase();
-};
+  return name.substring(0, 2).toUpperCase()
+}
 
-export const ProfileDetailModal = ({
+export function ProfileDetailModal({
   visible,
   onClose,
-  fallbackName = '',
-  fallbackEmail = '',
-  fallbackAccountNumber = '',
-  fallbackAvatarUrl = '',
-  onAvatarChanged,
-}: Props) => {
-  const insets = useSafeAreaInsets();
-  const [loading, setLoading] = useState(false);
-  const [uploading, setUploading] = useState(false);
-  const [profile, setProfile] = useState<UserProfile | null>(null);
+  loading = false,
+  userName,
+  userEmail,
+  accountNumber = 'Chưa thiết lập',
+  createdAtLabel = '—',
+  verified = true,
+  avatarUrl,
+  onProfileUpdate,
+}: Props) {
+  const insets = useSafeAreaInsets()
+  const displayName = userName || 'Người dùng'
+  const displayEmail = userEmail || '—'
+  const { presented, backdropOpacity, sheetTranslateY } = useBottomSheetPresence(visible)
 
-  useEffect(() => {
-    if (!visible) return;
+  const [isEditingUsername, setIsEditingUsername] = useState(false)
+  const [editingName, setEditingName] = useState(displayName)
+  const [isSavingAvatar, setIsSavingAvatar] = useState(false)
+  const [isSavingUsername, setIsSavingUsername] = useState(false)
 
-    let cancelled = false;
-    const load = async () => {
-      setLoading(true);
-      try {
-        const data = await userService.getMyProfile();
-        if (!cancelled) setProfile(data);
-      } catch (error) {
-        console.error('Error loading profile', error);
-        if (!cancelled) {
-          setProfile({
-            id: 0,
-            username: fallbackName,
-            email: fallbackEmail,
-            accountNumber: fallbackAccountNumber || null,
-            avatarUrl: fallbackAvatarUrl || null,
-          });
-        }
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    };
+  const handleClose = () => {
+    Keyboard.dismiss()
+    setIsEditingUsername(false)
+    onClose()
+  }
 
-    load();
-    return () => {
-      cancelled = true;
-    };
-  }, [visible, fallbackName, fallbackEmail, fallbackAccountNumber, fallbackAvatarUrl]);
+  // Reset local state when modal opens
+  React.useEffect(() => {
+    if (visible) {
+      setIsEditingUsername(false)
+      setEditingName(displayName)
+    }
+  }, [visible, displayName])
 
-  const username = profile?.username || fallbackName || 'Người dùng';
-  const email = profile?.email || fallbackEmail || '—';
-  const accountNumber =
-    profile?.accountNumber || fallbackAccountNumber || 'Chưa thiết lập';
-  const createdAt = formatCreatedAt(profile?.createdAt);
-  const isActive = profile?.isActive !== false;
-  const avatarUri = resolveMediaUrl(profile?.avatarUrl || fallbackAvatarUrl);
-
-  const pickAndUpload = async (source: 'camera' | 'library') => {
+  const handlePickAvatar = async () => {
     try {
-      if (source === 'camera') {
-        const permission = await ImagePicker.requestCameraPermissionsAsync();
-        if (!permission.granted) {
-          Alert.alert('Cần quyền', 'Vui lòng cho phép truy cập máy ảnh để chụp ảnh đại diện.');
-          return;
-        }
-      } else {
-        const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
-        if (!permission.granted) {
-          Alert.alert('Cần quyền', 'Vui lòng cho phép truy cập thư viện ảnh.');
-          return;
-        }
-      }
-
-      const result =
-        source === 'camera'
-          ? await ImagePicker.launchCameraAsync({
-              mediaTypes: ['images'],
-              allowsEditing: true,
-              aspect: [1, 1],
-              quality: 0.8,
-            })
-          : await ImagePicker.launchImageLibraryAsync({
-              mediaTypes: ['images'],
-              allowsEditing: true,
-              aspect: [1, 1],
-              quality: 0.8,
-            });
-
-      if (result.canceled || !result.assets?.[0]?.uri) return;
-
-      setUploading(true);
-      const updated = await userService.uploadAvatar(result.assets[0].uri);
-      setProfile(updated);
-      if (updated.avatarUrl) {
-        await AsyncStorage.setItem('userAvatarUrl', updated.avatarUrl);
-        onAvatarChanged?.(updated.avatarUrl);
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.8,
+      })
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        const uri = result.assets[0].uri
+        setIsSavingAvatar(true)
+        await userService.uploadAvatar(uri)
+        onProfileUpdate?.()
       }
     } catch (error: any) {
-      console.error('Upload avatar failed', error);
-      Alert.alert(
-        'Không thể đổi ảnh',
-        error?.message || 'Vui lòng thử lại sau.'
-      );
+      Alert.alert('Lỗi', error?.message || 'Không thể cập nhật ảnh đại diện')
     } finally {
-      setUploading(false);
+      setIsSavingAvatar(false)
     }
-  };
+  }
 
-  const openAvatarPicker = () => {
-    if (uploading) return;
-
-    if (Platform.OS === 'ios') {
-      ActionSheetIOS.showActionSheetWithOptions(
-        {
-          options: ['Hủy', 'Chụp ảnh', 'Chọn từ thư viện'],
-          cancelButtonIndex: 0,
-        },
-        (index) => {
-          if (index === 1) pickAndUpload('camera');
-          if (index === 2) pickAndUpload('library');
-        }
-      );
-      return;
+  const handleSaveUsername = async () => {
+    const newName = editingName.trim()
+    if (!newName) {
+      Alert.alert('Lỗi', 'Tên hiển thị không được để trống')
+      return
+    }
+    if (newName === displayName) {
+      setIsEditingUsername(false)
+      return
     }
 
-    Alert.alert('Đổi ảnh đại diện', 'Chọn nguồn ảnh', [
-      { text: 'Hủy', style: 'cancel' },
-      { text: 'Chụp ảnh', onPress: () => pickAndUpload('camera') },
-      { text: 'Thư viện', onPress: () => pickAndUpload('library') },
-    ]);
-  };
+    try {
+      setIsSavingUsername(true)
+      const updatedProfile = await userService.updateUsername(newName)
+      if (updatedProfile.token) {
+        await AsyncStorage.setItem('token', updatedProfile.token)
+      }
+      onProfileUpdate?.()
+      setIsEditingUsername(false)
+      Keyboard.dismiss()
+    } catch (error: any) {
+      Alert.alert('Lỗi', error?.message || 'Không thể cập nhật tên hiển thị (Có thể tên đã tồn tại)')
+    } finally {
+      setIsSavingUsername(false)
+    }
+  }
 
   return (
     <Modal
-      visible={visible}
-      animationType="slide"
+      visible={presented}
+      animationType="none"
       transparent
-      onRequestClose={onClose}
+      statusBarTranslucent
+      onRequestClose={handleClose}
     >
-      <View style={styles.profileModalOverlay}>
-        <TouchableOpacity style={styles.profileModalBackdrop} activeOpacity={1} onPress={onClose} />
+      <KeyboardAvoidingView
+        style={styles.profileModalKeyboardView}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={0}
+      >
+        <View style={styles.profileModalOverlay}>
+          <Animated.View style={[styles.profileModalBackdrop, { opacity: backdropOpacity }]}>
+            <Pressable style={{ flex: 1 }} onPress={handleClose} />
+          </Animated.View>
 
-        <View style={[styles.profileModalSheet, { paddingBottom: Math.max(insets.bottom, 16) + 8 }]}>
+        <Animated.View
+          style={[
+            styles.profileModalSheet,
+            {
+              paddingBottom: Math.max(insets.bottom, 16) + 8,
+              transform: [{ translateY: sheetTranslateY }],
+            },
+          ]}
+        >
           <View style={styles.profileModalHandle} />
 
           <View style={styles.profileModalHeader}>
             <Text style={styles.profileModalTitle}>Thông tin tài khoản</Text>
-            <TouchableOpacity style={styles.profileModalClose} onPress={onClose} activeOpacity={0.75}>
+            <TouchableOpacity style={styles.profileModalClose} onPress={handleClose} activeOpacity={0.75}>
               <Feather name="x" size={18} color={PASTEL_PALETTE.title} />
             </TouchableOpacity>
           </View>
@@ -203,80 +172,181 @@ export const ProfileDetailModal = ({
               <ActivityIndicator color={PASTEL_PALETTE.accentDeep} />
             </View>
           ) : (
-            <ScrollView showsVerticalScrollIndicator={false} bounces={false}>
+            <ScrollView
+              showsVerticalScrollIndicator={false}
+              bounces={false}
+              keyboardShouldPersistTaps="handled"
+              keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
+              automaticallyAdjustKeyboardInsets={Platform.OS === 'ios'}
+              contentContainerStyle={styles.profileModalScrollContent}
+            >
               <View style={styles.profileModalHero}>
-                <TouchableOpacity
-                  style={styles.profileModalAvatarWrap}
-                  onPress={openAvatarPicker}
-                  activeOpacity={0.85}
-                  disabled={uploading}
-                >
-                  {avatarUri ? (
-                    <Image
-                      source={{ uri: avatarUri }}
-                      style={styles.profileModalAvatarImage}
-                      contentFit="cover"
-                    />
-                  ) : (
-                    <View style={styles.profileModalAvatar}>
-                      <Text style={styles.profileModalAvatarText}>{getInitials(username)}</Text>
-                    </View>
-                  )}
-                  <View style={styles.profileModalAvatarBadge}>
-                    {uploading ? (
-                      <ActivityIndicator size="small" color="#fff" />
+                <View style={styles.profileSummaryRow}>
+                  <View style={styles.profileModalAvatar}>
+                    {avatarUrl ? (
+                      <Image
+                        source={{ uri: resolveMediaUrl(avatarUrl) }}
+                        style={styles.profileAvatarImage}
+                        resizeMode="cover"
+                      />
                     ) : (
-                      <Feather name="camera" size={14} color="#fff" />
+                      <Text style={styles.profileModalAvatarText}>{getInitials(displayName)}</Text>
                     )}
                   </View>
+                  <View style={styles.profileSummaryContent}>
+                    <Text style={styles.profileModalName} numberOfLines={2}>{displayName}</Text>
+                    <Text style={styles.profileSummaryEmail} numberOfLines={1}>{displayEmail}</Text>
+                    <View style={styles.profileVerifiedBadge}>
+                      <Feather name="shield" size={11} color={PASTEL_PALETTE.accentDeep} />
+                      <Text style={styles.badgeText}>
+                        {verified ? 'Đã xác thực' : 'Chưa kích hoạt'}
+                      </Text>
+                    </View>
+                  </View>
+                </View>
+
+                <TouchableOpacity
+                  style={styles.profileEditButton}
+                  activeOpacity={0.82}
+                  onPress={() => {
+                    setEditingName(displayName)
+                    setIsEditingUsername(true)
+                  }}
+                >
+                  <Feather name="edit-2" size={15} color={PASTEL_PALETTE.accentDeep} />
+                  <Text style={styles.profileEditButtonText}>Chỉnh sửa hồ sơ</Text>
                 </TouchableOpacity>
-
-                <Text style={styles.profileModalChangeHint}>Chạm để đổi ảnh đại diện</Text>
-
-                <View style={styles.profileModalNameRow}>
-                  <Text style={styles.profileModalName}>{username}</Text>
-                  <MaterialIcons name="verified" size={18} color={PASTEL_PALETTE.accentDeep} />
-                </View>
-                <View style={[styles.badge, { alignSelf: 'center', marginTop: 10 }]}>
-                  <Feather name="shield" size={11} color={PASTEL_PALETTE.accentDeep} />
-                  <Text style={styles.badgeText}>
-                    {isActive ? 'Đã xác thực' : 'Chưa kích hoạt'}
-                  </Text>
-                </View>
               </View>
 
               <View style={styles.profileModalCard}>
-                <InfoRow icon="user" label="Tên đăng nhập" value={username} />
-                <InfoRow icon="mail" label="Email" value={email} />
+                <InfoRow icon="mail" label="Email" value={displayEmail} />
                 <InfoRow icon="credit-card" label="Số tài khoản" value={accountNumber} />
-                <InfoRow icon="calendar" label="Ngày tạo tài khoản" value={createdAt} isLast />
+                <InfoRow icon="calendar" label="Ngày tạo tài khoản" value={createdAtLabel} isLast />
               </View>
             </ScrollView>
           )}
-        </View>
-      </View>
-    </Modal>
-  );
-};
+          </Animated.View>
 
-const InfoRow = ({
+          {isEditingUsername ? (
+            <View style={styles.profileEditOverlay}>
+              <Pressable
+                style={styles.profileEditBackdrop}
+                onPress={() => {
+                  Keyboard.dismiss()
+                  setIsEditingUsername(false)
+                }}
+              />
+              <View style={styles.profileEditCard}>
+                <View style={styles.profileEditHeader}>
+                  <View>
+                    <Text style={styles.profileEditTitle}>Chỉnh sửa hồ sơ</Text>
+                    <Text style={styles.profileEditSubtitle}>Cập nhật ảnh và tên hiển thị</Text>
+                  </View>
+                  <TouchableOpacity
+                    style={styles.profileEditClose}
+                    onPress={() => {
+                      Keyboard.dismiss()
+                      setIsEditingUsername(false)
+                    }}
+                  >
+                    <Feather name="x" size={18} color={PASTEL_PALETTE.title} />
+                  </TouchableOpacity>
+                </View>
+
+                <TouchableOpacity
+                  style={styles.profileEditAvatar}
+                  activeOpacity={0.8}
+                  onPress={handlePickAvatar}
+                  disabled={isSavingAvatar}
+                >
+                  {isSavingAvatar ? (
+                    <ActivityIndicator color={PASTEL_PALETTE.accentDeep} />
+                  ) : avatarUrl ? (
+                    <Image
+                      source={{ uri: resolveMediaUrl(avatarUrl) }}
+                      style={styles.profileAvatarImage}
+                      resizeMode="cover"
+                    />
+                  ) : (
+                    <Text style={styles.profileModalAvatarText}>{getInitials(displayName)}</Text>
+                  )}
+                  <View style={styles.profileEditCameraBadge}>
+                    <Feather name="camera" size={15} color={PASTEL_PALETTE.white} />
+                  </View>
+                </TouchableOpacity>
+                <Text style={styles.profileEditAvatarHint}>Chạm để chọn ảnh mới</Text>
+
+                <Text style={styles.profileEditFieldLabel}>Tên hiển thị</Text>
+                <View style={styles.profileNameEditor}>
+                  <Feather name="user" size={17} color={PASTEL_PALETTE.lavender} />
+                  <TextInput
+                    style={styles.profileNameInput}
+                    value={editingName}
+                    onChangeText={setEditingName}
+                    autoFocus
+                    maxLength={50}
+                    selectTextOnFocus
+                    returnKeyType="done"
+                    onSubmitEditing={handleSaveUsername}
+                  />
+                  <Text style={styles.profileNameCounter}>{editingName.length}/50</Text>
+                </View>
+
+                <View style={styles.profileEditActions}>
+                  <TouchableOpacity
+                    style={styles.profileEditCancelButton}
+                    onPress={() => {
+                      Keyboard.dismiss()
+                      setIsEditingUsername(false)
+                    }}
+                    disabled={isSavingUsername}
+                  >
+                    <Text style={styles.profileEditCancelText}>Hủy</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.profileEditSaveButton}
+                    onPress={handleSaveUsername}
+                    disabled={isSavingUsername}
+                  >
+                    {isSavingUsername ? (
+                      <ActivityIndicator size="small" color={PASTEL_PALETTE.white} />
+                    ) : (
+                      <>
+                        <Feather name="check" size={17} color={PASTEL_PALETTE.white} />
+                        <Text style={styles.profileEditSaveText}>Lưu thay đổi</Text>
+                      </>
+                    )}
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </View>
+          ) : null}
+        </View>
+      </KeyboardAvoidingView>
+    </Modal>
+  )
+}
+
+function InfoRow({
   icon,
   label,
   value,
   isLast,
 }: {
-  icon: React.ComponentProps<typeof Feather>['name'];
-  label: string;
-  value: string;
-  isLast?: boolean;
-}) => (
-  <View style={[styles.profileInfoRow, isLast && styles.profileInfoRowLast]}>
-    <View style={styles.profileInfoIcon}>
-      <Feather name={icon} size={16} color={PASTEL_PALETTE.accentDeep} />
+  icon: React.ComponentProps<typeof Feather>['name']
+  label: string
+  value: string
+  isLast?: boolean
+}) {
+  return (
+    <View style={[styles.profileInfoRow, isLast && styles.profileInfoRowLast]}>
+      <View style={styles.profileInfoIcon}>
+        <Feather name={icon} size={16} color={PASTEL_PALETTE.accentDeep} />
+      </View>
+      <View style={styles.profileInfoContent}>
+        <Text style={styles.profileInfoLabel}>{label}</Text>
+        <Text style={styles.profileInfoValue}>{value}</Text>
+      </View>
     </View>
-    <View style={styles.profileInfoContent}>
-      <Text style={styles.profileInfoLabel}>{label}</Text>
-      <Text style={styles.profileInfoValue}>{value}</Text>
-    </View>
-  </View>
-);
+  )
+}

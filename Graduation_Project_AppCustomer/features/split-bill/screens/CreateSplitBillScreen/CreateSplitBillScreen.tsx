@@ -15,6 +15,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { PASTEL_PALETTE } from '@/shared/constants/PastelPalette';
+import { CharacterCounter } from '@/shared/components/CharacterCounter/CharacterCounter';
 import { friendshipService, FriendshipResponse } from '@/shared/api/services/friendship.service';
 import { splitBillService } from '@/shared/api/services/splitBillService';
 import ConfirmModal from '@/shared/components/ConfirmModal/ConfirmModal';
@@ -275,6 +276,7 @@ export const CreateSplitBillScreen = () => {
               placeholderTextColor={PASTEL_PALETTE.textMuted}
               maxLength={100}
             />
+            <CharacterCounter value={note} maxLength={100} />
           </View>
 
         </View>

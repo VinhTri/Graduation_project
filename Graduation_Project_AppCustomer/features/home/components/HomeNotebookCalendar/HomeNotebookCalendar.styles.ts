@@ -1,160 +1,203 @@
-import { StyleSheet } from 'react-native';
+import { StyleSheet } from 'react-native'
+import { PASTEL_PALETTE } from '@/shared/constants/PastelPalette'
 
 export const styles = StyleSheet.create({
-  container: {
-    width: '100%',
+  wrap: {
+    marginTop: 16,
+    paddingHorizontal: 16,
   },
-  headerSection: {
+  shell: {
+    backgroundColor: PASTEL_PALETTE.white,
+    borderRadius: 20,
+    borderWidth: 1.5,
+    borderColor: PASTEL_PALETTE.subtitle,
+    padding: 14,
+  },
+  headerRow: {
     marginBottom: 10,
   },
   title: {
-    fontSize: 17,
+    fontSize: 16,
     fontWeight: '800',
-    color: '#4A0E4E',
-    letterSpacing: -0.2,
+    color: PASTEL_PALETTE.title,
   },
   subtitle: {
-    fontSize: 13,
-    color: '#6B7280',
     marginTop: 2,
-    fontWeight: '500',
+    fontSize: 12,
+    fontWeight: '600',
+    color: PASTEL_PALETTE.textMuted,
   },
-  calendarCard: {
-    borderRadius: 20,
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#EDE9FE',
-    overflow: 'hidden',
-    shadowColor: '#7C3AED',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.06,
-    shadowRadius: 12,
-    elevation: 3,
-  },
-  monthNavRow: {
+  navRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 14,
-    paddingVertical: 12,
+    marginBottom: 10,
   },
   navBtn: {
     width: 36,
     height: 36,
     borderRadius: 12,
+    backgroundColor: PASTEL_PALETTE.white,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
-    backgroundColor: '#FAFAFA',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  monthTitleWrap: {
+    borderColor: PASTEL_PALETTE.border,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  monthTitleText: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#6B21A8',
+  navMonth: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: PASTEL_PALETTE.subtitle,
   },
-  weekdaysRow: {
+  calendarCard: {
+    backgroundColor: PASTEL_PALETTE.white,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: PASTEL_PALETTE.border,
+    overflow: 'hidden',
+    paddingBottom: 6,
+  },
+  weekdayRow: {
     flexDirection: 'row',
-    backgroundColor: '#F8F6FF',
-    borderTopWidth: 1,
-    borderBottomWidth: 1,
-    borderColor: '#EDE9FE',
+    backgroundColor: PASTEL_PALETTE.lavenderSoft,
+    paddingVertical: 8,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: PASTEL_PALETTE.border,
   },
-  weekdayCol: {
+  weekday: {
     flex: 1,
+    textAlign: 'center',
+    fontSize: 12,
+    fontWeight: '800',
+    color: PASTEL_PALETTE.title,
+  },
+  weekdaySat: {
+    color: PASTEL_PALETTE.lavender,
+  },
+  weekdaySun: {
+    color: PASTEL_PALETTE.accentDeep,
+  },
+  loadingBox: {
+    paddingVertical: 48,
     alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 9,
-  },
-  weekdayText: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#4B5563',
-  },
-  weekendText: {
-    color: '#BE185D',
   },
   grid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
   },
+  cellEmpty: {
+    width: `${100 / 7}%`,
+    minHeight: 64,
+    borderRightWidth: StyleSheet.hairlineWidth,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderColor: PASTEL_PALETTE.border,
+  },
   cell: {
     width: `${100 / 7}%`,
-    minHeight: 66,
+    minHeight: 72,
+    paddingHorizontal: 4,
     paddingTop: 6,
-    paddingBottom: 4,
-    paddingHorizontal: 2,
-    alignItems: 'center',
-    justifyContent: 'flex-start',
-    borderRightWidth: 0.5,
-    borderBottomWidth: 0.5,
-    borderColor: '#F3F4F6',
-  },
-  cellNoRightBorder: {
-    borderRightWidth: 0,
-  },
-  cellEmpty: {
-    backgroundColor: 'transparent',
+    paddingBottom: 6,
+    borderRightWidth: StyleSheet.hairlineWidth,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderColor: PASTEL_PALETTE.border,
+    backgroundColor: PASTEL_PALETTE.white,
   },
   cellToday: {
-    backgroundColor: '#FDF2F8', // soft pink background
-  },
-  cellRecorded: {
-    backgroundColor: '#FDF4FF', // soft purple/pink tint
+    backgroundColor: PASTEL_PALETTE.accentSoft,
   },
   cellFuture: {
-    opacity: 0.35,
-    backgroundColor: '#F9FAFB',
-  },
-  cellSelected: {
-    borderWidth: 1.5,
-    borderColor: '#BE185D',
-  },
-  dayNumWrap: {
-    alignItems: 'center',
-    justifyContent: 'center',
+    opacity: 0.45,
   },
   dayNum: {
     fontSize: 13,
-    fontWeight: '700',
-    color: '#1F2937',
-  },
-  dayNumToday: {
-    color: '#BE185D',
     fontWeight: '800',
+    color: PASTEL_PALETTE.title,
+    marginBottom: 4,
   },
-  dayNumFuture: {
-    color: '#9CA3AF',
+  daySat: {
+    color: PASTEL_PALETTE.lavender,
+  },
+  daySun: {
+    color: PASTEL_PALETTE.accentDeep,
+  },
+  dayToday: {
+    color: PASTEL_PALETTE.accentDeep,
+  },
+  status: {
+    fontSize: 9,
+    fontWeight: '700',
+    lineHeight: 12,
+  },
+  statusLogged: {
+    color: PASTEL_PALETTE.subtitle,
+  },
+  statusEmpty: {
+    color: PASTEL_PALETTE.textMuted,
+  },
+  statusMuted: {
+    fontSize: 10,
+    color: PASTEL_PALETTE.border,
+  },
+  pickOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(15, 23, 42, 0.35)',
+    justifyContent: 'flex-end',
+  },
+  pickSheet: {
+    backgroundColor: PASTEL_PALETTE.bg,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    paddingHorizontal: 16,
+    paddingTop: 18,
+    paddingBottom: 28,
+  },
+  pickTitle: {
+    fontSize: 17,
+    fontWeight: '800',
+    color: PASTEL_PALETTE.title,
+    marginBottom: 4,
+  },
+  pickHint: {
+    fontSize: 13,
+    color: PASTEL_PALETTE.textMuted,
+    marginBottom: 14,
     fontWeight: '500',
   },
-  statusTextWrap: {
-    marginTop: 4,
-    paddingHorizontal: 2,
+  pickBtn: {
+    flexDirection: 'row',
     alignItems: 'center',
+    gap: 10,
+    borderRadius: 14,
+    paddingVertical: 14,
+    paddingHorizontal: 14,
+    marginBottom: 10,
+    borderWidth: 1,
   },
-  statusNotRecorded: {
-    fontSize: 9.5,
-    lineHeight: 11.5,
-    textAlign: 'center',
-    color: '#4B5563',
-    fontWeight: '400',
+  pickIncome: {
+    backgroundColor: PASTEL_PALETTE.accentSoft,
+    borderColor: '#F9A8D4',
   },
-  statusRecorded: {
-    fontSize: 9.5,
-    lineHeight: 11.5,
-    textAlign: 'center',
-    color: '#BE185D',
+  pickExpense: {
+    backgroundColor: '#FEE2E2',
+    borderColor: '#FECACA',
+  },
+  pickIncomeText: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: PASTEL_PALETTE.accentDeep,
+  },
+  pickExpenseText: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: '#DC2626',
+  },
+  pickCancel: {
+    alignItems: 'center',
+    paddingVertical: 12,
+  },
+  pickCancelText: {
+    fontSize: 14,
     fontWeight: '700',
+    color: PASTEL_PALETTE.textMuted,
   },
-  dotIndicator: {
-    width: 4,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: '#BE185D',
-    marginTop: 2,
-  },
-});
+})

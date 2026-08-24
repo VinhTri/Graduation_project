@@ -43,6 +43,7 @@ export interface Fund {
   name: string;
   balance: number;
   targetAmount?: number;
+  minDepositAmount?: number;
   coverColorSeed: number;
   isOwner: boolean;
   memberCount: number;
@@ -56,6 +57,7 @@ export interface FundInvitation {
   fundName: string;
   balance: number;
   targetAmount?: number;
+  minDepositAmount?: number;
   coverColorSeed: number;
   ownerId: number;
   ownerName: string;

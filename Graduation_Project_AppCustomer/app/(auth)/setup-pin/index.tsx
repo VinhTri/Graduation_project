@@ -1,155 +1,129 @@
-import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, Alert } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { Feather } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
-import { styles } from '@/features/auth/styles/setup-pin.styles';
-import { axiosClient } from '../../../shared/api/axiosClient';
-import SuccessModal from '../../../shared/components/SuccessModal/SuccessModal';
-import Colors from '../../../shared/constants/Colors';
+import { useState } from 'react'
+import { Alert, Text, View } from 'react-native'
+import { SafeAreaView } from 'react-native-safe-area-context'
+import { useRouter } from 'expo-router'
+import { markPinSetupSuccessPending } from '@/features/auth/pinSetupSuccessFlag'
+import PinDots from '@/features/onboarding/components/PinDots'
+import PinKeypad from '@/features/onboarding/components/PinKeypad'
+import { onboardingStyles as styles } from '@/features/onboarding/styles/onboarding.styles'
+import { axiosClient } from '@/shared/api/axiosClient'
+
+const PIN_LENGTH = 6
 
 export default function SetupPinScreen() {
-  const router = useRouter();
-  const [pin, setPin] = useState('');
-  const [confirmPin, setConfirmPin] = useState('');
-  const [step, setStep] = useState<'create' | 'confirm'>('create');
-  const [error, setError] = useState('');
-  const [isSuccessVisible, setIsSuccessVisible] = useState(false);
+  const router = useRouter()
+  const [pin, setPin] = useState('')
+  const [confirmPin, setConfirmPin] = useState('')
+  const [step, setStep] = useState<'create' | 'confirm'>('create')
+  const [error, setError] = useState('')
+  const [submitting, setSubmitting] = useState(false)
 
-  const handleKeyPress = (key: string) => {
-    setError('');
-    
+  const currentPin = step === 'create' ? pin : confirmPin
+
+  async function submitPin(finalPin: string) {
+    if (submitting) return
+    setSubmitting(true)
+    try {
+      const res: any = await axiosClient.post('/api/v1/auth/setup-pin', {
+        pinCode: finalPin,
+      })
+      if (res.success) {
+        markPinSetupSuccessPending()
+        router.replace('/(tabs)/home')
+        return
+      }
+    } catch (err: any) {
+      Alert.alert(
+        'Lỗi',
+        err?.message || 'Không thể cài đặt mã PIN. Vui lòng thử lại.',
+      )
+      setConfirmPin('')
+      setPin('')
+      setStep('create')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  function handleKeyPress(key: string) {
+    if (submitting) return
+
     if (key === 'backspace') {
       if (step === 'create') {
-        setPin(prev => prev.slice(0, -1));
+        setPin((prev) => prev.slice(0, -1))
       } else {
-        setConfirmPin(prev => prev.slice(0, -1));
+        setConfirmPin((prev) => prev.slice(0, -1))
       }
-      return;
+      if (error) setError('')
+      return
     }
 
     if (step === 'create') {
-      if (pin.length < 6) {
-        const newPin = pin + key;
-        setPin(newPin);
-        if (newPin.length === 6) {
-          setTimeout(() => setStep('confirm'), 300);
-        }
+      if (pin.length >= PIN_LENGTH) return
+      const nextPin = pin + key
+      setPin(nextPin)
+      if (nextPin.length === PIN_LENGTH) {
+        setTimeout(() => setStep('confirm'), 200)
       }
-    } else {
-      if (confirmPin.length < 6) {
-        const newConfirmPin = confirmPin + key;
-        setConfirmPin(newConfirmPin);
-        if (newConfirmPin.length === 6) {
-          if (newConfirmPin === pin) {
-            submitPin(newConfirmPin);
-          } else {
-            setError('Mã PIN không khớp. Vui lòng thử lại.');
-            setConfirmPin('');
-            setStep('create');
-            setPin('');
-          }
-        }
+      return
+    }
+
+    if (confirmPin.length >= PIN_LENGTH) return
+    const nextConfirm = confirmPin + key
+    setConfirmPin(nextConfirm)
+    if (nextConfirm.length === PIN_LENGTH) {
+      if (nextConfirm === pin) {
+        void submitPin(nextConfirm)
+      } else {
+        setError('Mã PIN không khớp. Vui lòng thử lại.')
+        setConfirmPin('')
+        setPin('')
+        setStep('create')
       }
     }
-  };
-
-  const submitPin = async (finalPin: string) => {
-    try {
-      const res: any = await axiosClient.post('/api/v1/auth/setup-pin', { pinCode: finalPin });
-      if (res.success) {
-        setIsSuccessVisible(true);
-      }
-    } catch (err: any) {
-      Alert.alert('Lỗi', err?.message || 'Không thể cài đặt mã PIN. Vui lòng thử lại.');
-      setConfirmPin('');
-      setStep('create');
-      setPin('');
-    }
-  };
-
-  const renderKeypad = () => {
-    const keys = [
-      ['1', '2', '3'],
-      ['4', '5', '6'],
-      ['7', '8', '9'],
-      ['', '0', 'backspace']
-    ];
-
-    return (
-      <View style={styles.keypadContainer}>
-        {keys.map((row, rowIndex) => (
-          <View key={rowIndex} style={styles.keypadRow}>
-            {row.map((key, colIndex) => {
-              if (key === '') return <View key={colIndex} style={styles.keyEmpty} />;
-              if (key === 'backspace') {
-                return (
-                  <TouchableOpacity 
-                    key={colIndex} 
-                    style={styles.key} 
-                    onPress={() => handleKeyPress(key)}
-                  >
-                    <Feather name="delete" size={24} color="#1F2937" />
-                  </TouchableOpacity>
-                );
-              }
-              return (
-                <TouchableOpacity 
-                  key={colIndex} 
-                  style={styles.key} 
-                  onPress={() => handleKeyPress(key)}
-                >
-                  <Text style={styles.keyText}>{key}</Text>
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-        ))}
-      </View>
-    );
-  };
-
-  const currentPin = step === 'create' ? pin : confirmPin;
+  }
 
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <View style={styles.iconContainer}>
-          <Feather name="lock" size={32} color={Colors.primary} />
+      <View style={{ flex: 1, paddingHorizontal: 24 }}>
+        <View style={styles.stepBadge}>
+          <Text style={styles.stepBadgeText}>
+            {step === 'create' ? 'Bước 1/2' : 'Bước 2/2'}
+          </Text>
         </View>
-        <Text style={styles.title}>
-          {step === 'create' ? 'Thiết lập mã PIN' : 'Xác nhận mã PIN'}
-        </Text>
-        <Text style={styles.subtitle}>
-          {step === 'create' 
-            ? 'Mã PIN 6 số sẽ được dùng để xác thực các giao dịch rút tiền của bạn.' 
-            : 'Vui lòng nhập lại mã PIN để xác nhận.'}
-        </Text>
+
+        <View style={styles.pinHeader}>
+          <Text style={styles.pinTitle}>
+            {step === 'create' ? 'Thiết lập mã PIN' : 'Xác nhận mã PIN'}
+          </Text>
+          <Text style={styles.pinSubtitle}>
+            {step === 'create'
+              ? 'Tạo mã PIN 6 số để xác thực các giao dịch quan trọng của bạn.'
+              : 'Nhập lại mã PIN vừa tạo để xác nhận.'}
+          </Text>
+        </View>
+
+        <PinDots length={PIN_LENGTH} filled={currentPin.length} />
+
+        {error ? <Text style={styles.pinErrorText}>{error}</Text> : null}
+
+        <PinKeypad
+          onPressKey={handleKeyPress}
+          leftAction={
+            step === 'confirm'
+              ? {
+                  label: 'Quay lại',
+                  onPress: () => {
+                    if (submitting) return
+                    setConfirmPin('')
+                    setError('')
+                    setStep('create')
+                  },
+                }
+              : undefined
+          }
+        />
       </View>
-
-      <View style={styles.pinContainer}>
-        {[...Array(6)].map((_, i) => (
-          <View 
-            key={i} 
-            style={[styles.pinDot, i < currentPin.length ? styles.pinDotActive : null]} 
-          />
-        ))}
-      </View>
-
-      {error ? <Text style={styles.errorText}>{error}</Text> : null}
-
-      {renderKeypad()}
-
-      <SuccessModal
-        visible={isSuccessVisible}
-        title="Thiết lập thành công!"
-        message="Mã PIN của bạn đã được lưu lại."
-        isAutoClose={true}
-        onClose={() => {
-          setIsSuccessVisible(false);
-          router.replace('/(tabs)/home');
-        }}
-      />
     </SafeAreaView>
-  );
+  )
 }

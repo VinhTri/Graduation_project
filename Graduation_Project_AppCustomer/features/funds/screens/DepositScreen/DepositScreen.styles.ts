@@ -95,6 +95,13 @@ export const styles = StyleSheet.create({
   quickChipTextActive: {
     color: FUND_PALETTE.primaryDark,
   },
+  minDepositHint: {
+    marginTop: 14,
+    fontSize: 12,
+    fontWeight: '600',
+    color: FUND_PALETTE.subtitle,
+    textAlign: 'center',
+  },
   sectionLabel: {
     fontSize: 14,
     fontWeight: '700',

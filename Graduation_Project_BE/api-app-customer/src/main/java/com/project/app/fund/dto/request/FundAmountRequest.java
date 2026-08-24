@@ -1,9 +1,11 @@
 package com.project.app.fund.dto.request;
 
 import jakarta.validation.constraints.DecimalMin;
+import jakarta.validation.constraints.Digits;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
+import jakarta.validation.constraints.Pattern;
 import lombok.Data;
 
 import java.math.BigDecimal;
@@ -12,7 +14,8 @@ import java.math.BigDecimal;
 public class FundAmountRequest {
 
     @NotNull
-    @DecimalMin(value = "10000")
+    @DecimalMin(value = "2000")
+    @Digits(integer = 17, fraction = 0)
     private BigDecimal amount;
 
     @Size(max = 100)
@@ -20,5 +23,9 @@ public class FundAmountRequest {
 
     @NotBlank
     @Size(min = 6, max = 6)
+    @Pattern(regexp = "\\d{6}")
     private String pinCode;
+
+    @Size(max = 100)
+    private String requestId;
 }

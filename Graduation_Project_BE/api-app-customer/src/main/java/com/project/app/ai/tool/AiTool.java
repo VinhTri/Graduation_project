@@ -7,7 +7,10 @@ import java.util.Map;
 
 public interface AiTool {
     String getName();
+
     String getDescription();
+
     Map<String, Object> getFunctionDeclaration();
+
     ToolResultDto execute(User user, Map<String, Object> arguments);
 }

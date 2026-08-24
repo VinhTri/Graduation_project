@@ -516,7 +516,7 @@ export const Users = () => {
               size="middle"
               items={[
                 { key: 'id', label: 'ID', children: `#${selectedUser.userInfo.id}` },
-                { key: 'username', label: 'Tên đăng nhập', children: selectedUser.userInfo.username },
+                { key: 'username', label: 'Tên', children: selectedUser.userInfo.username },
                 { key: 'email', label: 'Email', children: selectedUser.userInfo.email },
                 {
                   key: 'joined',

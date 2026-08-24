@@ -254,6 +254,12 @@ export const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#EC4899',
   },
+  minDepositText: {
+    marginTop: 8,
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#7C3AED',
+  },
 
   /* ACTION BUTTONS */
   actionsRow: {

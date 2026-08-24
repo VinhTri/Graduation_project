@@ -1,25 +1,20 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { Image } from 'expo-image';
-import { getUserAvatarUrl } from '../../utils/userAvatar';
 import { resolveMediaUrl } from '../../utils/resolveMediaUrl';
+import { PASTEL_PALETTE } from '../../constants/PastelPalette';
 
-const AVATAR_PALETTES = [
-  { bg: '#FFE4EC', text: '#DB2777', border: '#FBCFE8' },
-  { bg: '#EDE9FE', text: '#7C3AED', border: '#DDD6FE' },
-  { bg: '#FFEDD5', text: '#EA580C', border: '#FED7AA' },
-  { bg: '#DBEAFE', text: '#2563EB', border: '#BFDBFE' },
-  { bg: '#DCFCE7', text: '#16A34A', border: '#BBF7D0' },
-];
-
-const getFallbackPalette = (name: string) => {
-  const code = name ? name.charCodeAt(0) : 0;
-  return AVATAR_PALETTES[code % AVATAR_PALETTES.length];
-};
+function getInitials(name: string) {
+  if (!name) return 'U';
+  const parts = name.trim().split(/\s+/);
+  if (parts.length >= 2) {
+    return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase();
+  }
+  return name.substring(0, 2).toUpperCase();
+}
 
 interface UserAvatarProps {
   name: string;
-  email?: string;
   avatarUrl?: string | null;
   size?: number;
   borderWidth?: number;
@@ -27,75 +22,58 @@ interface UserAvatarProps {
 
 export default function UserAvatar({
   name,
-  email,
   avatarUrl,
   size = 52,
-  borderWidth = 2,
+  borderWidth = 0,
 }: UserAvatarProps) {
-  const [hasError, setHasError] = useState(false);
-  const seed = email || name || 'user';
-  const customUri = useMemo(() => resolveMediaUrl(avatarUrl), [avatarUrl]);
-  const diceUri = useMemo(() => getUserAvatarUrl(seed, size * 2), [seed, size]);
-  const uri = customUri || diceUri;
-  const palette = getFallbackPalette(name);
-  const initial = name ? name.charAt(0).toUpperCase() : '?';
-  const radius = size >= 64 ? size * 0.28 : size * 0.34;
+  const customUri = resolveMediaUrl(avatarUrl);
+  const radius = Math.round(size * 0.31);
+  const initials = getInitials(name);
 
-  useEffect(() => {
-    setHasError(false);
-  }, [uri]);
-
-  if (hasError) {
+  if (customUri) {
     return (
-      <View
-        style={[
-          styles.fallback,
-          {
-            width: size,
-            height: size,
-            borderRadius: radius,
-            backgroundColor: palette.bg,
-            borderColor: palette.border,
-            borderWidth,
-          },
-        ]}
-      >
-        <Text style={[styles.fallbackText, { color: palette.text, fontSize: size * 0.38 }]}>
-          {initial}
-        </Text>
-      </View>
+      <Image
+        source={{ uri: customUri }}
+        style={{
+          width: size,
+          height: size,
+          borderRadius: radius,
+          borderWidth,
+          borderColor: PASTEL_PALETTE.border,
+          backgroundColor: PASTEL_PALETTE.accentDeep,
+        }}
+        contentFit="cover"
+      />
     );
   }
 
   return (
-    <Image
-      source={{ uri }}
+    <View
       style={[
-        styles.image,
+        styles.fallback,
         {
           width: size,
           height: size,
           borderRadius: radius,
-          borderColor: palette.border,
+          backgroundColor: PASTEL_PALETTE.accentDeep,
           borderWidth,
+          borderColor: PASTEL_PALETTE.border,
         },
       ]}
-      contentFit="cover"
-      transition={200}
-      onError={() => setHasError(true)}
-    />
+    >
+      <Text style={[styles.fallbackText, { fontSize: size * 0.34 }]}>{initials}</Text>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  image: {
-    backgroundColor: '#F9FAFB',
-  },
   fallback: {
     justifyContent: 'center',
     alignItems: 'center',
+    overflow: 'hidden',
   },
   fallbackText: {
+    color: PASTEL_PALETTE.white,
     fontWeight: '800',
   },
 });

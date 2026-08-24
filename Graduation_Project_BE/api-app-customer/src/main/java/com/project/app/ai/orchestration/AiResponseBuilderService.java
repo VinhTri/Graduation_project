@@ -1,290 +1,209 @@
 package com.project.app.ai.orchestration;
 
-import com.project.app.ai.dto.response.*;
-import com.project.app.ai.enums.AiModuleType;
+import com.project.app.ai.dto.response.AiActionDto;
+import com.project.app.ai.dto.response.AiCardDto;
+import com.project.app.ai.dto.response.AiCardItemDto;
+import com.project.app.ai.dto.response.AiChatResponse;
 import com.project.app.ai.tool.dto.ToolResultDto;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
-import java.text.DecimalFormat;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 
-@Slf4j
 @Service
 @RequiredArgsConstructor
 public class AiResponseBuilderService {
 
-    public AiChatResponse buildResponse(String conversationId, AiOrchestrator.OrchestratorResult result) {
+    public AiChatResponse build(String text, String moduleType, ToolResultDto toolResult) {
+        return build(text, moduleType, toolResult, null, null);
+    }
+
+    public AiChatResponse build(
+            String text,
+            String moduleType,
+            ToolResultDto toolResult,
+            List<AiCardDto> explicitCards,
+            List<AiActionDto> actions) {
+
         List<AiCardDto> cards = new ArrayList<>();
-        AiModuleType moduleType = AiModuleType.GENERAL;
-
-        if (result != null && result.getToolResult() != null && result.getToolResult().isSuccess()) {
-            ToolResultDto toolResult = result.getToolResult();
-            moduleType = mapToolNameToModuleType(toolResult.getToolName());
-
-            AiCardDto card = buildCardFromToolResult(toolResult);
+        if (explicitCards != null && !explicitCards.isEmpty()) {
+            cards.addAll(explicitCards);
+        } else if (toolResult != null && toolResult.isSuccess()) {
+            AiCardDto card = buildCard(toolResult);
             if (card != null) {
                 cards.add(card);
             }
         }
 
-        AiActionPromptDto actionPrompt = buildActionPrompt(moduleType);
-
         return AiChatResponse.builder()
-                .id(conversationId)
-                .text(result != null ? result.getResponseText() : "")
+                .id(UUID.randomUUID().toString())
+                .text(text)
                 .moduleType(moduleType)
                 .timestamp(LocalTime.now().format(DateTimeFormatter.ofPattern("HH:mm")))
-                .cards(cards)
-                .actionPrompt(actionPrompt)
+                .cards(cards.isEmpty() ? null : cards)
+                .actions(actions == null || actions.isEmpty() ? null : actions)
                 .build();
     }
 
-    private AiModuleType mapToolNameToModuleType(String toolName) {
-        if ("calculate_saving_plan".equals(toolName)) {
-            return AiModuleType.FINANCIAL_GOAL;
-        } else if ("recommend_budget_allocation".equals(toolName)) {
-            return AiModuleType.RECOMMENDATION;
-        } else if ("get_monthly_spending".equals(toolName) || "get_transaction_summary".equals(toolName)) {
-            return AiModuleType.ANALYTICS;
-        } else if ("get_wallets_and_balance".equals(toolName)) {
-            return AiModuleType.ANALYTICS;
-        } else if ("search_app_guide".equals(toolName) || "get_app_guide".equals(toolName)) {
-            return AiModuleType.APP_GUIDE;
-        }
-        return AiModuleType.GENERAL;
+    public String buildListCategoriesText(ToolResultDto toolResult) {
+        return buildCategoriesText(toolResult, CategoryTextStyle.INVENTORY);
     }
 
-    private AiCardDto buildCardFromToolResult(ToolResultDto toolResult) {
-        if (toolResult == null || toolResult.getData() == null) return null;
-        DecimalFormat df = new DecimalFormat("#,###");
+    public String buildSpendingTypesText(ToolResultDto toolResult) {
+        return buildCategoriesText(toolResult, CategoryTextStyle.SPENDING_TYPES);
+    }
+
+    private enum CategoryTextStyle {
+        INVENTORY,
+        SPENDING_TYPES
+    }
+
+    private String buildCategoriesText(ToolResultDto toolResult, CategoryTextStyle style) {
+        if (toolResult == null || !toolResult.isSuccess() || toolResult.getData() == null) {
+            return "Không lấy được danh sách danh mục. Bạn thử lại sau nhé.";
+        }
 
         Map<String, Object> data = toolResult.getData();
+        int groupCount = intValue(data.get("groupCount"));
+        int itemCount = intValue(data.get("itemCount"));
+        int remainingGroups = intValue(data.get("remainingGroups"));
+        int maxGroups = intValue(data.get("maxGroups"));
+        int maxItemsPerGroup = intValue(data.get("maxItemsPerGroup"));
 
-        if ("recommend_budget_allocation".equals(toolResult.getToolName())) {
-            List<AiCardItemDto> items = new ArrayList<>();
-            Object incomeObj = data.get("income");
-            Object fixedObj = data.get("fixedExpenses");
-            Object essentialObj = data.get("essentialTarget");
-            if (essentialObj == null) essentialObj = data.get("essential50");
-            Object personalObj = data.get("personalTarget");
-            if (personalObj == null) personalObj = data.get("personal30");
-            Object savingObj = data.get("savingTarget");
-            if (savingObj == null) savingObj = data.get("saving20");
-
-            if (incomeObj != null) {
-                items.add(AiCardItemDto.builder()
-                        .label("Tổng thu nhập")
-                        .value(df.format(parseToLong(incomeObj)) + " VNĐ")
-                        .color("#3B82F6")
-                        .build());
+        if (groupCount == 0) {
+            if (style == CategoryTextStyle.SPENDING_TYPES) {
+                return "Bạn chưa tạo danh mục chi tiêu nào. Vào mục Danh mục trên app để thêm (ví dụ: Ăn uống, Di chuyển, Giải trí) rồi gán vào từng giao dịch.";
             }
-            if (fixedObj != null && parseToLong(fixedObj) > 0) {
-                items.add(AiCardItemDto.builder()
-                        .label("Chi phí nhà/cố định")
-                        .value(df.format(parseToLong(fixedObj)) + " VNĐ")
-                        .color("#EF4444")
-                        .build());
-            }
-            if (essentialObj != null) {
-                items.add(AiCardItemDto.builder()
-                        .label("Nhu cầu thiết yếu (50%)")
-                        .value(df.format(parseToLong(essentialObj)) + " VNĐ")
-                        .build());
-            }
-            if (savingObj != null) {
-                items.add(AiCardItemDto.builder()
-                        .label("Tiết kiệm & Tích lũy (20%)")
-                        .value(df.format(parseToLong(savingObj)) + " VNĐ")
-                        .color("#10B981")
-                        .build());
-            }
-            if (personalObj != null) {
-                items.add(AiCardItemDto.builder()
-                        .label("Chi tiêu cá nhân (30%)")
-                        .value(df.format(parseToLong(personalObj)) + " VNĐ")
-                        .build());
-            }
-
-            return AiCardDto.builder()
-                    .type("BUDGET_PLAN")
-                    .title("Phân bổ ngân sách 50/30/20")
-                    .items(items)
-                    .build();
-
-        } else if ("calculate_saving_plan".equals(toolResult.getToolName())) {
-            List<AiCardItemDto> items = new ArrayList<>();
-            String goalName = (String) data.getOrDefault("goalName", "Mục tiêu");
-            Object targetAmtObj = data.get("targetAmount");
-            Object durationTextObj = data.get("durationText");
-            Object customSavingObj = data.get("customMonthlySaving");
-            Boolean useBal = (Boolean) data.get("useCurrentBalance");
-
-            if (targetAmtObj != null) {
-                items.add(AiCardItemDto.builder()
-                        .label("Mục tiêu")
-                        .value(df.format(parseToLong(targetAmtObj)) + " VNĐ")
-                        .build());
-            }
-
-            if (durationTextObj != null) {
-                items.add(AiCardItemDto.builder()
-                        .label("Thời gian")
-                        .value(durationTextObj.toString())
-                        .build());
-            }
-
-            Object planObj = (useBal == null || useBal) ? data.get("planWithBalance") : data.get("planWithoutBalance");
-            if (planObj == null) {
-                planObj = data.get("planWithoutBalance");
-            }
-
-            long monthlySaving = 0L;
-            if (planObj instanceof com.project.app.ai.dto.internal.SavingPlan) {
-                monthlySaving = ((com.project.app.ai.dto.internal.SavingPlan) planObj).getMonthlySaving();
-            } else if (planObj instanceof Map) {
-                Map<?, ?> planMap = (Map<?, ?>) planObj;
-                monthlySaving = parseToLong(planMap.get("monthlySaving"));
-            }
-
-            long customSavingVal = parseToLong(customSavingObj);
-            if (customSavingVal > 0) {
-                items.add(AiCardItemDto.builder()
-                        .label("Khả năng tiết kiệm")
-                        .value(df.format(customSavingVal) + " VNĐ/tháng")
-                        .color("#3B82F6")
-                        .build());
-
-                items.add(AiCardItemDto.builder()
-                        .label("Mức cần thiết chuẩn")
-                        .value(df.format(monthlySaving) + " VNĐ/tháng")
-                        .color("#10B981")
-                        .build());
-            } else if (monthlySaving > 0) {
-                items.add(AiCardItemDto.builder()
-                        .label("Cần tiết kiệm/tháng")
-                        .value(df.format(monthlySaving) + " VNĐ/tháng")
-                        .color("#10B981")
-                        .build());
-            }
-
-            return AiCardDto.builder()
-                    .type("GOAL_PLAN")
-                    .title("Kế hoạch: " + goalName)
-                    .items(items)
-                    .build();
-
-        } else if ("get_monthly_spending".equals(toolResult.getToolName()) || "get_transaction_summary".equals(toolResult.getToolName())) {
-            List<AiCardItemDto> items = new ArrayList<>();
-            Object totalSpentObj = data.get("totalSpent");
-            if (totalSpentObj == null) {
-                totalSpentObj = data.get("totalExpense");
-            }
-            Object topCategory = data.get("topCategory");
-            Object topCategoryAmount = data.get("topCategoryAmount");
-
-            String period = (String) data.getOrDefault("timeRange", data.getOrDefault("period", "MONTH"));
-            String periodLabel = "Tổng chi tiêu";
-            if ("TODAY".equalsIgnoreCase(period) || "DAY".equalsIgnoreCase(period)) {
-                periodLabel = "Tổng chi hôm nay";
-            } else if ("YESTERDAY".equalsIgnoreCase(period)) {
-                periodLabel = "Tổng chi hôm qua";
-            } else if ("WEEK".equalsIgnoreCase(period)) {
-                periodLabel = "Tổng chi tuần này";
-            } else if ("MONTH".equalsIgnoreCase(period)) {
-                periodLabel = "Tổng chi tháng này";
-            } else if ("YEAR".equalsIgnoreCase(period)) {
-                periodLabel = "Tổng chi năm nay";
-            }
-
-            if (totalSpentObj != null) {
-                items.add(AiCardItemDto.builder()
-                        .label(periodLabel)
-                        .value(df.format(parseToLong(totalSpentObj)) + " VNĐ")
-                        .color("#EF4444")
-                        .build());
-            }
-
-            if (topCategory != null && topCategoryAmount != null) {
-                items.add(AiCardItemDto.builder()
-                        .label("Chi nhiều nhất (" + topCategory + ")")
-                        .value(df.format(parseToLong(topCategoryAmount)) + " VNĐ")
-                        .build());
-            }
-
-            return AiCardDto.builder()
-                    .type("METRICS")
-                    .title("Thống kê chi tiêu")
-                    .items(items)
-                    .build();
-
-        } else if ("get_wallets_and_balance".equals(toolResult.getToolName())) {
-            List<AiCardItemDto> items = new ArrayList<>();
-            Object totalBalObj = data.get("totalBalance");
-            Object walletCount = data.get("walletCount");
-
-            if (totalBalObj != null) {
-                items.add(AiCardItemDto.builder()
-                        .label("Tổng số dư ví")
-                        .value(df.format(parseToLong(totalBalObj)) + " VNĐ")
-                        .color("#3B82F6")
-                        .build());
-            }
-            if (walletCount != null) {
-                items.add(AiCardItemDto.builder()
-                        .label("Số lượng ví")
-                        .value(walletCount.toString() + " ví")
-                        .build());
-            }
-
-            return AiCardDto.builder()
-                    .type("METRICS")
-                    .title("Thông tin Ví tài khoản")
-                    .items(items)
-                    .build();
+            return "Bạn chưa tạo danh mục nào. Vào mục Danh mục trên app để thêm nhóm và danh mục chi tiêu. "
+                    + "Mỗi tài khoản có thể tạo tối đa " + maxGroups + " nhóm, mỗi nhóm tối đa "
+                    + maxItemsPerGroup + " danh mục.";
         }
 
-        return null;
+        if (style == CategoryTextStyle.SPENDING_TYPES) {
+            String names = joinCategoryNames(data);
+            if (names.isBlank()) {
+                return "Bạn đã có " + groupCount + " nhóm danh mục nhưng chưa có danh mục con. Hãy thêm danh mục trong app để phân loại chi tiêu.";
+            }
+            return "Các loại chi tiêu bạn đang dùng: " + names + ". "
+                    + "Chi tiết từng nhóm xem ở bảng bên dưới.";
+        }
+
+        return String.format(
+                "Bạn đang có %d nhóm danh mục với tổng %d danh mục con. "
+                        + "Còn tạo thêm được %d nhóm nữa (tối đa %d nhóm, %d danh mục/nhóm).",
+                groupCount, itemCount, remainingGroups, maxGroups, maxItemsPerGroup);
     }
 
-    private AiActionPromptDto buildActionPrompt(AiModuleType moduleType) {
-        if (AiModuleType.FINANCIAL_GOAL.equals(moduleType)) {
-            return AiActionPromptDto.builder()
-                    .question("Bạn muốn điều chỉnh kế hoạch?")
-                    .actions(List.of(
-                            AiActionItemDto.builder().label("Nâng số tiền tiết kiệm hàng tháng").prompt("Nếu mỗi tháng tôi tiết kiệm nhiều hơn thì sao?").build(),
-                            AiActionItemDto.builder().label("Không sử dụng số dư hiện tại").prompt("Nếu tôi giữ nguyên số dư hiện tại thì sao?").build()
-                    ))
-                    .build();
-        } else if (AiModuleType.ANALYTICS.equals(moduleType)) {
-            return AiActionPromptDto.builder()
-                    .question("Khám phá thêm:")
-                    .actions(List.of(
-                            AiActionItemDto.builder().label("Xem chi tiết các ví").prompt("Ví của tôi hiện có bao nhiêu tiền?").build(),
-                            AiActionItemDto.builder().label("Lên kế hoạch mua sắm").prompt("Tôi muốn tiết kiệm mua điện thoại").build()
-                    ))
-                    .build();
+    @SuppressWarnings("unchecked")
+    private String joinCategoryNames(Map<String, Object> data) {
+        Object groupsObj = data.get("groups");
+        if (!(groupsObj instanceof List<?> groups)) {
+            return "";
         }
 
-        return AiActionPromptDto.builder()
-                .question("Gợi ý cho bạn:")
-                .actions(List.of(
-                        AiActionItemDto.builder().label("Phân tích thu chi tháng này").prompt("Tháng này tôi tiêu bao nhiêu?").build(),
-                        AiActionItemDto.builder().label("Lập kế hoạch mua xe 300 tr").prompt("Tôi muốn mua ô tô 300 triệu trong 9 tháng").build()
-                ))
+        List<String> names = new ArrayList<>();
+        for (Object groupObj : groups) {
+            if (!(groupObj instanceof Map<?, ?> group)) {
+                continue;
+            }
+            Object itemsObj = group.get("items");
+            if (!(itemsObj instanceof List<?> groupItems)) {
+                continue;
+            }
+            for (Object itemObj : groupItems) {
+                if (!(itemObj instanceof Map<?, ?> item)) {
+                    continue;
+                }
+                String label = stringValue(item.get("label"));
+                if (!label.isBlank()) {
+                    names.add(label);
+                }
+            }
+        }
+        return String.join(", ", names);
+    }
+
+    public String buildCategoryGuideText() {
+        return """
+                Danh mục giúp bạn phân loại thu chi (Ăn uống, Di chuyển, Lương...).
+
+                Trong app SmartSpend:
+                • Vào mục Danh mục để xem, tạo nhóm và danh mục con.
+                • Mỗi tài khoản tối đa 6 nhóm, mỗi nhóm tối đa 4 danh mục.
+                • Giao dịch sổ tay bắt buộc chọn danh mục.
+                • Hiện chưa hỗ trợ sửa trực tiếp — muốn đổi tên thì xóa và tạo lại.
+
+                Bạn có thể hỏi "danh mục của tôi" để xem danh sách, hoặc "tôi có những loại chi tiêu nào" để xem các khoản đang dùng.""";
+    }
+
+    @SuppressWarnings("unchecked")
+    private AiCardDto buildCard(ToolResultDto toolResult) {
+        if (!"list_user_categories".equals(toolResult.getToolName())) {
+            return null;
+        }
+
+        Map<String, Object> data = toolResult.getData();
+        if (data == null) {
+            return null;
+        }
+
+        List<AiCardItemDto> items = new ArrayList<>();
+        Object groupsObj = data.get("groups");
+        if (groupsObj instanceof List<?> groups) {
+            for (Object groupObj : groups) {
+                if (!(groupObj instanceof Map<?, ?> group)) {
+                    continue;
+                }
+                String groupTitle = stringValue(group.get("title"));
+                Object itemsObj = group.get("items");
+                if (!(itemsObj instanceof List<?> groupItems)) {
+                    continue;
+                }
+                for (Object itemObj : groupItems) {
+                    if (!(itemObj instanceof Map<?, ?> item)) {
+                        continue;
+                    }
+                    items.add(AiCardItemDto.builder()
+                            .label(stringValue(item.get("label")))
+                            .value(groupTitle)
+                            .color(stringValue(item.get("color")))
+                            .build());
+                }
+            }
+        }
+
+        if (items.isEmpty()) {
+            return null;
+        }
+
+        return AiCardDto.builder()
+                .type("CATEGORY_LIST")
+                .title(cardTitle(toolResult))
+                .items(items)
                 .build();
     }
 
-    private long parseToLong(Object obj) {
-        if (obj == null) return 0L;
-        if (obj instanceof Number) return ((Number) obj).longValue();
-        try {
-            return Long.parseLong(obj.toString());
-        } catch (Exception e) {
-            return 0L;
+    private String cardTitle(ToolResultDto toolResult) {
+        Object style = toolResult.getData() != null ? toolResult.getData().get("responseStyle") : null;
+        if ("SPENDING_TYPES".equals(style)) {
+            return "Loại chi tiêu của bạn";
         }
+        return "Danh mục của bạn";
+    }
+
+    private int intValue(Object value) {
+        if (value instanceof Number number) {
+            return number.intValue();
+        }
+        return 0;
+    }
+
+    private String stringValue(Object value) {
+        return value != null ? value.toString() : "";
     }
 }

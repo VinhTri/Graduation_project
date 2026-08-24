@@ -17,11 +17,11 @@ export const Login: React.FC = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
 
-  const onFinish = async (values: { username: string; password: string }) => {
+  const onFinish = async (values: { email: string; password: string }) => {
     setLoading(true);
     try {
       const response = await apiClient.post('/api/v1/admin/auth/login', {
-        username: values.username.trim(),
+        email: values.email.trim(),
         password: values.password,
       });
 
@@ -154,9 +154,12 @@ export const Login: React.FC = () => {
               size="middle"
             >
               <Form.Item
-                name="username"
+                name="email"
                 label={<span className="login-label">Địa chỉ email</span>}
-                rules={[{ required: true, message: 'Vui lòng nhập email!' }]}
+                rules={[
+                  { required: true, message: 'Vui lòng nhập email!' },
+                  { type: 'email', message: 'Email không hợp lệ!' },
+                ]}
               >
                 <Input
                   className="login-input"
@@ -165,7 +168,7 @@ export const Login: React.FC = () => {
                       <UserOutlined />
                     </span>
                   }
-                  placeholder="admin@smartspend.com hoặc admin"
+                  placeholder="admin@smartspend.com"
                 />
               </Form.Item>
 
