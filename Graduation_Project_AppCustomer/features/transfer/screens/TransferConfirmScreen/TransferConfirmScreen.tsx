@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, ActivityIndicator } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -24,13 +24,11 @@ export default function TransferConfirmScreen() {
 
   const [isPinModalVisible, setIsPinModalVisible] = useState(false);
   const [pinError, setPinError] = useState("");
-  const [loading, setLoading] = useState(false);
   const [errorModalVisible, setErrorModalVisible] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
 
   const handleConfirmPin = async (pin: string) => {
     try {
-      setLoading(true);
       setPinError("");
 
       const requestData = {
@@ -45,7 +43,10 @@ export default function TransferConfirmScreen() {
       setIsPinModalVisible(false);
 
       setTimeout(() => {
-        router.push({
+        // Giao dịch đã hoàn tất: xóa màn nhập và xác nhận khỏi history để
+        // người dùng không thể vuốt quay lại rồi vô tình gửi lại giao dịch.
+        router.dismissAll();
+        router.replace({
           pathname: '/transfer/bill',
           params: {
             amount: amount,
@@ -75,8 +76,6 @@ export default function TransferConfirmScreen() {
           setErrorModalVisible(true);
         }, 500);
       }
-    } finally {
-      setLoading(false);
     }
   };
 

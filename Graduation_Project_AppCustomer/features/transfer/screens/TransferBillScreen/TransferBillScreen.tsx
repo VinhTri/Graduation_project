@@ -1,5 +1,5 @@
-import React, { type ReactNode, useCallback, useEffect, useRef } from 'react';
-import { BackHandler, Image, ScrollView, StatusBar, Text, TouchableOpacity, View } from 'react-native';
+import React, { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { BackHandler, Image, ImageBackground, ScrollView, StatusBar, Text, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -8,8 +8,15 @@ import { SmartSpendIcon } from '@/shared/components/SmartSpendIcon/SmartSpendIco
 import { PASTEL_PALETTE } from '@/shared/constants/PastelPalette';
 import { formatMoney } from '@/shared/utils/moneyFormat';
 import { styles } from './TransferBillScreen.styles';
+import { CategorySelectModal } from '@/features/categories/components/CategorySelectModal/CategorySelectModal';
+import { AddCategoryModal } from '@/features/categories/components/AddCategoryModal/AddCategoryModal';
+import { useCategories } from '@/features/categories/hooks/useCategories';
+import type { SelectedCategory } from '@/features/notebook/types/transaction';
+import { transactionService } from '@/shared/api/services/transactionService';
+import { useToast } from '@/shared/components/Toast';
 
 const RECEIPT_BG = require('../../../../assets/images/wallet-receipt-bg.png');
+const WALLET_TAG_HINT = require('../../../../assets/images/wallet-tag-hint.png');
 
 function paramText(value: string | string[] | undefined, fallback = '') {
   return Array.isArray(value) ? value[0] ?? fallback : value ?? fallback;
@@ -29,13 +36,20 @@ function maskAccount(accountNumber: string) {
   return `•••• ${digits.slice(-4)}`;
 }
 
-function DetailRow({ label, value, muted, last }: { label: string; value: ReactNode; muted?: boolean; last?: boolean }) {
-  return (
+function DetailRow({ label, value, valueNode, muted, last, trailing, onPress }: {
+  label: string; value?: ReactNode; valueNode?: ReactNode; muted?: boolean; last?: boolean;
+  trailing?: ReactNode; onPress?: () => void;
+}) {
+  const body = (
     <View style={[styles.row, !last && styles.rowBorder]}>
       <Text style={styles.rowLabel}>{label}</Text>
-      <Text style={[styles.rowValue, muted && styles.rowValueMuted]} numberOfLines={3}>{value}</Text>
+      <View style={styles.rowValueWrap}>
+        {valueNode ?? <Text style={[styles.rowValue, muted && styles.rowValueMuted]} numberOfLines={3}>{value}</Text>}
+        {trailing}
+      </View>
     </View>
   );
+  return onPress ? <TouchableOpacity activeOpacity={0.75} onPress={onPress}>{body}</TouchableOpacity> : body;
 }
 
 export default function TransferBillScreen() {
@@ -47,10 +61,18 @@ export default function TransferBillScreen() {
     receiverName?: string; note?: string; createdAt?: string;
   }>();
   const allowingLeaveRef = useRef(false);
+  const { showToast } = useToast();
+  const { categories, loadCategories, addGroup, addItem } = useCategories({ reloadOnFocus: false });
+  const [currentCategory, setCurrentCategory] = useState<SelectedCategory | null>(null);
+  const [selectCategoryOpen, setSelectCategoryOpen] = useState(false);
+  const [createCategoryOpen, setCreateCategoryOpen] = useState(false);
 
   const goToWallet = useCallback(() => {
     allowingLeaveRef.current = true;
-    router.replace('/home');
+    // Xóa toàn bộ flow chuyển tiền; Back/gesture sau đó không thể quay lại
+    // màn xác nhận của một giao dịch đã thành công.
+    router.dismissAll();
+    router.replace('/(tabs)/home');
   }, [router]);
 
   useEffect(() => navigation.addListener('beforeRemove', (event) => {
@@ -74,6 +96,33 @@ export default function TransferBillScreen() {
   const receiverName = paramText(params.receiverName, '—').trim() || '—';
   const note = paramText(params.note).trim();
   const createdAt = paramText(params.createdAt);
+  const canEditCategory = transactionCode !== '—';
+
+  const categoryNode = useMemo(() => currentCategory ? (
+    <View style={[styles.categoryPill, { backgroundColor: currentCategory.bgColor || PASTEL_PALETTE.accentSoft }]}>
+      <Ionicons name={(currentCategory.icon || 'cash') as keyof typeof Ionicons.glyphMap}
+        size={14} color={currentCategory.color || PASTEL_PALETTE.accentDeep} />
+      <Text style={[styles.categoryText, { color: currentCategory.color || PASTEL_PALETTE.accentDeep }]}
+        numberOfLines={1}>{currentCategory.label}</Text>
+    </View>
+  ) : undefined, [currentCategory]);
+
+  function openCategoryPicker() {
+    void loadCategories();
+    setSelectCategoryOpen(true);
+  }
+
+  async function saveCategory(next: SelectedCategory) {
+    if (!canEditCategory || !next.id) return;
+    try {
+      await transactionService.updateTransaction(transactionCode, { categoryId: next.id });
+      setCurrentCategory(next);
+      setSelectCategoryOpen(false);
+      showToast({ variant: 'success', message: 'Đã cập nhật danh mục' });
+    } catch (error: any) {
+      showToast({ variant: 'error', message: error?.message || 'Không thể cập nhật danh mục' });
+    }
+  }
 
   return (
     <View style={styles.container}>
@@ -126,15 +175,56 @@ export default function TransferBillScreen() {
               <DetailRow label="Mã giao dịch" value={transactionCode} />
               <DetailRow label="Thời gian" value={createdAt ? formatTime(createdAt) : '—'} />
               <DetailRow label="Phí giao dịch" value="Miễn phí" />
-              <DetailRow label="Danh mục" value="Chuyển tiền" />
+              <DetailRow label="Danh mục"
+                value={currentCategory ? undefined : 'Chưa thiết lập'}
+                valueNode={categoryNode}
+                muted={!currentCategory}
+                trailing={!currentCategory ? (
+                  <TouchableOpacity style={styles.tagBtn} onPress={openCategoryPicker} activeOpacity={0.8}>
+                    <Ionicons name="pricetag" size={12} color={PASTEL_PALETTE.accentDeep} />
+                    <Text style={styles.tagBtnText}>Gắn danh mục</Text>
+                  </TouchableOpacity>
+                ) : null}
+                onPress={openCategoryPicker} />
               <DetailRow label="Ghi chú" value={note || 'Chưa thiết lập'} muted={!note} last />
             </View>
           </View>
         </View>
+        {!currentCategory ? (
+          <TouchableOpacity activeOpacity={0.86} onPress={openCategoryPicker}
+            accessibilityRole="button" accessibilityLabel="Chọn danh mục cho giao dịch">
+            <ImageBackground source={WALLET_TAG_HINT} style={styles.categoryReminderCard}
+              imageStyle={styles.categoryReminderBackground} resizeMode="cover">
+              <View style={styles.categoryReminderContent}>
+                <View style={styles.categoryReminderLabel}>
+                  <Ionicons name="sparkles" size={12} color={PASTEL_PALETTE.accentDeep} />
+                  <Text style={styles.categoryReminderLabelText}>Chạm để chọn</Text>
+                </View>
+                <Text style={styles.categoryReminderTitle}>Đừng quên{`\n`}chọn danh mục</Text>
+                <Text style={styles.categoryReminderText}>Phân loại giao dịch giúp bạn{`\n`}theo dõi chi tiêu chính xác và{`\n`}quản lý tài chính hiệu quả hơn.</Text>
+              </View>
+            </ImageBackground>
+          </TouchableOpacity>
+        ) : null}
         <TouchableOpacity style={styles.closeBtn} onPress={goToWallet} activeOpacity={0.85}>
           <Text style={styles.closeBtnText}>Đóng</Text>
         </TouchableOpacity>
       </ScrollView>
+      <CategorySelectModal visible={selectCategoryOpen} categories={categories}
+        onClose={() => setSelectCategoryOpen(false)}
+        onSelect={(item) => saveCategory({ id: item.id, label: item.label, icon: item.icon,
+          color: item.color, bgColor: item.bgColor })}
+        onAddCategory={() => { setSelectCategoryOpen(false); setCreateCategoryOpen(true); }} />
+      <AddCategoryModal visible={createCategoryOpen} categories={categories}
+        onClose={() => setCreateCategoryOpen(false)}
+        onBack={() => { setCreateCategoryOpen(false); setSelectCategoryOpen(true); }}
+        onCreateGroup={addGroup}
+        onSubmit={async (payload) => {
+          await addItem(payload);
+          await loadCategories();
+          setCreateCategoryOpen(false);
+          setSelectCategoryOpen(true);
+        }} />
     </View>
   );
 }
