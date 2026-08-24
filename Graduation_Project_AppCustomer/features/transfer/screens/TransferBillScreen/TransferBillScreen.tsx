@@ -71,7 +71,7 @@ export default function TransferBillScreen() {
     allowingLeaveRef.current = true;
     // Xóa toàn bộ flow chuyển tiền; Back/gesture sau đó không thể quay lại
     // màn xác nhận của một giao dịch đã thành công.
-    router.dismissAll();
+    if (router.canDismiss()) router.dismissAll();
     router.replace('/(tabs)/home');
   }, [router]);
 

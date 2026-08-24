@@ -45,7 +45,7 @@ export default function TransferConfirmScreen() {
       setTimeout(() => {
         // Giao dịch đã hoàn tất: xóa màn nhập và xác nhận khỏi history để
         // người dùng không thể vuốt quay lại rồi vô tình gửi lại giao dịch.
-        router.dismissAll();
+        if (router.canDismiss()) router.dismissAll();
         router.replace({
           pathname: '/transfer/bill',
           params: {
