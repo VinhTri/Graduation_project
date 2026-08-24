@@ -1,6 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import type { Href } from 'expo-router'
 import { axiosClient } from '@/shared/api/axiosClient'
+import { clearStoredSession } from '@/shared/services/sessionStorage'
 
 /** Tài khoản đã login nhưng chưa setup PIN → tiếp tục từ màn giới thiệu. */
 export async function resolveColdStartRoute(): Promise<Href> {
@@ -15,10 +16,12 @@ export async function resolveColdStartRoute(): Promise<Href> {
     if (!hasPin) {
       return '/(auth)/onboarding'
     }
-  } catch {
-    // Không chắc PIN → ưu tiên hoàn tất onboarding + setup PIN
-    return '/(auth)/onboarding'
+  } catch (error: any) {
+    if (error?.status === 401 || error?.status === 403) {
+      await clearStoredSession()
+    }
+    return '/(auth)/login'
   }
 
-  return '/(auth)/login'
+  return '/(tabs)/home'
 }

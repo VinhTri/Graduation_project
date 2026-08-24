@@ -12,6 +12,12 @@ import { styles } from './ElectricityInvoiceScreen.styles';
 import { invoiceService } from '@/shared/api/services/invoiceService';
 import { ConfirmModal } from '@/shared/components';
 
+type ConsumptionErrors = Partial<Record<'price' | 'oldReading' | 'newReading', string>>;
+
+const MAX_METER_READING = 99_999_999;
+const MAX_UNIT_PRICE = 100_000;
+const MAX_ESTIMATED_AMOUNT = 1_000_000_000;
+
 export const ElectricityInvoiceScreen = () => {
   const router = useRouter();
   const { editId } = useLocalSearchParams();
@@ -22,6 +28,7 @@ export const ElectricityInvoiceScreen = () => {
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [errorModalVisible, setErrorModalVisible] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
+  const [consumptionErrors, setConsumptionErrors] = useState<ConsumptionErrors>({});
 
   // Block 1: Consumption Info
   const [pricePerKwh, setPricePerKwh] = useState('3500');
@@ -120,8 +127,32 @@ export const ElectricityInvoiceScreen = () => {
 
   // --- Handlers ---
   const handlePriceChange = (text: string) => {
-    const num = text.replace(/[^0-9]/g, '');
+    const num = text.replace(/[^0-9]/g, '').replace(/^0+(?=\d)/, '');
+    if (num && Number(num) > MAX_UNIT_PRICE) {
+      setConsumptionErrors(current => ({ ...current, price: 'Đơn giá tối đa là 100.000đ/kWh.' }));
+      return;
+    }
     setPricePerKwh(num ? num.replace(/\B(?=(\d{3})+(?!\d))/g, ",") : '');
+    setConsumptionErrors(current => ({ ...current, price: undefined }));
+  };
+
+  const handleReadingChange = (field: 'oldReading' | 'newReading', text: string) => {
+    const numericValue = text.replace(/[^0-9]/g, '').replace(/^0+(?=\d)/, '');
+    if (numericValue && Number(numericValue) > MAX_METER_READING) {
+      setConsumptionErrors(current => ({
+        ...current,
+        [field]: 'Chỉ số điện tối đa là 99.999.999 kWh.',
+      }));
+      return;
+    }
+
+    if (field === 'oldReading') {
+      setOldReading(numericValue);
+      setConsumptionErrors(current => ({ ...current, oldReading: undefined, newReading: undefined }));
+    } else {
+      setNewReading(numericValue);
+      setConsumptionErrors(current => ({ ...current, newReading: undefined }));
+    }
   };
 
   const handleDateChange = (event: any, selectedDate?: Date) => {
@@ -158,11 +189,31 @@ export const ElectricityInvoiceScreen = () => {
   };
 
   const handleSave = async () => {
-    if (consumed <= 0 && !editId) {
-      setErrorMessage("Chỉ số mới phải lớn hơn chỉ số cũ.");
-      setErrorModalVisible(true);
+    const nextErrors: ConsumptionErrors = {};
+    const price = Number(pricePerKwh.replace(/,/g, ''));
+    const oldValue = Number(oldReading);
+    const newValue = Number(newReading);
+
+    if (!pricePerKwh) nextErrors.price = 'Vui lòng nhập đơn giá điện.';
+    else if (!Number.isFinite(price) || price <= 0) nextErrors.price = 'Đơn giá điện phải lớn hơn 0đ.';
+    else if (price > MAX_UNIT_PRICE) nextErrors.price = 'Đơn giá tối đa là 100.000đ/kWh.';
+
+    if (!oldReading) nextErrors.oldReading = 'Vui lòng nhập chỉ số cũ.';
+    else if (oldValue > MAX_METER_READING) nextErrors.oldReading = 'Chỉ số điện tối đa là 99.999.999 kWh.';
+
+    if (!newReading) nextErrors.newReading = 'Vui lòng nhập chỉ số chốt.';
+    else if (newValue > MAX_METER_READING) nextErrors.newReading = 'Chỉ số điện tối đa là 99.999.999 kWh.';
+    else if (oldReading && newValue <= oldValue) nextErrors.newReading = 'Chỉ số chốt phải lớn hơn chỉ số cũ.';
+    else if ((newValue - oldValue) * price > MAX_ESTIMATED_AMOUNT) {
+      nextErrors.newReading = 'Chi phí ước tính không được vượt quá 1 tỷ đồng.';
+    }
+
+    if (Object.keys(nextErrors).length > 0) {
+      setConsumptionErrors(nextErrors);
       return;
     }
+
+    setConsumptionErrors({});
 
     const now = new Date();
     const reminderDate = new Date(dueDate);
@@ -244,7 +295,7 @@ export const ElectricityInvoiceScreen = () => {
             </View>
           </View>
           <View style={styles.totalAmountWrap}>
-            <Text style={styles.totalAmountLabel}>Tạm tính thành tiền</Text>
+            <Text style={styles.totalAmountLabel}>Chi phí ước tính</Text>
             <Text style={styles.totalAmountValue}>{totalAmount.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",")} đ</Text>
           </View>
         </LinearGradient>
@@ -254,20 +305,23 @@ export const ElectricityInvoiceScreen = () => {
         <View style={styles.card}>
           <Text style={styles.cardTitle}>Thông tin tiêu thụ</Text>
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Đơn giá điện</Text>
-            <View style={styles.inputWithSuffix}>
+            <Text style={styles.label}>Đơn giá điện <Text style={styles.required}>*</Text></Text>
+            <View style={[styles.inputWithSuffix, consumptionErrors.price && styles.inputError]}>
               <TextInput style={styles.inputCore} value={pricePerKwh} onChangeText={handlePriceChange} keyboardType="numeric" />
-              <Text style={styles.inputSuffix}>VNĐ / số</Text>
+              <Text style={styles.inputSuffix}>VNĐ / kWh</Text>
             </View>
+            {consumptionErrors.price ? <Text style={styles.errorText}>{consumptionErrors.price}</Text> : null}
           </View>
           <View style={styles.row}>
             <View style={[styles.inputGroup, styles.flex1]}>
-              <Text style={styles.label}>Chỉ số cũ</Text>
-              <TextInput style={styles.input} placeholder="VD: 1000" placeholderTextColor="#94A3B8" value={oldReading} onChangeText={setOldReading} keyboardType="numeric" />
+              <Text style={styles.label}>Chỉ số cũ <Text style={styles.required}>*</Text></Text>
+              <TextInput style={[styles.input, consumptionErrors.oldReading && styles.inputError]} placeholder="VD: 1000" placeholderTextColor="#94A3B8" value={oldReading} onChangeText={(value) => handleReadingChange('oldReading', value)} keyboardType="numeric" />
+              {consumptionErrors.oldReading ? <Text style={styles.errorText}>{consumptionErrors.oldReading}</Text> : null}
             </View>
             <View style={[styles.inputGroup, styles.flex1]}>
-              <Text style={styles.label}>Chỉ số chốt</Text>
-              <TextInput style={styles.input} placeholder="VD: 1050" placeholderTextColor="#94A3B8" value={newReading} onChangeText={setNewReading} keyboardType="numeric" />
+              <Text style={styles.label}>Chỉ số chốt <Text style={styles.required}>*</Text></Text>
+              <TextInput style={[styles.input, consumptionErrors.newReading && styles.inputError]} placeholder="VD: 1050" placeholderTextColor="#94A3B8" value={newReading} onChangeText={(value) => handleReadingChange('newReading', value)} keyboardType="numeric" />
+              {consumptionErrors.newReading ? <Text style={styles.errorText}>{consumptionErrors.newReading}</Text> : null}
             </View>
           </View>
           <View style={styles.resultRow}>

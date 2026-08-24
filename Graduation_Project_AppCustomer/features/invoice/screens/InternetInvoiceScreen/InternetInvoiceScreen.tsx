@@ -231,7 +231,7 @@ export const InternetInvoiceScreen = () => {
             </View>
           </View>
           <View style={styles.totalAmountWrap}>
-            <Text style={styles.totalAmountLabel}>Tạm tính thành tiền</Text>
+            <Text style={styles.totalAmountLabel}>Số tiền hóa đơn</Text>
             <Text style={styles.totalAmountValue}>{totalAmount.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",")} đ</Text>
           </View>
         </LinearGradient>

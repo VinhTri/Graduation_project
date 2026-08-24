@@ -1,28 +1,15 @@
 import { useEffect, useMemo, useState } from 'react'
-import {
-  ActivityIndicator,
-  ScrollView,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
-} from 'react-native'
-import { Feather, Ionicons } from '@expo/vector-icons'
+import { ActivityIndicator, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native'
+import { Ionicons } from '@expo/vector-icons'
 import { useRouter } from 'expo-router'
-import { AddCategoryModal } from '@/features/categories/components/AddCategoryModal/AddCategoryModal'
-import { CategorySelectModal } from '@/features/categories/components/CategorySelectModal/CategorySelectModal'
-import { useCategories } from '@/features/categories/hooks/useCategories'
-import type { SelectedCategory } from '@/features/notebook/types/transaction'
+import { transactionService } from '@/shared/api/services/transactionService'
 import PastelHeaderShell from '@/shared/components/PastelHeaderShell/PastelHeaderShell'
-import { useToast } from '@/shared/components/Toast'
 import { PASTEL_PALETTE } from '@/shared/constants/PastelPalette'
-import { CharacterCounter } from '@/shared/components/CharacterCounter/CharacterCounter'
-import { getDefaultWallet, topUpWallet } from '@/shared/services'
-import { formatCompactAmount } from '@/shared/utils/moneyFormat'
+import { getDefaultWallet } from '@/shared/services'
 import { moneyFlowStyles as styles } from '../styles/moneyFlow.styles'
 
-const QUICK_AMOUNTS = [50000, 100000, 200000, 500000, 1000000]
-const MAX_NOTE = 100
+const QUICK_AMOUNTS = [50_000, 100_000, 200_000, 500_000, 1_000_000]
+const MIN_TOP_UP = 1_000
 
 function parseAmount(text: string) {
   const digits = text.replace(/[^\d]/g, '')
@@ -31,68 +18,53 @@ function parseAmount(text: string) {
 
 function formatInput(value: string) {
   const digits = value.replace(/[^\d]/g, '').slice(0, 12)
-  if (!digits) return ''
-  return Number(digits).toLocaleString('vi-VN')
+  return digits ? Number(digits).toLocaleString('vi-VN') : ''
 }
 
 export default function TopUpScreen() {
   const router = useRouter()
-  const { showToast } = useToast()
-  const { categories, loadCategories, addGroup, addItem } = useCategories({
-    reloadOnFocus: false,
-  })
-
   const [balance, setBalance] = useState(0)
   const [amountText, setAmountText] = useState('')
-  const [note, setNote] = useState('')
-  const [category, setCategory] = useState<SelectedCategory | null>(null)
-  const [amountError, setAmountError] = useState('')
-  const [categoryError, setCategoryError] = useState('')
-  const [submitError, setSubmitError] = useState('')
+  const [loadingBalance, setLoadingBalance] = useState(true)
   const [saving, setSaving] = useState(false)
-  const [selectOpen, setSelectOpen] = useState(false)
-  const [createOpen, setCreateOpen] = useState(false)
-
-  useEffect(() => {
-    loadCategories()
-    getDefaultWallet()
-      .then((wallet) => setBalance(Number(wallet?.balance ?? 0)))
-      .catch(() => undefined)
-  }, [loadCategories])
-
+  const [error, setError] = useState('')
   const amount = useMemo(() => parseAmount(amountText), [amountText])
 
-  async function handleSubmit() {
-    setAmountError('')
-    setCategoryError('')
-    setSubmitError('')
+  useEffect(() => {
+    getDefaultWallet()
+      .then((wallet) => setBalance(Number(wallet?.balance ?? 0)))
+      .catch(() => setError('Không thể tải thông tin ví'))
+      .finally(() => setLoadingBalance(false))
+  }, [])
 
-    if (amount < 1000) {
-      setAmountError('Số tiền nạp tối thiểu là 1.000đ')
+  function chooseAmount(value: number) {
+    setAmountText(value.toLocaleString('vi-VN'))
+    setError('')
+  }
+
+  async function handleTopUp() {
+    setError('')
+    if (amount < MIN_TOP_UP) {
+      setError(`Số tiền nạp tối thiểu là ${MIN_TOP_UP.toLocaleString('vi-VN')} ₫`)
       return
     }
-    if (!category) {
-      setCategoryError('Vui lòng chọn danh mục')
-      return
-    }
 
-    setSaving(true)
     try {
-      await topUpWallet({
-        amount,
-        categoryId: category.id,
-        note: note.trim() || undefined,
+      setSaving(true)
+      const result = await transactionService.initiateTopUp({ amount })
+      router.replace({
+        pathname: '/wallet/withdraw-success',
+        params: {
+          source: 'top-up',
+          type: 'TOP_UP',
+          transactionCode: result.transactionCode,
+          amount: String(result.amount ?? amount),
+          createdAt: result.createdAt,
+          note: 'Nạp tiền vào ví',
+        },
       })
-      showToast({ variant: 'success', message: 'Nạp tiền thành công!' })
-      if (router.canDismiss()) {
-        router.dismissTo('/(tabs)/wallet')
-      } else if (router.canGoBack()) {
-        router.back()
-      } else {
-        router.replace('/(tabs)/wallet')
-      }
     } catch (err) {
-      setSubmitError(err instanceof Error ? err.message : 'Không thể nạp tiền')
+      setError(err instanceof Error ? err.message : 'Không thể nạp tiền')
     } finally {
       setSaving(false)
     }
@@ -107,127 +79,80 @@ export default function TopUpScreen() {
           </TouchableOpacity>
           <View style={styles.headerTextWrap}>
             <Text style={styles.title}>Nạp tiền</Text>
-            <Text style={styles.subtitle}>
-              Số dư hiện tại: {balance.toLocaleString('vi-VN')} ₫
-            </Text>
+            <Text style={styles.subtitle}>Chọn số tiền để nạp trực tiếp vào ví</Text>
           </View>
         </View>
       </PastelHeaderShell>
 
-      <ScrollView
-        contentContainerStyle={styles.scrollContent}
-        keyboardShouldPersistTaps="handled"
-        showsVerticalScrollIndicator={false}
-      >
-        <Text style={styles.label}>Số tiền nạp</Text>
-        <View style={[styles.inputBox, amountError ? styles.inputBoxError : null]}>
+      <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+        <View style={styles.withdrawBalanceCard}>
+          <View style={styles.balanceTopRow}>
+            <View style={styles.withdrawBalanceIconWrap}>
+              <Ionicons name="wallet-outline" size={22} color={PASTEL_PALETTE.accentDeep} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.balanceLabel}>Số dư hiện tại</Text>
+              <Text style={styles.balanceValue}>
+                {loadingBalance ? 'Đang tải...' : `${balance.toLocaleString('vi-VN')} ₫`}
+              </Text>
+            </View>
+          </View>
+          {amount > 0 ? (
+            <View style={styles.withdrawBalanceMetaRow}>
+              <Text style={styles.balanceMetaLabel}>Số dư sau khi nạp</Text>
+              <Text style={styles.balanceMetaValue}>{(balance + amount).toLocaleString('vi-VN')} ₫</Text>
+            </View>
+          ) : null}
+        </View>
+
+        <View style={styles.withdrawStepHeader}>
+          <View style={styles.withdrawStepIndex}><Text style={styles.withdrawStepIndexText}>1</Text></View>
+          <Text style={styles.withdrawStepTitle}>Nhập số tiền muốn nạp</Text>
+        </View>
+        <Text style={styles.withdrawFieldHint}>Tiền sẽ được cộng ngay để phục vụ kiểm thử.</Text>
+
+        <View style={[styles.inputBox, !!error && styles.inputBoxError]}>
           <TextInput
             style={styles.amountInput}
+            value={amountText}
+            onChangeText={(value) => { setAmountText(formatInput(value)); setError('') }}
             placeholder="0"
             placeholderTextColor={PASTEL_PALETTE.gray400}
             keyboardType="number-pad"
-            value={amountText}
-            onChangeText={(text) => {
-              setAmountText(formatInput(text))
-              if (amountError) setAmountError('')
-            }}
+            editable={!saving}
           />
           <Text style={styles.currency}>₫</Text>
         </View>
-        {amountError ? <Text style={styles.errorText}>{amountError}</Text> : null}
 
         <View style={styles.chipRow}>
-          {QUICK_AMOUNTS.map((value) => (
-            <TouchableOpacity
-              key={value}
-              style={[styles.chip, amount === value && styles.chipActive]}
-              onPress={() => setAmountText(formatInput(String(value)))}
-            >
-              <Text style={[styles.chipText, amount === value && styles.chipTextActive]}>
-                {formatCompactAmount(value)}
-              </Text>
-            </TouchableOpacity>
-          ))}
+          {QUICK_AMOUNTS.map((value) => {
+            const active = amount === value
+            return (
+              <TouchableOpacity key={value} style={[styles.chip, active && styles.chipActive]} onPress={() => chooseAmount(value)} disabled={saving}>
+                <Text style={[styles.chipText, active && styles.chipTextActive]}>{value.toLocaleString('vi-VN')} ₫</Text>
+              </TouchableOpacity>
+            )
+          })}
         </View>
 
-        <Text style={styles.label}>Danh mục</Text>
-        <TouchableOpacity
-          style={[styles.selector, categoryError ? styles.inputBoxError : null]}
-          onPress={() => setSelectOpen(true)}
-        >
-          <Feather name="tag" size={18} color={PASTEL_PALETTE.accentDeep} />
-          <Text style={styles.selectorText}>
-            {category ? category.label : 'Chọn danh mục'}
-          </Text>
-          <Feather name="chevron-right" size={18} color={PASTEL_PALETTE.lavender} />
-        </TouchableOpacity>
-        {categoryError ? <Text style={styles.errorText}>{categoryError}</Text> : null}
-
-        <Text style={[styles.label, { marginTop: 14 }]}>Ghi chú</Text>
-        <View style={styles.inputBox}>
-          <TextInput
-            style={styles.noteInput}
-            placeholder="Ghi chú (tuỳ chọn)"
-            placeholderTextColor={PASTEL_PALETTE.gray400}
-            value={note}
-            maxLength={MAX_NOTE}
-            onChangeText={setNote}
-          />
-        </View>
-        <CharacterCounter value={note} maxLength={MAX_NOTE} />
-
-        {submitError ? <Text style={styles.errorText}>{submitError}</Text> : null}
+        {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
         <TouchableOpacity
-          style={[styles.primaryBtn, saving && styles.primaryBtnDisabled]}
-          onPress={handleSubmit}
-          disabled={saving}
+          style={[styles.primaryBtn, (saving || amount <= 0) && styles.primaryBtnDisabled]}
+          onPress={handleTopUp}
+          disabled={saving || amount <= 0}
           activeOpacity={0.85}
         >
           {saving ? (
-            <ActivityIndicator color="#fff" />
+            <ActivityIndicator color="#FFFFFF" />
           ) : (
-            <Text style={styles.primaryBtnText}>Nạp tiền</Text>
+            <View style={styles.withdrawButtonContent}>
+              <Ionicons name="add-circle-outline" size={20} color="#FFFFFF" />
+              <Text style={styles.primaryBtnText}>Nạp {amount > 0 ? `${amount.toLocaleString('vi-VN')} ₫` : 'tiền'}</Text>
+            </View>
           )}
         </TouchableOpacity>
       </ScrollView>
-
-      <CategorySelectModal
-        visible={selectOpen}
-        categories={categories}
-        onClose={() => setSelectOpen(false)}
-        onSelect={(item) => {
-          setCategory({
-            id: item.id,
-            label: item.label,
-            icon: item.icon,
-            color: item.color,
-            bgColor: item.bgColor,
-          })
-          setCategoryError('')
-          setSelectOpen(false)
-        }}
-        onAddCategory={() => {
-          setSelectOpen(false)
-          setCreateOpen(true)
-        }}
-      />
-      <AddCategoryModal
-        visible={createOpen}
-        categories={categories}
-        onClose={() => setCreateOpen(false)}
-        onBack={() => {
-          setCreateOpen(false)
-          setSelectOpen(true)
-        }}
-        onCreateGroup={addGroup}
-        onSubmit={async (payload) => {
-          await addItem(payload)
-          await loadCategories()
-          setCreateOpen(false)
-          setSelectOpen(true)
-        }}
-      />
     </View>
   )
 }

@@ -19,6 +19,9 @@ import com.project.app.wallet.repository.WalletRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.LockModeType;
+import jakarta.persistence.PersistenceContext;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -35,6 +38,9 @@ public class AdminSePayServiceImpl implements AdminSePayService {
     private final SePayTransactionRepository sePayTransactionRepository;
     private final TransactionRepository transactionRepository;
     private final WalletRepository walletRepository;
+
+    @PersistenceContext
+    private EntityManager entityManager;
 
     @Override
     @Transactional(readOnly = true)
@@ -145,8 +151,9 @@ public class AdminSePayServiceImpl implements AdminSePayService {
     @Override
     @Transactional
     public SePayTransactionResponse manualCredit(Long sepayRecordId, ManualCreditRequest request) {
-        SePayTransaction row = sePayTransactionRepository.findById(sepayRecordId)
-                .orElseThrow(() -> new AppException(ErrorCode.SEPAY_TRANSACTION_NOT_FOUND));
+        SePayTransaction row = entityManager.find(
+                SePayTransaction.class, sepayRecordId, LockModeType.PESSIMISTIC_WRITE);
+        if (row == null) throw new AppException(ErrorCode.SEPAY_TRANSACTION_NOT_FOUND);
 
         if (row.getTransaction() != null || row.getMatchStatus() == SePayMatchStatus.MATCHED) {
             throw new AppException(ErrorCode.SEPAY_ALREADY_MATCHED);
@@ -156,7 +163,7 @@ public class AdminSePayServiceImpl implements AdminSePayService {
             throw new AppException(ErrorCode.INVALID_AMOUNT);
         }
 
-        String account = request != null && request.getWalletAccountNumber() != null
+        String account = request.getWalletAccountNumber() != null
                 && !request.getWalletAccountNumber().isBlank()
                 ? request.getWalletAccountNumber().trim().toUpperCase()
                 : row.getParsedWalletAccount();
@@ -165,8 +172,10 @@ public class AdminSePayServiceImpl implements AdminSePayService {
             throw new AppException(ErrorCode.ACCOUNT_NUMBER_NOT_FOUND);
         }
 
-        Wallet wallet = walletRepository.findByAccountNumber(account)
+        Wallet locatedWallet = walletRepository.findByAccountNumber(account)
                 .orElseThrow(() -> new AppException(ErrorCode.WALLET_NOT_FOUND));
+        Wallet wallet = entityManager.find(Wallet.class, locatedWallet.getId(), LockModeType.PESSIMISTIC_WRITE);
+        if (wallet == null) throw new AppException(ErrorCode.WALLET_NOT_FOUND);
 
         String transactionCode = "TX" + System.currentTimeMillis()
                 + UUID.randomUUID().toString().substring(0, 4).toUpperCase();
@@ -177,7 +186,8 @@ public class AdminSePayServiceImpl implements AdminSePayService {
         transaction.setType(TransactionType.TOP_UP);
         transaction.setStatus(TransactionStatus.SUCCESS);
         transaction.setTransactionCode(transactionCode);
-        transaction.setNote("Nạp tiền vào ví qua SePay (Admin đối soát thủ công)");
+        transaction.setNote("Nạp tiền vào ví qua SePay (Admin đối soát thủ công): "
+                + request.getReason().trim());
         transactionRepository.save(transaction);
 
         wallet.addBalance(row.getTransferAmount());

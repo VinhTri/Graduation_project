@@ -1,11 +1,11 @@
 .admin-shell {
-  min-height: 100vh;
-  background: #f8fafc;
+  min-height: 100dvh;
+  background: #FFF8FC;
 }
 
 .admin-sider.ant-layout-sider {
-  background: #ffffff !important;
-  border-right: none !important;
+  background: linear-gradient(180deg, #FFF7FB 0%, #F5EEFF 55%, #EEF5FF 100%) !important;
+  border-right: 1px solid #F3E8FF !important;
   height: 100vh !important;
   position: sticky !important;
   top: 0;
@@ -46,7 +46,7 @@
 
 .admin-brand-curve path {
   fill: none;
-  stroke: #e2e8f0;
+  stroke: #E9D5FF;
   stroke-width: 1.5;
   stroke-linecap: round;
 }
@@ -73,18 +73,18 @@
 }
 
 .admin-brand-text .smart {
-  color: #5b21b6;
+  color: #5B21B6;
 }
 
 .admin-brand-text .spend {
-  color: #ec4899;
+  color: #EC4899;
 }
 
 .admin-brand-text small {
   margin-top: 2px;
   font-size: 0.68rem;
   font-weight: 700;
-  color: #64748b;
+  color: #9CA3AF;
   letter-spacing: 0.3px;
 }
 
@@ -104,10 +104,10 @@
   margin: 0 8px 8px;
   height: 42px;
   padding: 0 12px;
-  border: 1px solid #e2e8f0;
+  border: 1px solid #E9D5FF;
   border-radius: 8px;
-  background: #f8fafc;
-  color: #334155;
+  background: rgba(255, 255, 255, .72);
+  color: #7C3AED;
   cursor: pointer;
   font-weight: 700;
   font-size: 0.9rem;
@@ -115,9 +115,9 @@
 }
 
 .admin-sider-toggle:hover {
-  background: #fdf2f8;
-  border-color: #fbcfe8;
-  color: #9d174d;
+  background: #FFFFFF;
+  border-color: #F9A8D4;
+  color: #EC4899;
 }
 
 .admin-sider.is-collapsed .admin-sider-toggle {
@@ -159,36 +159,36 @@
   font-weight: 800 !important;
   letter-spacing: 0.6px;
   text-transform: uppercase;
-  color: #94a3b8 !important;
+  color: #9CA3AF !important;
 }
 
 .admin-menu .ant-menu-item {
-  color: #475569 !important;
+  color: #4B5563 !important;
   font-weight: 600 !important;
 }
 
 .admin-menu .ant-menu-item .anticon {
-  color: #64748b !important;
+  color: #A78BFA !important;
 }
 
 .admin-menu .ant-menu-item:hover {
-  color: #0f172a !important;
-  background: #f8fafc !important;
+  color: #BE185D !important;
+  background: rgba(255, 255, 255, .72) !important;
 }
 
 .admin-menu .ant-menu-item-selected {
-  color: #9d174d !important;
-  background: #fdf2f8 !important;
+  color: #BE185D !important;
+  background: #FCE7F3 !important;
   font-weight: 700 !important;
 }
 
 .admin-menu .ant-menu-item-selected .anticon {
-  color: #ec4899 !important;
+  color: #EC4899 !important;
 }
 
 .admin-main {
   min-width: 0;
-  background: #f8fafc !important;
+  background: #FFF8FC !important;
 }
 
 .admin-header.ant-layout-header {
@@ -199,10 +199,9 @@
   align-items: center;
   justify-content: space-between;
   gap: 20px;
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.98) 0%, rgba(255, 255, 255, 0.94) 100%),
-    linear-gradient(105deg, rgba(253, 242, 248, 0.9) 0%, rgba(245, 243, 255, 0.55) 48%, rgba(239, 246, 255, 0.7) 100%) !important;
-  border-bottom: 1px solid #f1e7f6;
+  background: rgba(255, 248, 252, .92) !important;
+  backdrop-filter: blur(16px);
+  border-bottom: 1px solid #F3E8FF;
   border-left: none;
   box-shadow: 0 8px 20px rgba(15, 23, 42, 0.03);
   position: sticky;
@@ -227,20 +226,20 @@
   height: 40px;
   border-radius: 999px !important;
   background: rgba(255, 255, 255, 0.9) !important;
-  border: 1px solid #e9d5ff !important;
+  border: 1px solid #dbe5df !important;
   box-shadow: 0 1px 0 rgba(255, 255, 255, 0.8) inset !important;
   padding-inline: 14px !important;
 }
 
 .admin-header-search .ant-input-affix-wrapper:hover,
 .admin-header-search .ant-input-affix-wrapper-focused {
-  border-color: #f9a8d4 !important;
+  border-color: #F472B6 !important;
   background: #fff !important;
-  box-shadow: 0 0 0 3px rgba(244, 114, 182, 0.12) !important;
+  box-shadow: 0 0 0 3px rgba(49, 95, 76, 0.1) !important;
 }
 
 .admin-header-search .ant-input-prefix {
-  color: #a78bfa;
+  color: #648174;
   margin-inline-end: 8px;
 }
 
@@ -262,10 +261,10 @@
 
 .admin-icon-btn:hover {
   background: #fff;
-  color: #ec4899;
-  border-color: #f9a8d4;
+  color: #EC4899;
+  border-color: #9fc0b1;
   transform: translateY(-1px);
-  box-shadow: 0 8px 16px rgba(236, 72, 153, 0.12);
+  box-shadow: 0 8px 16px rgba(49, 95, 76, 0.1);
 }
 
 .admin-icon-btn .ant-badge {
@@ -283,7 +282,7 @@
 }
 
 .admin-breadcrumb.ant-breadcrumb a {
-  color: #7c3aed;
+  color: #EC4899;
   font-weight: 600;
 }
 
@@ -303,7 +302,7 @@
   width: 4px;
   height: 18px;
   border-radius: 999px;
-  background: linear-gradient(180deg, #f472b6, #a78bfa);
+  background: #7C3AED;
   flex-shrink: 0;
 }
 
@@ -339,13 +338,13 @@
 
 .admin-user-btn:hover {
   background: #fff;
-  border-color: #f9a8d4;
+  border-color: #9fc0b1;
   transform: translateY(-1px);
-  box-shadow: 0 8px 16px rgba(236, 72, 153, 0.12);
+  box-shadow: 0 8px 16px rgba(49, 95, 76, 0.1);
 }
 
 .admin-avatar.ant-avatar {
-  background: linear-gradient(135deg, #f472b6, #a78bfa) !important;
+  background: #EC4899 !important;
   box-shadow: 0 0 0 2px #fff;
 }
 
@@ -366,7 +365,7 @@
 
 .admin-user-text small {
   font-size: 0.68rem;
-  color: #7c3aed;
+  color: #7C3AED;
   font-weight: 700;
 }
 
@@ -388,7 +387,10 @@
 }
 
 .admin-content.ant-layout-content {
-  padding: 20px 24px 28px !important;
+  width: 100%;
+  max-width: 1600px;
+  margin: 0 auto;
+  padding: 24px 28px 36px !important;
   min-height: calc(100vh - 72px);
 }
 

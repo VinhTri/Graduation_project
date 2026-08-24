@@ -10,7 +10,6 @@ import com.project.app.common.exception.ErrorCode;
 import com.project.app.user.entity.User;
 import com.project.app.user.repository.UserRepository;
 import com.project.app.wallet.dto.WalletTransactionResponse;
-import com.project.app.wallet.dto.request.WalletTopUpRequest;
 import com.project.app.wallet.dto.request.WalletWithdrawRequest;
 import com.project.app.wallet.entity.Wallet;
 import com.project.app.wallet.entity.WalletTransaction;
@@ -42,31 +41,6 @@ public class WalletTransactionServiceImpl implements WalletTransactionService {
     private final BankAccountRepository bankAccountRepository;
     private final WalletLimitHelper walletLimitHelper;
     private final AuthService authService;
-
-    @Override
-    @Transactional
-    public WalletTransactionResponse topUp(Long userId, WalletTopUpRequest request) {
-        User user = requireUser(userId);
-        Wallet wallet = requireDefaultWallet(userId);
-        CategoryItem category = categoryService.requireUserOwnedItem(userId, request.getCategoryId());
-
-        wallet.setBalance(wallet.getBalance().add(request.getAmount()));
-        walletRepository.save(wallet);
-
-        WalletTransaction transaction = WalletTransaction.builder()
-                .user(user)
-                .wallet(wallet)
-                .amount(request.getAmount())
-                .type(WalletTransactionType.TOP_UP)
-                .note(normalizeNote(request.getNote()))
-                .categoryId(category.getId())
-                .categoryName(category.getLabel())
-                .transactionCode(generateCode("TU"))
-                .build();
-
-        walletTransactionRepository.save(transaction);
-        return toResponse(transaction, category, wallet.getBalance());
-    }
 
     @Override
     @Transactional
@@ -127,7 +101,11 @@ public class WalletTransactionServiceImpl implements WalletTransactionService {
         BigDecimal balance = wallet != null ? wallet.getBalance() : BigDecimal.ZERO;
 
         return transactions.stream()
-                .map(tx -> toResponse(tx, categories.get(tx.getCategoryId()), balance))
+                .map(tx -> {
+                    Long categoryId = tx.getCategoryId();
+                    CategoryItem category = categoryId == null ? null : categories.get(categoryId);
+                    return toResponse(tx, category, balance);
+                })
                 .toList();
     }
 
@@ -162,7 +140,9 @@ public class WalletTransactionServiceImpl implements WalletTransactionService {
             CategoryItem category,
             BigDecimal balanceAfter) {
         boolean systemCategory = isSystemFundCategory(category, transaction.getCategoryName());
-        boolean deleted = !systemCategory && (category == null || category.isDeleted());
+        boolean deleted = transaction.getCategoryId() != null
+                && !systemCategory
+                && (category == null || category.isDeleted());
         return WalletTransactionResponse.from(
                 transaction,
                 category != null ? category.getIcon() : null,

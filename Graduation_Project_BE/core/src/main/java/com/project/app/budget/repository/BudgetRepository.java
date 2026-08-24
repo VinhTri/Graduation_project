@@ -20,6 +20,10 @@ public interface BudgetRepository extends JpaRepository<Budget, Long> {
 
     List<Budget> findAllByUserIdAndCategoryIdIn(Long userId, Collection<Long> categoryIds);
 
+    List<Budget> findAllByInvalidatedFalseAndStartDateLessThanEqualAndEndDateGreaterThanEqual(
+            LocalDate startDate,
+            LocalDate endDate);
+
     @Query("""
             SELECT COUNT(b) > 0 FROM Budget b
             WHERE b.user.id = :userId

@@ -77,6 +77,7 @@ export const AIChatModal: React.FC<AIChatModalProps> = ({ visible, onClose }) =>
   ])
   const [inputText, setInputText] = useState('')
   const [isLoading, setIsLoading] = useState(false)
+  const [feedback, setFeedback] = useState<Record<string, 'up' | 'down'>>({})
   const scrollViewRef = useRef<ScrollView>(null)
   const inputRef = useRef<TextInput>(null)
 
@@ -224,6 +225,13 @@ export const AIChatModal: React.FC<AIChatModalProps> = ({ visible, onClose }) =>
     onClose()
   }
 
+  const handleNewConversation = async () => {
+    await aiChatService.startNewConversation()
+    setMessages([{ id: '1', text: 'Xin chào! Tôi là Trợ lý AI SmartSpend. Bạn cần hỗ trợ gì?', isUser: false, timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }), moduleType: 'RAG' }])
+    setFeedback({})
+    setInputText('')
+  }
+
   const sendPrompt = async (promptToSend: string) => {
     if (!promptToSend.trim() || isLoading) return
 
@@ -282,6 +290,16 @@ export const AIChatModal: React.FC<AIChatModalProps> = ({ visible, onClose }) =>
     }
   }
 
+  const handleFeedback = async (messageId: string, helpful: boolean) => {
+    const value = helpful ? 'up' : 'down'
+    setFeedback((current) => ({ ...current, [messageId]: value }))
+    try {
+      await aiChatService.submitFeedback(messageId, helpful)
+    } catch {
+      setFeedback((current) => { const next = { ...current }; delete next[messageId]; return next })
+    }
+  }
+
   const getModuleBadge = (moduleType?: ChatMessage['moduleType']) => {
     switch (moduleType) {
       case 'RAG':
@@ -294,6 +312,10 @@ export const AIChatModal: React.FC<AIChatModalProps> = ({ visible, onClose }) =>
         return { text: 'Danh mục', bg: '#FCE7F3', color: '#DB2777' }
       case 'FINANCE':
         return { text: 'Tài chính', bg: '#DBEAFE', color: '#2563EB' }
+      case 'BUDGET':
+        return { text: 'Ngân sách', bg: '#F3E8FF', color: '#7C3AED' }
+      case 'SUPPORT':
+        return { text: 'Hỗ trợ', bg: '#E0F2FE', color: '#0369A1' }
       case 'GENERAL':
         return null
       default:
@@ -344,6 +366,9 @@ export const AIChatModal: React.FC<AIChatModalProps> = ({ visible, onClose }) =>
                   <Text style={styles.headerSubtitle}>Hỏi về thu chi, ngân sách, danh mục…</Text>
                 </View>
               </View>
+              <TouchableOpacity onPress={handleNewConversation} style={styles.closeButton} hitSlop={8} accessibilityLabel="Cuộc trò chuyện mới">
+                <Ionicons name="add" size={20} color="#475569" />
+              </TouchableOpacity>
               <TouchableOpacity onPress={handleClose} style={styles.closeButton} hitSlop={8}>
                 <Ionicons name="close" size={20} color="#475569" />
               </TouchableOpacity>
@@ -420,7 +445,7 @@ export const AIChatModal: React.FC<AIChatModalProps> = ({ visible, onClose }) =>
                             key={action.id}
                             style={[
                               styles.actionButton,
-                              action.id === 'confirm_create_category' && styles.actionButtonPrimary,
+                              action.id.startsWith('confirm_') && styles.actionButtonPrimary,
                             ]}
                             onPress={() => handleAction(action)}
                             disabled={isLoading}
@@ -428,13 +453,25 @@ export const AIChatModal: React.FC<AIChatModalProps> = ({ visible, onClose }) =>
                             <Text
                               style={[
                                 styles.actionButtonText,
-                                action.id === 'confirm_create_category' && styles.actionButtonTextPrimary,
+                                action.id.startsWith('confirm_') && styles.actionButtonTextPrimary,
                               ]}
                             >
                               {action.label}
                             </Text>
                           </TouchableOpacity>
                         ))}
+                      </View>
+                    )}
+
+                    {!msg.isUser && msg.id !== '1' && (
+                      <View style={localStyles.feedbackRow}>
+                        <Text style={localStyles.feedbackLabel}>Câu trả lời hữu ích?</Text>
+                        <TouchableOpacity onPress={() => handleFeedback(msg.id, true)} style={[localStyles.feedbackButton, feedback[msg.id] === 'up' && localStyles.feedbackButtonActive]} accessibilityLabel="Hữu ích">
+                          <Ionicons name={feedback[msg.id] === 'up' ? 'thumbs-up' : 'thumbs-up-outline'} size={14} color={feedback[msg.id] === 'up' ? Colors.primary : '#64748B'} />
+                        </TouchableOpacity>
+                        <TouchableOpacity onPress={() => handleFeedback(msg.id, false)} style={[localStyles.feedbackButton, feedback[msg.id] === 'down' && localStyles.feedbackButtonActive]} accessibilityLabel="Không hữu ích">
+                          <Ionicons name={feedback[msg.id] === 'down' ? 'thumbs-down' : 'thumbs-down-outline'} size={14} color={feedback[msg.id] === 'down' ? Colors.primary : '#64748B'} />
+                        </TouchableOpacity>
                       </View>
                     )}
 
@@ -470,7 +507,7 @@ export const AIChatModal: React.FC<AIChatModalProps> = ({ visible, onClose }) =>
                 onChangeText={setInputText}
                 onFocus={scrollToEnd}
                 multiline
-                maxLength={500}
+                maxLength={1000}
                 returnKeyType="default"
                 blurOnSubmit={false}
               />
@@ -493,6 +530,10 @@ const localStyles = StyleSheet.create({
   backdrop: {
     backgroundColor: 'rgba(15, 23, 42, 0.52)',
   },
+  feedbackRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 7 },
+  feedbackLabel: { fontSize: 10, color: '#94A3B8', marginRight: 2 },
+  feedbackButton: { width: 27, height: 27, borderRadius: 8, borderWidth: 1, borderColor: '#E2E8F0', alignItems: 'center', justifyContent: 'center', backgroundColor: '#FFFFFF' },
+  feedbackButtonActive: { borderColor: '#F0A8C8', backgroundColor: '#FFF1F7' },
 })
 
 export default AIChatModal

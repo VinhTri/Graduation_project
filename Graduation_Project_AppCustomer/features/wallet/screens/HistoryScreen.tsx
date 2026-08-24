@@ -26,6 +26,7 @@ import { PASTEL_PALETTE } from '@/shared/constants/PastelPalette'
 import { getWalletTransactions } from '@/shared/services'
 import type { WalletTransactionResponse } from '@/shared/types/wallet'
 import {
+  isInternalTransferHistory,
   shouldShowWalletHistoryDestination,
   walletHistoryDestination,
   walletHistoryUserNote,
@@ -311,8 +312,13 @@ export default function HistoryScreen() {
               fromHistory: true,
             })
             const userNote = walletHistoryUserNote(item.note, item.categoryName)
-            const rowTitle = isStructured
-              ? item.categoryName?.trim() || (isTopUp ? 'Nạp tiền' : 'Rút tiền')
+            const isInternalTransfer = isInternalTransferHistory(item.categoryName, item.note)
+            const rowTitle = isInternalTransfer
+              ? isTopUp
+                ? 'Nhận chuyển tiền'
+                : 'Chuyển tiền'
+              : isStructured
+                ? item.categoryName?.trim() || (isTopUp ? 'Nạp tiền' : 'Rút tiền')
               : isTopUp
                 ? 'Nạp tiền'
                 : 'Rút tiền'

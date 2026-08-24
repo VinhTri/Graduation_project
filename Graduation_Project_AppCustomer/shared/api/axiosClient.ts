@@ -1,6 +1,7 @@
 import axios from 'axios';
 import Constants from 'expo-constants';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { clearStoredSession } from '@/shared/services/sessionStorage';
 
 // Tự động lấy IP của máy tính đang chạy Expo (dành cho chế độ Development)
 const BACKEND_PORT = '9090'; // SỬA CỔNG PORT Ở ĐÂY NẾU ĐỒNG ĐỘI CỦA BẠN DÙNG CỔNG KHÁC
@@ -75,7 +76,7 @@ axiosClient.interceptors.response.use(
       }
 
       console.warn("Token không còn hợp lệ, đang chuyển về trang đăng nhập...");
-      await AsyncStorage.removeItem('token');
+      await clearStoredSession();
       
       // Chuyển hướng người dùng về màn hình đăng nhập
       // Yêu cầu import { router } from 'expo-router'; ở đầu file
@@ -86,6 +87,10 @@ axiosClient.interceptors.response.use(
       }
     }
 
-    return Promise.reject(error?.response?.data || error);
+    const rejected = error?.response?.data || error;
+    if (rejected && typeof rejected === 'object' && rejected.status == null) {
+      rejected.status = error?.response?.status;
+    }
+    return Promise.reject(rejected);
   }
 );

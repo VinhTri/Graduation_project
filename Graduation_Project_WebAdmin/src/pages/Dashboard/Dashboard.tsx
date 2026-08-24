@@ -1,503 +1,86 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import {
-  Card,
-  Col,
-  Row,
-  Table,
-  Tag,
-  Typography,
-  Button,
-  Spin,
-  Empty,
-  message,
-  Progress,
-} from 'antd';
-import {
-  UserOutlined,
-  ArrowUpOutlined,
-  ArrowDownOutlined,
-  CheckCircleOutlined,
-  ClockCircleOutlined,
-  CloseCircleOutlined,
-  WalletOutlined,
-  SafetyCertificateOutlined,
-  BankOutlined,
-  DollarCircleOutlined,
-  ApiOutlined,
-} from '@ant-design/icons';
-import {
-  Area,
-  AreaChart,
-  CartesianGrid,
-  ResponsiveContainer,
-  Tooltip as RechartsTooltip,
-  XAxis,
-  YAxis,
-} from 'recharts';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Button, Empty, Skeleton, Table, Tag, message } from 'antd';
+import type { ColumnsType } from 'antd/es/table';
+import { ArrowDownOutlined, ArrowRightOutlined, ArrowUpOutlined, CheckCircleOutlined, ClockCircleOutlined, ReloadOutlined, TeamOutlined, WarningOutlined, WalletOutlined } from '@ant-design/icons';
+import axios from 'axios';
 import dayjs from 'dayjs';
+import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { useNavigate } from 'react-router-dom';
 import { apiClient } from '../../services/api';
 import './Dashboard.css';
 
-const { Text } = Typography;
+interface Metrics { users: number; activeUsers: number; lockedUsers: number; walletBalance: number; topUpAmount: number; withdrawAmount: number; transactions: number; successfulTransactions: number; pendingTransactions: number; failedTransactions: number; activeFunds: number; pendingSplitBills: number; overdueInvoices: number; openTickets: number; unreadNotifications: number }
+interface TrendPoint { date: string; topUp: number; withdraw: number }
+interface RecentTransaction { id: number; transactionCode: string; username?: string; type: string; status: string; amount: number; createdAt: string }
+interface OperationAlert { type: string; title: string; count: number; route: string; severity: number }
+interface DashboardData { metrics: Metrics; trend: TrendPoint[]; recentTransactions: RecentTransaction[]; alerts: OperationAlert[] }
 
-interface UserItem {
-  id: number;
-  username: string;
-  email: string;
-  role: string;
-  active?: boolean;
-  isActive?: boolean;
-  createdAt?: string;
-}
+const EMPTY_METRICS: Metrics = { users: 0, activeUsers: 0, lockedUsers: 0, walletBalance: 0, topUpAmount: 0, withdrawAmount: 0, transactions: 0, successfulTransactions: 0, pendingTransactions: 0, failedTransactions: 0, activeFunds: 0, pendingSplitBills: 0, overdueInvoices: 0, openTickets: 0, unreadNotifications: 0 };
+const TYPE_LABEL: Record<string, string> = { TOP_UP: 'Nạp tiền', WITHDRAW: 'Rút tiền', TRANSFER: 'Chuyển tiền', RECEIVE_TRANSFER: 'Nhận tiền', PAYMENT: 'Thanh toán' };
+const formatMoney = (value: number) => `${Number(value || 0).toLocaleString('vi-VN')} ₫`;
+const shortMoney = (value: number) => value >= 1_000_000_000 ? `${(value / 1_000_000_000).toFixed(1)} tỷ` : value >= 1_000_000 ? `${(value / 1_000_000).toFixed(0)} tr` : value >= 1_000 ? `${(value / 1_000).toFixed(0)}k` : String(value);
 
-interface TxItem {
-  transactionCode: string;
-  type: string;
-  status: string;
-  amount: number;
-  createdAt: string;
-  username?: string;
-}
-
-interface PostItem {
-  id: number;
-  title: string;
-  active: boolean;
-}
-
-const TYPE_LABEL: Record<string, string> = {
-  TOP_UP: 'Nạp tiền',
-  WITHDRAW: 'Rút tiền',
-  TRANSFER: 'Chuyển khoản',
-  PAYMENT: 'Thanh toán',
-  EXPENSE: 'Chi tiêu',
-  INCOME: 'Thu nhập',
-  BANK_LINK_FEE: 'Phí liên kết NH',
-};
-
-const STATUS_META: Record<string, { color: string; label: string }> = {
-  SUCCESS: { color: 'success', label: 'Thành công' },
-  PENDING: { color: 'processing', label: 'Chờ xử lý' },
-  PROCESSING: { color: 'processing', label: 'Đang xử lý' },
-  FAILED: { color: 'error', label: 'Thất bại' },
-  CANCELLED: { color: 'default', label: 'Đã hủy' },
-};
-
-const formatVND = (value: number) =>
-  new Intl.NumberFormat('vi-VN', {
-    style: 'currency',
-    currency: 'VND',
-    maximumFractionDigits: 0,
-  }).format(value || 0);
-
-const shortVND = (value: number) => {
-  const abs = Math.abs(value);
-  if (abs >= 1_000_000_000) return `${(value / 1_000_000_000).toFixed(1)}B`;
-  if (abs >= 1_000_000) return `${(value / 1_000_000).toFixed(1)}M`;
-  if (abs >= 1_000) return `${(value / 1_000).toFixed(0)}K`;
-  return `${value}`;
-};
-
-const isActiveUser = (u: UserItem) => u.active ?? u.isActive ?? false;
-
-export const Dashboard: React.FC = () => {
+export const Dashboard = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
-  const [users, setUsers] = useState<UserItem[]>([]);
-  const [posts, setPosts] = useState<PostItem[]>([]);
-  const [transactions, setTransactions] = useState<TxItem[]>([]);
-  const [totalWalletBalance, setTotalWalletBalance] = useState(0);
+  const [data, setData] = useState<DashboardData>({ metrics: EMPTY_METRICS, trend: [], recentTransactions: [], alerts: [] });
 
-  const loadData = useCallback(async () => {
+  const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [usersRes, postsRes] = await Promise.all([
-        apiClient.get('/api/v1/admin/users'),
-        apiClient.get('/api/v1/admin/posts'),
-      ]);
-
-      const userList: UserItem[] = usersRes.data?.data || usersRes.data || [];
-      const postList: PostItem[] = postsRes.data?.data || postsRes.data || [];
-      setUsers(Array.isArray(userList) ? userList : []);
-      setPosts(Array.isArray(postList) ? postList : []);
-
-      const targetUsers = userList.filter((u) => u.role !== 'ADMIN').slice(0, 80);
-      const detailResults = await Promise.allSettled(
-        targetUsers.map((u) => apiClient.get(`/api/v1/admin/users/${u.id}/details`))
-      );
-
-      const REAL_MONEY_TYPES = new Set(['TOP_UP', 'WITHDRAW']);
-
-      let balanceSum = 0;
-      const allTx: TxItem[] = [];
-
-      detailResults.forEach((result, index) => {
-        if (result.status !== 'fulfilled') return;
-        const detail = result.value.data?.data || result.value.data;
-        if (!detail) return;
-        // BE đã trả MAIN-only; FE vẫn chỉ lấy nạp/rút để thống kê dòng tiền thật
-        balanceSum += Number(detail.totalBalance || 0);
-        const txs: TxItem[] = detail.recentTransactions || [];
-        txs
-          .filter((tx) => REAL_MONEY_TYPES.has(tx.type))
-          .forEach((tx) => {
-            allTx.push({
-              ...tx,
-              amount: Number(tx.amount || 0),
-              username: targetUsers[index]?.username || detail.userInfo?.username,
-            });
-          });
-      });
-
-      setTotalWalletBalance(balanceSum);
-      setTransactions(allTx);
-    } catch (error: any) {
-      message.error(error?.response?.data?.message || 'Không tải được tổng quan hệ thống');
-    } finally {
-      setLoading(false);
-    }
+      const response = await apiClient.get('/api/v1/admin/dashboard/overview');
+      const payload = response.data?.data ?? response.data;
+      setData({ metrics: { ...EMPTY_METRICS, ...(payload?.metrics || {}) }, trend: payload?.trend || [], recentTransactions: payload?.recentTransactions || [], alerts: payload?.alerts || [] });
+    } catch (error: unknown) {
+      const apiMessage = axios.isAxiosError(error) ? error.response?.data?.message : null;
+      message.error(apiMessage || 'Không tải được tổng quan vận hành');
+    } finally { setLoading(false); }
   }, []);
 
   useEffect(() => {
-    loadData();
-  }, [loadData]);
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    void load();
+  }, [load]);
 
-  const stats = useMemo(() => {
-    const endUsers = users.filter((u) => u.role !== 'ADMIN');
-    const activeUsers = endUsers.filter(isActiveUser);
-    const topUp = transactions.filter((t) => t.type === 'TOP_UP');
-    const withdraw = transactions.filter((t) => t.type === 'WITHDRAW');
-    const success = transactions.filter((t) => t.status === 'SUCCESS');
-    const pending = transactions.filter((t) => t.status === 'PENDING' || t.status === 'PROCESSING');
-    const failed = transactions.filter((t) => t.status === 'FAILED');
-
-    const topUpAmount = topUp.reduce((s, t) => s + t.amount, 0);
-    const withdrawAmount = withdraw.reduce((s, t) => s + t.amount, 0);
-    const successRate = transactions.length
-      ? Math.round((success.length / transactions.length) * 1000) / 10
-      : 0;
-
-    const newUsers7d = endUsers.filter(
-      (u) => u.createdAt && dayjs(u.createdAt).isAfter(dayjs().subtract(7, 'day'))
-    ).length;
-
-    return {
-      endUsers: endUsers.length,
-      activeUsers: activeUsers.length,
-      lockedUsers: endUsers.length - activeUsers.length,
-      newUsers7d,
-      totalPosts: posts.length,
-      activePosts: posts.filter((p) => p.active).length,
-      txCount: transactions.length,
-      topUpCount: topUp.length,
-      withdrawCount: withdraw.length,
-      topUpAmount,
-      withdrawAmount,
-      netFlow: topUpAmount - withdrawAmount,
-      successCount: success.length,
-      pendingCount: pending.length,
-      failedCount: failed.length,
-      successRate,
-      totalWalletBalance,
-    };
-  }, [users, posts, transactions, totalWalletBalance]);
-
-  const trendData = useMemo(() => {
-    return Array.from({ length: 7 }).map((_, i) => {
-      const day = dayjs().subtract(6 - i, 'day').startOf('day');
-      const next = day.add(1, 'day');
-      const inDay = transactions.filter((tx) => {
-        const d = dayjs(tx.createdAt);
-        return (d.isAfter(day) || d.isSame(day)) && d.isBefore(next);
-      });
-      return {
-        name: day.format('DD/MM'),
-        nap: inDay.filter((t) => t.type === 'TOP_UP').reduce((s, t) => s + t.amount, 0),
-        rut: inDay.filter((t) => t.type === 'WITHDRAW').reduce((s, t) => s + t.amount, 0),
-      };
-    });
-  }, [transactions]);
-
-  const recentTx = useMemo(
-    () =>
-      [...transactions]
-        .sort((a, b) => dayjs(b.createdAt).valueOf() - dayjs(a.createdAt).valueOf())
-        .slice(0, 8),
-    [transactions]
-  );
-
-  const columns = [
-    {
-      title: 'Mã GD',
-      dataIndex: 'transactionCode',
-      key: 'transactionCode',
-      render: (v: string) => <Text strong>{v}</Text>,
-    },
-    {
-      title: 'Người dùng',
-      dataIndex: 'username',
-      key: 'username',
-      render: (v: string) => v || '—',
-    },
-    {
-      title: 'Loại',
-      dataIndex: 'type',
-      key: 'type',
-      render: (type: string) => (
-        <Tag color={type === 'TOP_UP' ? 'success' : type === 'WITHDRAW' ? 'magenta' : 'purple'}>
-          {TYPE_LABEL[type] || type}
-        </Tag>
-      ),
-    },
-    {
-      title: 'Số tiền',
-      dataIndex: 'amount',
-      key: 'amount',
-      align: 'right' as const,
-      render: (amount: number, row: TxItem) => (
-        <Text strong style={{ color: row.type === 'WITHDRAW' ? '#e11d48' : '#059669' }}>
-          {row.type === 'WITHDRAW' ? '-' : '+'}
-          {formatVND(amount)}
-        </Text>
-      ),
-    },
-    {
-      title: 'Trạng thái',
-      dataIndex: 'status',
-      key: 'status',
-      render: (status: string) => {
-        const meta = STATUS_META[status] || { color: 'default', label: status };
-        return <Tag color={meta.color}>{meta.label}</Tag>;
-      },
-    },
-    {
-      title: 'Thời gian',
-      dataIndex: 'createdAt',
-      key: 'createdAt',
-      render: (v: string) => dayjs(v).format('DD/MM/YYYY HH:mm'),
-    },
+  const successRate = useMemo(() => data.metrics.transactions ? Math.round(data.metrics.successfulTransactions * 1000 / data.metrics.transactions) / 10 : 0, [data.metrics]);
+  const columns: ColumnsType<RecentTransaction> = [
+    { title: 'Mã giao dịch', dataIndex: 'transactionCode', render: (value: string) => <strong className="dashboard-code">{value}</strong> },
+    { title: 'Người dùng', dataIndex: 'username', render: (value?: string) => value || '—' },
+    { title: 'Loại', dataIndex: 'type', render: (value: string) => <Tag>{TYPE_LABEL[value] || value}</Tag> },
+    { title: 'Số tiền', dataIndex: 'amount', align: 'right', render: (value: number, row) => <strong className={row.type === 'WITHDRAW' ? 'money-out' : 'money-in'}>{row.type === 'WITHDRAW' ? '−' : '+'}{formatMoney(value)}</strong> },
+    { title: 'Trạng thái', dataIndex: 'status', render: (value: string) => <Tag color={value === 'SUCCESS' ? 'success' : value === 'FAILED' ? 'error' : 'processing'}>{value === 'SUCCESS' ? 'Thành công' : value === 'FAILED' ? 'Thất bại' : 'Đang chờ'}</Tag> },
+    { title: 'Thời gian', dataIndex: 'createdAt', render: (value: string) => dayjs(value).format('DD/MM/YYYY HH:mm') },
   ];
 
+  if (loading) return <div className="dashboard-loading"><Skeleton active paragraph={{ rows: 14 }} /></div>;
+
   return (
-    <div className="dash-page">
-      <div className="dash-hero">
-        <div>
-          <div className="dash-hero-kicker">SmartSpend Admin</div>
-          <h2>Tổng quan hệ thống</h2>
-          <p>
-            Theo dõi người dùng, số dư ví MAIN, dòng nạp/rút thật và nội dung — không gồm sổ tay tiền mặt.
-          </p>
-        </div>
-        <Button type="primary" onClick={() => navigate('/reports')}>
-          Xem báo cáo
-        </Button>
-      </div>
+    <main className="dashboard-page">
+      <section className="dashboard-hero">
+        <div className="dashboard-hero-copy"><span>Trung tâm vận hành · {dayjs().format('DD/MM/YYYY')}</span><h2>Dòng tiền rõ ràng.<br />Sự cố được nhìn thấy sớm.</h2><p>Dữ liệu tổng hợp trực tiếp từ sổ cái, ví MAIN và các nghiệp vụ người dùng.</p></div>
+        <div className="dashboard-hero-balance"><small>Tổng số dư ví MAIN</small><strong>{formatMoney(data.metrics.walletBalance)}</strong><span>{data.metrics.activeUsers} người dùng đang hoạt động</span><Button icon={<ReloadOutlined />} onClick={() => void load()}>Đồng bộ</Button></div>
+      </section>
 
-      <Spin spinning={loading}>
-        <Row gutter={[14, 14]}>
-          <Col xs={24} sm={12} xl={6}>
-            <Card className="dash-kpi" bordered={false}>
-              <div className="dash-kpi-icon purple">
-                <UserOutlined />
-              </div>
-              <div>
-                <span>Người dùng</span>
-                <strong>{stats.endUsers}</strong>
-                <small>
-                  {stats.activeUsers} hoạt động · {stats.newUsers7d} mới/7 ngày
-                </small>
-              </div>
-            </Card>
-          </Col>
-          <Col xs={24} sm={12} xl={6}>
-            <Card className="dash-kpi" bordered={false}>
-              <div className="dash-kpi-icon green">
-                <ArrowDownOutlined />
-              </div>
-              <div>
-                <span>Tổng nạp</span>
-                <strong>{formatVND(stats.topUpAmount)}</strong>
-                <small>{stats.topUpCount} giao dịch nạp</small>
-              </div>
-            </Card>
-          </Col>
-          <Col xs={24} sm={12} xl={6}>
-            <Card className="dash-kpi" bordered={false}>
-              <div className="dash-kpi-icon pink">
-                <ArrowUpOutlined />
-              </div>
-              <div>
-                <span>Tổng rút</span>
-                <strong>{formatVND(stats.withdrawAmount)}</strong>
-                <small>{stats.withdrawCount} giao dịch rút</small>
-              </div>
-            </Card>
-          </Col>
-          <Col xs={24} sm={12} xl={6}>
-            <Card className="dash-kpi" bordered={false}>
-              <div className="dash-kpi-icon blue">
-                <WalletOutlined />
-              </div>
-              <div>
-                <span>Số dư ví MAIN (tiền thật)</span>
-                <strong>{formatVND(stats.totalWalletBalance)}</strong>
-                <small>Dòng tiền ròng {formatVND(stats.netFlow)}</small>
-              </div>
-            </Card>
-          </Col>
-        </Row>
+      <section className="dashboard-kpis">
+        <button onClick={() => navigate('/users')}><TeamOutlined /><span>Người dùng</span><strong>{data.metrics.users.toLocaleString('vi-VN')}</strong><small>{data.metrics.lockedUsers} đang khóa</small></button>
+        <button onClick={() => navigate('/transaction-history')}><ArrowDownOutlined /><span>Tổng nạp</span><strong>{formatMoney(data.metrics.topUpAmount)}</strong><small>Giao dịch thành công</small></button>
+        <button onClick={() => navigate('/transaction-history')}><ArrowUpOutlined /><span>Tổng rút</span><strong>{formatMoney(data.metrics.withdrawAmount)}</strong><small>Giao dịch thành công</small></button>
+        <button onClick={() => navigate('/transaction-history')}><WalletOutlined /><span>Tỷ lệ thành công</span><strong>{successRate}%</strong><small>{data.metrics.transactions} giao dịch</small></button>
+      </section>
 
-        <Row gutter={[14, 14]} style={{ marginTop: 14 }}>
-          <Col xs={24} xl={16}>
-            <Card
-              className="dash-panel"
-              title="Xu hướng nạp / rút 7 ngày"
-              extra={<Text type="secondary">Từ lịch sử giao dịch người dùng</Text>}
-            >
-              {trendData.every((d) => d.nap === 0 && d.rut === 0) ? (
-                <Empty description="Chưa có giao dịch trong 7 ngày gần đây" />
-              ) : (
-                <div className="dash-chart">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart data={trendData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
-                      <defs>
-                        <linearGradient id="dashNap" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor="#34d399" stopOpacity={0.35} />
-                          <stop offset="95%" stopColor="#34d399" stopOpacity={0} />
-                        </linearGradient>
-                        <linearGradient id="dashRut" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor="#f472b6" stopOpacity={0.3} />
-                          <stop offset="95%" stopColor="#f472b6" stopOpacity={0} />
-                        </linearGradient>
-                      </defs>
-                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1e7f6" />
-                      <XAxis dataKey="name" tickLine={false} axisLine={false} />
-                      <YAxis tickFormatter={shortVND} tickLine={false} axisLine={false} width={48} />
-                      <RechartsTooltip formatter={(v) => formatVND(Number(v || 0))} />
-                      <Area
-                        type="monotone"
-                        dataKey="nap"
-                        name="Nạp"
-                        stroke="#34d399"
-                        fill="url(#dashNap)"
-                        strokeWidth={3}
-                      />
-                      <Area
-                        type="monotone"
-                        dataKey="rut"
-                        name="Rút"
-                        stroke="#f472b6"
-                        fill="url(#dashRut)"
-                        strokeWidth={3}
-                      />
-                    </AreaChart>
-                  </ResponsiveContainer>
-                </div>
-              )}
-            </Card>
-          </Col>
+      <section className="dashboard-grid">
+        <article className="dashboard-panel dashboard-chart-panel"><header><div><span>Dòng tiền 7 ngày</span><h3>Nạp và rút khỏi hệ thống</h3></div><button onClick={() => navigate('/transaction-history')}>Xem giao dịch <ArrowRightOutlined /></button></header><div className="dashboard-chart"><ResponsiveContainer width="100%" height="100%"><AreaChart data={data.trend} margin={{ top: 12, right: 10, left: 0, bottom: 0 }}><defs><linearGradient id="topUpArea" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#7C3AED" stopOpacity=".34"/><stop offset="1" stopColor="#7C3AED" stopOpacity="0"/></linearGradient><linearGradient id="withdrawArea" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#b76e5d" stopOpacity=".24"/><stop offset="1" stopColor="#b76e5d" stopOpacity="0"/></linearGradient></defs><CartesianGrid vertical={false} stroke="#e9eeeb" strokeDasharray="4 5" /><XAxis dataKey="date" tickFormatter={(value) => dayjs(value).format('DD/MM')} axisLine={false} tickLine={false} /><YAxis tickFormatter={shortMoney} axisLine={false} tickLine={false} width={58} /><Tooltip formatter={(value) => formatMoney(Number(value || 0))} labelFormatter={(value) => dayjs(value).format('DD/MM/YYYY')} /><Area type="monotone" dataKey="topUp" name="Nạp" stroke="#EC4899" strokeWidth={2.5} fill="url(#topUpArea)" /><Area type="monotone" dataKey="withdraw" name="Rút" stroke="#a85d4c" strokeWidth={2.5} fill="url(#withdrawArea)" /></AreaChart></ResponsiveContainer></div></article>
+        <aside className="dashboard-panel dashboard-alerts"><header><div><span>Cần chú ý</span><h3>Hàng đợi hỗ trợ tài chính</h3></div></header>{data.alerts.filter((alert) => ['/transaction-history', '/transactions', '/support'].includes(alert.route)).length === 0 ? <div className="dashboard-clear"><CheckCircleOutlined /><strong>Không có cảnh báo</strong><span>Các giao dịch nạp và rút đang vận hành bình thường.</span></div> : data.alerts.filter((alert) => ['/transaction-history', '/transactions', '/support'].includes(alert.route)).map((alert) => <button key={alert.type} onClick={() => navigate(alert.route)}><span className={alert.severity > 1 ? 'is-critical' : ''}>{alert.severity > 1 ? <WarningOutlined /> : <ClockCircleOutlined />}</span><div><strong>{alert.title}</strong><small>{alert.count} mục cần kiểm tra</small></div><ArrowRightOutlined /></button>)}</aside>
+      </section>
 
-          <Col xs={24} xl={8}>
-            <Card className="dash-panel" title="Sức khỏe vận hành">
-              <div className="dash-health">
-                <div className="dash-health-item">
-                  <div className="dash-health-top">
-                    <CheckCircleOutlined style={{ color: '#10b981' }} />
-                    <span>Tỷ lệ GD thành công</span>
-                    <strong>{stats.successRate}%</strong>
-                  </div>
-                  <Progress percent={stats.successRate} showInfo={false} strokeColor="#10b981" />
-                </div>
-                <div className="dash-health-item">
-                  <div className="dash-health-top">
-                    <ClockCircleOutlined style={{ color: '#3b82f6' }} />
-                    <span>Đang xử lý / chờ</span>
-                    <strong>{stats.pendingCount}</strong>
-                  </div>
-                  <Progress
-                    percent={
-                      stats.txCount ? Math.round((stats.pendingCount / stats.txCount) * 100) : 0
-                    }
-                    showInfo={false}
-                    strokeColor="#3b82f6"
-                  />
-                </div>
-                <div className="dash-health-item">
-                  <div className="dash-health-top">
-                    <CloseCircleOutlined style={{ color: '#ef4444' }} />
-                    <span>Giao dịch thất bại</span>
-                    <strong>{stats.failedCount}</strong>
-                  </div>
-                  <Progress
-                    percent={
-                      stats.txCount ? Math.round((stats.failedCount / stats.txCount) * 100) : 0
-                    }
-                    showInfo={false}
-                    strokeColor="#ef4444"
-                  />
-                </div>
-              </div>
+      <section className="dashboard-ops-strip">
+        <button onClick={() => navigate('/transaction-history')}><span>Giao dịch chờ xử lý</span><strong>{data.metrics.pendingTransactions}</strong></button>
+        <button onClick={() => navigate('/transaction-history')}><span>Giao dịch thất bại</span><strong>{data.metrics.failedTransactions}</strong></button>
+        <button onClick={() => navigate('/support')}><span>Yêu cầu hỗ trợ chưa đóng</span><strong>{data.metrics.openTickets}</strong></button>
+        <button onClick={() => navigate('/notifications')}><span>Thông báo chưa đọc</span><strong>{data.metrics.unreadNotifications}</strong></button>
+      </section>
 
-              <div className="dash-service-list">
-                <div className="dash-service-row">
-                  <span>
-                    <ApiOutlined /> API Admin
-                  </span>
-                  <Tag color="success">Hoạt động</Tag>
-                </div>
-                <div className="dash-service-row">
-                  <span>
-                    <BankOutlined /> Nạp SePay
-                  </span>
-                  <Tag color={stats.topUpCount > 0 ? 'success' : 'default'}>
-                    {stats.topUpCount > 0 ? 'Có dữ liệu' : 'Chưa có GD'}
-                  </Tag>
-                </div>
-                <div className="dash-service-row">
-                  <span>
-                    <DollarCircleOutlined /> Rút PayOS
-                  </span>
-                  <Tag color={stats.withdrawCount > 0 ? 'success' : 'default'}>
-                    {stats.withdrawCount > 0 ? 'Có dữ liệu' : 'Chưa có GD'}
-                  </Tag>
-                </div>
-                <div className="dash-service-row">
-                  <span>
-                    <SafetyCertificateOutlined /> Tài khoản khóa
-                  </span>
-                  <Tag color={stats.lockedUsers > 0 ? 'warning' : 'success'}>
-                    {stats.lockedUsers} user
-                  </Tag>
-                </div>
-              </div>
-            </Card>
-          </Col>
-        </Row>
-
-        <Row gutter={[14, 14]} style={{ marginTop: 14 }}>
-          <Col span={24}>
-            <Card
-              className="dash-panel"
-              title="Giao dịch gần đây"
-              extra={
-                <Button type="link" onClick={() => navigate('/reports')}>
-                  Xem phân tích
-                </Button>
-              }
-            >
-              <Table
-                rowKey={(r) => `${r.transactionCode}-${r.createdAt}`}
-                size="middle"
-                pagination={false}
-                columns={columns}
-                dataSource={recentTx}
-                locale={{ emptyText: <Empty description="Chưa có giao dịch" /> }}
-              />
-            </Card>
-          </Col>
-        </Row>
-      </Spin>
-    </div>
+      <section className="dashboard-panel dashboard-table"><header><div><span>Nạp và rút gần nhất</span><h3>Giao dịch cần theo dõi</h3></div><button onClick={() => navigate('/transaction-history')}>Xem tất cả <ArrowRightOutlined /></button></header><Table rowKey="id" columns={columns} dataSource={data.recentTransactions.filter((item) => item.type === 'TOP_UP' || item.type === 'WITHDRAW')} pagination={false} scroll={{ x: 880 }} locale={{ emptyText: <Empty description="Chưa có giao dịch nạp hoặc rút" /> }} /></section>
+    </main>
   );
 };

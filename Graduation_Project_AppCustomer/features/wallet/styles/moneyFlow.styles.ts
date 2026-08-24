@@ -210,6 +210,53 @@ export const moneyFlowStyles = StyleSheet.create({
     marginTop: 6,
     marginBottom: 4,
   },
+  sepayContent: { paddingHorizontal: 20, paddingTop: 20, paddingBottom: 40 },
+  sepayLoadingState: {
+    flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 32, gap: 12,
+  },
+  sepayLoadingText: {
+    textAlign: 'center', fontSize: 13, lineHeight: 19, color: PASTEL_PALETTE.textMuted,
+  },
+  sepayErrorTitle: { fontSize: 17, fontWeight: '900', color: PASTEL_PALETTE.title },
+  sepayRetryButton: {
+    marginTop: 6, paddingHorizontal: 20, paddingVertical: 11, borderRadius: 13,
+    backgroundColor: PASTEL_PALETTE.accentDeep,
+  },
+  sepayRetryText: { fontSize: 14, fontWeight: '800', color: '#FFFFFF' },
+  sepayCard: {
+    padding: 18, borderRadius: 24, backgroundColor: PASTEL_PALETTE.white, borderWidth: 1,
+    borderColor: PASTEL_PALETTE.border, shadowColor: '#7357A5', shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.1, shadowRadius: 20, elevation: 4,
+  },
+  sepayBrandRow: { flexDirection: 'row', alignItems: 'center' },
+  sepayBrandIcon: {
+    width: 42, height: 42, marginRight: 10, borderRadius: 13, alignItems: 'center',
+    justifyContent: 'center', backgroundColor: PASTEL_PALETTE.accentSoft,
+  },
+  sepayBrandCopy: { flex: 1 },
+  sepayBrandTitle: { fontSize: 14, fontWeight: '900', color: PASTEL_PALETTE.title },
+  sepayBrandSubtitle: { marginTop: 2, fontSize: 11, color: PASTEL_PALETTE.textMuted },
+  sepayLiveBadge: {
+    flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 9, paddingVertical: 5,
+    borderRadius: 999, backgroundColor: '#EAF6EF',
+  },
+  sepayLiveDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#2D8A61' },
+  sepayLiveText: { fontSize: 9, fontWeight: '900', color: '#2D8A61' },
+  sepayQrFrame: {
+    alignSelf: 'center', width: 270, height: 270, marginTop: 18, padding: 8,
+    borderRadius: 20, backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#E8E0EF',
+  },
+  sepayQrImage: { width: '100%', height: '100%' },
+  sepayTransferBox: { marginTop: 17, padding: 14, borderRadius: 15, backgroundColor: '#F6F1FB' },
+  sepayTransferLabel: { textAlign: 'center', fontSize: 11, fontWeight: '700', color: PASTEL_PALETTE.textMuted },
+  sepayTransferContent: {
+    marginTop: 5, textAlign: 'center', fontSize: 17, fontWeight: '900', letterSpacing: 0.5,
+    color: PASTEL_PALETTE.accentDeep,
+  },
+  sepayNotice: { flexDirection: 'row', alignItems: 'flex-start', gap: 8, marginTop: 14 },
+  sepayNoticeText: { flex: 1, fontSize: 11, lineHeight: 16, color: PASTEL_PALETTE.subtitle },
+  sepayDoneButton: { height: 48, alignItems: 'center', justifyContent: 'center' },
+  sepayDoneText: { fontSize: 14, fontWeight: '800', color: PASTEL_PALETTE.accentDeep },
   balanceCard: {
     borderRadius: 22,
     paddingHorizontal: 18,

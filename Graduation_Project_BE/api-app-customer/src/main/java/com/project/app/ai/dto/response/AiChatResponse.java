@@ -9,6 +9,7 @@ import java.util.List;
 @Builder
 public class AiChatResponse {
     private String id;
+    private String conversationId;
     private String text;
     private String moduleType;
     private String timestamp;

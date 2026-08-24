@@ -2,15 +2,15 @@ import { ENDPOINTS } from '../endpoints';
 import { axiosClient } from '../axiosClient';
 
 export interface TopUpRequest {
+  walletId?: number;
   amount?: number;
-  note?: string;
-  categoryId?: number;
 }
 
 export interface TopUpResponse {
-  transferContent: string;
-  qrUrl: string;
-  expiresAt: string;
+  transactionCode: string;
+  transferContent?: string;
+  qrUrl?: string;
+  expiresAt?: string;
   amount?: number;
   createdAt: string;
 }

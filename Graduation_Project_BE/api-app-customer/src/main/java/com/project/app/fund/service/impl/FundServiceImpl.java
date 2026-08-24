@@ -171,6 +171,7 @@ public class FundServiceImpl implements FundService {
             throw new AppException(ErrorCode.FUND_NOT_OWNER);
         }
 
+        List<FundMember> activeMembers = fundMemberRepository.findByFundIdAndStatus(fundId, FundMemberStatus.ACTIVE);
         refundRemainingBalanceToOwner(user, fund);
 
         notificationRepository.deleteByTypeAndRelatedId(NotificationType.FUND_INVITE, fundId);
@@ -178,6 +179,10 @@ public class FundServiceImpl implements FundService {
         // Đóng mềm để giữ nguyên sổ cái thành viên/giao dịch phục vụ đối soát.
         fund.setStatus(FundStatus.CLOSED);
         fundRepository.save(fund);
+
+        notifyMembersExcept(activeMembers, user.getId(), "Quỹ đã đóng",
+                "Quỹ \"" + fund.getName() + "\" đã được chủ quỹ đóng.",
+                NotificationType.FUND_CLOSED, fund.getId());
     }
 
     private void refundRemainingBalanceToOwner(User owner, Fund fund) {
@@ -277,6 +282,22 @@ public class FundServiceImpl implements FundService {
                 buildWalletNote("Nạp vào quỹ \"" + fund.getName() + "\"", request.getNote())
         );
 
+        List<FundMember> activeMembers = fundMemberRepository.findByFundIdAndStatus(fundId, FundMemberStatus.ACTIVE);
+        notifyMembersExcept(activeMembers, user.getId(), "Quỹ vừa nhận thêm tiền",
+                user.getUsername() + " đã nạp " + formatAmount(request.getAmount()) + "đ vào quỹ \"" + fund.getName() + "\".",
+                NotificationType.FUND_DEPOSIT, fund.getId());
+
+        if (fund.getTargetAmount() != null
+                && fund.getBalance().compareTo(fund.getTargetAmount()) >= 0
+                && !notificationRepository.existsByUserIdAndTypeAndRelatedId(
+                        fund.getOwner().getId(), NotificationType.FUND_GOAL_REACHED, fund.getId())) {
+            for (FundMember activeMember : activeMembers) {
+                notificationService.createNotification(activeMember.getUser(), "Quỹ đã đạt mục tiêu",
+                        "Quỹ \"" + fund.getName() + "\" đã đạt mục tiêu " + formatAmount(fund.getTargetAmount()) + "đ.",
+                        NotificationType.FUND_GOAL_REACHED, fund.getId());
+            }
+        }
+
         return toDetail(fund, user.getId());
     }
 
@@ -325,6 +346,12 @@ public class FundServiceImpl implements FundService {
                 "FWD",
                 buildWalletNote("Rút từ quỹ \"" + fund.getName() + "\" về ví", request.getNote())
         );
+
+        notifyMembersExcept(
+                fundMemberRepository.findByFundIdAndStatus(fundId, FundMemberStatus.ACTIVE),
+                user.getId(), "Quỹ vừa rút tiền",
+                user.getUsername() + " đã rút " + formatAmount(request.getAmount()) + "đ khỏi quỹ \"" + fund.getName() + "\".",
+                NotificationType.FUND_WITHDRAW, fund.getId());
 
         return toDetail(fund, user.getId());
     }
@@ -653,6 +680,20 @@ public class FundServiceImpl implements FundService {
         return fundMemberRepository.findByFundIdAndStatus(fundId, FundMemberStatus.LEFT).stream()
                 .map(m -> m.getUser().getId())
                 .collect(java.util.stream.Collectors.toSet());
+    }
+
+    private void notifyMembersExcept(
+            List<FundMember> members,
+            Long excludedUserId,
+            String title,
+            String message,
+            NotificationType type,
+            Long fundId) {
+        for (FundMember member : members) {
+            if (!member.getUser().getId().equals(excludedUserId)) {
+                notificationService.createNotification(member.getUser(), title, message, type, fundId);
+            }
+        }
     }
 
     private FundMemberResponse toMemberResponse(FundMember member) {

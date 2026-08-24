@@ -3,6 +3,7 @@ import { useLocalSearchParams, type Href } from 'expo-router'
 import AuthWelcomeLoadingScreen from '@/features/auth/components/AuthWelcomeLoadingScreen'
 import { useRegisterDraft } from '@/features/auth/context/RegisterContext'
 import { axiosClient } from '@/shared/api/axiosClient'
+import { clearStoredSession } from '@/shared/services/sessionStorage'
 
 type AuthSuccessMode = 'login' | 'register'
 
@@ -12,7 +13,11 @@ async function resolveRouteAfterLogin(): Promise<Href> {
     const hasPin = res?.data === true
     // Chưa có PIN → giới thiệu rồi mới thiết lập PIN
     return hasPin ? '/(tabs)/home' : '/(auth)/onboarding'
-  } catch {
+  } catch (error: any) {
+    if (error?.status === 401 || error?.status === 403) {
+      await clearStoredSession()
+      return '/(auth)/login'
+    }
     return '/(auth)/onboarding'
   }
 }

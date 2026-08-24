@@ -17,9 +17,13 @@ import { LinearGradient } from 'expo-linear-gradient';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { ConfirmModal } from '@/shared/components';
 import { styles, PALETTE } from './CreateInvoiceScreen.styles';
-import Colors from '@/shared/constants/Colors';
+import { Colors } from '@/shared/constants/Colors';
 import { invoiceService } from '@/shared/api/services/invoiceService';
 import { getAvailableReminderOptions } from '../../utils/invoiceUtils';
+
+type FormErrors = Partial<Record<'invoiceName' | 'amount' | 'dueDate' | 'reminder', string>>;
+
+const MAX_INVOICE_AMOUNT = 1_000_000_000;
 
 export const CreateInvoiceScreen = () => {
   const router = useRouter();
@@ -28,6 +32,7 @@ export const CreateInvoiceScreen = () => {
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [errorModalVisible, setErrorModalVisible] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
+  const [formErrors, setFormErrors] = useState<FormErrors>({});
 
   const params = useLocalSearchParams<{ prefillName?: string; prefillAmount?: string }>();
 
@@ -55,19 +60,31 @@ export const CreateInvoiceScreen = () => {
   const [showTimePicker, setShowTimePicker] = useState(false);
 
   const handleAmountChange = (text: string) => {
-    const numericValue = text.replace(/[^0-9]/g, '');
+    const numericValue = text.replace(/[^0-9]/g, '').replace(/^0+(?=\d)/, '');
     if (!numericValue) {
       setAmount('');
+      setFormErrors(current => ({ ...current, amount: undefined }));
       return;
     }
+
+    if (BigInt(numericValue) > BigInt(MAX_INVOICE_AMOUNT)) {
+      setFormErrors(current => ({
+        ...current,
+        amount: 'Số tiền tối đa là 1.000.000.000đ.',
+      }));
+      return;
+    }
+
     const formatted = numericValue.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
     setAmount(formatted);
+    setFormErrors(current => ({ ...current, amount: undefined }));
   };
 
   const onDateChange = (event: any, selectedDate?: Date) => {
     const currentDate = selectedDate || dueDate;
     setShowDatePicker(false);
     setDueDate(currentDate);
+    setFormErrors(current => ({ ...current, dueDate: undefined, reminder: undefined }));
 
     const newOptions = getAvailableReminderOptions(currentDate);
     if (!newOptions.includes(reminderOption)) {
@@ -82,21 +99,31 @@ export const CreateInvoiceScreen = () => {
     }
     if (selectedTime) {
       setReminderTime(selectedTime);
+      setFormErrors(current => ({ ...current, reminder: undefined }));
     }
   };
 
   const handleSave = async () => {
-    if (!invoiceName.trim()) {
-      setErrorMessage("Vui lòng nhập tên hóa đơn.");
-      setErrorModalVisible(true);
-      return;
-    }
-    
+    const nextErrors: FormErrors = {};
+    const normalizedName = invoiceName.trim();
     const numericAmount = parseFloat(amount.replace(/,/g, ''));
-    if (isNaN(numericAmount) || numericAmount <= 0) {
-      setErrorMessage("Vui lòng nhập số tiền hợp lệ.");
-      setErrorModalVisible(true);
-      return;
+
+    if (!normalizedName) nextErrors.invoiceName = 'Vui lòng nhập tên hóa đơn.';
+    else if (normalizedName.length < 2) nextErrors.invoiceName = 'Tên hóa đơn phải có ít nhất 2 ký tự.';
+    else if (normalizedName.length > 80) nextErrors.invoiceName = 'Tên hóa đơn không được vượt quá 80 ký tự.';
+
+    if (!amount.trim()) nextErrors.amount = 'Vui lòng nhập số tiền.';
+    else if (!Number.isFinite(numericAmount) || numericAmount <= 0) nextErrors.amount = 'Số tiền phải lớn hơn 0đ.';
+    else if (numericAmount > MAX_INVOICE_AMOUNT) nextErrors.amount = 'Số tiền tối đa là 1.000.000.000đ.';
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const selectedDueDate = new Date(dueDate);
+    selectedDueDate.setHours(0, 0, 0, 0);
+    if (selectedDueDate < today) nextErrors.dueDate = 'Ngày đến hạn không được nằm trong quá khứ.';
+
+    if (!availableReminderOptions.includes(reminderOption)) {
+      nextErrors.reminder = 'Thời điểm nhắc không phù hợp với ngày đến hạn.';
     }
 
     const now = new Date();
@@ -111,11 +138,14 @@ export const CreateInvoiceScreen = () => {
       reminderDate.setDate(reminderDate.getDate() - 3);
     }
 
-    if (reminderDate <= now) {
-      setErrorMessage("Thời gian nhắc nhở không được nằm trong quá khứ.");
-      setErrorModalVisible(true);
+    if (reminderDate <= now) nextErrors.reminder = 'Ngày và giờ nhắc phải sau thời điểm hiện tại.';
+
+    if (Object.keys(nextErrors).length > 0) {
+      setFormErrors(nextErrors);
       return;
     }
+
+    setFormErrors({});
 
     try {
       setLoading(true);
@@ -126,7 +156,7 @@ export const CreateInvoiceScreen = () => {
       const localDueDate = `${year}-${month}-${day}`;
 
       const requestData = {
-        invoiceName: invoiceName.trim(),
+        invoiceName: normalizedName,
         amount: numericAmount,
         dueDate: localDueDate,
         reminderOption: reminderOption,
@@ -139,7 +169,7 @@ export const CreateInvoiceScreen = () => {
       setShowSuccessModal(true);
     } catch (error: any) {
       console.error(error);
-      setErrorMessage(error?.response?.data?.message || "Có lỗi xảy ra khi lưu hóa đơn.");
+      setErrorMessage(error?.message || error?.response?.data?.message || "Có lỗi xảy ra khi lưu hóa đơn.");
       setErrorModalVisible(true);
     } finally {
       setLoading(false);
@@ -180,19 +210,24 @@ export const CreateInvoiceScreen = () => {
           <Text style={styles.cardTitle}>Thông tin cơ bản</Text>
           
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Tên hóa đơn</Text>
+            <Text style={styles.label}>Tên hóa đơn <Text style={styles.required}>*</Text></Text>
             <TextInput
-              style={styles.input}
+              style={[styles.input, formErrors.invoiceName && styles.inputError]}
               placeholder="VD: Tiền điện, Internet..."
               value={invoiceName}
-              onChangeText={setInvoiceName}
+              onChangeText={(value) => {
+                setInvoiceName(value);
+                setFormErrors(current => ({ ...current, invoiceName: undefined }));
+              }}
+              maxLength={80}
               placeholderTextColor="#94A3B8"
             />
+            {formErrors.invoiceName ? <Text style={styles.errorText}>{formErrors.invoiceName}</Text> : null}
           </View>
 
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Số tiền</Text>
-            <View style={styles.amountInputContainer}>
+            <Text style={styles.label}>Số tiền <Text style={styles.required}>*</Text></Text>
+            <View style={[styles.amountInputContainer, formErrors.amount && styles.inputError]}>
               <TextInput
                 style={[styles.input, styles.amountInput]}
                 placeholder="0"
@@ -203,6 +238,7 @@ export const CreateInvoiceScreen = () => {
               />
               <Text style={styles.currencySuffix}>VNĐ</Text>
             </View>
+            {formErrors.amount ? <Text style={styles.errorText}>{formErrors.amount}</Text> : null}
           </View>
         </View>
 
@@ -211,9 +247,9 @@ export const CreateInvoiceScreen = () => {
           <Text style={styles.cardTitle}>Lịch & Nhắc nhở</Text>
 
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Ngày đến hạn</Text>
+            <Text style={styles.label}>Ngày đến hạn <Text style={styles.required}>*</Text></Text>
             <TouchableOpacity 
-              style={styles.dropdownButton}
+              style={[styles.dropdownButton, formErrors.dueDate && styles.inputError]}
               onPress={() => setShowDatePicker(!showDatePicker)}
             >
               <Text style={styles.dropdownButtonText}>
@@ -221,6 +257,7 @@ export const CreateInvoiceScreen = () => {
               </Text>
               <Ionicons name="calendar-outline" size={20} color={Colors.primary} />
             </TouchableOpacity>
+            {formErrors.dueDate ? <Text style={styles.errorText}>{formErrors.dueDate}</Text> : null}
             
             {showDatePicker && (
               <DateTimePicker
@@ -310,6 +347,7 @@ export const CreateInvoiceScreen = () => {
                   ]}
                   onPress={() => {
                     setReminderOption(option);
+                    setFormErrors(current => ({ ...current, reminder: undefined }));
                     setShowReminderPicker(false);
                   }}
                 >
@@ -324,8 +362,9 @@ export const CreateInvoiceScreen = () => {
                   )}
                 </TouchableOpacity>
               ))}
-            </View>
           </View>
+          {formErrors.reminder ? <Text style={styles.errorText}>{formErrors.reminder}</Text> : null}
+        </View>
         </TouchableWithoutFeedback>
       </Modal>
 

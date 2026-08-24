@@ -2,6 +2,7 @@ package com.project.app.transaction.service.admin.impl;
 
 import com.project.app.transaction.dto.response.AdminTransactionResponse;
 import com.project.app.transaction.entity.Transaction;
+import com.project.app.transaction.enums.TransactionType;
 import com.project.app.transaction.repository.TransactionRepository;
 import com.project.app.transaction.service.admin.AdminTransactionService;
 import com.project.app.user.entity.User;
@@ -25,6 +26,7 @@ public class AdminTransactionServiceImpl implements AdminTransactionService {
     public List<AdminTransactionResponse> getAllTransactions() {
         return transactionRepository.findAllWithUserAndWalletOrderByCreatedAtDesc().stream()
                 .filter(tx -> tx.getWallet() != null && tx.getWallet().getWalletType() == WalletType.MAIN)
+                .filter(tx -> tx.getType() == TransactionType.TOP_UP || tx.getType() == TransactionType.WITHDRAW)
                 .map(this::toResponse)
                 .collect(Collectors.toList());
     }

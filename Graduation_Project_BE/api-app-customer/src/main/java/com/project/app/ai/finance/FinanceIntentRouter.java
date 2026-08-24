@@ -61,6 +61,13 @@ public class FinanceIntentRouter {
             return new FinanceRoute(FinanceIntent.GUIDE, null);
         }
 
+        // Cac cau hoi kien thuc tai chinh (vi du "quy tac 50/30/20")
+        // khong phai yeu cau truy van du lieu ca nhan. De Gemini giai dap thay vi
+        // mac dinh bien moi tu khoa "quy"/"chi tieu" thanh bao cao thu chi.
+        if (isEducationalQuestion(normalized)) {
+            return new FinanceRoute(FinanceIntent.NONE, null);
+        }
+
         if (SPENDING_BY_CATEGORY.matcher(trimmed).find()) {
             ResolvedPeriod period = periodParser.parse(trimmed);
             boolean compare = containsAny(normalized, "so sanh", "so voi", "dau voi", "vs");
@@ -190,6 +197,12 @@ public class FinanceIntentRouter {
         return !containsAny(normalized,
                 "trung tam tai chinh", "bao cao", "thu chi", "tong tai san",
                 "so du vi", "so du", "thang nay", "tuan nay");
+    }
+
+    private boolean isEducationalQuestion(String normalized) {
+        return containsAny(normalized,
+                "giai thich", "quy tac", "kien thuc", "khai niem",
+                "la gi", "nghia la gi", "cach ap dung", "vi du ve");
     }
 
     private String normalize(String message) {

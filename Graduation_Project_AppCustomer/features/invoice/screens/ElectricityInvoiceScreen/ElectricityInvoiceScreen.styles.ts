@@ -117,6 +117,9 @@ export const styles = StyleSheet.create({
     color: '#475569',
     marginBottom: 8,
   },
+  required: {
+    color: '#EF4444',
+  },
   input: {
     backgroundColor: '#F1F5F9',
     borderRadius: 12,
@@ -133,6 +136,18 @@ export const styles = StyleSheet.create({
     borderRadius: 12,
     height: 48,
     paddingHorizontal: 16,
+  },
+  inputError: {
+    borderWidth: 1.5,
+    borderColor: '#EF4444',
+    backgroundColor: '#FEF2F2',
+  },
+  errorText: {
+    marginTop: 6,
+    color: '#DC2626',
+    fontSize: 11,
+    fontWeight: '600',
+    lineHeight: 16,
   },
   inputCore: {
     flex: 1,

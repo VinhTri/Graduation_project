@@ -48,6 +48,7 @@ public class AiOrchestrator {
     private final AiResponseBuilderService responseBuilder;
     private final List<AiTool> tools;
     private final CategoryCreateService categoryCreateService;
+    private final AiSafeActionService safeActionService;
 
     @Data
     @Builder
@@ -64,6 +65,12 @@ public class AiOrchestrator {
             String message,
             List<ChatMessageHistoryDto> history) {
 
+        Optional<AiSafeActionService.Result> safeAction = safeActionService.handle(user, message);
+        if (safeAction.isPresent()) {
+            AiSafeActionService.Result result = safeAction.get();
+            return OrchestratorResult.builder().responseText(result.getText()).moduleType(result.getModuleType())
+                    .cards(result.getCards()).actions(result.getActions()).build();
+        }
         Optional<CategoryCreateService.CategoryCreateResult> createResult =
                 categoryCreateService.handle(user, message);
         if (createResult.isPresent()) {

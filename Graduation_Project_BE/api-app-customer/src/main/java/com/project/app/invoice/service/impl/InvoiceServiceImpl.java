@@ -7,20 +7,14 @@ import com.project.app.invoice.dto.response.InvoiceResponse;
 import com.project.app.invoice.entity.Invoice;
 import com.project.app.invoice.repository.InvoiceRepository;
 import com.project.app.invoice.service.InvoiceService;
-import com.project.app.notebook.entity.NotebookBook;
-import com.project.app.notebook.entity.NotebookTransaction;
-import com.project.app.notebook.enums.NotebookTransactionType;
-import com.project.app.notebook.repository.NotebookBookRepository;
-import com.project.app.notebook.repository.NotebookTransactionRepository;
-import com.project.app.notebook.service.impl.NotebookBookServiceImpl;
 import com.project.app.user.entity.User;
+import com.project.app.notification.enums.NotificationType;
+import com.project.app.notification.service.NotificationService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.math.BigDecimal;
 import java.util.List;
-import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Service
@@ -28,9 +22,7 @@ import java.util.stream.Collectors;
 public class InvoiceServiceImpl implements InvoiceService {
 
     private final InvoiceRepository invoiceRepository;
-    private final NotebookBookServiceImpl notebookBookService;
-    private final NotebookBookRepository notebookBookRepository;
-    private final NotebookTransactionRepository notebookTransactionRepository;
+    private final NotificationService notificationService;
 
     @Override
     @Transactional
@@ -46,7 +38,7 @@ public class InvoiceServiceImpl implements InvoiceService {
                 .oldReading(request.getOldReading())
                 .newReading(request.getNewReading())
                 .pricePerKwh(request.getPricePerKwh())
-                .isPaid(request.isPaid())
+                .isPaid(false)
                 .user(user)
                 .build();
 
@@ -90,8 +82,6 @@ public class InvoiceServiceImpl implements InvoiceService {
         invoice.setOldReading(request.getOldReading());
         invoice.setNewReading(request.getNewReading());
         invoice.setPricePerKwh(request.getPricePerKwh());
-        invoice.setPaid(request.isPaid());
-        
         if (reminderChanged) {
             invoice.setNotified(false);
         }
@@ -111,47 +101,23 @@ public class InvoiceServiceImpl implements InvoiceService {
     @Transactional
     public InvoiceResponse updateInvoiceStatus(Long id, User user, boolean isPaid) {
         Invoice invoice = getInvoice(id, user);
+        boolean newlyPaid = isPaid && !invoice.isPaid();
         invoice.setPaid(isPaid);
         Invoice updatedInvoice = invoiceRepository.save(invoice);
+        if (newlyPaid) {
+            notifyInvoicePaid(user, updatedInvoice);
+        }
         return mapToResponse(updatedInvoice);
     }
     
-    @Override
-    @Transactional
-    public InvoiceResponse payInvoiceWithCash(Long id, User user) {
-        Invoice invoice = getInvoice(id, user);
-        if (invoice.isPaid()) {
-            throw new AppException(ErrorCode.INVALID_REQUEST);
-        }
-
-        NotebookBook book = notebookBookService.getOrCreateCashBookEntity(user.getId());
-        BigDecimal amount = invoice.getAmount();
-
-        if (book.getBalance().compareTo(amount) < 0) {
-            throw new AppException(ErrorCode.NOTEBOOK_INSUFFICIENT_BALANCE);
-        }
-
-        book.setBalance(book.getBalance().subtract(amount));
-        notebookBookRepository.save(book);
-
-        String transactionCode = "INV-" + invoice.getId() + "-"
-                + System.currentTimeMillis()
-                + UUID.randomUUID().toString().substring(0, 4).toUpperCase();
-
-        notebookTransactionRepository.save(NotebookTransaction.builder()
-                .user(user)
-                .book(book)
-                .amount(amount)
-                .type(NotebookTransactionType.EXPENSE)
-                .note("Thanh toán hóa đơn: " + invoice.getInvoiceName())
-                .categoryId(null)
-                .categoryName("Hóa đơn")
-                .transactionCode(transactionCode)
-                .build());
-
-        invoice.setPaid(true);
-        Invoice updatedInvoice = invoiceRepository.save(invoice);
-        return mapToResponse(updatedInvoice);
+    private void notifyInvoicePaid(User user, Invoice invoice) {
+        notificationService.createNotification(
+                user,
+                "Đã hoàn thành hóa đơn",
+                "Hóa đơn \"" + invoice.getInvoiceName() + "\" trị giá "
+                        + invoice.getAmount().toPlainString() + "đ đã được đánh dấu là đã thanh toán.",
+                NotificationType.INVOICE_PAYMENT_SUCCESS,
+                invoice.getId());
     }
     
     private Invoice getInvoice(Long id, User user) {

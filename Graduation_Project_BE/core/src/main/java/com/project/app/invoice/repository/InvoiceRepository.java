@@ -13,4 +13,5 @@ public interface InvoiceRepository extends JpaRepository<Invoice, Long> {
     
     // Tìm các hóa đơn chưa thanh toán, chưa gửi thông báo, và có cài đặt thời gian nhắc nhở
     List<Invoice> findByIsNotifiedFalseAndIsPaidFalseAndReminderTimeIsNotNull();
+    List<Invoice> findByIsPaidFalse();
 }

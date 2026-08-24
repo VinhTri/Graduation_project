@@ -1,6 +1,8 @@
 package com.project.app.sepay.controller;
 
 import com.project.app.common.dto.ApiResponse;
+import com.project.app.audit.service.AdminAuditService;
+import com.project.app.auth.security.CustomUserDetails;
 import com.project.app.sepay.dto.request.ManualCreditRequest;
 import com.project.app.sepay.dto.response.ReconciliationReportResponse;
 import com.project.app.sepay.dto.response.SePayTransactionResponse;
@@ -8,7 +10,9 @@ import com.project.app.sepay.service.AdminSePayService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+import jakarta.validation.Valid;
 
 import java.util.List;
 
@@ -18,6 +22,7 @@ import java.util.List;
 public class AdminSePayController {
 
     private final AdminSePayService adminSePayService;
+    private final AdminAuditService auditService;
 
     @GetMapping("/transactions")
     @PreAuthorize("hasRole('ADMIN')")
@@ -43,8 +48,11 @@ public class AdminSePayController {
 
     @PostMapping("/reconciliation/run")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<ApiResponse<ReconciliationReportResponse>> runReconciliation() {
+    public ResponseEntity<ApiResponse<ReconciliationReportResponse>> runReconciliation(
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
         ReconciliationReportResponse report = adminSePayService.runReconciliation(true);
+        auditService.record(userDetails.getUser(), "SEPAY_RECONCILIATION_RUN", "SEPAY", null,
+                "Chạy đối soát và cập nhật trạng thái khớp");
         return ResponseEntity.ok(ApiResponse.<ReconciliationReportResponse>builder()
                 .success(true)
                 .message("Đã chạy đối soát và cập nhật trạng thái khớp")
@@ -56,9 +64,13 @@ public class AdminSePayController {
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<SePayTransactionResponse>> manualCredit(
             @PathVariable Long id,
-            @RequestBody(required = false) ManualCreditRequest request
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @Valid @RequestBody ManualCreditRequest request
     ) {
         SePayTransactionResponse data = adminSePayService.manualCredit(id, request);
+        auditService.record(userDetails.getUser(), "SEPAY_MANUAL_CREDIT", "SEPAY_TRANSACTION", id,
+                "Cộng tiền thủ công sau đối soát; mã nội bộ " + data.getInternalTransactionCode()
+                        + "; lý do: " + request.getReason().trim());
         return ResponseEntity.ok(ApiResponse.<SePayTransactionResponse>builder()
                 .success(true)
                 .message("Đã cộng tiền thủ công vào ví và khớp giao dịch SePay")

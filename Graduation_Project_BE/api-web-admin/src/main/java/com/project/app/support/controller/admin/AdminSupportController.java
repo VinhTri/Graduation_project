@@ -1,6 +1,7 @@
 package com.project.app.support.controller.admin;
 
 import com.project.app.auth.security.CustomUserDetails;
+import com.project.app.audit.service.AdminAuditService;
 import com.project.app.common.dto.ApiResponse;
 import com.project.app.support.dto.request.SupportReplyRequest;
 import com.project.app.support.dto.request.SupportStatusRequest;
@@ -23,6 +24,7 @@ import java.util.List;
 public class AdminSupportController {
 
     private final AdminSupportService adminSupportService;
+    private final AdminAuditService auditService;
 
     @GetMapping("/tickets")
     @PreAuthorize("hasRole('ADMIN')")
@@ -51,10 +53,13 @@ public class AdminSupportController {
             @AuthenticationPrincipal CustomUserDetails userDetails,
             @Valid @RequestBody SupportReplyRequest request
     ) {
+        SupportMessageResponse response = adminSupportService.reply(id, userDetails.getUser(), request);
+        auditService.record(userDetails.getUser(), "SUPPORT_REPLY", "SUPPORT_TICKET", id,
+                "Phản hồi yêu cầu hỗ trợ");
         return ResponseEntity.ok(ApiResponse.<SupportMessageResponse>builder()
                 .success(true)
                 .message("Đã gửi phản hồi")
-                .data(adminSupportService.reply(id, userDetails.getUser(), request))
+                .data(response)
                 .build());
     }
 
@@ -62,12 +67,16 @@ public class AdminSupportController {
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<SupportTicketResponse>> updateStatus(
             @PathVariable Long id,
+            @AuthenticationPrincipal CustomUserDetails userDetails,
             @Valid @RequestBody SupportStatusRequest request
     ) {
+        SupportTicketResponse response = adminSupportService.updateStatus(id, request);
+        auditService.record(userDetails.getUser(), "SUPPORT_STATUS_UPDATE", "SUPPORT_TICKET", id,
+                "Cập nhật trạng thái thành " + request.getStatus());
         return ResponseEntity.ok(ApiResponse.<SupportTicketResponse>builder()
                 .success(true)
                 .message("Đã cập nhật trạng thái")
-                .data(adminSupportService.updateStatus(id, request))
+                .data(response)
                 .build());
     }
 }

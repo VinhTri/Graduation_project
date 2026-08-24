@@ -1,22 +1,18 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Layout, Menu, Avatar, Dropdown, ConfigProvider, Tooltip, Breadcrumb, Input, Badge } from 'antd';
+import { Layout, Menu, Avatar, Dropdown, ConfigProvider, Tooltip, Breadcrumb, Badge } from 'antd';
 import {
   DashboardOutlined,
   UserOutlined,
   TransactionOutlined,
-  HistoryOutlined,
   CustomerServiceOutlined,
   LogoutOutlined,
-  BarChartOutlined,
-  FileTextOutlined,
   BellOutlined,
-  SettingOutlined,
   DoubleLeftOutlined,
   DoubleRightOutlined,
-  SearchOutlined,
-  QuestionCircleOutlined,
+  AuditOutlined,
 } from '@ant-design/icons';
 import { Outlet, useNavigate, useLocation, Link } from 'react-router-dom';
+import { apiClient } from '../services/api';
 import './AdminLayout.css';
 
 const { Header, Content, Sider } = Layout;
@@ -26,11 +22,11 @@ const SIDEBAR_COLLAPSED_KEY = 'admin_sidebar_collapsed';
 const PAGE_META: Record<string, { title: string; parent?: string }> = {
   '/': { title: 'Tổng quan' },
   '/users': { title: 'Người dùng', parent: 'Quản lý' },
-  '/transaction-history': { title: 'Lịch sử giao dịch', parent: 'Quản lý' },
-  '/support': { title: 'Hỗ trợ người dùng', parent: 'Quản lý' },
-  '/transactions': { title: 'Đối soát SePay', parent: 'Quản lý' },
-  '/reports': { title: 'Báo cáo', parent: 'Phân tích' },
-  '/posts': { title: 'Bài viết', parent: 'Nội dung' },
+  '/notifications': { title: 'Thông báo', parent: 'Giao tiếp' },
+  '/transaction-history': { title: 'Nạp & rút tiền', parent: 'Tài chính' },
+  '/support': { title: 'Hỗ trợ người dùng', parent: 'Giao tiếp' },
+  '/transactions': { title: 'Đối soát SePay', parent: 'Tài chính' },
+  '/audit-logs': { title: 'Nhật ký quản trị', parent: 'Hệ thống' },
 };
 
 export const AdminLayout: React.FC = () => {
@@ -43,6 +39,15 @@ export const AdminLayout: React.FC = () => {
       return false;
     }
   });
+  const [riskAlertCount, setRiskAlertCount] = useState(0);
+
+  useEffect(() => {
+    let active = true;
+    apiClient.get('/api/v1/admin/control-center/alerts')
+      .then((response) => { if (active) setRiskAlertCount(Array.isArray(response.data?.data) ? response.data.data.length : 0); })
+      .catch(() => { /* Header alerts are non-blocking. */ });
+    return () => { active = false; };
+  }, []);
 
   useEffect(() => {
     try {
@@ -79,11 +84,6 @@ export const AdminLayout: React.FC = () => {
       },
       { type: 'divider' as const },
       {
-        key: 'settings',
-        icon: <SettingOutlined />,
-        label: 'Cài đặt',
-      },
-      {
         key: 'logout',
         icon: <LogoutOutlined />,
         label: 'Đăng xuất',
@@ -98,12 +98,15 @@ export const AdminLayout: React.FC = () => {
       theme={{
         token: {
           colorPrimary: '#EC4899',
-          colorInfo: '#7C3AED',
-          colorBgLayout: '#F8FAFC',
+          colorInfo: '#EC4899',
+          colorBgLayout: '#FFF8FC',
           colorBgContainer: '#FFFFFF',
-          colorBorderSecondary: '#E2E8F0',
+          colorBorderSecondary: '#F3E8FF',
+          colorText: '#1F2937',
+          colorTextSecondary: '#6B7280',
+          colorFillAlter: '#FFF8FC',
           borderRadius: 10,
-          fontFamily: "'Segoe UI', system-ui, -apple-system, BlinkMacSystemFont, sans-serif",
+          fontFamily: "'Manrope', 'Avenir Next', system-ui, sans-serif",
         },
         components: {
           Menu: {
@@ -185,21 +188,27 @@ export const AdminLayout: React.FC = () => {
                 {
                   key: 'group-manage',
                   type: 'group',
-                  label: collapsed ? '' : 'Quản lý',
+                  label: collapsed ? '' : 'Quản lý chính',
                   children: [
                     { key: '/users', icon: <UserOutlined />, label: 'Người dùng' },
-                    { key: '/transaction-history', icon: <HistoryOutlined />, label: 'Lịch sử giao dịch' },
-                    { key: '/support', icon: <CustomerServiceOutlined />, label: 'Hỗ trợ người dùng' },
+                    { key: '/transaction-history', icon: <TransactionOutlined />, label: 'Nạp & rút tiền' },
                     { key: '/transactions', icon: <TransactionOutlined />, label: 'Đối soát SePay' },
-                    { key: '/posts', icon: <FileTextOutlined />, label: 'Bài viết' },
                   ],
                 },
                 {
-                  key: 'group-analytics',
+                  key: 'group-communication',
                   type: 'group',
-                  label: collapsed ? '' : 'Phân tích',
+                  label: collapsed ? '' : 'Giao tiếp',
                   children: [
-                    { key: '/reports', icon: <BarChartOutlined />, label: 'Báo cáo' },
+                    { key: '/support', icon: <CustomerServiceOutlined />, label: 'Hỗ trợ' },
+                  ],
+                },
+                {
+                  key: 'group-system',
+                  type: 'group',
+                  label: collapsed ? '' : 'Hệ thống',
+                  children: [
+                    { key: '/audit-logs', icon: <AuditOutlined />, label: 'Nhật ký quản trị' },
                   ],
                 },
               ]}
@@ -226,23 +235,10 @@ export const AdminLayout: React.FC = () => {
               </div>
             </div>
 
-            <div className="admin-header-search">
-              <Input
-                allowClear
-                placeholder="Tìm người dùng, giao dịch, bài viết..."
-                prefix={<SearchOutlined />}
-              />
-            </div>
-
             <div className="admin-header-right">
-              <Tooltip title="Trợ giúp">
-                <button type="button" className="admin-icon-btn" aria-label="Trợ giúp">
-                  <QuestionCircleOutlined />
-                </button>
-              </Tooltip>
-              <Tooltip title="Thông báo">
-                <button type="button" className="admin-icon-btn" aria-label="Thông báo">
-                  <Badge count={3} size="small" offset={[-2, 2]}>
+              <Tooltip title="Giao dịch cần kiểm tra">
+                <button type="button" className="admin-icon-btn" aria-label="Giao dịch cần kiểm tra" onClick={() => navigate('/transaction-history')}>
+                  <Badge count={riskAlertCount} size="small" offset={[-2, 2]}>
                     <BellOutlined />
                   </Badge>
                 </button>

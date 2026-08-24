@@ -1,10 +1,10 @@
 import React, { useState, useCallback, useMemo } from 'react';
-import { View, Text, TouchableOpacity, FlatList, ActivityIndicator, RefreshControl, Animated } from 'react-native';
+import { View, Text, TouchableOpacity, FlatList, RefreshControl, Animated } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { styles, PALETTE } from './InvoiceScreen.styles';
-import Colors from '@/shared/constants/Colors';
+import { Colors } from '@/shared/constants/Colors';
 import { invoiceService, InvoiceResponse } from '@/shared/api/services/invoiceService';
 import { Swipeable, RectButton } from 'react-native-gesture-handler';
 import { ConfirmModal } from '@/shared/components';
@@ -25,8 +25,8 @@ export const InvoiceScreen = () => {
   const [deleteModalVisible, setDeleteModalVisible] = useState(false);
   const [itemToDelete, setItemToDelete] = useState<{ id: number, name: string } | null>(null);
 
-  const [payModalVisible, setPayModalVisible] = useState(false);
-  const [itemToPay, setItemToPay] = useState<{ id: number, name: string } | null>(null);
+  const [completeModalVisible, setCompleteModalVisible] = useState(false);
+  const [itemToComplete, setItemToComplete] = useState<{ id: number, name: string } | null>(null);
 
   const [errorModalVisible, setErrorModalVisible] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
@@ -48,7 +48,6 @@ export const InvoiceScreen = () => {
 
   useFocusEffect(
     useCallback(() => {
-      setLoading(true);
       fetchInvoices();
     }, [])
   );
@@ -84,26 +83,26 @@ export const InvoiceScreen = () => {
     }
   };
 
-  const openPayModal = (id: number, name: string) => {
-    setItemToPay({ id, name });
-    setPayModalVisible(true);
+  const openCompleteModal = (id: number, name: string) => {
+    setItemToComplete({ id, name });
+    setCompleteModalVisible(true);
   };
 
-  const confirmPay = async () => {
-    if (!itemToPay) return;
+  const confirmComplete = async () => {
+    if (!itemToComplete) return;
     try {
       setLoading(true);
-      setPayModalVisible(false);
-      await invoiceService.payInvoiceWithCash(itemToPay.id);
+      setCompleteModalVisible(false);
+      await invoiceService.updateInvoiceStatus(itemToComplete.id, true);
       fetchInvoices();
-      setSuccessMessage(`Thanh toán thành công hóa đơn "${itemToPay.name}"!`);
+      setSuccessMessage(`Đã đánh dấu hóa đơn "${itemToComplete.name}" là đã thanh toán.`);
       setSuccessModalVisible(true);
     } catch (error: any) {
-      console.log("Pay Invoice Error:", error);
-      setErrorMessage(error?.message || error?.response?.data?.message || "Có lỗi xảy ra khi thanh toán.");
+      console.log("Complete Invoice Error:", error);
+      setErrorMessage(error?.message || error?.response?.data?.message || "Không thể cập nhật hóa đơn.");
       setErrorModalVisible(true);
     } finally {
-      setItemToPay(null);
+      setItemToComplete(null);
       setLoading(false);
     }
   };
@@ -122,6 +121,24 @@ export const InvoiceScreen = () => {
     return invoices.filter(inv => !inv.isPaid).reduce((acc, curr) => acc + curr.amount, 0);
   }, [invoices]);
 
+  const unpaidSummary = useMemo(() => {
+    const now = new Date();
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    let dueThisMonth = 0;
+    let overdueCount = 0;
+
+    invoices.filter(inv => !inv.isPaid).forEach(inv => {
+      const [year, month, day] = inv.dueDate.split('-').map(Number);
+      const dueDate = new Date(year, month - 1, day);
+      if (year === now.getFullYear() && month === now.getMonth() + 1) {
+        dueThisMonth += Number(inv.amount) || 0;
+      }
+      if (dueDate < todayStart) overdueCount += 1;
+    });
+
+    return { dueThisMonth, overdueCount };
+  }, [invoices]);
+
   // Utilities for UI
   const getServiceIcon = (name: string) => {
     const n = name.toLowerCase();
@@ -135,7 +152,11 @@ export const InvoiceScreen = () => {
 
   const getInvoiceStatus = (item: InvoiceResponse) => {
     if (item.isPaid) return { text: 'Đã thanh toán', color: '#10B981', bg: '#D1FAE5' };
-    const isOverdue = new Date(item.dueDate) < new Date();
+    const [year, month, day] = item.dueDate.split('-').map(Number);
+    const dueDate = new Date(year, month - 1, day);
+    const now = new Date();
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const isOverdue = dueDate < todayStart;
     if (isOverdue) return { text: 'Quá hạn', color: '#EF4444', bg: '#FEE2E2' };
     return { text: 'Chưa thanh toán', color: '#F59E0B', bg: '#FEF3C7' };
   };
@@ -186,7 +207,8 @@ export const InvoiceScreen = () => {
 
   const renderInvoiceItem = ({ item }: { item: InvoiceResponse }) => {
     const formattedAmount = item.amount.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
-    const dueDate = new Date(item.dueDate);
+    const [year, month, day] = item.dueDate.split('-').map(Number);
+    const dueDate = new Date(year, month - 1, day);
     const formattedDate = dueDate.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });
     
     const sIcon = getServiceIcon(item.invoiceName);
@@ -236,7 +258,7 @@ export const InvoiceScreen = () => {
                   <Ionicons name="calendar-outline" size={16} color="#64748B" />
                   <Text style={styles.dueDateText}>Đến hạn: {formattedDate}</Text>
                 </View>
-                {item.reminderOption && (
+                {item.reminderOption && item.reminderOption !== 'Không nhắc nhở' && (
                   <View style={styles.reminderBadge}>
                     <Text style={styles.reminderText}>{item.reminderOption}</Text>
                   </View>
@@ -249,10 +271,10 @@ export const InvoiceScreen = () => {
                   activeOpacity={0.8}
                   onPress={(e) => {
                     e.stopPropagation();
-                    openPayModal(item.id, item.invoiceName);
+                    openCompleteModal(item.id, item.invoiceName);
                   }}
                 >
-                  <Text style={styles.payNowText}>Thanh toán ngay</Text>
+                  <Text style={styles.payNowText}>Đánh dấu đã thanh toán</Text>
                 </TouchableOpacity>
               )}
             </View>
@@ -296,84 +318,13 @@ export const InvoiceScreen = () => {
         </LinearGradient>
       </View>
 
-      {/* Services Grid */}
-      <View style={styles.servicesGridContainer}>
-
-        <TouchableOpacity style={styles.serviceGridItem} onPress={() => router.push('/invoice/service/electricity')} activeOpacity={0.7}>
-          <View style={[styles.serviceGridIconWrap, { backgroundColor: '#FEF3C7' }]}>
-            <Ionicons name="flash" size={24} color="#F59E0B" />
-          </View>
-          <Text style={styles.serviceGridText}>Tiền điện</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity style={styles.serviceGridItem} onPress={() => router.push('/invoice/service/water')} activeOpacity={0.7}>
-          <View style={[styles.serviceGridIconWrap, { backgroundColor: '#DBEAFE' }]}>
-            <Ionicons name="water" size={24} color="#3B82F6" />
-          </View>
-          <Text style={styles.serviceGridText}>Tiền nước</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity style={styles.serviceGridItem} onPress={() => router.push('/invoice/service/internet')} activeOpacity={0.7}>
-          <View style={[styles.serviceGridIconWrap, { backgroundColor: '#EDE9FE' }]}>
-            <Ionicons name="wifi" size={24} color="#8B5CF6" />
-          </View>
-          <Text style={styles.serviceGridText}>Tiền mạng</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity style={styles.serviceGridItem} onPress={() => router.push('/invoice/service/rent')} activeOpacity={0.7}>
-          <View style={[styles.serviceGridIconWrap, { backgroundColor: '#D1FAE5' }]}>
-            <Ionicons name="home" size={24} color="#10B981" />
-          </View>
-          <Text style={styles.serviceGridText}>Tiền nhà</Text>
-        </TouchableOpacity>
-      </View>
-
-      {/* Tabs */}
-      <View style={styles.tabsContainer}>
-        {(['all', 'unpaid', 'paid'] as FilterTab[]).map(tab => (
-          <TouchableOpacity 
-            key={tab} 
-            onPress={() => setFilterTab(tab)} 
-            style={[styles.tabItem, filterTab === tab && styles.tabItemActive]}
-          >
-            <Text style={[styles.tabText, filterTab === tab && styles.tabTextActive]}>
-              {tab === 'all' ? 'Tất cả' : tab === 'unpaid' ? 'Chưa thanh toán' : 'Đã thanh toán'}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </View>
-
-      {/* Summary Widget */}
-      {(filterTab === 'all' || filterTab === 'unpaid') && totalUnpaid > 0 && (
-        <LinearGradient colors={['#FCE7F3', '#FBCFE8']} style={styles.summaryWidget}>
-          <View style={[styles.summaryIconWrap, { backgroundColor: '#F9A8D4' }]}>
-            <Ionicons name="wallet-outline" size={24} color="#BE185D" />
-          </View>
-          <View style={styles.summaryTextWrap}>
-            <Text style={[styles.summaryTitle, { color: '#9D174D' }]}>Tổng tiền chưa thanh toán</Text>
-            <Text style={[styles.summaryAmount, { color: '#831843' }]}>
-              {totalUnpaid.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",")} đ
-            </Text>
-          </View>
-        </LinearGradient>
-      )}
-
       {/* Body */}
       {loading && !refreshing ? (
-        <View style={[styles.emptyStateContainer, { justifyContent: 'center' }]}>
-          <ActivityIndicator size="large" color={Colors.primary} />
-        </View>
-      ) : filteredInvoices.length === 0 ? (
-        <View style={styles.emptyStateContainer}>
-          <View style={styles.emptyIconContainer}>
-            <Ionicons name="document-text-outline" size={80} color="#E2E8F0" />
-          </View>
-          <Text style={styles.emptyTitle}>Không có hóa đơn nào</Text>
-          <Text style={styles.emptySubtitle}>
-            {filterTab === 'unpaid' 
-              ? "Tuyệt vời! Bạn không có hóa đơn nào đang nợ." 
-              : "Bấm 'Tạo hóa đơn' ở góc phải bên trên để thêm hóa đơn mới."}
-          </Text>
+        <View style={styles.loadingContent}>
+          <View style={styles.skeletonSummary} />
+          <View style={styles.skeletonRow} />
+          <View style={styles.skeletonCard} />
+          <View style={styles.skeletonCard} />
         </View>
       ) : (
         <FlatList
@@ -382,6 +333,106 @@ export const InvoiceScreen = () => {
           renderItem={renderInvoiceItem}
           contentContainerStyle={styles.listContainer}
           showsVerticalScrollIndicator={false}
+          ListHeaderComponent={
+            <View>
+              <View style={styles.summaryWidget}>
+                <View style={styles.summaryOrbLarge} />
+                <View style={styles.summaryOrbSmall} />
+                <View style={styles.summaryTopRow}>
+                  <View>
+                    <Text style={styles.summaryTitle}>Tổng cần thanh toán</Text>
+                    <Text style={styles.summaryAmount}>
+                      {totalUnpaid.toLocaleString('vi-VN')} <Text style={styles.summaryCurrency}>đ</Text>
+                    </Text>
+                  </View>
+                  <View style={styles.summaryIconWrap}>
+                    <Ionicons name="receipt-outline" size={23} color="#FFFFFF" />
+                  </View>
+                </View>
+                <View style={styles.summaryDivider} />
+                <View style={styles.summaryStats}>
+                  <View style={styles.summaryStatItem}>
+                    <Text style={styles.summaryStatLabel}>Đến hạn tháng này</Text>
+                    <Text style={styles.summaryStatValue}>{unpaidSummary.dueThisMonth.toLocaleString('vi-VN')} đ</Text>
+                  </View>
+                  <View style={styles.summaryStatDivider} />
+                  <View style={styles.summaryStatItem}>
+                    <Text style={styles.summaryStatLabel}>Đã quá hạn</Text>
+                    <Text style={[styles.summaryStatValue, unpaidSummary.overdueCount > 0 && styles.summaryStatDanger]}>
+                      {unpaidSummary.overdueCount} hóa đơn
+                    </Text>
+                  </View>
+                </View>
+              </View>
+
+              <View style={styles.trackerNotice}>
+                <Ionicons name="notifications-outline" size={19} color="#6D28D9" />
+                <Text style={styles.trackerNoticeText}>
+                  SmartSpend theo dõi và nhắc hạn; việc thanh toán được thực hiện bên ngoài ứng dụng.
+                </Text>
+              </View>
+
+              <View style={styles.sectionHeadingRow}>
+                <Text style={styles.sectionHeading}>Tạo nhanh</Text>
+                <TouchableOpacity onPress={() => router.push('/invoice/create')} activeOpacity={0.7}>
+                  <Text style={styles.sectionLink}>Hóa đơn khác</Text>
+                </TouchableOpacity>
+              </View>
+
+              <View style={styles.servicesGridContainer}>
+                {[
+                  { label: 'Tiền điện', icon: 'flash', color: '#D97706', bg: '#FEF3C7', route: '/invoice/service/electricity' },
+                  { label: 'Tiền nước', icon: 'water', color: '#2563EB', bg: '#DBEAFE', route: '/invoice/service/water' },
+                  { label: 'Tiền mạng', icon: 'wifi', color: '#7C3AED', bg: '#EDE9FE', route: '/invoice/service/internet' },
+                  { label: 'Tiền nhà', icon: 'home', color: '#059669', bg: '#D1FAE5', route: '/invoice/service/rent' },
+                ].map(service => (
+                  <TouchableOpacity
+                    key={service.label}
+                    style={styles.serviceGridItem}
+                    onPress={() => router.push(service.route as any)}
+                    activeOpacity={0.72}
+                  >
+                    <View style={[styles.serviceGridIconWrap, { backgroundColor: service.bg }]}>
+                      <Ionicons name={service.icon as any} size={22} color={service.color} />
+                    </View>
+                    <Text style={styles.serviceGridText}>{service.label}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              <View style={styles.listHeadingRow}>
+                <Text style={styles.sectionHeading}>Hóa đơn của bạn</Text>
+                <Text style={styles.invoiceCount}>{filteredInvoices.length} hóa đơn</Text>
+              </View>
+
+              <View style={styles.tabsContainer}>
+                {(['all', 'unpaid', 'paid'] as FilterTab[]).map(tab => (
+                  <TouchableOpacity
+                    key={tab}
+                    onPress={() => setFilterTab(tab)}
+                    style={[styles.tabItem, filterTab === tab && styles.tabItemActive]}
+                  >
+                    <Text style={[styles.tabText, filterTab === tab && styles.tabTextActive]}>
+                      {tab === 'all' ? 'Tất cả' : tab === 'unpaid' ? 'Chưa trả' : 'Đã trả'}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+          }
+          ListEmptyComponent={
+            <View style={styles.emptyStateContainer}>
+              <View style={styles.emptyIconContainer}>
+                <Ionicons name="receipt-outline" size={42} color="#8B5CF6" />
+              </View>
+              <Text style={styles.emptyTitle}>Không có hóa đơn</Text>
+              <Text style={styles.emptySubtitle}>
+                {filterTab === 'unpaid'
+                  ? 'Bạn đã xử lý tất cả hóa đơn cần thanh toán.'
+                  : 'Tạo hóa đơn đầu tiên để bắt đầu theo dõi hạn thanh toán.'}
+              </Text>
+            </View>
+          }
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[Colors.primary]} />
           }
@@ -405,20 +456,20 @@ export const InvoiceScreen = () => {
         }}
       />
 
-      {/* Pay Confirmation Modal */}
+      {/* Complete Confirmation Modal */}
       <ConfirmModal
-        visible={payModalVisible}
-        title="Thanh toán hóa đơn"
-        message={itemToPay ? `Bạn có chắc chắn muốn thanh toán hóa đơn "${itemToPay.name}" bằng Sổ tay tiền mặt không?` : ""}
-        iconName="wallet-outline"
+        visible={completeModalVisible}
+        title="Xác nhận đã thanh toán"
+        message={itemToComplete ? `Bạn đã thanh toán hóa đơn "${itemToComplete.name}" bên ngoài SmartSpend? Thao tác này chỉ cập nhật trạng thái và không trừ tiền trong ứng dụng.` : ""}
+        iconName="checkmark-circle-outline"
         iconColor="#EC4899"
-        confirmText="Thanh toán"
+        confirmText="Đã thanh toán"
         cancelText="Hủy"
         isDestructive={false}
-        onConfirm={confirmPay}
+        onConfirm={confirmComplete}
         onCancel={() => {
-          setPayModalVisible(false);
-          setItemToPay(null);
+          setCompleteModalVisible(false);
+          setItemToComplete(null);
         }}
       />
 

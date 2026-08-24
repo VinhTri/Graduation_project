@@ -1,3 +1,21 @@
+@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap');
+
+:root {
+  --app-primary: #EC4899;
+  --app-primary-dark: #BE185D;
+  --app-primary-soft: #FCE7F3;
+  --app-lavender: #A78BFA;
+  --app-lavender-soft: #EDE9FE;
+  --app-background: #FFF8FC;
+  --app-border: #F3E8FF;
+  --app-text: #1F2937;
+  --app-muted: #6B7280;
+  font-family: 'Manrope', 'Avenir Next', system-ui, sans-serif;
+  color: #1F2937;
+  background: #FFF8FC;
+  font-synthesis: none;
+}
+
 * {
   box-sizing: border-box;
 }
@@ -10,11 +28,15 @@ body,
 }
 
 body {
-  font-family: 'Segoe UI', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
-  background: #f8fafc;
-  color: #0f172a;
+  font-family: 'Manrope', 'Avenir Next', system-ui, sans-serif;
+  background: #FFF8FC;
+  color: #1F2937;
   -webkit-font-smoothing: antialiased;
 }
+
+html { scroll-behavior: smooth; }
+::selection { color: #fff; background: #EC4899; }
+:focus-visible { outline: 3px solid rgba(236, 72, 153, .28); outline-offset: 2px; }
 
 button {
   font: inherit;
@@ -22,4 +44,64 @@ button {
 
 a {
   color: inherit;
+}
+
+/* The admin shell follows the same pink–lavender visual language as the mobile app. */
+.dashboard-hero,
+.users-hero,
+.txh-hero,
+.sepay-hero,
+.ops-intro,
+.notice-hero {
+  background:
+    radial-gradient(circle at 90% 0%, rgba(191, 219, 254, .62), transparent 38%),
+    linear-gradient(128deg, #FFF1F8 0%, #EDE9FE 57%, #EFF6FF 100%) !important;
+  border: 1px solid rgba(233, 213, 255, .75) !important;
+  box-shadow: 0 16px 38px rgba(190, 24, 93, .07) !important;
+}
+
+.dashboard-hero h2,
+.users-hero h2,
+.txh-hero h2,
+.sepay-hero h2,
+.ops-intro h2,
+.notice-hero h2,
+.dashboard-hero strong {
+  color: #1F2937 !important;
+}
+
+.dashboard-hero p,
+.users-hero p,
+.txh-hero p,
+.sepay-hero .ant-typography,
+.ops-intro p,
+.notice-hero p,
+.dashboard-hero small,
+.dashboard-hero span {
+  color: #6B7280 !important;
+}
+
+.dashboard-hero-copy > span,
+.users-hero-kicker,
+.txh-hero-kicker,
+.sepay-hero-kicker,
+.ops-intro > div > span,
+.notice-hero > div > span {
+  color: #BE185D !important;
+}
+
+.dashboard-hero .ant-btn,
+.users-hero .ant-btn,
+.txh-hero .ant-btn,
+.sepay-hero .ant-btn,
+.ops-intro .ant-btn,
+.notice-hero .ant-btn {
+  border: 1px solid #F3E8FF !important;
+  background: rgba(255, 255, 255, .88) !important;
+  color: #BE185D !important;
+  box-shadow: 0 8px 20px rgba(190, 24, 93, .08) !important;
+}
+
+.ant-btn-primary:not(:disabled) {
+  box-shadow: 0 8px 20px rgba(236, 72, 153, .18);
 }

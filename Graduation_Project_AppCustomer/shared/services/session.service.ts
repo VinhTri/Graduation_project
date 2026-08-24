@@ -1,9 +1,9 @@
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { userService } from '@/shared/api/services/userService'
 import { walletService } from '@/shared/api/services/walletService'
+import { clearStoredSession } from '@/shared/services/sessionStorage'
 
 const SESSION_USER_ID = 'userId'
-const SESSION_KEYS = ['token', 'userAvatarUrl', 'userName', 'userEmail', SESSION_USER_ID] as const
 
 const sessionListeners = new Set<() => void>()
 
@@ -76,6 +76,6 @@ export async function getCustomerProfile(): Promise<CustomerProfile> {
 }
 
 export async function logoutCustomer(): Promise<void> {
-  await AsyncStorage.multiRemove([...SESSION_KEYS])
+  await clearStoredSession()
   notifySessionChanged()
 }
