@@ -14,14 +14,6 @@ export const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 6,
   },
-  backButton: {
-    width: 40,
-    height: 40,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 6,
-    marginLeft: -8,
-  },
   headerTitle: {
     flex: 1,
     fontSize: 22,

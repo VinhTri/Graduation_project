@@ -4,7 +4,7 @@ import {
   FlatList, Dimensions, NativeSyntheticEvent, NativeScrollEvent,
   RefreshControl, Alert,
 } from 'react-native';
-import { Feather, Ionicons } from '@expo/vector-icons';
+import { Feather } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -15,6 +15,7 @@ import { FundInvitation } from '../../types';
 import { FUND_PALETTE } from '../../theme';
 import { MAX_OWNED_FUNDS, MAX_JOINED_FUNDS } from '../../constants';
 import { styles } from './FundsScreen.styles';
+import { useLanguage, useTheme } from '../../../../shared/contexts/ThemeLanguageContext';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
 const BANNER_H_PAD = 20;
@@ -43,8 +44,6 @@ const FUND_GOAL_BANNERS = [
     subtitle: 'Chia sẻ chi phí công bằng, vui hơn',
   },
 ] as const;
-
-import { useLanguage, useTheme } from '../../../../shared/contexts/ThemeLanguageContext';
 
 export function FundsScreen() {
   const router = useRouter();
@@ -168,19 +167,6 @@ export function FundsScreen() {
         contentStyle={styles.header}
       >
         <View style={styles.headerTopRow}>
-          <TouchableOpacity
-            onPress={() => {
-              if (router.canGoBack()) {
-                router.back();
-              } else {
-                router.replace('/(tabs)/home');
-              }
-            }}
-            style={styles.backButton}
-            activeOpacity={0.7}
-          >
-            <Ionicons name="chevron-back-outline" size={24} color={theme.isDark ? '#FFFFFF' : '#7C3AED'} />
-          </TouchableOpacity>
           <Text style={[styles.headerTitle, { color: theme.isDark ? '#FFFFFF' : '#5B21B6' }]}>{t('groupFunds')}</Text>
 
           <View style={styles.headerActions}>

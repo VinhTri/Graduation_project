@@ -7,7 +7,7 @@ import { PASTEL_PALETTE } from '@/shared/constants/PastelPalette'
 export type NotebookReportDateFilter = 'week' | 'month' | 'year'
 /** Bộ lọc lịch sử sổ tay — có thêm lọc từng ngày. */
 export type NotebookHistoryDateFilter = 'day' | 'week' | 'month' | 'year'
-export type NotebookReportViewMode = 'pie' | 'bar'
+export type NotebookReportViewMode = 'pie' | 'group' | 'bar'
 export type NotebookReportTab = 'expense' | 'income'
 
 export type NotebookReportDistRow = {
@@ -29,6 +29,7 @@ export type NotebookReportTrendPoint = {
 }
 
 export type NotebookReportCategoryMeta = {
+  key?: string
   icon: string
   color: string
   label: string
@@ -266,7 +267,7 @@ export function buildNotebookDistribution(
     const amount = toSafeAmount(tx.amount)
     total += amount
     const meta = resolveMeta(tx)
-    const key = String(tx.categoryId ?? `${meta.icon}|${meta.color}|${meta.label}`)
+    const key = meta.key || String(tx.categoryId ?? `${meta.icon}|${meta.color}|${meta.label}`)
     const prev = map.get(key)
     if (prev) {
       prev.totalAmount += amount

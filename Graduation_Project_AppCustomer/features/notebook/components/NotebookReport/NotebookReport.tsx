@@ -83,6 +83,10 @@ export function NotebookReport({ active = true }: Props) {
     () => createCategoryResolver(categories),
     [categories],
   )
+  const resolveGroupMeta = useMemo(
+    () => createGroupResolver(categories),
+    [categories],
+  )
 
   const rangedTransactions = useMemo(() => {
     const { start, end } = getNotebookReportRange(dateFilter, selectedDate)
@@ -93,9 +97,15 @@ export function NotebookReport({ active = true }: Props) {
   }, [transactions, dateFilter, selectedDate])
 
   const distribution = useMemo(
-    () => buildNotebookDistribution(rangedTransactions, txType, resolveMeta),
-    [rangedTransactions, txType, resolveMeta],
+    () => buildNotebookDistribution(
+      rangedTransactions,
+      txType,
+      viewMode === 'group' ? resolveGroupMeta : resolveMeta,
+    ),
+    [rangedTransactions, txType, viewMode, resolveGroupMeta, resolveMeta],
   )
+
+  const isDistributionMode = viewMode === 'pie' || viewMode === 'group'
 
   const dualTrend = useMemo(
     () => buildNotebookDualTrend(transactions, dateFilter, selectedDate),
@@ -294,6 +304,19 @@ export function NotebookReport({ active = true }: Props) {
               </Text>
             </TouchableOpacity>
             <TouchableOpacity
+              style={[styles.toggleButton, viewMode === 'group' && styles.toggleButtonActive]}
+              onPress={() => setViewMode('group')}
+            >
+              <Ionicons
+                name="folder-open-outline"
+                size={16}
+                color={viewMode === 'group' ? PRIMARY : PASTEL_PALETTE.textMuted}
+              />
+              <Text style={[styles.toggleText, viewMode === 'group' && styles.toggleTextActive]}>
+                Nhóm
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
               style={[styles.toggleButton, viewMode === 'bar' && styles.toggleButtonActive]}
               onPress={() => setViewMode('bar')}
             >
@@ -359,6 +382,13 @@ export function NotebookReport({ active = true }: Props) {
           >
             <Ionicons name="chevron-forward" size={18} color={PASTEL_PALETTE.title} />
           </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.currentDateBtn}
+            onPress={() => setSelectedDate(new Date())}
+            activeOpacity={0.75}
+          >
+            <Text style={styles.currentDateText}>Hiện tại</Text>
+          </TouchableOpacity>
         </View>
 
         {showPicker && Platform.OS !== 'ios' ? (
@@ -375,7 +405,7 @@ export function NotebookReport({ active = true }: Props) {
         ) : null}
 
         {Platform.OS === 'ios' ? (
-          <Modal visible={showPicker} transparent animationType="slide">
+          <Modal visible={showPicker} transparent animationType="fade">
             <TouchableOpacity
               style={styles.pickerOverlay}
               activeOpacity={1}
@@ -463,7 +493,7 @@ export function NotebookReport({ active = true }: Props) {
               </Text>
             </TouchableOpacity>
           </View>
-        ) : (
+        ) : viewMode === 'bar' ? (
           <View style={styles.lineChartLegend}>
             <View style={styles.dualLegendItem}>
               <View style={[styles.lineTrendDot, { backgroundColor: EXPENSE_LINE }]} />
@@ -474,10 +504,10 @@ export function NotebookReport({ active = true }: Props) {
               <Text style={styles.lineChartLegendText}>Thu nhập</Text>
             </View>
           </View>
-        )}
+        ) : null}
 
         <View style={styles.chartContainer}>
-          {viewMode === 'pie' ? (
+          {isDistributionMode ? (
             <View style={styles.pieChartWrapper}>
               {pieChartData.length > 0 ? (
                 <View style={styles.donutContainer}>
@@ -543,7 +573,7 @@ export function NotebookReport({ active = true }: Props) {
               ) : (
                 <View style={styles.donutContainer}>
                   <Text style={styles.emptyChartText}>
-                    Chưa có dữ liệu danh mục trong kỳ này
+                    Chưa có dữ liệu {viewMode === 'group' ? 'nhóm' : 'danh mục'} trong kỳ này
                   </Text>
                 </View>
               )}
@@ -613,11 +643,11 @@ export function NotebookReport({ active = true }: Props) {
           )}
         </View>
 
-        {viewMode === 'pie' && distribution.length > 0 ? (
+        {isDistributionMode && distribution.length > 0 ? (
           <>
             <View style={styles.categoryHeader}>
               <Text style={styles.categoryTitle}>
-                Danh mục ({distribution.length})
+                {viewMode === 'group' ? 'Nhóm' : 'Danh mục'} ({distribution.length})
               </Text>
               {distribution.length > 4 ? (
                 <View style={styles.categorySwipeHint}>
@@ -736,6 +766,33 @@ function createCategoryResolver(categories: CategoryGroup[]) {
       color: tx.categoryColor || active?.color || PASTEL_PALETTE.accentDeep,
       label: baseName,
       deleted: true,
+    }
+  }
+}
+
+function createGroupResolver(categories: CategoryGroup[]) {
+  const byCategoryId = new Map<number, CategoryGroup>()
+  categories.forEach((group) => {
+    group.items.forEach((item) => byCategoryId.set(item.id, group))
+  })
+
+  return (tx: NotebookTransactionItem) => {
+    const group = tx.categoryId != null ? byCategoryId.get(tx.categoryId) : undefined
+    if (group) {
+      return {
+        key: `group-${group.id}`,
+        icon: group.icon || 'folder-outline',
+        color: group.color || PASTEL_PALETTE.accentDeep,
+        label: group.title,
+        deleted: false,
+      }
+    }
+    return {
+      key: 'group-other',
+      icon: 'ellipsis-horizontal-circle-outline',
+      color: PASTEL_PALETTE.textMuted,
+      label: 'Khác',
+      deleted: false,
     }
   }
 }
