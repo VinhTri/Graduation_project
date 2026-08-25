@@ -20,6 +20,13 @@ public interface NotebookTransactionRepository extends JpaRepository<NotebookTra
             LocalDateTime to
     );
 
+    List<NotebookTransaction> findAllByUserIdAndTypeAndCreatedAtBetweenOrderByCreatedAtDesc(
+            Long userId,
+            NotebookTransactionType type,
+            LocalDateTime from,
+            LocalDateTime to
+    );
+
     Optional<NotebookTransaction> findByTransactionCodeAndUserId(String transactionCode, Long userId);
 
     boolean existsByUserIdAndCreatedAtBetween(Long userId, LocalDateTime from, LocalDateTime to);
@@ -50,6 +57,22 @@ public interface NotebookTransactionRepository extends JpaRepository<NotebookTra
             @Param("userId") Long userId,
             @Param("type") NotebookTransactionType type,
             @Param("categoryId") Long categoryId,
+            @Param("from") LocalDateTime from,
+            @Param("to") LocalDateTime to
+    );
+
+    @Query("""
+            SELECT t.categoryId, COALESCE(SUM(t.amount), 0) FROM NotebookTransaction t
+            WHERE t.user.id = :userId
+              AND t.type = :type
+              AND t.categoryId IS NOT NULL
+              AND t.createdAt >= :from
+              AND t.createdAt <= :to
+            GROUP BY t.categoryId
+            """)
+    java.util.List<Object[]> sumByCategoryForUserAndTypeAndCreatedAtRange(
+            @Param("userId") Long userId,
+            @Param("type") NotebookTransactionType type,
             @Param("from") LocalDateTime from,
             @Param("to") LocalDateTime to
     );

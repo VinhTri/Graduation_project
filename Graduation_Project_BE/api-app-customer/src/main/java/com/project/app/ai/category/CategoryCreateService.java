@@ -4,6 +4,8 @@ import com.project.app.ai.dto.response.AiActionDto;
 import com.project.app.ai.dto.response.AiCardDto;
 import com.project.app.ai.dto.response.AiCardItemDto;
 import com.project.app.category.dto.request.CategoryItemRequest;
+import com.project.app.category.dto.request.CategoryGroupRequest;
+import com.project.app.category.dto.response.CategoryGroupResponse;
 import com.project.app.category.dto.response.CategoryItemResponse;
 import com.project.app.category.service.CategoryService;
 import com.project.app.common.exception.AppException;
@@ -28,6 +30,17 @@ public class CategoryCreateService {
     private static final Pattern CREATE_PATTERN = Pattern.compile(
             "(?i)(?:tạo|tao|thêm|them)\\s+(?:danh\\s*mục|danh\\s*muc)\\s+(.+?)(?:\\s+(?:trong|vào|vao)\\s+(?:nhóm|nhom)\\s+(.+))?$"
                     + "|(?i)(?:tạo|tao|thêm|them)\\s+(.+?)\\s+(?:trong|vào|vao)\\s+(?:nhóm|nhom)\\s+(.+)"
+    );
+
+    private static final Pattern PARENT_CHILD_PATTERN = Pattern.compile(
+            "(?iu)(?:tạo|tao|thêm|them)(?:\\s+danh\\s*mục)?\\s+(?:cha|nhóm|nhom)\\s*(?:tên\\s+là|ten\\s+la|là|la|:)\\s*(.+?)"
+                    + "\\s*(?:,|và|va|với|voi|;|-)\\s*(?:danh\\s*mục\\s*)?(?:con)\\s*(?:tên\\s+là|ten\\s+la|là|la|:)\\s*(.+?)\\s*[.!?]*$"
+    );
+
+    private static final Pattern CHILD_PARENT_PATTERN = Pattern.compile(
+            "(?iu)(?:tạo|tao|thêm|them)(?:\\s+danh\\s*mục)?\\s+con\\s*(?:tên\\s+là|ten\\s+la|là|la|:)?\\s*(.+?)"
+                    + "\\s+(?:vào|vao|trong|thuộc|thuoc)\\s+(?:(?:danh\\s*mục|danh\\s*muc)\\s+)?(?:cha|nhóm|nhom)"
+                    + "\\s*(?:tên\\s+là|ten\\s+la|là|la|:)?\\s*(.+?)\\s*[.!?]*$"
     );
 
     private static final Pattern CONFIRM_PATTERN = Pattern.compile(
@@ -94,7 +107,24 @@ public class CategoryCreateService {
                     .build();
         }
 
-        CategoryThemeService.GroupSlot group = themeService.findGroupForNewItem(userId, parsed.groupHint());
+        if (parsed.groupHint() != null && parsed.groupHint().length() > 24) {
+            return CategoryCreateResult.builder()
+                    .text("Tên nhóm danh mục cha tối đa 24 ký tự. Bạn rút gọn tên nhóm lại nhé.")
+                    .moduleType("CATEGORY")
+                    .build();
+        }
+
+        CategoryThemeService.GroupSlot group;
+        try {
+            group = parsed.explicitParent()
+                    ? findOrCreateExplicitGroup(userId, parsed.groupHint())
+                    : themeService.findGroupForNewItem(userId, parsed.groupHint());
+        } catch (AppException ex) {
+            return CategoryCreateResult.builder()
+                    .text("Không tạo được nhóm danh mục cha \"" + parsed.groupHint() + "\": " + ex.getMessage() + ".")
+                    .moduleType("CATEGORY")
+                    .build();
+        }
         if (group == null) {
             return CategoryCreateResult.builder()
                     .text("Bạn chưa có nhóm danh mục nào. Vào mục Danh mục trên app để tạo nhóm trước, hoặc bấm \"Chọn icon & màu\" bên dưới.")
@@ -137,6 +167,32 @@ public class CategoryCreateService {
         sessionStore.save(userId, draft);
 
         return buildPreviewResult(userId, draft, theme, true);
+    }
+
+    private CategoryThemeService.GroupSlot findOrCreateExplicitGroup(Long userId, String groupName) {
+        String requested = normalize(groupName);
+        Optional<CategoryGroupResponse> existing = categoryService.getCategoriesForUser(userId).stream()
+                .filter(group -> normalize(group.getTitle()).equals(requested))
+                .findFirst();
+        if (existing.isPresent()) {
+            CategoryGroupResponse group = existing.get();
+            return new CategoryThemeService.GroupSlot(group.getId(), group.getTitle(),
+                    group.getItems() == null ? 0 : group.getItems().size());
+        }
+
+        List<CategoryGroupResponse> groups = categoryService.getCategoriesForUser(userId);
+        CategoryThemeCatalog.ColorTheme groupTheme = CategoryThemeCatalog.COLORS.stream()
+                .filter(candidate -> groups.stream().noneMatch(group -> group.getColor() != null
+                        && group.getColor().equalsIgnoreCase(candidate.getColor())))
+                .findFirst()
+                .orElse(CategoryThemeCatalog.COLORS.get(0));
+        CategoryGroupRequest request = new CategoryGroupRequest();
+        request.setTitle(groupName.trim());
+        request.setIcon("apps");
+        request.setColor(groupTheme.getColor());
+        request.setBgColor(groupTheme.getBgColor());
+        CategoryGroupResponse created = categoryService.createGroup(userId, request);
+        return new CategoryThemeService.GroupSlot(created.getId(), created.getTitle(), 0);
     }
 
     private CategoryCreateResult updateDraftTheme(Long userId, CategoryCreateDraft draft, String message) {
@@ -297,7 +353,16 @@ public class CategoryCreateService {
                 || n.matches(".*\\d+.*");
     }
 
-    private ParsedCreate parseCreateMessage(String message) {
+    ParsedCreate parseCreateMessage(String message) {
+        Matcher parentChild = PARENT_CHILD_PATTERN.matcher(message.trim());
+        if (parentChild.find()) {
+            return new ParsedCreate(cleanName(parentChild.group(2)), cleanName(parentChild.group(1)), true);
+        }
+        Matcher childParent = CHILD_PARENT_PATTERN.matcher(message.trim());
+        if (childParent.find()) {
+            return new ParsedCreate(cleanName(childParent.group(1)), cleanName(childParent.group(2)), true);
+        }
+
         Matcher matcher = CREATE_PATTERN.matcher(message.trim());
         if (matcher.find()) {
             String label = firstNonBlank(matcher.group(1), matcher.group(3));
@@ -305,16 +370,21 @@ public class CategoryCreateService {
             if (label != null) {
                 label = label.replaceAll("(?i)\\s+(trong|vào|vao)\\s+(nhóm|nhom)\\s+.*$", "").trim();
             }
-            return new ParsedCreate(label, group);
+            return new ParsedCreate(cleanName(label), cleanName(group), false);
         }
 
         String n = normalize(message);
         if (n.startsWith("tao danh muc ") || n.startsWith("them danh muc ")) {
             String raw = message.trim().replaceAll("(?i)^(tạo|tao|thêm|them)\\s+(danh\\s*mục|danh\\s*muc)\\s+", "");
             raw = raw.replaceAll("(?i)\\s+(trong|vào|vao)\\s+(nhóm|nhom)\\s+.*$", "").trim();
-            return new ParsedCreate(raw, null);
+            return new ParsedCreate(cleanName(raw), null, false);
         }
-        return new ParsedCreate(null, null);
+        return new ParsedCreate(null, null, false);
+    }
+
+    private String cleanName(String value) {
+        if (value == null) return null;
+        return value.trim().replaceAll("^[\\\"']+|[\\\"'.,!?]+$", "").trim();
     }
 
     private String firstNonBlank(String a, String b) {
@@ -336,7 +406,7 @@ public class CategoryCreateService {
                 .replaceAll("\\s+", " ");
     }
 
-    private record ParsedCreate(String label, String groupHint) {
+    record ParsedCreate(String label, String groupHint, boolean explicitParent) {
     }
 
     @Data

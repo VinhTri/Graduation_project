@@ -13,6 +13,8 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.text.Normalizer;
+import java.util.Locale;
 
 @Component
 @RequiredArgsConstructor
@@ -42,7 +44,10 @@ public class ListUserCategoriesTool implements AiTool {
 
         Map<String, Object> parameters = new HashMap<>();
         parameters.put("type", "OBJECT");
-        parameters.put("properties", Collections.emptyMap());
+        parameters.put("properties", Map.of("categoryType", Map.of(
+                "type", "STRING",
+                "enum", List.of("ALL", "EXPENSE", "INCOME"),
+                "description", "Lọc loại danh mục theo yêu cầu của người dùng.")));
         decl.put("parameters", parameters);
         return decl;
     }
@@ -58,7 +63,11 @@ public class ListUserCategoriesTool implements AiTool {
                     .build();
         }
 
-        List<CategoryGroupResponse> groups = categoryService.getCategoriesForUser(user.getId());
+        String requestedType = String.valueOf(arguments != null
+                ? arguments.getOrDefault("categoryType", "ALL") : "ALL").toUpperCase(Locale.ROOT);
+        List<CategoryGroupResponse> groups = categoryService.getCategoriesForUser(user.getId()).stream()
+                .filter(group -> matchesType(group, requestedType))
+                .toList();
         List<Map<String, Object>> groupPayload = new ArrayList<>();
         int totalItems = 0;
 
@@ -104,5 +113,16 @@ public class ListUserCategoriesTool implements AiTool {
                         : "Đã lấy " + groups.size() + " nhóm danh mục.")
                 .data(data)
                 .build();
+    }
+
+    private boolean matchesType(CategoryGroupResponse group, String requestedType) {
+        if ("ALL".equals(requestedType)) return true;
+        String title = Normalizer.normalize(group.getTitle() == null ? "" : group.getTitle(), Normalizer.Form.NFD)
+                .replaceAll("\\p{M}+", "").toLowerCase(Locale.ROOT).replace('đ', 'd');
+        if ("INCOME".equals(requestedType))
+            return title.contains("thu nhap") || title.contains("nguon thu") || title.contains("khoan thu") || title.contains("income");
+        if ("EXPENSE".equals(requestedType))
+            return title.contains("chi tieu") || title.contains("khoan chi") || title.contains("expense");
+        return true;
     }
 }

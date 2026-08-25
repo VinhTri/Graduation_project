@@ -50,7 +50,8 @@ public class FinanceResponseBuilder {
         if (intent == FinanceIntent.BUDGET_STATUS) {
             return List.of(navigate("open_budget", "Mở Ngân sách", "/budget"));
         }
-        if (intent == FinanceIntent.SPENDING_BY_CATEGORY || intent == FinanceIntent.SPENDING_BY_CATEGORY_COMPARE) {
+        if (intent == FinanceIntent.SPENDING_BY_CATEGORY || intent == FinanceIntent.SPENDING_BY_CATEGORY_COMPARE
+                || intent == FinanceIntent.SPENDING_ANALYSIS) {
             return List.of(navigate("open_finance_center", "Mở Trung tâm tài chính", "/finance-center"));
         }
         if (intent == FinanceIntent.GUIDE) {
@@ -71,6 +72,8 @@ public class FinanceResponseBuilder {
             case ASSETS_OVERVIEW -> buildAssetsOverview(data);
             case ASSETS_ALLOCATION -> buildAssetsAllocation(data);
             case PERIOD_OVERVIEW -> buildPeriodOverview(data);
+            case FINANCIAL_HEALTH -> buildFinancialHealth(data);
+            case SPENDING_ANALYSIS -> buildSpendingAnalysis(data);
             case PERIOD_INCOME -> buildPeriodIncome(data);
             case PERIOD_EXPENSE -> buildPeriodExpense(data);
             case PERIOD_NET -> buildPeriodNet(data);
@@ -122,6 +125,16 @@ public class FinanceResponseBuilder {
                 items.add(item("Sổ tay", percent(data.get("cashBalancePercent"))));
                 items.add(item("Tổng", money(data.get("totalAssets"))));
             }
+            case FINANCIAL_HEALTH -> {
+                title = "Sức khỏe tài chính · " + label(data.get("currentLabel"));
+                Map<String, Object> current = map(data.get("current"));
+                double income = num(current.get("totalIncome"));
+                double expense = num(current.get("totalExpense"));
+                double net = num(current.get("net"));
+                items.add(item("Tỷ lệ để dành", income > 0 ? percent(net / income * 100) : "Chưa xác định"));
+                items.add(item("Chi / Thu", income > 0 ? percent(expense / income * 100) : "Chưa xác định"));
+                items.add(item("Dòng tiền ròng", money(net)));
+            }
             case SOURCE_WALLET -> {
                 title = "Ví · " + label(data.get("currentLabel"));
                 Map<String, Object> wallet = flow(data, "current", "wallet");
@@ -151,7 +164,7 @@ public class FinanceResponseBuilder {
                 items.add(item("Δ Chi", deltaMoney(delta, "totalExpense")));
                 items.add(item("Δ Ròng", deltaMoney(delta, "net")));
             }
-            case SPENDING_BY_CATEGORY, SPENDING_BY_CATEGORY_COMPARE -> {
+            case SPENDING_BY_CATEGORY, SPENDING_BY_CATEGORY_COMPARE, SPENDING_ANALYSIS -> {
                 title = spendingCardTitle(data);
                 appendSpendingItems(items, data);
             }
@@ -181,7 +194,7 @@ public class FinanceResponseBuilder {
         }
 
         String cardType = switch (intent) {
-            case SPENDING_BY_CATEGORY, SPENDING_BY_CATEGORY_COMPARE -> "SPENDING_RANK";
+            case SPENDING_BY_CATEGORY, SPENDING_BY_CATEGORY_COMPARE, SPENDING_ANALYSIS -> "SPENDING_RANK";
             case BUDGET_STATUS -> "BUDGET_STATUS";
             default -> "get_spending_by_category".equals(toolResult.getToolName()) ? "SPENDING_RANK"
                     : "get_budget_status".equals(toolResult.getToolName()) ? "BUDGET_STATUS"
@@ -236,6 +249,26 @@ public class FinanceResponseBuilder {
                     formatTopSummary(compareTop, 3)));
         }
         return sb.toString();
+    }
+
+    private String buildSpendingAnalysis(Map<String, Object> data) {
+        List<?> rows = list(data.get("currentTop"));
+        String period = label(data.get("currentLabel"));
+        if (rows.isEmpty()) {
+            return period + ": chưa có khoản chi được gắn danh mục để phân tích. Hãy gắn danh mục cho giao dịch rồi thử lại.";
+        }
+
+        Map<String, Object> first = map(rows.get(0));
+        String category = stringValue(first.get("categoryName"));
+        double amount = num(first.get("totalAmount"));
+        double share = num(first.get("percentage"));
+        String concentration = share >= 50
+                ? "Khoản này chiếm tỷ trọng khá tập trung (" + String.format("%.1f", share) + "%)."
+                : "Đây là khoản lớn nhất, chiếm " + String.format("%.1f", share) + "% tổng chi theo danh mục.";
+        return String.format("%s: khoản nên rà soát trước là %s — %s. %s "
+                        + "Tuy nhiên, số tiền lớn chưa đủ để kết luận là lãng phí; hãy mở các giao dịch trong danh mục này, "
+                        + "đánh dấu khoản không thiết yếu rồi đặt hạn mức phù hợp.",
+                period, category, money(amount), concentration);
     }
 
     private String buildBudgetStatus(Map<String, Object> data) {
@@ -396,6 +429,45 @@ public class FinanceResponseBuilder {
                 netHint);
     }
 
+    private String buildFinancialHealth(Map<String, Object> data) {
+        Map<String, Object> current = map(data.get("current"));
+        double income = num(current.get("totalIncome"));
+        double expense = num(current.get("totalExpense"));
+        double net = num(current.get("net"));
+        String period = label(data.get("currentLabel"));
+
+        if (income == 0 && expense == 0) {
+            return period + ": chưa có dữ liệu thu–chi để đánh giá sức khỏe tài chính. "
+                    + "Hãy ghi nhận giao dịch đầy đủ rồi đánh giá lại; một tháng đơn lẻ cũng chưa đủ để kết luận xu hướng dài hạn.";
+        }
+        if (income <= 0) {
+            return String.format("%s: sức khỏe dòng tiền đang ở mức cần chú ý vì chưa ghi nhận thu nhưng đã chi %s. "
+                            + "Bạn nên kiểm tra lại dữ liệu thu nhập và tạm ưu tiên các khoản thiết yếu; chưa thể tính tỷ lệ để dành.",
+                    period, money(expense));
+        }
+
+        double expenseRate = expense / income * 100;
+        double savingRate = net / income * 100;
+        String assessment;
+        String advice;
+        if (net < 0) {
+            assessment = "cần cải thiện";
+            advice = "Chi đang vượt thu; hãy giảm khoản linh hoạt và đặt hạn mức để đưa dòng tiền về dương.";
+        } else if (savingRate >= 20) {
+            assessment = "tốt";
+            advice = "Bạn đang vượt mốc tham khảo 20% để dành; nên ưu tiên quỹ khẩn cấp và duy trì mức này.";
+        } else if (savingRate >= 10) {
+            assessment = "khá ổn";
+            advice = "Bạn vẫn có thặng dư, nhưng nên hướng dần tỷ lệ để dành lên khoảng 20% nếu điều kiện cho phép.";
+        } else {
+            assessment = "mong manh";
+            advice = "Biên an toàn còn thấp; hãy rà soát khoản không thiết yếu và tạo một hạn mức theo tuần.";
+        }
+        return String.format("%s: sức khỏe dòng tiền ở mức %s. Thu %s, chi %s (%.1f%% thu nhập), "
+                        + "ròng %s; tỷ lệ để dành %.1f%%. %s Đây là đánh giá từ dữ liệu đã ghi nhận trong một kỳ, không phải kết luận toàn bộ tình hình tài chính.",
+                period, assessment, money(income), money(expense), expenseRate, money(net), savingRate, advice);
+    }
+
     private String buildPeriodIncome(Map<String, Object> data) {
         Map<String, Object> current = map(data.get("current"));
         Map<String, Object> wallet = map(current.get("wallet"));
@@ -418,13 +490,24 @@ public class FinanceResponseBuilder {
 
     private String buildPeriodNet(Map<String, Object> data) {
         Map<String, Object> current = map(data.get("current"));
+        double income = num(current.get("totalIncome"));
+        double expense = num(current.get("totalExpense"));
         double net = num(current.get("net"));
-        String tone = net >= 0 ? "dương" : "âm";
+        String conclusion;
+        if (income > expense) {
+            conclusion = "Thu nhiều hơn chi " + money(income - expense) + ".";
+        } else if (expense > income) {
+            conclusion = "Chi nhiều hơn thu " + money(expense - income) + ".";
+        } else {
+            conclusion = "Thu và chi bằng nhau.";
+        }
         return String.format(
-                "%s: Dòng tiền ròng %s (%s).",
+                "%s: Thu %s, chi %s, dòng tiền ròng %s. %s",
                 label(data.get("currentLabel")),
+                money(income),
+                money(expense),
                 money(net),
-                tone);
+                conclusion);
     }
 
     private String buildSourceWallet(Map<String, Object> data) {
