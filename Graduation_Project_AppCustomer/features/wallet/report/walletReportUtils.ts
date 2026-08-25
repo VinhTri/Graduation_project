@@ -10,7 +10,7 @@ import { toSafeAmount } from './amount'
 export type WalletReportDateFilter = 'week' | 'month' | 'year'
 /** Bộ lọc lịch sử ví — giống sổ tay (có thêm day). */
 export type WalletHistoryDateFilter = 'day' | 'week' | 'month' | 'year'
-export type WalletReportViewMode = 'pie' | 'bar'
+export type WalletReportViewMode = 'pie' | 'group' | 'bar'
 /** Rút tiền ≈ chi; Nạp tiền ≈ thu */
 export type WalletReportTab = 'withdraw' | 'topup'
 
@@ -46,6 +46,7 @@ export type WalletReportTrendPoint = {
 }
 
 export type WalletReportCategoryMeta = {
+  key?: string
   icon: string
   color: string
   label: string
@@ -298,7 +299,7 @@ export function buildWalletDistribution(
     const amount = toSafeAmount(tx.amount)
     total += amount
     const meta = resolveMeta(tx)
-    const key = String(tx.categoryId ?? `${meta.icon}|${meta.color}|${meta.label}`)
+    const key = meta.key || String(tx.categoryId ?? `${meta.icon}|${meta.color}|${meta.label}`)
     const prev = map.get(key)
     if (prev) {
       prev.totalAmount += amount

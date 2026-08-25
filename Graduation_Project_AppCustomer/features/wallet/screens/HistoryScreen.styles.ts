@@ -95,10 +95,21 @@ export const styles = StyleSheet.create({
     color: PASTEL_PALETTE.title,
     marginLeft: 8,
   },
+  currentDateBtn: {
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    borderRadius: 12,
+    backgroundColor: PASTEL_PALETTE.accentSoft,
+  },
+  currentDateText: {
+    color: PASTEL_PALETTE.accentDeep,
+    fontSize: 12,
+    fontWeight: '800',
+  },
   pickerOverlay: {
     flex: 1,
     justifyContent: 'flex-end',
-    backgroundColor: 'rgba(0,0,0,0.4)',
+    backgroundColor: 'transparent',
   },
   pickerSheet: {
     backgroundColor: PASTEL_PALETTE.white,

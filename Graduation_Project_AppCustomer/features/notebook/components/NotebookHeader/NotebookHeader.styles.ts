@@ -11,14 +11,6 @@ export const styles = StyleSheet.create({
     marginBottom: 20,
     gap: 8,
   },
-  backBtn: {
-    width: 40,
-    height: 40,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 2,
-    marginLeft: -8,
-  },
   titleBlock: {
     flex: 1,
     minWidth: 0,

@@ -192,6 +192,13 @@ export function NotebookBookPanel({
                 >
                   <Ionicons name="chevron-forward" size={18} color={PASTEL_PALETTE.title} />
                 </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.currentDateBtn}
+                  onPress={() => setSelectedDate(new Date())}
+                  activeOpacity={0.75}
+                >
+                  <Text style={styles.currentDateText}>Hiện tại</Text>
+                </TouchableOpacity>
               </View>
 
               {showPicker && Platform.OS !== 'ios' ? (
@@ -208,7 +215,7 @@ export function NotebookBookPanel({
               ) : null}
 
               {Platform.OS === 'ios' ? (
-                <Modal visible={showPicker} transparent animationType="slide">
+                <Modal visible={showPicker} transparent animationType="fade">
                   <TouchableOpacity
                     style={styles.pickerOverlay}
                     activeOpacity={1}

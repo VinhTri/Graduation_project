@@ -77,9 +77,7 @@ public class DatabaseSeeder implements CommandLineRunner {
         }
 
         seedAdmin();
-        seedDemoUsersAndFinance();
         seedPosts();
-        seedSupportTickets();
     }
 
     private void seedAdmin() {

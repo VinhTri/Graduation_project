@@ -1,7 +1,6 @@
 import { useState } from 'react'
 import { Text, TouchableOpacity, View } from 'react-native'
-import { useRouter } from 'expo-router'
-import { Feather, Ionicons } from '@expo/vector-icons'
+import { Feather } from '@expo/vector-icons'
 import PastelHeaderShell from '@/shared/components/PastelHeaderShell/PastelHeaderShell'
 import { PASTEL_PALETTE } from '@/shared/constants/PastelPalette'
 import type { NotebookContentTab } from '../../constants/filters'
@@ -23,7 +22,6 @@ export function NotebookHeader({
   onAddCashBalance,
   onSpendCashBalance,
 }: NotebookHeaderProps) {
-  const router = useRouter()
   const [isBalanceHidden, setIsBalanceHidden] = useState(false)
 
   return (
@@ -32,14 +30,6 @@ export function NotebookHeader({
       coverImage={require('../../../../assets/images/notebook-list-header.png')}
     >
       <View style={styles.topRow}>
-        <TouchableOpacity
-          style={styles.backBtn}
-          onPress={() => router.push('/(tabs)/home')}
-          activeOpacity={0.75}
-        >
-          <Ionicons name="chevron-back-outline" size={24} color="#7C3AED" />
-        </TouchableOpacity>
-
         <View style={styles.titleBlock}>
           <Text style={styles.title} numberOfLines={1}>
             Sổ tay tiền mặt
