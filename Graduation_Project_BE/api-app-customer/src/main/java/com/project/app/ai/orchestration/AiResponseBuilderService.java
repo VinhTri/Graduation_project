@@ -58,9 +58,14 @@ public class AiResponseBuilderService {
         return buildCategoriesText(toolResult, CategoryTextStyle.SPENDING_TYPES);
     }
 
+    public String buildIncomeTypesText(ToolResultDto toolResult) {
+        return buildCategoriesText(toolResult, CategoryTextStyle.INCOME_TYPES);
+    }
+
     private enum CategoryTextStyle {
         INVENTORY,
-        SPENDING_TYPES
+        SPENDING_TYPES,
+        INCOME_TYPES
     }
 
     private String buildCategoriesText(ToolResultDto toolResult, CategoryTextStyle style) {
@@ -79,6 +84,9 @@ public class AiResponseBuilderService {
             if (style == CategoryTextStyle.SPENDING_TYPES) {
                 return "Bạn chưa tạo danh mục chi tiêu nào. Vào mục Danh mục trên app để thêm (ví dụ: Ăn uống, Di chuyển, Giải trí) rồi gán vào từng giao dịch.";
             }
+            if (style == CategoryTextStyle.INCOME_TYPES) {
+                return "Bạn chưa tạo nhóm danh mục thu nhập nào. Vào mục Danh mục để tạo nhóm Thu nhập và thêm các nguồn như Lương, Thưởng hoặc Kinh doanh.";
+            }
             return "Bạn chưa tạo danh mục nào. Vào mục Danh mục trên app để thêm nhóm và danh mục chi tiêu. "
                     + "Mỗi tài khoản có thể tạo tối đa " + maxGroups + " nhóm, mỗi nhóm tối đa "
                     + maxItemsPerGroup + " danh mục.";
@@ -91,6 +99,11 @@ public class AiResponseBuilderService {
             }
             return "Các loại chi tiêu bạn đang dùng: " + names + ". "
                     + "Chi tiết từng nhóm xem ở bảng bên dưới.";
+        }
+        if (style == CategoryTextStyle.INCOME_TYPES) {
+            String names = joinCategoryNames(data);
+            if (names.isBlank()) return "Bạn chưa có danh mục thu nhập nào.";
+            return "Các danh mục thu nhập bạn đang có: " + names + ". Chi tiết xem ở bảng bên dưới.";
         }
 
         return String.format(
@@ -192,6 +205,9 @@ public class AiResponseBuilderService {
         Object style = toolResult.getData() != null ? toolResult.getData().get("responseStyle") : null;
         if ("SPENDING_TYPES".equals(style)) {
             return "Loại chi tiêu của bạn";
+        }
+        if ("INCOME_TYPES".equals(style)) {
+            return "Danh mục thu nhập của bạn";
         }
         return "Danh mục của bạn";
     }

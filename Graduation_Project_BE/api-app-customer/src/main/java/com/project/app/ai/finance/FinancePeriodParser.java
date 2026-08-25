@@ -28,24 +28,27 @@ public class FinancePeriodParser {
         LocalDate anchor = today;
         LocalDate compare = null;
 
-        if (containsAny(normalized, "tuan truoc")) {
+        // Khi cau so sanh chua ca ky hien tai va ky truoc, ky hien tai la moc chinh.
+        // Vi du: "thang nay so voi thang truoc" phai la thang nay vs thang truoc,
+        // khong phai thang truoc vs hai thang truoc.
+        if (containsAny(normalized, "tuan nay", "tuan hien tai")) {
+            period = "WEEK";
+            anchor = today;
+        } else if (containsAny(normalized, "tuan truoc")) {
             period = "WEEK";
             anchor = today.minusWeeks(1);
-        } else if (containsAny(normalized, "tuan nay", "tuan hien tai")) {
-            period = "WEEK";
+        } else if (containsAny(normalized, "thang nay")) {
+            period = "MONTH";
             anchor = today;
         } else if (containsAny(normalized, "thang truoc")) {
             period = "MONTH";
             anchor = today.minusMonths(1);
-        } else if (containsAny(normalized, "thang nay")) {
-            period = "MONTH";
+        } else if (containsAny(normalized, "nam nay")) {
+            period = "YEAR";
             anchor = today;
         } else if (containsAny(normalized, "nam ngoai")) {
             period = "YEAR";
             anchor = today.minusYears(1);
-        } else if (containsAny(normalized, "nam nay")) {
-            period = "YEAR";
-            anchor = today;
         } else {
             Matcher monthMatcher = MONTH_NUMBER.matcher(message);
             if (monthMatcher.find()) {

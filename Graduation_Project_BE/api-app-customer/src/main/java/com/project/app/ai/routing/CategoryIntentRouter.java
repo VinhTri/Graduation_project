@@ -33,6 +33,7 @@ public class CategoryIntentRouter {
     public enum CategoryIntent {
         LIST,
         SPENDING_TYPES,
+        INCOME_TYPES,
         GUIDE,
         NONE
     }
@@ -46,6 +47,12 @@ public class CategoryIntentRouter {
 
         if (isGuideQuestion(trimmed)) {
             return CategoryIntent.GUIDE;
+        }
+        String normalized = normalize(trimmed);
+        if (containsAny(normalized, "thu nhap", "nguon thu", "khoan thu", "tien vao")
+                && containsAny(normalized, "danh muc", "phan loai", "loai nao", "dang co", "liet ke", "cho xem",
+                "nhung nguon", "nguon thu nao", "khoan thu nao", "toi co", "cua toi")) {
+            return CategoryIntent.INCOME_TYPES;
         }
         if (SPENDING_TYPES.matcher(trimmed).find()) {
             return CategoryIntent.SPENDING_TYPES;

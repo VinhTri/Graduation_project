@@ -91,28 +91,22 @@ public class ReportServiceImpl implements ReportService {
     @Transactional(readOnly = true)
     public List<ReportDistributionResponse> getDistributionReport(User user, TransactionType type, String filter, LocalDate date) {
         LocalDateTime[] dateRange = getDateRange(filter, date);
-        List<Transaction> transactions = excludeFundTransfers(transactionRepository.findByUserAndTypeInAndStatusAndWallet_IsDefaultTrueAndCreatedAtBetween(
-                user, resolveTypes(type), TransactionStatus.SUCCESS, dateRange[0], dateRange[1]
-        ));
+        Map<Long, BigDecimal> categoryTotals = new HashMap<>();
+        WalletTransactionType walletType = type == TransactionType.INCOME
+                ? WalletTransactionType.TOP_UP : WalletTransactionType.WITHDRAW;
+        NotebookTransactionType notebookType = type == TransactionType.INCOME
+                ? NotebookTransactionType.INCOME : NotebookTransactionType.EXPENSE;
 
-        // Chỉ phân tích giao dịch đã gắn danh mục; chưa phân loại hiển thị riêng trên FE.
-        List<Transaction> classified = transactions.stream()
-                .filter(t -> t.getCategoryId() != null)
-                .toList();
+        mergeCategoryTotals(categoryTotals, walletTransactionRepository.sumByCategoryForUserAndTypeAndCreatedAtRange(
+                user.getId(), walletType, dateRange[0], dateRange[1]));
+        // Legacy Transaction rows are included only when no WalletTransaction with the same code exists.
+        mergeCategoryTotals(categoryTotals, transactionRepository.sumOrphanByCategoryForUserAndTypesAndStatusAndCreatedAtRange(
+                user.getId(), resolveTypes(type), TransactionStatus.SUCCESS, dateRange[0], dateRange[1]));
+        mergeCategoryTotals(categoryTotals, notebookTransactionRepository.sumByCategoryForUserAndTypeAndCreatedAtRange(
+                user.getId(), notebookType, dateRange[0], dateRange[1]));
 
-        if (classified.isEmpty()) {
-            return Collections.emptyList();
-        }
-
-        BigDecimal grandTotal = classified.stream()
-                .map(Transaction::getAmount)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
-
-        Map<Long, BigDecimal> categoryTotals = classified.stream()
-                .collect(Collectors.groupingBy(
-                        Transaction::getCategoryId,
-                        Collectors.mapping(Transaction::getAmount, Collectors.reducing(BigDecimal.ZERO, BigDecimal::add))
-                ));
+        if (categoryTotals.isEmpty()) return Collections.emptyList();
+        BigDecimal grandTotal = categoryTotals.values().stream().reduce(BigDecimal.ZERO, BigDecimal::add);
 
         List<Long> categoryIds = new ArrayList<>(categoryTotals.keySet());
         Map<Long, CategoryItem> categoryMap = categoryItemRepository.findAllById(categoryIds).stream()
@@ -158,6 +152,16 @@ public class ReportServiceImpl implements ReportService {
         response.sort((a, b) -> b.getTotalAmount().compareTo(a.getTotalAmount()));
 
         return response;
+    }
+
+    private void mergeCategoryTotals(Map<Long, BigDecimal> target, List<Object[]> rows) {
+        for (Object[] row : rows) {
+            if (row == null || row.length < 2 || row[0] == null) continue;
+            Long categoryId = ((Number) row[0]).longValue();
+            BigDecimal amount = row[1] instanceof BigDecimal value
+                    ? value : new BigDecimal(row[1].toString());
+            target.merge(categoryId, amount, BigDecimal::add);
+        }
     }
 
     @Override
@@ -383,10 +387,10 @@ public class ReportServiceImpl implements ReportService {
         FinanceCenterResponse.SourceFlow wallet = buildWalletFlow(userId, range[0], range[1]);
         FinanceCenterResponse.SourceFlow cash = buildCashFlow(userId, range[0], range[1]);
         FinanceCenterResponse.SourceFlow fund = buildFundFlow(userId, range[0], range[1]);
-        // Thu/chi thực tế chỉ lấy từ sổ tay. Nạp/rút ví là dịch chuyển tiền,
-        // không được ghi nhận thành thu nhập hoặc chi tiêu cá nhân.
-        BigDecimal totalIncome = nz(cash.getIncome());
-        BigDecimal totalExpense = nz(cash.getExpense());
+        // Totals combine wallet and notebook flows. Internal fund transfers
+        // were already excluded from the wallet flow.
+        BigDecimal totalIncome = nz(wallet.getIncome()).add(nz(cash.getIncome()));
+        BigDecimal totalExpense = nz(wallet.getExpense()).add(nz(cash.getExpense()));
         return FinanceCenterResponse.PeriodSnapshot.builder()
                 .wallet(wallet)
                 .cash(cash)

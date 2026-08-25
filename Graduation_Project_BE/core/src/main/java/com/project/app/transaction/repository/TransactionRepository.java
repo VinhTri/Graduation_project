@@ -143,4 +143,50 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
             @org.springframework.data.repository.query.Param("from") java.time.LocalDateTime from,
             @org.springframework.data.repository.query.Param("to") java.time.LocalDateTime to
     );
+
+    @Query("""
+            SELECT COALESCE(SUM(t.amount), 0) FROM Transaction t
+            WHERE t.user.id = :userId
+              AND t.type IN :types
+              AND t.status = :status
+              AND t.categoryId = :categoryId
+              AND t.createdAt >= :from
+              AND t.createdAt < :to
+              AND NOT EXISTS (
+                  SELECT 1 FROM WalletTransaction wt
+                  WHERE wt.user.id = :userId
+                    AND wt.transactionCode = t.transactionCode
+              )
+            """)
+    java.math.BigDecimal sumOrphanAmountByUserAndTypesAndStatusAndCategoryAndCreatedAtRange(
+            @org.springframework.data.repository.query.Param("userId") Long userId,
+            @org.springframework.data.repository.query.Param("types") java.util.List<com.project.app.transaction.enums.TransactionType> types,
+            @org.springframework.data.repository.query.Param("status") com.project.app.transaction.enums.TransactionStatus status,
+            @org.springframework.data.repository.query.Param("categoryId") Long categoryId,
+            @org.springframework.data.repository.query.Param("from") java.time.LocalDateTime from,
+            @org.springframework.data.repository.query.Param("to") java.time.LocalDateTime to
+    );
+
+    @Query("""
+            SELECT t.categoryId, COALESCE(SUM(t.amount), 0) FROM Transaction t
+            WHERE t.user.id = :userId
+              AND t.type IN :types
+              AND t.status = :status
+              AND t.categoryId IS NOT NULL
+              AND t.createdAt >= :from
+              AND t.createdAt <= :to
+              AND (t.transactionCode IS NULL OR (t.transactionCode NOT LIKE 'FDEP%' AND t.transactionCode NOT LIKE 'FWD%'))
+              AND NOT EXISTS (
+                  SELECT 1 FROM WalletTransaction wt
+                  WHERE wt.user.id = :userId AND wt.transactionCode = t.transactionCode
+              )
+            GROUP BY t.categoryId
+            """)
+    java.util.List<Object[]> sumOrphanByCategoryForUserAndTypesAndStatusAndCreatedAtRange(
+            @org.springframework.data.repository.query.Param("userId") Long userId,
+            @org.springframework.data.repository.query.Param("types") java.util.List<com.project.app.transaction.enums.TransactionType> types,
+            @org.springframework.data.repository.query.Param("status") com.project.app.transaction.enums.TransactionStatus status,
+            @org.springframework.data.repository.query.Param("from") java.time.LocalDateTime from,
+            @org.springframework.data.repository.query.Param("to") java.time.LocalDateTime to
+    );
 }

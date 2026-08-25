@@ -34,6 +34,23 @@ public interface WalletTransactionRepository extends JpaRepository<WalletTransac
     );
 
     @Query("""
+            SELECT t.categoryId, COALESCE(SUM(t.amount), 0) FROM WalletTransaction t
+            WHERE t.user.id = :userId
+              AND t.type = :type
+              AND t.categoryId IS NOT NULL
+              AND t.createdAt >= :from
+              AND t.createdAt <= :to
+              AND (t.transactionCode IS NULL OR (t.transactionCode NOT LIKE 'FDEP%' AND t.transactionCode NOT LIKE 'FWD%'))
+            GROUP BY t.categoryId
+            """)
+    List<Object[]> sumByCategoryForUserAndTypeAndCreatedAtRange(
+            @Param("userId") Long userId,
+            @Param("type") WalletTransactionType type,
+            @Param("from") LocalDateTime from,
+            @Param("to") LocalDateTime to
+    );
+
+    @Query("""
             SELECT COALESCE(SUM(t.amount), 0) FROM WalletTransaction t
             WHERE t.user.id = :userId
               AND t.type = :type

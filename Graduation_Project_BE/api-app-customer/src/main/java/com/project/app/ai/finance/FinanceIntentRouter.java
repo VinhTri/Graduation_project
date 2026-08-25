@@ -57,7 +57,7 @@ public class FinanceIntentRouter {
             return new FinanceRoute(FinanceIntent.NONE, null);
         }
 
-        if (GUIDE.matcher(trimmed).find()) {
+        if (GUIDE.matcher(trimmed).find() && isGuideRequest(normalized)) {
             return new FinanceRoute(FinanceIntent.GUIDE, null);
         }
 
@@ -66,6 +66,23 @@ public class FinanceIntentRouter {
         // mac dinh bien moi tu khoa "quy"/"chi tieu" thanh bao cao thu chi.
         if (isEducationalQuestion(normalized)) {
             return new FinanceRoute(FinanceIntent.NONE, null);
+        }
+
+        boolean healthAssessment = containsAny(normalized, "suc khoe tai chinh", "danh gia tai chinh",
+                "cham diem tai chinh", "phan tich tai chinh")
+                || (normalized.contains("tai chinh") && containsAny(normalized,
+                "co khoe", "khoe khong", "on khong", "tot khong", "lanh manh", "tinh trang"));
+        if (healthAssessment
+                && containsAny(normalized, "thu chi", "du lieu", "thang", "ky", "cua toi")) {
+            return new FinanceRoute(FinanceIntent.FINANCIAL_HEALTH, periodParser.parse(trimmed));
+        }
+
+        boolean spendingConcern = containsAny(normalized, "lang phi", "chi bat thuong", "tieu bat thuong",
+                "khoan nen cat", "khoan can cat", "ton tien vo ly", "chi qua tay")
+                || (normalized.contains("khoan") && containsAny(normalized, "nen cat", "can cat", "cat bot", "giam bot"));
+        if (spendingConcern
+                && containsAny(normalized, "khoan", "danh muc", "chi tieu", "tieu tien", "vao dau")) {
+            return new FinanceRoute(FinanceIntent.SPENDING_ANALYSIS, periodParser.parse(trimmed));
         }
 
         if (SPENDING_BY_CATEGORY.matcher(trimmed).find()) {
@@ -95,6 +112,19 @@ public class FinanceIntentRouter {
     }
 
     private FinanceIntent classifyIntent(String normalized, String raw) {
+        // Tong tai san la mot snapshot so du hien tai. Uu tien y dinh nay truoc
+        // cac nhanh rieng le cho Vi/So tay, ke ca khi cau hoi neu ro ca hai nguon.
+        if (containsAny(normalized, "tong tai san", "tong so du", "tong tien hien co", "toan bo tai san")) {
+            return containsAny(normalized, "o dau", "ty le", "phan bo", "ti trong")
+                    ? FinanceIntent.ASSETS_ALLOCATION
+                    : FinanceIntent.ASSETS_OVERVIEW;
+        }
+
+        // Compare income and expense inside one period, not two different periods.
+        if (containsAny(normalized, "thu hay chi", "thu va chi", "thu voi chi", "thu hay tieu")
+                && containsAny(normalized, "nhieu hon", "cao hon", "chenh lech", "dong tien rong", "ben nao")) {
+            return FinanceIntent.PERIOD_NET;
+        }
         boolean compare = containsAny(normalized,
                 "so sanh", "so voi", "dau voi", "vs", "hon", "tang", "giam", "cao hon", "thap hon");
 
@@ -190,13 +220,25 @@ public class FinanceIntentRouter {
                 "so sanh", "bao cao", "tong quan tai chinh", "tai san");
     }
 
+    private boolean isGuideRequest(String normalized) {
+        boolean asksHowToUse = containsAny(normalized,
+                "la gi", "dung de lam gi", "dung de", "huong dan", "o dau",
+                "mo o dau", "vao dau", "truy cap", "nhu the nao", "co chuc nang gi");
+        boolean requestsPeriodData = containsAny(normalized,
+                "hom nay", "tuan nay", "tuan truoc", "thang nay", "thang truoc",
+                "nam nay", "nam truoc", "ky nay", "ky truoc", "bao nhieu",
+                "cho toi xem", "cua toi", "toi da", "toi thu", "toi chi");
+        return asksHowToUse && !requestsPeriodData;
+    }
+
     private boolean isCategoryOnlyQuestion(String normalized) {
         if (!normalized.contains("danh muc") && !normalized.contains("category")) {
             return false;
         }
         return !containsAny(normalized,
                 "trung tam tai chinh", "bao cao", "thu chi", "tong tai san",
-                "so du vi", "so du", "thang nay", "tuan nay");
+                "so du vi", "so du", "thang nay", "tuan nay",
+                "lang phi", "chi bat thuong", "tieu bat thuong", "nen cat", "can cat", "cat bot", "giam bot");
     }
 
     private boolean isEducationalQuestion(String normalized) {
