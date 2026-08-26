@@ -25,7 +25,7 @@ import { moneyFlowStyles as styles } from '../styles/moneyFlow.styles'
 const QUICK_AMOUNTS = [100_000, 200_000, 500_000, 1_000_000, 2_000_000]
 const MAX_NOTE = 100
 const DAILY_WARN_RATIO = 0.8
-const MIN_WITHDRAW = 1000
+const MIN_WITHDRAW = 2000
 
 function parseAmount(text: string) {
   const digits = text.replace(/[^\d]/g, '')

@@ -8,11 +8,13 @@ import com.project.app.bankaccount.service.BankAccountService;
 import com.project.app.common.exception.AppException;
 import com.project.app.common.exception.ErrorCode;
 import com.project.app.user.entity.User;
+import com.project.app.transaction.service.PayOsPayoutService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Service
@@ -20,8 +22,10 @@ import java.util.stream.Collectors;
 public class BankAccountServiceImpl implements BankAccountService {
 
     private static final int MAX_BANK_ACCOUNTS = 3;
+    private static final int BANK_VERIFICATION_AMOUNT = 2_000;
 
     private final BankAccountRepository bankAccountRepository;
+    private final PayOsPayoutService payOsPayoutService;
 
     @Override
     @Transactional(readOnly = true)
@@ -46,15 +50,28 @@ public class BankAccountServiceImpl implements BankAccountService {
             throw new AppException(ErrorCode.BANK_ACCOUNT_LIMIT_REACHED);
         }
 
-        String accountName = resolveAccountName(user, request.getAccountName());
+        String bankCode = request.getBankCode().trim();
+        String verificationReference = "BANK_LINK_" + user.getId() + "_"
+                + UUID.randomUUID().toString().replace("-", "").substring(0, 12).toUpperCase();
+        String verifiedAccountName = payOsPayoutService.verifyAndPayout(
+                bankCode,
+                accountNumber,
+                BANK_VERIFICATION_AMOUNT,
+                "Xac minh SmartSpend",
+                verificationReference
+        );
+        if (verifiedAccountName == null) {
+            throw new AppException(ErrorCode.BANK_VERIFICATION_FAILED);
+        }
+
         boolean isFirstAccount = existingAccounts.isEmpty();
 
         BankAccount bankAccount = BankAccount.builder()
                 .user(user)
-                .bankCode(request.getBankCode().trim())
+                .bankCode(bankCode)
                 .bankName(request.getBankName().trim())
                 .accountNumber(accountNumber)
-                .accountName(accountName)
+                .accountName(verifiedAccountName)
                 .isDefault(isFirstAccount)
                 .build();
 
@@ -77,17 +94,6 @@ public class BankAccountServiceImpl implements BankAccountService {
                 bankAccountRepository.save(newDefault);
             }
         }
-    }
-
-    private String resolveAccountName(User user, String requestedName) {
-        if (requestedName != null && !requestedName.isBlank()) {
-            return requestedName.trim().toUpperCase();
-        }
-        if (user.getUsername() != null && !user.getUsername().isBlank()) {
-            return user.getUsername().trim().toUpperCase();
-        }
-        String localPart = user.getEmail().split("@")[0];
-        return localPart.replace('.', ' ').replace('_', ' ').trim().toUpperCase();
     }
 
     private BankAccountResponse mapToResponse(BankAccount account) {

@@ -13,7 +13,7 @@ import java.math.BigDecimal;
 public class WalletWithdrawRequest {
 
     @NotNull(message = "Số tiền là bắt buộc")
-    @DecimalMin(value = "1000", message = "Số tiền rút tối thiểu là 1.000đ")
+    @DecimalMin(value = "2000", message = "Số tiền rút tối thiểu là 2.000đ")
     @DecimalMax(value = "100000000000", message = "Số tiền tối đa mỗi lần rút là 100 tỷ")
     private BigDecimal amount;
 

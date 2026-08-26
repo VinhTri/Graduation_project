@@ -36,7 +36,6 @@ export default function AddBankScreen() {
   const { showToast } = useToast()
   const [selected, setSelected] = useState<CommonBank | null>(null)
   const [accountNumber, setAccountNumber] = useState('')
-  const [accountName, setAccountName] = useState('')
   const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
 
@@ -69,7 +68,6 @@ export default function AddBankScreen() {
         bankCode: selected.code,
         bankName: selected.name,
         accountNumber: accountNumber.trim(),
-        accountName: accountName.trim() || undefined,
       })
       showToast({ variant: 'success', message: 'Liên kết ngân hàng thành công!' })
       if (router.canGoBack()) {
@@ -161,22 +159,9 @@ export default function AddBankScreen() {
           />
         </View>
 
-        <Text style={styles.label}>Tên chủ tài khoản (tuỳ chọn)</Text>
-        <View style={styles.inputBox}>
-          <TextInput
-            style={styles.input}
-            placeholder="Để trống sẽ dùng tên đăng nhập"
-            placeholderTextColor={PASTEL_PALETTE.gray400}
-            autoCapitalize="characters"
-            value={accountName}
-            onChangeText={setAccountName}
-            maxLength={150}
-          />
-        </View>
-
         <Text style={styles.hint}>
-          Liên kết ảo — chưa kết nối cổng thanh toán thật. Dùng để chọn tài khoản khi rút tiền
-          trong ví.
+          PayOS sẽ chuyển 2.000 ₫ vào tài khoản để xác minh số tài khoản và tên chủ tài khoản.
+          Chỉ tài khoản được PayOS xác nhận mới được liên kết và dùng để rút tiền.
         </Text>
 
         {error ? <Text style={styles.errorText}>{error}</Text> : null}

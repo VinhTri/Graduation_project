@@ -1,12 +1,13 @@
 package com.project.app.transaction.service;
 
 public interface PayOsPayoutService {
-    void createPayout(String bankCode, String accountNumber, String accountName, int amount, String description, String reference);
+    void createPayout(String bankCode, String accountNumber, String accountName, long amount,
+                      String description, String reference);
 
     /**
-     * Chi thật một khoản (tối thiểu 2.000đ theo Napas) tới STK cần xác minh.
-     * PayOS trả về tên chủ tài khoản (toAccountName) khi lệnh được tạo/chi.
-     * Trả về null nếu STK sai hoặc lỗi.
+     * Chuyển một khoản mồi thật tới tài khoản cần xác minh.
+     * Trả về tên chủ tài khoản do PayOS xác nhận, hoặc null nếu không xác minh được.
      */
-    String verifyAndPayout(String bankCode, String accountNumber, int amount, String description, String reference);
+    String verifyAndPayout(String bankCode, String accountNumber, int amount,
+                           String description, String reference);
 }

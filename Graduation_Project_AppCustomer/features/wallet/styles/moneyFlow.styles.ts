@@ -255,8 +255,6 @@ export const moneyFlowStyles = StyleSheet.create({
   },
   sepayNotice: { flexDirection: 'row', alignItems: 'flex-start', gap: 8, marginTop: 14 },
   sepayNoticeText: { flex: 1, fontSize: 11, lineHeight: 16, color: PASTEL_PALETTE.subtitle },
-  sepayDoneButton: { height: 48, alignItems: 'center', justifyContent: 'center' },
-  sepayDoneText: { fontSize: 14, fontWeight: '800', color: PASTEL_PALETTE.accentDeep },
   balanceCard: {
     borderRadius: 22,
     paddingHorizontal: 18,

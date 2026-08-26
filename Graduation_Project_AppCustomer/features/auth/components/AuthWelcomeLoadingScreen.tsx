@@ -3,7 +3,7 @@ import { Animated, Image, SafeAreaView, StyleSheet, Text, View } from 'react-nat
 import { useRouter, type Href } from 'expo-router'
 import { PASTEL_PALETTE } from '@/shared/constants/PastelPalette'
 
-const LOADING_DURATION_MS = 20000
+const LOADING_DURATION_MS = 5000
 const WELCOME_IMAGE = require('../../../assets/images/welcome-loading.png')
 
 type AuthWelcomeLoadingScreenProps = {

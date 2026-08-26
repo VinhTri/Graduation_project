@@ -7,6 +7,7 @@ import com.project.app.category.entity.CategoryItem;
 import com.project.app.category.service.CategoryService;
 import com.project.app.common.exception.AppException;
 import com.project.app.common.exception.ErrorCode;
+import com.project.app.transaction.service.PayOsPayoutService;
 import com.project.app.user.entity.User;
 import com.project.app.user.repository.UserRepository;
 import com.project.app.wallet.dto.WalletTransactionResponse;
@@ -41,6 +42,7 @@ public class WalletTransactionServiceImpl implements WalletTransactionService {
     private final BankAccountRepository bankAccountRepository;
     private final WalletLimitHelper walletLimitHelper;
     private final AuthService authService;
+    private final PayOsPayoutService payOsPayoutService;
 
     @Override
     @Transactional
@@ -61,6 +63,20 @@ public class WalletTransactionServiceImpl implements WalletTransactionService {
 
         walletLimitHelper.enforceOutgoingLimits(userId, wallet, request.getAmount());
 
+        String transactionCode = generateCode("WD");
+        try {
+            payOsPayoutService.createPayout(
+                    bankAccount.getBankCode(),
+                    bankAccount.getAccountNumber(),
+                    bankAccount.getAccountName(),
+                    request.getAmount().longValueExact(),
+                    "Rut tien SmartSpend",
+                    transactionCode
+            );
+        } catch (Exception payoutError) {
+            throw new AppException(ErrorCode.WITHDRAW_FAILED);
+        }
+
         wallet.setBalance(wallet.getBalance().subtract(request.getAmount()));
         walletRepository.save(wallet);
 
@@ -72,7 +88,7 @@ public class WalletTransactionServiceImpl implements WalletTransactionService {
                 .note(normalizeNote(request.getNote()))
                 .categoryId(null)
                 .categoryName(null)
-                .transactionCode(generateCode("WD"))
+                .transactionCode(transactionCode)
                 .bankAccountId(bankAccount.getId())
                 .bankName(bankAccount.getBankName())
                 .bankAccountNumber(bankAccount.getAccountNumber())

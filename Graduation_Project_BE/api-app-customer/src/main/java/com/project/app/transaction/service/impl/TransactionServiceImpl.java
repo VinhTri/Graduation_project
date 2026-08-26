@@ -43,14 +43,24 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
 import java.time.LocalDateTime;
 import java.util.UUID;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 @Service
 public class TransactionServiceImpl implements TransactionService {
 
+    private static final Pattern TOP_UP_CONTENT_PATTERN =
+            Pattern.compile("(?i)\\bNAP[\\s_-]+([A-Z0-9]+)\\b");
+
     @Value("${sepay.api-key}")
     private String sepayApiKey;
+
+    @Value("${sepay.account-no:}")
+    private String sepayAccountNo;
 
 
     private final TransactionRepository transactionRepository;
@@ -96,52 +106,24 @@ public class TransactionServiceImpl implements TransactionService {
     @Transactional
     public TopUpResponse initiateTopUp(User user, TopUpRequest request) {
         Wallet wallet = getWalletForTopUp(user, request.walletId());
-
-        // TEMP: SePay is frozen while the remaining wallet flows are tested.
-        // Restore the VietQR generation block here when SePay is enabled again.
+        if (wallet.getAccountNumber() == null || wallet.getAccountNumber().isBlank()) {
+            throw new AppException(ErrorCode.ACCOUNT_NUMBER_NOT_FOUND);
+        }
         BigDecimal amount = request.amount();
-        if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0) {
+        if (amount != null && amount.compareTo(BigDecimal.ZERO) <= 0) {
             throw new AppException(ErrorCode.INVALID_AMOUNT);
         }
 
         String transactionCode = "TX" + System.currentTimeMillis()
                 + UUID.randomUUID().toString().substring(0, 4).toUpperCase();
-        String note = "Nạp tiền vào ví (chế độ kiểm thử)";
+        String transferContent = "NAP " + wallet.getAccountNumber();
         LocalDateTime createdAt = LocalDateTime.now();
-
-        Transaction transaction = new Transaction();
-        transaction.setUser(user);
-        transaction.setWallet(wallet);
-        transaction.setAmount(amount);
-        transaction.setType(TransactionType.TOP_UP);
-        transaction.setStatus(TransactionStatus.SUCCESS);
-        transaction.setTransactionCode(transactionCode);
-        transaction.setNote(note);
-        transactionRepository.save(transaction);
-
-        saveWalletTransaction(
-                user,
-                wallet,
-                amount,
-                WalletTransactionType.TOP_UP,
-                null,
-                transactionCode,
-                note);
-
-        wallet.addBalance(amount);
-        walletRepository.save(wallet);
-
-        notificationService.createNotification(
-                user,
-                "Nạp tiền thành công",
-                "Đã nạp " + amount.toPlainString() + "đ vào ví SmartSpend.",
-                NotificationType.TOP_UP_SUCCESS,
-                null);
+        String qrUrl = sePayService.generateVietQrUrl(amount, transferContent);
 
         return new TopUpResponse(
                 transactionCode,
-                null,
-                null,
+                transferContent,
+                qrUrl,
                 null,
                 amount,
                 createdAt
@@ -153,14 +135,8 @@ public class TransactionServiceImpl implements TransactionService {
     @Transactional
     public void processSePayWebhook(String apikey, SePayWebhookRequest request) {
         // Validation key
-        String actualKey = apikey;
-        if (actualKey != null && actualKey.startsWith("Apikey ")) {
-            actualKey = actualKey.substring(7);
-        } else if (actualKey != null && actualKey.startsWith("Bearer ")) {
-            actualKey = actualKey.substring(7);
-        }
-
-        if (sepayApiKey == null || !sepayApiKey.equals(actualKey)) {
+        String actualKey = extractWebhookApiKey(apikey);
+        if (!isValidWebhookApiKey(actualKey)) {
             throw new AppException(ErrorCode.UNAUTHORIZED_ACCESS);
         }
 
@@ -170,10 +146,19 @@ public class TransactionServiceImpl implements TransactionService {
 
         // Kiểm tra trùng lặp SePay Webhook (tránh cộng đúp do lag mạng)
         if (sePayTransactionRepository.existsBySepayId(request.getId())) {
-            throw new AppException(ErrorCode.DUPLICATE_WEBHOOK);
+            return;
         }
 
         SePayTransaction sePayLog = buildSePayLog(request);
+
+        if (sepayAccountNo == null || sepayAccountNo.isBlank()
+                || request.getAccountNumber() == null
+                || !sepayAccountNo.trim().equals(request.getAccountNumber().trim())) {
+            sePayLog.setMatchStatus(SePayMatchStatus.IGNORED);
+            sePayLog.setMatchNote("Tài khoản nhận tiền không khớp cấu hình SePay");
+            sePayTransactionRepository.save(sePayLog);
+            return;
+        }
 
         String content = request.getContent();
         if (content == null || content.isBlank()) {
@@ -184,14 +169,10 @@ public class TransactionServiceImpl implements TransactionService {
         }
 
         // Nội dung chuyển khoản theo cú pháp "NAP [STK]" -> tìm ví theo số tài khoản
-        String accountNumber = null;
-        String[] words = content.split("[\\s_\\-]+");
-        for (int i = 0; i < words.length; i++) {
-            if (words[i].toUpperCase().equals("NAP") && i + 1 < words.length) {
-                accountNumber = words[i + 1].toUpperCase();
-                break;
-            }
-        }
+        Matcher contentMatcher = TOP_UP_CONTENT_PATTERN.matcher(content);
+        String accountNumber = contentMatcher.find()
+                ? contentMatcher.group(1).toUpperCase()
+                : null;
 
         sePayLog.setParsedWalletAccount(accountNumber);
 
@@ -279,6 +260,25 @@ public class TransactionServiceImpl implements TransactionService {
         log.setReferenceCode(request.getReferenceCode());
         log.setMatchStatus(SePayMatchStatus.UNMATCHED);
         return log;
+    }
+
+    private String extractWebhookApiKey(String authorization) {
+        if (authorization == null) return null;
+        String trimmed = authorization.trim();
+        if (trimmed.regionMatches(true, 0, "Apikey ", 0, 7)
+                || trimmed.regionMatches(true, 0, "Bearer ", 0, 7)) {
+            return trimmed.substring(7).trim();
+        }
+        return trimmed;
+    }
+
+    private boolean isValidWebhookApiKey(String actualKey) {
+        if (sepayApiKey == null || sepayApiKey.isBlank() || actualKey == null || actualKey.isBlank()) {
+            return false;
+        }
+        return MessageDigest.isEqual(
+                sepayApiKey.getBytes(StandardCharsets.UTF_8),
+                actualKey.getBytes(StandardCharsets.UTF_8));
     }
 
     // ====================== TRA CỨU GIAO DỊCH ======================
@@ -497,7 +497,7 @@ public class TransactionServiceImpl implements TransactionService {
                     bankAccount.getBankCode(),
                     bankAccount.getAccountNumber(),
                     bankAccount.getAccountName(),
-                    request.getAmount().intValue(),
+                    request.getAmount().longValueExact(),
                     "Rut tien SmartSpend",
                     transactionCode
             );
