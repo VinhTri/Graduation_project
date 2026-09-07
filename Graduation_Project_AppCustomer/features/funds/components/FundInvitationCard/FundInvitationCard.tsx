@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { View, Text, TouchableOpacity, ActivityIndicator, StyleSheet, ImageBackground } from 'react-native';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Feather, FontAwesome5 } from '@expo/vector-icons';
@@ -38,43 +38,43 @@ export default function FundInvitationCard({
     <View style={styles.cardShadow}>
       <View style={[styles.card, isDark && styles.cardDark]}>
         {/* HERO BANNER COVER */}
-        <View style={styles.heroBanner}>
-          <Image
-            source={theme.image}
-            style={styles.heroImage}
-            contentFit="cover"
-            transition={0}
-          />
+        <ImageBackground
+          source={theme.image}
+          style={styles.heroBanner}
+          resizeMode="cover"
+        >
           <LinearGradient
             colors={['rgba(15, 23, 42, 0.45)', 'rgba(15, 23, 42, 0.85)']}
-            style={styles.heroOverlay}
+            style={StyleSheet.absoluteFillObject}
           />
 
-          {/* Top row with badges */}
-          <View style={styles.heroTopRow}>
-            <View style={styles.inviteBadge}>
-              <Feather name="gift" size={12} color="#FFFFFF" />
-              <Text style={styles.inviteBadgeText}>Lời mời tham gia</Text>
+          <View style={{ flex: 1, padding: 14, justifyContent: 'space-between' }}>
+            {/* Top row with badges */}
+            <View style={styles.heroTopRow}>
+              <View style={styles.inviteBadge}>
+                <Feather name="gift" size={12} color="#FFFFFF" />
+                <Text style={styles.inviteBadgeText}>Lời mời tham gia</Text>
+              </View>
+
+              <View style={styles.heroRightBadges}>
+                <View style={styles.themeBadge}>
+                  <Text style={styles.themeBadgeText}>{theme.label}</Text>
+                </View>
+                <View style={styles.themeBadge}>
+                  <Feather name="users" size={11} color="#FFFFFF" />
+                  <Text style={styles.themeBadgeText}>{invitation.memberCount || 1}</Text>
+                </View>
+              </View>
             </View>
 
-            <View style={styles.heroRightBadges}>
-              <View style={styles.themeBadge}>
-                <Text style={styles.themeBadgeText}>{theme.label}</Text>
-              </View>
-              <View style={styles.themeBadge}>
-                <Feather name="users" size={11} color="#FFFFFF" />
-                <Text style={styles.themeBadgeText}>{invitation.memberCount || 1}</Text>
-              </View>
+            {/* Bottom of hero banner: Fund name */}
+            <View style={styles.heroBottomContent}>
+              <Text style={styles.fundName} numberOfLines={1}>
+                {invitation.fundName}
+              </Text>
             </View>
           </View>
-
-          {/* Bottom of hero banner: Fund name */}
-          <View style={styles.heroBottomContent}>
-            <Text style={styles.fundName} numberOfLines={1}>
-              {invitation.fundName}
-            </Text>
-          </View>
-        </View>
+        </ImageBackground>
 
         {/* CARD BODY */}
         <View style={styles.cardBody}>

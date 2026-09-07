@@ -30,14 +30,20 @@ export const styles = StyleSheet.create({
     height: 145,
     width: '100%',
     position: 'relative',
-    justifyContent: 'space-between',
-    padding: 14,
   },
   heroImage: {
-    ...StyleSheet.absoluteFillObject,
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    width: '100%',
+    height: '100%',
   },
   heroOverlay: {
-    ...StyleSheet.absoluteFillObject,
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    width: '100%',
+    height: '100%',
   },
 
   /* Top Tags Row */
