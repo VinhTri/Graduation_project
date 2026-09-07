@@ -3,9 +3,8 @@ import { PASTEL_PALETTE } from '@/shared/constants/PastelPalette'
 
 export const styles = StyleSheet.create({
   overlay: {
-    ...StyleSheet.absoluteFillObject,
-    alignItems: 'flex-end',
-    paddingRight: 12,
+    position: 'absolute',
+    right: 16,
     zIndex: 9999,
     elevation: 9999,
   },

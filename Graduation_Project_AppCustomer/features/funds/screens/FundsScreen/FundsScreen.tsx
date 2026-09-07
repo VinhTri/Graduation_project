@@ -241,7 +241,6 @@ export function FundsScreen() {
                   source={item.image}
                   style={styles.bannerImage}
                   contentFit="cover"
-                  cachePolicy="memory-disk"
                   transition={0}
                 />
               </TouchableOpacity>

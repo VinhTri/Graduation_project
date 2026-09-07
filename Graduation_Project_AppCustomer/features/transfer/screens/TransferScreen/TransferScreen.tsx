@@ -708,57 +708,70 @@ export const TransferScreen = ({ autoOpenScanner = false }: TransferScreenProps)
 
       <Modal
         visible={scannerVisible}
-        animationType="fade"
+        animationType="slide"
         statusBarTranslucent
         onRequestClose={closeScanner}
       >
-        <View style={styles.scannerScreen}>
-          {cameraPermission?.granted ? (
+        {cameraPermission?.granted ? (
+          <View style={{ flex: 1 }}>
             <CameraView
-              style={StyleSheet.absoluteFillObject}
+              style={{ flex: 1 }}
               facing="back"
               barcodeScannerSettings={{ barcodeTypes: ['qr'] }}
               onBarcodeScanned={qrScanned ? undefined : handleQrScanned}
             />
-          ) : null}
-          <View style={[styles.scannerHeader, { paddingTop: insets.top + 10 }]}>
-            <TouchableOpacity style={styles.scannerClose} onPress={closeScanner}>
-              <Ionicons name="close" size={24} color="#FFF" />
-            </TouchableOpacity>
-            <View style={styles.scannerHeaderCopy}>
-              <Text style={styles.scannerTitle}>Quét QR SmartSpend</Text>
-              <Text style={styles.scannerSubtitle}>Đưa mã nhận tiền vào trong khung</Text>
-            </View>
-            <View style={styles.scannerHeaderSpacer} />
-          </View>
-
-          {cameraPermission?.granted ? (
-            <View style={styles.scannerBody} pointerEvents="box-none">
-              <View style={styles.scanFrame}>
-                <View style={[styles.scanCorner, styles.scanCornerTopLeft]} />
-                <View style={[styles.scanCorner, styles.scanCornerTopRight]} />
-                <View style={[styles.scanCorner, styles.scanCornerBottomLeft]} />
-                <View style={[styles.scanCorner, styles.scanCornerBottomRight]} />
-              </View>
-              {scannerError ? (
-                <View style={styles.scanErrorCard}>
-                  <Ionicons name="alert-circle" size={20} color="#DC3F5F" />
-                  <Text style={styles.scanErrorText}>{scannerError}</Text>
-                  <TouchableOpacity
-                    style={styles.scanAgainButton}
-                    onPress={() => {
-                      setScannerError('');
-                      setQrScanned(false);
-                    }}
-                  >
-                    <Text style={styles.scanAgainText}>Quét lại</Text>
-                  </TouchableOpacity>
+            <View style={{ position: 'absolute', left: 0, top: 0, right: 0, bottom: 0, zIndex: 10, elevation: 10 }} pointerEvents="box-none">
+              <View style={[styles.scannerHeader, { paddingTop: insets.top + 10 }]}>
+                <TouchableOpacity style={styles.scannerClose} onPress={closeScanner}>
+                  <Ionicons name="close" size={24} color="#FFF" />
+                </TouchableOpacity>
+                <View style={styles.scannerHeaderCopy}>
+                  <Text style={styles.scannerTitle}>Quét QR SmartSpend</Text>
+                  <Text style={styles.scannerSubtitle}>Đưa mã nhận tiền vào trong khung</Text>
                 </View>
-              ) : (
-                <Text style={styles.scanHint}>QR phải được tạo từ tài khoản SmartSpend</Text>
-              )}
+                <View style={styles.scannerHeaderSpacer} />
+              </View>
+
+              <View style={[styles.scannerBody, { position: 'absolute', left: 0, top: 0, right: 0, bottom: 0 }]} pointerEvents="box-none">
+                <View style={styles.scanFrame}>
+                  <View style={[styles.scanCorner, styles.scanCornerTopLeft]} />
+                  <View style={[styles.scanCorner, styles.scanCornerTopRight]} />
+                  <View style={[styles.scanCorner, styles.scanCornerBottomLeft]} />
+                  <View style={[styles.scanCorner, styles.scanCornerBottomRight]} />
+                </View>
+                {scannerError ? (
+                  <View style={styles.scanErrorCard}>
+                    <Ionicons name="alert-circle" size={20} color="#DC3F5F" />
+                    <Text style={styles.scanErrorText}>{scannerError}</Text>
+                    <TouchableOpacity
+                      style={styles.scanAgainButton}
+                      onPress={() => {
+                        setScannerError('');
+                        setQrScanned(false);
+                      }}
+                    >
+                      <Text style={styles.scanAgainText}>Quét lại</Text>
+                    </TouchableOpacity>
+                  </View>
+                ) : (
+                  <Text style={styles.scanHint}>QR phải được tạo từ tài khoản SmartSpend</Text>
+                )}
+              </View>
             </View>
-          ) : (
+          </View>
+        ) : (
+          <View style={styles.scannerScreen}>
+            <View style={[styles.scannerHeader, { paddingTop: insets.top + 10 }]}>
+              <TouchableOpacity style={styles.scannerClose} onPress={closeScanner}>
+                <Ionicons name="close" size={24} color="#FFF" />
+              </TouchableOpacity>
+              <View style={styles.scannerHeaderCopy}>
+                <Text style={styles.scannerTitle}>Quét QR SmartSpend</Text>
+                <Text style={styles.scannerSubtitle}>Đưa mã nhận tiền vào trong khung</Text>
+              </View>
+              <View style={styles.scannerHeaderSpacer} />
+            </View>
+
             <View style={styles.permissionState}>
               <View style={styles.permissionIcon}>
                 <Ionicons name="camera-outline" size={34} color="#6D4AAF" />
@@ -771,8 +784,8 @@ export const TransferScreen = ({ autoOpenScanner = false }: TransferScreenProps)
                 <Text style={styles.permissionButtonText}>Cho phép camera</Text>
               </TouchableOpacity>
             </View>
-          )}
-        </View>
+          </View>
+        )}
       </Modal>
 
       <Modal

@@ -78,7 +78,7 @@ export function ToastHost({ visible, title, message, variant, onHide }: ToastHos
   if (!mounted) return null
 
   return (
-    <View pointerEvents="box-none" style={[styles.overlay, { paddingTop: insets.top + 8 }]}>
+    <View pointerEvents="box-none" style={[styles.overlay, { top: insets.top + 16 }]}>
       <Animated.View
         pointerEvents="auto"
         style={[

@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity, TextInput,
-  StatusBar, KeyboardAvoidingView, Platform, Alert, ActivityIndicator, Switch,
+  StatusBar, KeyboardAvoidingView, Platform, Alert, ActivityIndicator, Switch, ImageBackground
 } from 'react-native';
 import { Feather, Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -115,14 +115,12 @@ export function CreateFundScreen() {
             </View>
           </View>
 
-          <View style={styles.previewCard}>
-            <Image
-              source={previewTheme.image}
-              style={styles.previewCardImageFill}
-              contentFit="cover"
-              cachePolicy="memory-disk"
-              transition={0}
-            />
+          <ImageBackground
+            source={previewTheme.image}
+            style={styles.previewCard}
+            imageStyle={styles.previewCardImageFill}
+            resizeMode="cover"
+          >
             <LinearGradient
               colors={['rgba(15,23,42,0.2)', 'rgba(15,23,42,0.7)']}
               style={styles.previewOverlay}
@@ -142,7 +140,7 @@ export function CreateFundScreen() {
                 </Text>
               )}
             </LinearGradient>
-          </View>
+          </ImageBackground>
         </FundHeaderShell>
 
         <ScrollView
@@ -291,7 +289,6 @@ export function CreateFundScreen() {
                         source={theme.image}
                         style={styles.themeThumb}
                         contentFit="cover"
-                        cachePolicy="memory-disk"
                         transition={0}
                       />
                       {selected && (

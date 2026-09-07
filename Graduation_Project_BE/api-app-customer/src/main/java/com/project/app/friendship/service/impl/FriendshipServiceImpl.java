@@ -19,6 +19,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 @Service
@@ -30,6 +31,9 @@ public class FriendshipServiceImpl implements FriendshipService {
     private final NotificationService notificationService;
     private final WalletService walletService;
     private final EmailService emailService;
+
+    // Cache in-memory để giới hạn tốc độ gửi (Cooldown)
+    private final ConcurrentHashMap<Long, LocalDateTime> lastRequestTimeMap = new ConcurrentHashMap<>();
 
     @Override
     @Transactional
@@ -47,8 +51,26 @@ public class FriendshipServiceImpl implements FriendshipService {
             throw new IllegalArgumentException("Đã tồn tại trạng thái kết bạn hoặc lời mời giữa hai người.");
         }
 
+        // Chống spam: Lấy danh sách các lời mời ĐANG CHỜ do user này gửi
+        List<Friendship> sentRequests = friendshipRepository.findByRequesterAndStatus(currentUser, FriendshipStatus.PENDING);
+
+        // 1. Giới hạn tổng số lời mời đang chờ (ví dụ tối đa 20 lời mời chưa được phản hồi)
+        if (sentRequests.size() >= 20) {
+            throw new IllegalArgumentException("Bạn đã đạt giới hạn 20 lời mời kết bạn đang chờ. Vui lòng hủy bớt lời mời cũ hoặc đợi người khác phản hồi để gửi thêm.");
+        }
+
+        // 2. Chống gửi liên tục (Cooldown 10 giây giữa 2 lần gửi) bất chấp việc có hủy lời mời hay không
+        LocalDateTime lastRequestTime = lastRequestTimeMap.get(currentUser.getId());
+        LocalDateTime now = LocalDateTime.now();
+        if (lastRequestTime != null && lastRequestTime.isAfter(now.minusSeconds(10))) {
+            throw new IllegalArgumentException("Bạn thao tác quá nhanh. Vui lòng đợi vài giây trước khi gửi lời mời tiếp theo.");
+        }
+
         Friendship friendship = new Friendship(currentUser, receiver, FriendshipStatus.PENDING);
         Friendship saved = friendshipRepository.save(friendship);
+
+        // Lưu lại thời điểm gửi cuối cùng
+        lastRequestTimeMap.put(currentUser.getId(), now);
 
         notificationService.createNotification(
                 receiver,

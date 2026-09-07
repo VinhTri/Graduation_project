@@ -8,7 +8,7 @@ public enum ErrorCode {
     EMAIL_ALREADY_EXISTS("AUTH_1002", "Email này đã được sử dụng!", HttpStatus.CONFLICT),
     INVALID_GOOGLE_TOKEN("AUTH_1004", "Google ID Token không hợp lệ!", HttpStatus.UNAUTHORIZED),
     GOOGLE_AUTH_FAILED("AUTH_1005", "Xác thực bằng tài khoản Google thất bại!", HttpStatus.UNAUTHORIZED),
-    INVALID_CREDENTIALS("AUTH_1006", "Sai mật khẩu!", HttpStatus.UNAUTHORIZED),
+    INVALID_CREDENTIALS("AUTH_1006", "Sai mật khẩu!", HttpStatus.BAD_REQUEST),
     INVALID_OTP("AUTH_1007", "Mã OTP không hợp lệ hoặc đã được sử dụng!", HttpStatus.BAD_REQUEST),
     EXPIRED_OTP("AUTH_1008", "Mã OTP đã hết hạn!", HttpStatus.BAD_REQUEST),
     UNAUTHORIZED_ACCESS("AUTH_1009", "Bạn không có quyền thực hiện hành động này!", HttpStatus.FORBIDDEN),

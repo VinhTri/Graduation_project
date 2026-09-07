@@ -4,7 +4,7 @@ import { useRouter } from "expo-router";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { styles } from "./ServicesGrid.styles";
 import { friendshipService } from "../../../../shared/api/services/friendship.service";
-import { useFocusEffect } from '@react-navigation/native';
+import { useFocusEffect } from 'expo-router';
 import { useLanguage, useTheme } from "../../../../shared/contexts/ThemeLanguageContext";
 
 interface ServiceDef {

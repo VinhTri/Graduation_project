@@ -5,9 +5,8 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { styles } from "./HomeHeader.styles";
 import { PASTEL_PALETTE } from "@/shared/constants/PastelPalette";
 import { PastelHeaderShell } from "@/shared/components/PastelHeaderShell";
-import { useRouter } from "expo-router";
+import { useRouter, useFocusEffect } from "expo-router";
 import { notificationService } from "@/shared/api/services/notification.service";
-import { useFocusEffect } from "@react-navigation/native";
 import { HomeReceiveQr } from "../HomeReceiveQr";
 import { HomeFeatureSearchModal } from "../HomeFeatureSearchModal";
 

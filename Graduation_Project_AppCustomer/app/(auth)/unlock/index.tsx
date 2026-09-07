@@ -9,6 +9,8 @@ import { onboardingStyles as styles } from '@/features/onboarding/styles/onboard
 import { authService } from '@/shared/api/services/auth.service'
 import { PASTEL_PALETTE } from '@/shared/constants/PastelPalette'
 import { finishAccountUnlockFlow } from '@/features/auth/accountLock'
+import SuccessModal from '@/shared/components/SuccessModal/SuccessModal'
+import { useToast } from '@/shared/components/Toast'
 
 const OTP_LENGTH = 6
 
@@ -21,6 +23,11 @@ export default function UnlockAccountScreen() {
   const [error, setError] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [resending, setResending] = useState(false)
+  
+  const { showToast } = useToast()
+  const [successModalVisible, setSuccessModalVisible] = useState(false)
+  const [successModalTitle, setSuccessModalTitle] = useState('')
+  const [successModalMessage, setSuccessModalMessage] = useState('')
 
   useEffect(() => {
     async function initialize() {
@@ -41,7 +48,9 @@ export default function UnlockAccountScreen() {
         setResending(true)
         try {
           await authService.sendUnlockOtp(storedEmail)
-          Alert.alert('Đã gửi OTP', 'Mã mở khóa đã được gửi đến Gmail của bạn.')
+          setSuccessModalTitle('Đã gửi OTP')
+          setSuccessModalMessage('Mã mở khóa đã được gửi đến Gmail của bạn.')
+          setSuccessModalVisible(true)
         } catch (err: any) {
           setError(err?.message || 'Không thể gửi mã OTP mở khóa')
         } finally {
@@ -70,7 +79,7 @@ export default function UnlockAccountScreen() {
           ? 'Mã OTP không chính xác. Vui lòng kiểm tra và nhập lại.'
           : err?.message || 'Không thể xác thực mã OTP'
       setError(message)
-      Alert.alert('Xác thực không thành công', message)
+      showToast({ title: 'Xác thực không thành công', message, variant: 'error' })
       setOtp('')
     } finally {
       setSubmitting(false)
@@ -98,7 +107,9 @@ export default function UnlockAccountScreen() {
     setError('')
     try {
       await authService.sendUnlockOtp(email)
-      Alert.alert('Đã gửi OTP', 'Mã mở khóa mới đã được gửi đến Gmail của bạn.')
+      setSuccessModalTitle('Đã gửi OTP')
+      setSuccessModalMessage('Mã mở khóa mới đã được gửi đến Gmail của bạn.')
+      setSuccessModalVisible(true)
     } catch (err: any) {
       setError(err?.message || 'Không thể gửi lại OTP')
     } finally {
@@ -128,6 +139,13 @@ export default function UnlockAccountScreen() {
 
         <PinKeypad onPressKey={handleKeyPress} />
       </View>
+      <SuccessModal
+        visible={successModalVisible}
+        title={successModalTitle}
+        message={successModalMessage}
+        onClose={() => setSuccessModalVisible(false)}
+        confirmLabel="OK"
+      />
     </SafeAreaView>
   )
 }

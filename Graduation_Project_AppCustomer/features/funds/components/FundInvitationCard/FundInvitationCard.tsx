@@ -43,7 +43,6 @@ export default function FundInvitationCard({
             source={theme.image}
             style={styles.heroImage}
             contentFit="cover"
-            cachePolicy="memory-disk"
             transition={0}
           />
           <LinearGradient

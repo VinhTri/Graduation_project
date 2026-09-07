@@ -1,6 +1,5 @@
 import React from 'react';
-import { View, StyleSheet, ViewStyle, StyleProp, type ImageSourcePropType } from 'react-native';
-import { Image } from 'expo-image';
+import { View, StyleSheet, ViewStyle, StyleProp, ImageBackground, type ImageSourcePropType } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { PASTEL_PALETTE } from '../../constants/PastelPalette';
@@ -26,15 +25,11 @@ export default function PastelHeaderShell({
   if (coverImage) {
     return (
       <View style={[styles.wrap, style]}>
-        <View style={padded}>
-          <Image
-            source={coverImage}
-            style={StyleSheet.absoluteFillObject}
-            contentFit="cover"
-            contentPosition="right center"
-            cachePolicy="memory-disk"
-            transition={0}
-          />
+        <ImageBackground
+          source={coverImage}
+          style={padded}
+          resizeMode="cover"
+        >
           <LinearGradient
             colors={['rgba(255,248,252,0.18)', 'rgba(255,241,248,0.38)']}
             start={{ x: 0, y: 0 }}
@@ -44,7 +39,7 @@ export default function PastelHeaderShell({
           <View style={styles.decorCircleLarge} />
           <View style={styles.decorCircleSmall} />
           {children}
-        </View>
+        </ImageBackground>
       </View>
     );
   }

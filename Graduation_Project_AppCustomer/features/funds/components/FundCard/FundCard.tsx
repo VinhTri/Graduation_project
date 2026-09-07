@@ -1,6 +1,5 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
-import { Image } from 'expo-image';
+import { View, Text, TouchableOpacity, StyleSheet, ImageBackground } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { FontAwesome5, Feather } from '@expo/vector-icons';
 import { Fund } from '../../types';
@@ -20,14 +19,12 @@ export default function FundCard({ fund, onPress }: FundCardProps) {
 
   return (
     <TouchableOpacity activeOpacity={0.9} onPress={onPress} style={styles.shadow}>
-      <View style={styles.card}>
-        <Image
-          source={theme.image}
-          style={styles.cardImage}
-          contentFit="cover"
-          cachePolicy="memory-disk"
-          transition={0}
-        />
+      <ImageBackground
+        source={theme.image}
+        style={styles.card}
+        imageStyle={{ borderRadius: 22 }}
+        resizeMode="cover"
+      >
         <LinearGradient
           colors={['rgba(15,23,42,0.25)', 'rgba(15,23,42,0.72)']}
           style={styles.overlay}
@@ -72,7 +69,7 @@ export default function FundCard({ fund, onPress }: FundCardProps) {
             )}
           </View>
         </LinearGradient>
-      </View>
+      </ImageBackground>
     </TouchableOpacity>
   );
 }
