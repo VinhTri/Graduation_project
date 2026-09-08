@@ -49,6 +49,7 @@ public enum ErrorCode {
     CANNOT_TRANSFER_SELF("WALL_2009", "Không thể chuyển tiền cho chính mình!", HttpStatus.BAD_REQUEST),
     DAILY_LIMIT_EXCEEDED("WALL_2010", "Vượt quá hạn mức giao dịch trong ngày!", HttpStatus.BAD_REQUEST),
     TRANSACTION_LIMIT_EXCEEDED("WALL_2011", "Vượt quá hạn mức giao dịch đã thiết lập!", HttpStatus.BAD_REQUEST),
+    WITHDRAW_MINIMUM_AMOUNT("WALL_2015", "Số tiền rút tối thiểu là 2.000đ!", HttpStatus.BAD_REQUEST),
 
     // ---- LỖI DANH MỤC ----
     CATEGORY_GROUP_NOT_FOUND("CAT_5001", "Không tìm thấy nhóm danh mục!", HttpStatus.NOT_FOUND),

@@ -61,6 +61,10 @@ public class WalletTransactionServiceImpl implements WalletTransactionService {
             throw new AppException(ErrorCode.INSUFFICIENT_BALANCE);
         }
 
+        if (request.getAmount().compareTo(BigDecimal.valueOf(2000)) < 0) {
+            throw new AppException(ErrorCode.WITHDRAW_MINIMUM_AMOUNT);
+        }
+
         walletLimitHelper.enforceOutgoingLimits(userId, wallet, request.getAmount());
 
         String transactionCode = generateCode("WD");

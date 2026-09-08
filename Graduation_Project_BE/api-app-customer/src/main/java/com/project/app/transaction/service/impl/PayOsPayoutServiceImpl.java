@@ -34,12 +34,11 @@ public class PayOsPayoutServiceImpl implements PayOsPayoutService {
             log.info("Sending Payout request to PayOS for Reference: {}", reference);
 
 
-            
             PayoutRequests request = PayoutRequests.builder()
                     .referenceId(reference)
                     .amount(amount)
                     .description(description)
-                    .toBin(bankCode)
+                    .toBin(resolveBin(bankCode))
                     .toAccountNumber(accountNumber)
                     // category phải là null hoặc list rỗng để tránh lỗi chữ ký 
                     // Tuy nhiên, mặc định của builder đã xử lý việc này
@@ -49,6 +48,12 @@ public class PayOsPayoutServiceImpl implements PayOsPayoutService {
             
             log.info("PayOS Payout created successfully: {}", response.getId());
 
+        } catch (vn.payos.exception.APIException apiEx) {
+            log.error("PayOS APIException: Code={}, Desc={}, Message={}", 
+                apiEx.getErrorCode().orElse("N/A"), 
+                apiEx.getErrorDesc().orElse("N/A"), 
+                apiEx.getMessage(), apiEx);
+            throw new RuntimeException("PayOS error: " + apiEx.getMessage(), apiEx);
         } catch (Exception e) {
             log.error("PayOS Payout failed: {}", e.getMessage(), e);
             throw new RuntimeException("PayOS error: " + e.getMessage(), e);
@@ -65,7 +70,7 @@ public class PayOsPayoutServiceImpl implements PayOsPayoutService {
                     .referenceId(reference)
                     .amount((long) amount)
                     .description(description)
-                    .toBin(bankCode)
+                    .toBin(resolveBin(bankCode))
                     .toAccountNumber(accountNumber)
                     .build();
 
@@ -139,5 +144,53 @@ public class PayOsPayoutServiceImpl implements PayOsPayoutService {
         return accountName == null || accountName.isBlank()
                 ? null
                 : accountName.trim().toUpperCase();
+    }
+
+    private String resolveBin(String bankCode) {
+        if (bankCode == null) return null;
+        String code = bankCode.trim().toUpperCase();
+        if (code.matches("\\d+")) {
+            return code;
+        }
+        return switch (code) {
+            case "MB" -> "970422";
+            case "VCB", "VIETCOMBANK" -> "970436";
+            case "CTG", "VIETINBANK" -> "970415";
+            case "BIDV" -> "970418";
+            case "VBA", "AGRIBANK" -> "970405";
+            case "TCB", "TECHCOMBANK" -> "970407";
+            case "VPB", "VPBANK" -> "970432";
+            case "TPB", "TPBANK" -> "970423";
+            case "ACB" -> "970416";
+            case "STB", "SACOMBANK" -> "970403";
+            case "VIB" -> "970441";
+            case "HDB", "HDBANK" -> "970437";
+            case "OCB" -> "970448";
+            case "SHB" -> "970443";
+            case "SSB", "SEABANK" -> "970440";
+            case "LPB", "LIENVIETPOSTBANK" -> "970449";
+            case "MSB" -> "970426";
+            case "NAB", "NAMABANK" -> "970428";
+            case "SCB" -> "970429";
+            case "EIB", "EXIMBANK" -> "970431";
+            case "ABB", "ABBANK" -> "970425";
+            case "BAB", "BACA" -> "970409";
+            case "VAB", "VIETABANK" -> "970427";
+            case "NCB" -> "970419";
+            case "KLB", "KIENLONGBANK" -> "970452";
+            case "BVB", "BAOVIETBANK" -> "970438";
+            case "VCCB", "VIETCAPITAL" -> "970454";
+            case "OJB", "OCEANBANK" -> "970414";
+            case "PGB", "PGBANK" -> "970430";
+            case "SGB", "SAIGONBANK" -> "970400";
+            case "UOB" -> "970458";
+            case "WVN", "WOORIBANK" -> "970457";
+            case "SHBVN", "SHINHANBANK" -> "970424";
+            case "CBB", "CBBANK" -> "970444";
+            case "HSBC" -> "04537001";
+            case "SCVN", "STANDARDCHARTERED" -> "970410";
+            case "PBVN", "PUBLICBANK" -> "970439";
+            default -> code;
+        };
     }
 }
