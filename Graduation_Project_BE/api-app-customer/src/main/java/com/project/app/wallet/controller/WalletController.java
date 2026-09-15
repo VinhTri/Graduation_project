@@ -55,6 +55,12 @@ public class WalletController {
         return ApiResponse.ok("Lấy lịch sử giao dịch ví thành công", walletTransactionService.getHistory(userDetails.getUser().getId()));
     }
 
+    /**
+     * API rút tiền của ví: userId lấy từ principal, @Valid kiểm tra WalletWithdrawRequest; gọi
+     * WalletTransactionServiceImpl.withdraw, KHÔNG gọi TransactionServiceImpl.processWithdrawal. Mức
+     * tối thiểu thực thi ở service là 2.000. Kết quả là lịch sử ví kèm snapshot ngân hàng và số dư sau
+     * khi trừ.
+     */
     @PostMapping("/withdraw")
     public ResponseEntity<ApiResponse<WalletTransactionResponse>> withdraw(
             @AuthenticationPrincipal CustomUserDetails userDetails,

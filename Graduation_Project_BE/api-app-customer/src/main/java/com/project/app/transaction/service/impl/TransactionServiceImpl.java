@@ -102,6 +102,19 @@ public class TransactionServiceImpl implements TransactionService {
     }
 
     // ====================== NẠP TIỀN ======================
+    /**
+     * NGHIỆP VỤ NẠP VÍ — KHỞI TẠO QR, CHƯA NHẬN TIỀN.
+     * 1. user do tầng controller lấy từ JWT; walletId null chọn ví mặc định,
+     *    walletId có giá trị phải qua kiểm tra sở hữu trong WalletService.
+     * 2. Ví phải có accountNumber; amount được phép null (QR mở), nếu có phải dương.
+     * 3. Nội dung NAP + accountNumber là khóa nhận diện ví khi webhook về.
+     *    Tài khoản ngân hàng nhận tiền lấy từ cấu hình SePay, khác định danh ví này.
+     * 4. Tạo URL VietQR rồi trả DTO; KHÔNG save Transaction/PENDING, KHÔNG cộng số dư.
+     * 5. transactionCode ở DTO chỉ được sinh cho phản hồi; webhook sinh mã mới,
+     *    không đối chiếu mã này. expiresAt null nghĩa chưa có phiên QR hết hạn.
+     * {@code @Transactional} ở đây không biến QR thành đơn thanh toán đã được lưu.
+     * Lỗi cấu hình QR hoặc không tìm thấy ví được trả qua AppException.
+     */
     @Override
     @Transactional
     public TopUpResponse initiateTopUp(User user, TopUpRequest request) {
@@ -131,6 +144,29 @@ public class TransactionServiceImpl implements TransactionService {
     }
 
     // ====================== WEBHOOK SEPAY ======================
+    /**
+     * NGHIỆP VỤ NẠP VÍ — XÁC NHẬN TIỀN TỪ WEBHOOK SEPAY.
+     * Nguồn tin cậy: API key webhook phía server; không dùng JWT của khách hàng.
+     * Thứ tự xử lý:
+     * 1. Chuẩn hóa Authorization và kiểm tra khóa; sai khóa thì ném lỗi ngay.
+     * 2. Thiếu id: kết thúc không ghi log. Đã có sepayId: bỏ qua lần gửi lại.
+     * 3. Tạo log tạm; sai tài khoản ngân hàng nhận: lưu IGNORED và kết thúc.
+     * 4. Thiếu/sai nội dung NAP: lưu UNMATCHED để đối soát, không cộng ví.
+     * 5. Chỉ xử lý transferType=in; không tìm thấy ví: lưu UNMATCHED.
+     * 6. transferAmount phải dương; tiền cộng lấy từ webhook, không từ QR/app.
+     * 7. Ghi Transaction TOP_UP/SUCCESS và WalletTransaction TOP_UP cùng mã.
+     * 8. Cộng balance, tạo thông báo trong DB, liên kết log SePay MATCHED.
+     * Các save cùng transaction: commit đồng bộ; lỗi runtime/commit gây rollback.
+     * HTTP thành công từ controller cũng có thể là đã bỏ qua hoặc ghi UNMATCHED;
+     * không được dùng riêng HTTP 200 để suy ra đã cộng tiền.
+     * ĐỒNG THỜI: existsBySepayId không khóa; unique sepayId là lớp bảo vệ DB
+     * nếu schema đã áp dụng mapping. Hai request trùng có thể cùng qua exists,
+     * một transaction sau đó lỗi unique/version; hàm chưa tự retry.
+     * findByAccountNumber không khóa ghi; Wallet.@Version phát hiện cập nhật
+     * xung đột, không tự chạy lại khoản nạp. Tiền ngân hàng không rollback theo DB.
+     * CHÚ Ý: định danh trong nội dung quyết định ví nhận, không kiểm tra chủ tài
+     * khoản ngân hàng gửi; log đã tồn tại dù UNMATCHED cũng bị bỏ qua khi gửi lại.
+     */
     @Override
     @Transactional
     public void processSePayWebhook(String apikey, SePayWebhookRequest request) {
@@ -248,6 +284,13 @@ public class TransactionServiceImpl implements TransactionService {
         sePayTransactionRepository.save(sePayLog);
     }
 
+    /**
+     * Sao chép dữ liệu đối soát từ payload sang entity SePayTransaction.
+     * Giữ id ngoài hệ thống, ngân hàng, thời gian dạng chuỗi, nội dung, chiều tiền,
+     * số tiền và mã tham chiếu để điều tra webhook chưa khớp.
+     * Chỉ tạo object, chưa save; mặc định UNMATCHED, caller quyết định trạng thái.
+     * Không xác thực chữ ký/key hoặc kiểm tra số tiền tại helper này.
+     */
     private SePayTransaction buildSePayLog(SePayWebhookRequest request) {
         SePayTransaction log = new SePayTransaction();
         log.setSepayId(request.getId());
@@ -262,6 +305,12 @@ public class TransactionServiceImpl implements TransactionService {
         return log;
     }
 
+    /**
+     * Đọc khóa từ Authorization: chấp nhận Apikey, Bearer (không phân biệt hoa
+     * thường) hoặc chuỗi khóa nguyên bản; trim khoảng trắng ngoài.
+     * Bearer tại đây là tiền tố được chấp nhận, KHÔNG giải mã JWT người dùng.
+     * Header null trả null; helper chỉ tách chuỗi, chưa xác thực khóa.
+     */
     private String extractWebhookApiKey(String authorization) {
         if (authorization == null) return null;
         String trimmed = authorization.trim();
@@ -272,6 +321,12 @@ public class TransactionServiceImpl implements TransactionService {
         return trimmed;
     }
 
+    /**
+     * Từ chối khóa cấu hình/request null hoặc blank, không cho chạy khi thiếu cấu hình.
+     * So sánh byte UTF-8 bằng MessageDigest.isEqual thay vì tự so sánh từng ký tự.
+     * Đây là xác thực shared secret, không phải chữ ký riêng cho nội dung webhook;
+     * chống gửi lại còn phụ thuộc idempotency theo sepayId.
+     */
     private boolean isValidWebhookApiKey(String actualKey) {
         if (sepayApiKey == null || sepayApiKey.isBlank() || actualKey == null || actualKey.isBlank()) {
             return false;
@@ -282,6 +337,13 @@ public class TransactionServiceImpl implements TransactionService {
     }
 
     // ====================== TRA CỨU GIAO DỊCH ======================
+    /**
+     * Tra cứu mã nghiệp vụ trong bảng transactions rồi kiểm tra chủ sở hữu.
+     * Repository chỉ lọc transactionCode nên service bắt buộc so user.id với JWT.
+     * Không tìm thấy -> INVALID_TRANSACTION; khác chủ -> UNAUTHORIZED_ACCESS.
+     * Không tìm được mã QR chưa lưu hoặc giao dịch chỉ có wallet_transactions;
+     * không khóa dữ liệu và không làm thay đổi trạng thái giao dịch.
+     */
     @Override
     public Transaction getTransactionByCode(String transactionCode, User user) {
         Transaction transaction = transactionRepository.findByTransactionCode(transactionCode)
@@ -295,6 +357,16 @@ public class TransactionServiceImpl implements TransactionService {
     }
 
     // ====================== CẬP NHẬT GIAO DỊCH (GHI CHÚ, DANH MỤC) ======================
+    /**
+     * Cập nhật ghi chú/danh mục, không thay đổi amount, balance hay trạng thái.
+     * Tra transactions theo mã và wallet_transactions theo mã + userId.
+     * Nếu không có cả hai thì lỗi; nếu Transaction khác chủ thì từ chối.
+     * Danh mục mới phải chưa xóa và thuộc người dùng (không nhận category hệ thống).
+     * Chỉ cập nhật note/category khi request có giá trị; categoryId null không xóa
+     * liên kết danh mục cũ. Đồng bộ hai bản ghi khi cả hai tồn tại trong cùng transaction.
+     * Nếu chỉ có WalletTransaction, trả Transaction tạm để giữ DTO của controller;
+     * object shadow này KHÔNG save vào transactions và không đại diện giao dịch mới.
+     */
     @Override
     @Transactional
     public Transaction updateTransaction(String transactionCode, User user, com.project.app.transaction.dto.request.UpdateTransactionRequest request) {
@@ -357,6 +429,25 @@ public class TransactionServiceImpl implements TransactionService {
 
     
     // ====================== CHUYỂN TIỀN NỘI BỘ ======================
+    /**
+     * CHUYỂN KHOẢN NỘI BỘ — HAI VÍ, KHÔNG GỌI NGÂN HÀNG/PAYOS.
+     * Tiền đề HTTP: TransferRequest qua @Valid yêu cầu amount >= 1.000 và PIN,
+     * số tài khoản người nhận không trống; hàm này không tự lặp đầy đủ validation DTO.
+     * 1. Kiểm tra đã có PIN và xác thực PIN qua AuthService.
+     * 2. Khóa PESSIMISTIC_WRITE ví mặc định người gửi đến commit/rollback để
+     *    kiểm tra số dư và hạn mức trên trạng thái được bảo vệ.
+     * 3. Tìm ví nhận theo accountNumber; từ chối ví không tồn tại hoặc chuyển cùng ví.
+     * 4. Kiểm tra balance >= amount rồi áp hạn mức mỗi lần và hạn mức ngày.
+     * 5. Sinh hai mã khác nhau TF_OUT/TF_IN; trừ ví gửi, cộng ví nhận.
+     * 6. Ghi Transaction TRANSFER/RECEIVE_TRANSFER, đều SUCCESS; ghi lịch sử ví
+     *    WITHDRAW/TOP_UP cùng mã với từng Transaction tương ứng; thông báo bên nhận.
+     * Các thay đổi DB cùng @Transactional: một phía lỗi thì rollback cả giao dịch.
+     * Không dùng dấu âm cho amount; chiều tiền nằm ở type và phép cộng/trừ.
+     * GIỚI HẠN: chỉ ví gửi được khóa ghi; ví nhận đọc thường, dựa vào @Version
+     * để phát hiện xung đột. Chưa retry deadlock/optimistic lock, chưa có requestId
+     * chống chuyển lặp do khách gọi lại, chưa có mã liên kết chung cho hai bút toán.
+     * Thông báo ở đây là bản ghi DB, không đồng nghĩa push realtime tới thiết bị.
+     */
     @Override
     @Transactional
     public TransferResponse processTransfer(User user, TransferRequest request) {
@@ -447,6 +538,26 @@ public class TransactionServiceImpl implements TransactionService {
     }
 
     // ====================== RÚT TIỀN ======================
+    /**
+     * LUỒNG RÚT QUA TRANSACTION SERVICE — PHÂN BIỆT VỚI API /wallets/withdraw.
+     * WalletController hiện gọi WalletTransactionServiceImpl.withdraw; hàm này
+     * là một đường nghiệp vụ khác, không được nhầm với mức tối thiểu 2.000 ở đó.
+     * 1. Xác thực PIN; tìm BankAccount theo id + userId để chặn rút tới tài khoản
+     *    liên kết của người khác. Khóa ví mặc định, kiểm tra số dư và hạn mức.
+     * 2. Tạo Transaction WITHDRAW/PENDING, mã WD; gán note và categoryId nếu có.
+     *    Hàm này gán categoryId trực tiếp, không tra quyền danh mục tại đây.
+     * 3. Gọi payout với longValueExact: số tiền có phần lẻ/ngoài long sẽ lỗi.
+     * 4. Nếu lời gọi trả bình thường: trừ ví, đổi SUCCESS, lưu thông báo.
+     * 5. Catch Exception: đặt FAILED rồi ném AppException (RuntimeException).
+     *    Vì vẫn cùng transaction, bản ghi FAILED/PENDING có thể bị rollback;
+     *    không được coi save trong catch là nhật ký lỗi đã lưu bền vững.
+     * Hàm không ghi WalletTransaction: cần phân biệt với lịch sử và hạn mức
+     * đang đọc wallet_transactions. Không tự suy rằng mọi khoản rút qua hàm này
+     * đã được tính trong hạn mức ngày của WalletLimitHelper.
+     * RANH GIỚI NGOÀI DB: createPayout chỉ nhận phản hồi tạo lệnh, chưa xác nhận
+     * quyết toán cuối; payout đã xảy ra không hoàn tác theo rollback database.
+     * Chưa có trạng thái đối soát/retry bền vững cho timeout hoặc lỗi sau payout.
+     */
     @Override
     @Transactional
     public WithdrawResponse processWithdrawal(User user, WithdrawRequest request) {
@@ -685,6 +796,10 @@ public class TransactionServiceImpl implements TransactionService {
         transactionRepository.delete(transaction);
     }
 
+    /**
+     * Chọn ví nhận nạp từ user đã xác thực: walletId null lấy ví mặc định; có ID thì gọi getWalletById
+     * với userId để kiểm tra sở hữu. Helper không tự cộng tiền hoặc lấy khóa ghi.
+     */
     private Wallet getWalletForTopUp(User user, Long walletId) {
         if (walletId == null) {
             return walletService.getDefaultWallet(user.getId());
@@ -692,21 +807,39 @@ public class TransactionServiceImpl implements TransactionService {
         return walletService.getWalletById(walletId, user.getId());
     }
 
+    /**
+     * Ủy quyền kiểm tra hạn mức tiền ra cho WalletLimitHelper, dùng chủ ví và amount. Caller phải bảo
+     * vệ số dư/hạn mức bằng transaction và khóa ví; helper này không kiểm tra số dư, không ghi giao
+     * dịch.
+     */
     private void checkTransactionLimits(Wallet wallet, BigDecimal amount) {
         walletLimitHelper.enforceOutgoingLimits(wallet.getUser().getId(), wallet, amount);
     }
 
+    /**
+     * Chuẩn hóa note: null giữ null; trim; chuỗi rỗng sau trim thành null. Không lọc HTML và không tự
+     * giới hạn chiều dài; validation/kiểu cột phải xử lý riêng.
+     */
     private String trimNote(String note) {
         if (note == null) return null;
         String trimmed = note.trim();
         return trimmed.isEmpty() ? null : trimmed;
     }
 
+    /**
+     * Ghép tiền tố nghiệp vụ với ghi chú người dùng đã trim. Note trống thì chỉ giữ prefix. Đây là nội
+     * dung hiển thị, không phải nguồn dữ liệu để xác định quyền hoặc số tiền.
+     */
     private String buildWalletNote(String prefix, String userNote) {
         String trimmed = trimNote(userNote);
         return trimmed == null ? prefix : prefix + " — " + trimmed;
     }
 
+    /**
+     * Ghi lịch sử wallet_transactions cho nạp/chuyển nội bộ với mã trùng Transaction tương ứng. Amount
+     * là độ lớn dương; type thể hiện chiều tiền. Category có thể null, nếu có thì lưu cả ID và tên
+     * snapshot. Helper không cập nhật ví, không tự tạo transaction riêng; dùng transaction của caller.
+     */
     private void saveWalletTransaction(
             User user,
             Wallet wallet,

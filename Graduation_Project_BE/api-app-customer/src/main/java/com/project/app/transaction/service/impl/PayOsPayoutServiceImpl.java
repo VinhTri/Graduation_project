@@ -27,6 +27,17 @@ public class PayOsPayoutServiceImpl implements PayOsPayoutService {
         this.payOS = new PayOS(clientId, apiKey, checksumKey);
     }
 
+    /**
+     * GỬI LỆNH CHI PAYOS CHO RÚT TIỀN.
+     * Chuyển bankCode sang BIN, gán tài khoản đích, amount, description và referenceId
+     * vào PayoutRequests; gọi SDK create một lần. Credentials do constructor cấu hình.
+     * Tham số accountName hiện KHÔNG được đưa vào request hoặc so tên ở hàm này.
+     * Hàm trả void khi SDK create không ném lỗi, chỉ log response.id; KHÔNG polling,
+     * KHÔNG kiểm tra trạng thái chi thành công cuối cùng, KHÔNG cập nhật database.
+     * APIException và các lỗi khác được bọc RuntimeException để caller xử lý.
+     * Timeout có thể xảy ra sau khi bên ngoài đã nhận lệnh; chưa tra cứu lại reference
+     * trong hàm này. Rollback @Transactional của caller không hủy payout đã gửi.
+     */
     @Override
     public void createPayout(String bankCode, String accountNumber, String accountName, long amount,
                              String description, String reference) {
@@ -146,6 +157,12 @@ public class PayOsPayoutServiceImpl implements PayOsPayoutService {
                 : accountName.trim().toUpperCase();
     }
 
+    /**
+     * Chuẩn hóa mã ngân hàng trước khi tạo payout: trim và viết hoa; nếu đã toàn
+     * chữ số giữ nguyên; mã viết tắt hỗ trợ được ánh xạ BIN trong switch.
+     * Null trả null, mã lạ giữ nguyên để gửi tiếp; đây không phải whitelist validation
+     * và không xác minh tài khoản có tồn tại. Dữ liệu ánh xạ là cấu hình trong code.
+     */
     private String resolveBin(String bankCode) {
         if (bankCode == null) return null;
         String code = bankCode.trim().toUpperCase();

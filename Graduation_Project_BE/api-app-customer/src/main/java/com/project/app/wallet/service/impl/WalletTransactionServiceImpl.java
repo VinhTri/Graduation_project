@@ -44,6 +44,25 @@ public class WalletTransactionServiceImpl implements WalletTransactionService {
     private final AuthService authService;
     private final PayOsPayoutService payOsPayoutService;
 
+    /**
+     * LUỒNG RÚT TIỀN ĐANG ĐƯỢC WALLETCONTROLLER SỬ DỤNG.
+     * 1. Đọc User; khóa ví mặc định bằng PESSIMISTIC_WRITE; tìm ngân hàng theo
+     *    accountId + userId. Khóa ví được lấy trước kiểm tra PIN trong code hiện tại.
+     * 2. PIN không được rỗng và phải đúng; số dư phải đủ; số tiền tối thiểu 2.000.
+     *    Null/định dạng đầu vào còn dựa vào @Valid ở controller; gọi nội bộ không
+     *    tự được áp validation DTO. Không nhận amount phân số cho payout longValueExact.
+     * 3. Kiểm tra hạn mức mỗi lần/ngày; tạo mã WD làm reference gọi payOS.
+     * 4. Nếu createPayout ném lỗi -> WITHDRAW_FAILED, rollback DB.
+     * 5. Nếu gọi trả bình thường -> trừ balance, ghi WalletTransaction WITHDRAW,
+     *    snapshot ngân hàng nhận; category để null; trả DTO cùng số dư sau trừ.
+     * Hàm chỉ ghi wallet_transactions, KHÔNG tạo Transaction PENDING/SUCCESS,
+     * KHÔNG tạo Notification tại đây. Khác processWithdrawal ở TransactionServiceImpl.
+     * Transaction bảo vệ cập nhật DB, không hoàn tác lệnh chi ngoài hệ thống.
+     * createPayout chưa kiểm tra trạng thái chi tiền cuối; nếu payout đã được nhận
+     * nhưng response timeout hoặc save DB lỗi, chưa có cơ chế đối soát tự động
+     * trong hàm. Chưa có requestId ổn định để chống payout lặp khi gọi lại.
+     * Giữ khóa trong lúc gọi mạng có thể làm yêu cầu cùng ví phải chờ lâu.
+     */
     @Override
     @Transactional
     public WalletTransactionResponse withdraw(Long userId, WalletWithdrawRequest request) {
@@ -104,6 +123,12 @@ public class WalletTransactionServiceImpl implements WalletTransactionService {
         return toResponse(transaction, null, wallet.getBalance());
     }
 
+    /**
+     * Đọc lịch sử wallet_transactions của user, mới nhất trước, không phân trang. Gom ID danh mục rồi
+     * tải theo lô cả danh mục đã xóa để hiển thị snapshot/trạng thái. Đọc số dư ví hiện tại một lần và
+     * truyền cùng giá trị cho từng DTO: balanceAfter ở lịch sử này KHÔNG phải số dư lịch sử tại thời
+     * điểm từng giao dịch. Không truy vấn bảng transactions trong hàm này.
+     */
     @Override
     @Transactional(readOnly = true)
     public List<WalletTransactionResponse> getHistory(Long userId) {
@@ -129,21 +154,39 @@ public class WalletTransactionServiceImpl implements WalletTransactionService {
                 .toList();
     }
 
+    /**
+     * Truy vấn bankAccount.id = accountId AND bankAccount.user.id = userId. Không tồn tại hoặc không
+     * thuộc người dùng đều trả BANK_ACCOUNT_NOT_FOUND; ngăn dùng ID tài khoản ngân hàng của người
+     * khác. Không gọi payOS để xác minh lại tên người nhận.
+     */
     private BankAccount requireOwnedAccount(Long userId, Long accountId) {
         return bankAccountRepository.findByIdAndUserId(accountId, userId)
                 .orElseThrow(() -> new AppException(ErrorCode.BANK_ACCOUNT_NOT_FOUND));
     }
 
+    /**
+     * Tìm User bằng khóa chính; không thấy thì USER_NOT_FOUND. userId được controller lấy từ
+     * principal; helper không tự đọc JWT.
+     */
     private User requireUser(Long userId) {
         return userRepository.findById(userId)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
     }
 
+    /**
+     * Lấy ví isDefault=true theo userId bằng truy vấn có PESSIMISTIC_WRITE. Khóa tồn tại tới khi
+     * transaction caller kết thúc; không được gọi như thể đây là truy vấn đọc thông thường. Không có
+     * ví thì WALLET_NOT_FOUND.
+     */
     private Wallet requireDefaultWallet(Long userId) {
         return walletRepository.findDefaultWalletForUpdate(userId)
                 .orElseThrow(() -> new AppException(ErrorCode.WALLET_NOT_FOUND));
     }
 
+    /**
+     * Trim ghi chú; null hoặc toàn khoảng trắng trả null. Không tự sinh nội dung mặc định và không
+     * thay đổi dữ liệu ngân hàng.
+     */
     private String normalizeNote(String note) {
         if (note == null || note.isBlank()) {
             return null;
@@ -151,10 +194,19 @@ public class WalletTransactionServiceImpl implements WalletTransactionService {
         return note.trim();
     }
 
+    /**
+     * Sinh mã prefix + timestamp milliseconds + 4 ký tự UUID viết hoa. Mã phục vụ tham chiếu/lịch sử,
+     * không phải requestId ổn định qua retry; vẫn cần ràng buộc unique tại DB khi áp dụng.
+     */
     private String generateCode(String prefix) {
         return prefix + System.currentTimeMillis() + UUID.randomUUID().toString().substring(0, 4).toUpperCase();
     }
 
+    /**
+     * Ánh xạ lịch sử ví sang DTO; xác định danh mục đã xóa nhưng giữ nhóm hệ thống không bị gắn nhãn
+     * đã xóa. Icon/màu lấy từ CategoryItem nếu còn tra được. balanceAfter là giá trị caller truyền
+     * vào, helper không tính lại bút toán.
+     */
     private WalletTransactionResponse toResponse(
             WalletTransaction transaction,
             CategoryItem category,
@@ -173,6 +225,10 @@ public class WalletTransactionServiceImpl implements WalletTransactionService {
         );
     }
 
+    /**
+     * Nhận diện danh mục hệ thống qua user=null hoặc tên thuộc bộ nhãn quỹ/chia tiền/chuyển tiền. Bỏ
+     * hậu tố (đã xóa) trước so tên. Chỉ phục vụ hiển thị, không chứng minh loại giao dịch tài chính.
+     */
     private boolean isSystemFundCategory(CategoryItem category, String categoryName) {
         if (category != null && category.getUser() == null) {
             return true;

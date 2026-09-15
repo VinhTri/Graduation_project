@@ -26,6 +26,11 @@ public class TransactionController {
     }
 
     // ====================== NẠP TIỀN QUA SEPAY ======================
+    /**
+     * POST /api/v1/transactions/top-up: lấy User từ JWT, áp @Valid trên DTO rồi ủy quyền tạo QR.
+     * success chỉ xác nhận tạo QR; service chưa ghi giao dịch hay cộng ví. Amount/walletId có thể null
+     * theo thiết kế QR mở.
+     */
     @PostMapping("/top-up")
     public ResponseEntity<ApiResponse<TopUpResponse>> initiateTopUp(
             @AuthenticationPrincipal CustomUserDetails userDetails,
@@ -40,6 +45,12 @@ public class TransactionController {
     }
 
     // SePay gọi endpoint công khai này sau khi ngân hàng ghi nhận tiền vào.
+    /**
+     * POST /api/v1/transactions/sepay-webhook: endpoint không yêu cầu JWT người dùng; chuyển
+     * Authorization cho service kiểm tra shared secret. Body không có @Valid tại đây, service tự kiểm
+     * tra từng điều kiện. HTTP 200/success=true nghĩa service đã xử lý hoặc bỏ qua; có thể là
+     * UNMATCHED/IGNORED, không bảo đảm đã cộng tiền.
+     */
     @PostMapping("/sepay-webhook")
     public ResponseEntity<ApiResponse<Void>> handleSePayWebhook(
             @RequestHeader(value = "Authorization", required = false) String authorization,
@@ -53,6 +64,11 @@ public class TransactionController {
     }
 
     // ====================== CẬP NHẬT GIAO DỊCH ======================
+    /**
+     * PUT /api/v1/transactions/{transactionCode}: cập nhật ghi chú/danh mục qua service có kiểm tra sở
+     * hữu. Không phải API đổi số tiền hoặc xác nhận thanh toán. Response status/type lấy từ entity
+     * hoặc shadow do service dựng cho lịch sử chỉ tồn tại ở ví.
+     */
     @PutMapping("/{transactionCode}")
     public ResponseEntity<ApiResponse<TransactionStatusResponse>> updateTransaction(
             @AuthenticationPrincipal CustomUserDetails userDetails,
@@ -114,6 +130,11 @@ public class TransactionController {
                 .build());
     }
 
+    /**
+     * POST /api/v1/transactions/transfer: User lấy từ principal, không cho client chỉ định người gửi.
+     * {@code @Valid} kiểm tra TransferRequest gồm amount tối thiểu 1.000, tài khoản nhận và PIN. Controller
+     * chỉ bọc DTO; giao dịch/khóa dữ liệu do service thực hiện.
+     */
     @PostMapping("/transfer")
     public ResponseEntity<ApiResponse<TransferResponse>> processTransfer(
             @AuthenticationPrincipal CustomUserDetails userDetails,

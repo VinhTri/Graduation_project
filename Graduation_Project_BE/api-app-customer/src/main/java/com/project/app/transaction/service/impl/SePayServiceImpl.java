@@ -31,6 +31,16 @@ public class SePayServiceImpl implements SePayService {
      * Nạp bao nhiêu nhận bấy nhiêu: nếu amount trống thì tạo QR "mở"
      * (không gắn số tiền), khách tự nhập số tiền trong app ngân hàng.
      */
+    /**
+     * Tạo URL ảnh VietQR để khách chuyển vào tài khoản ngân hàng của hệ thống.
+     * Bắt buộc accountNo và bankId có cấu hình; không có thì SEPAY_NOT_CONFIGURED.
+     * Tham số tên transactionCode thực tế được caller truyền nội dung NAP + định danh
+     * ví, không phải bản ghi Transaction đã lưu. Encode addInfo/accountName UTF-8.
+     * Amount dương: thêm tham số amount; null/không dương: bỏ amount để tạo QR mở.
+     * Caller initiateTopUp đã từ chối amount không dương khi được truyền vào.
+     * Chỉ tạo chuỗi URL, không gọi API tạo đơn payOS/SePay, không save và không cộng ví.
+     * accountNo nhận tiền là tài khoản ngân hàng cấu hình, khác accountNumber của ví.
+     */
     @Override
     public String generateVietQrUrl(BigDecimal amount, String transactionCode) {
         if (accountNo == null || accountNo.isBlank() || bankId == null || bankId.isBlank()) {
