@@ -1,0 +1,66 @@
+package com.project.app.bankaccount.controller;
+
+import com.project.app.auth.security.CustomUserDetails;
+import com.project.app.common.dto.ApiResponse;
+
+import com.project.app.bankaccount.dto.request.BankAccountRequest;
+import com.project.app.bankaccount.dto.response.BankAccountResponse;
+import com.project.app.bankaccount.service.BankAccountService;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+
+@RestController
+@RequestMapping("/api/v1/bank-accounts")
+@RequiredArgsConstructor
+public class BankAccountController {
+
+    private final BankAccountService bankAccountService;
+
+    // ====================== DANH SÁCH NGÂN HÀNG ======================
+    @GetMapping
+    public ResponseEntity<ApiResponse<List<BankAccountResponse>>> getBankAccounts(
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+        
+        List<BankAccountResponse> response = bankAccountService.getBankAccounts(userDetails.getUser());
+        
+        return ResponseEntity.ok(ApiResponse.<List<BankAccountResponse>>builder()
+                .success(true)
+                .message("Lấy danh sách ngân hàng liên kết thành công")
+                .data(response)
+                .build());
+    }
+
+    // ====================== THÊM NGÂN HÀNG ======================
+    @PostMapping
+    public ResponseEntity<ApiResponse<BankAccountResponse>> addBankAccount(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @Valid @RequestBody BankAccountRequest request) {
+        
+        BankAccountResponse response = bankAccountService.addBankAccount(userDetails.getUser(), request);
+        
+        return ResponseEntity.ok(ApiResponse.<BankAccountResponse>builder()
+                .success(true)
+                .message("Liên kết ngân hàng thành công")
+                .data(response)
+                .build());
+    }
+
+    // ====================== XÓA TÀI KHOẢN NGÂN HÀNG ======================
+    @DeleteMapping("/{accountId}")
+    public ResponseEntity<ApiResponse<Void>> deleteBankAccount(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @PathVariable Long accountId) {
+        
+        bankAccountService.deleteBankAccount(userDetails.getUser(), accountId);
+        
+        return ResponseEntity.ok(ApiResponse.<Void>builder()
+                .success(true)
+                .message("Hủy liên kết ngân hàng thành công")
+                .build());
+    }
+}

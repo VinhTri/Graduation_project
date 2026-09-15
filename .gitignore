@@ -1,3 +1,31 @@
 ~$*.docx
 .DS_Store
 **/.DS_Store
+
+# IDE (IntelliJ / VS Code)
+.idea/
+*.iml
+*.iws
+*.ipr
+out/
+
+# Build output
+target/
+build/
+
+# Local runtime uploads (avatars, etc.)
+uploads/
+
+# Node & Frontend
+node_modules/
+.expo/
+dist/
+.env
+.next/
+coverage/
+
+# Local agent tooling
+.agents/
+**/.agents/
+skills-lock.json
+**/skills-lock.json

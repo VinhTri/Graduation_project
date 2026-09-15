@@ -1,0 +1,95 @@
+import { StyleSheet } from "react-native";
+import { PASTEL_PALETTE } from "@/shared/constants/PastelPalette";
+
+export const styles = StyleSheet.create({
+  headerShell: {
+    marginTop: 0,
+  },
+  container: {
+    paddingBottom: 32,
+  },
+  topRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 16,
+  },
+  searchContainer: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "transparent",
+    borderRadius: 20,
+    paddingHorizontal: 12,
+    height: 40,
+    marginRight: 12,
+    borderWidth: 1.5,
+    borderColor: PASTEL_PALETTE.subtitle,
+  },
+  searchIcon: {
+    marginRight: 8,
+  },
+  searchPlaceholder: {
+    flex: 1,
+    fontSize: 14,
+    fontWeight: "500",
+  },
+  notificationBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "transparent",
+    alignItems: "center",
+    justifyContent: "center",
+    position: "relative",
+    overflow: "visible",
+    borderWidth: 1.5,
+    borderColor: PASTEL_PALETTE.subtitle,
+  },
+  badge: {
+    position: "absolute",
+    top: -2,
+    right: -2,
+    minWidth: 16,
+    height: 16,
+    borderRadius: 8,
+    backgroundColor: PASTEL_PALETTE.accentDeep,
+    borderWidth: 1,
+    borderColor: PASTEL_PALETTE.white,
+    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: 2,
+  },
+  badgeText: {
+    color: PASTEL_PALETTE.white,
+    fontSize: 8,
+    fontWeight: "bold",
+  },
+  quickActionsRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+    paddingHorizontal: 4,
+    zIndex: 2,
+  },
+  actionItem: {
+    alignItems: "center",
+    width: 78,
+  },
+  iconWrapper: {
+    width: 48,
+    height: 48,
+    borderRadius: 16,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 8,
+    backgroundColor: "transparent",
+    borderWidth: 1.5,
+    borderColor: PASTEL_PALETTE.accentDeep,
+  },
+  actionLabel: {
+    color: PASTEL_PALETTE.title,
+    fontSize: 11,
+    fontWeight: "600",
+    textAlign: "center",
+  },
+});

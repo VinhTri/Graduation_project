@@ -1,0 +1,1 @@
+export { FundsScreen } from './FundsScreen';

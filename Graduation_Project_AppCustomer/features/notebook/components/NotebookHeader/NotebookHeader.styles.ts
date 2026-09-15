@@ -1,0 +1,123 @@
+import { StyleSheet } from 'react-native'
+import { PASTEL_PALETTE } from '@/shared/constants/PastelPalette'
+
+export const styles = StyleSheet.create({
+  headerContent: {
+    paddingBottom: 28,
+  },
+  topRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 20,
+    gap: 8,
+  },
+  titleBlock: {
+    flex: 1,
+    minWidth: 0,
+  },
+  title: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: PASTEL_PALETTE.title,
+  },
+  headerTabs: {
+    flexDirection: 'row',
+    backgroundColor: 'rgba(255,255,255,0.72)',
+    borderRadius: 12,
+    padding: 3,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.9)',
+  },
+  headerTab: {
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+    borderRadius: 9,
+  },
+  headerTabActive: {
+    backgroundColor: PASTEL_PALETTE.white,
+    shadowColor: PASTEL_PALETTE.lavender,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.12,
+    shadowRadius: 3,
+    elevation: 2,
+  },
+  headerTabText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: PASTEL_PALETTE.textMuted,
+  },
+  headerTabTextActive: {
+    color: PASTEL_PALETTE.title,
+    fontWeight: '800',
+  },
+  balanceCard: {
+    backgroundColor: 'rgba(255,255,255,0.72)',
+    borderRadius: 20,
+    padding: 18,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.9)',
+  },
+  balanceHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 6,
+  },
+  balanceLabel: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: PASTEL_PALETTE.textMuted,
+    letterSpacing: 0.6,
+  },
+  eyeBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 10,
+    backgroundColor: PASTEL_PALETTE.accentSoft,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  balanceValue: {
+    fontSize: 32,
+    fontWeight: '800',
+    color: PASTEL_PALETTE.title,
+    marginBottom: 12,
+  },
+  balanceActions: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  addBalanceBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: PASTEL_PALETTE.accentSoft,
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderWidth: 1,
+    borderColor: '#F9A8D4',
+  },
+  addBalanceText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: PASTEL_PALETTE.accentDeep,
+  },
+  spendBalanceBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#FEE2E2',
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderWidth: 1,
+    borderColor: '#FECACA',
+  },
+  spendBalanceText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#DC2626',
+  },
+})

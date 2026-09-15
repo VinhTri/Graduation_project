@@ -1,0 +1,237 @@
+import { StyleSheet } from 'react-native';
+import { FUND_PALETTE } from '../../theme';
+
+export const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: FUND_PALETTE.bg,
+  },
+  header: {
+    paddingBottom: 20,
+  },
+  headerTopRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  headerTitle: {
+    flex: 1,
+    fontSize: 22,
+    fontWeight: '900',
+    color: '#5B21B6',
+    letterSpacing: 0.2,
+  },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  createBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: 'transparent',
+    borderRadius: 16,
+    paddingHorizontal: 11,
+    paddingVertical: 8,
+    borderWidth: 1.5,
+    borderColor: FUND_PALETTE.primary,
+  },
+  createBtnDisabled: {
+    backgroundColor: 'transparent',
+    borderColor: '#D1D5DB',
+  },
+  createBtnText: {
+    color: FUND_PALETTE.primaryDeep,
+    fontSize: 12,
+    fontWeight: '800',
+  },
+  createBtnTextDisabled: {
+    color: FUND_PALETTE.textMuted,
+  },
+  joinBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: FUND_PALETTE.white,
+    borderRadius: 16,
+    paddingHorizontal: 11,
+    paddingVertical: 8,
+    borderWidth: 1.5,
+    borderColor: FUND_PALETTE.borderSoft,
+  },
+  joinBtnText: {
+    color: FUND_PALETTE.primaryDeep,
+    fontSize: 12,
+    fontWeight: '800',
+  },
+  content: {
+    flex: 1,
+  },
+  contentContainer: {
+    paddingHorizontal: 20,
+    paddingTop: 20,
+  },
+  bannerSection: {
+    marginHorizontal: -20,
+  },
+  bannerList: {
+    paddingHorizontal: 20,
+  },
+  bannerSlide: {
+    borderRadius: 16,
+    overflow: 'hidden',
+    backgroundColor: '#FFE4F1',
+  },
+  bannerImage: {
+    width: '100%',
+    height: '100%',
+  },
+  bannerDots: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 10,
+  },
+  bannerDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: FUND_PALETTE.borderSoft,
+  },
+  bannerDotActive: {
+    width: 16,
+    backgroundColor: FUND_PALETTE.primary,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 28,
+    marginBottom: 16,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: '900',
+    color: FUND_PALETTE.title,
+  },
+  sectionCount: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: FUND_PALETTE.textMuted,
+  },
+  limitBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    backgroundColor: FUND_PALETTE.primarySofter,
+    borderRadius: 12,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderWidth: 1,
+    borderColor: FUND_PALETTE.borderSoft,
+  },
+  limitText: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: FUND_PALETTE.primaryDeep,
+  },
+  tabBar: {
+    flexDirection: 'row',
+    backgroundColor: FUND_PALETTE.primarySofter,
+    borderRadius: 14,
+    padding: 4,
+    marginBottom: 16,
+    gap: 4,
+  },
+  tab: {
+    flex: 1,
+    paddingVertical: 9,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  tabActive: {
+    backgroundColor: FUND_PALETTE.white,
+    shadowColor: FUND_PALETTE.primaryDeep,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.12,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  tabText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: FUND_PALETTE.textMuted,
+  },
+  tabTextActive: {
+    color: FUND_PALETTE.primaryDeep,
+  },
+  emptyState: {
+    alignItems: 'center',
+    paddingVertical: 40,
+  },
+  emptyIcon: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    backgroundColor: FUND_PALETTE.primarySofter,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  emptyTitle: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: FUND_PALETTE.title,
+    marginTop: 16,
+  },
+  emptySubtitle: {
+    fontSize: 13,
+    color: FUND_PALETTE.textMuted,
+    textAlign: 'center',
+    marginTop: 6,
+    paddingHorizontal: 30,
+  },
+  invitationSection: {
+    marginTop: 20,
+    marginBottom: 8,
+  },
+  invitationHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 12,
+  },
+  invitationHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  invitationBadgeIcon: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: 'rgba(99,102,241,0.12)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  invitationCountBadge: {
+    backgroundColor: '#EF4444',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 10,
+  },
+  invitationCountText: {
+    color: '#FFFFFF',
+    fontSize: 11,
+    fontWeight: '800',
+  },
+  tabNotificationDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 4,
+    backgroundColor: '#EF4444',
+    marginLeft: 6,
+  },
+});

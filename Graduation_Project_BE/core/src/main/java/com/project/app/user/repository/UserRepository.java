@@ -1,0 +1,31 @@
+package com.project.app.user.repository;
+
+import com.project.app.user.entity.User;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.stereotype.Repository;
+import org.springframework.data.jpa.repository.Lock;
+import jakarta.persistence.LockModeType;
+
+import java.util.Optional;
+
+@Repository
+public interface UserRepository extends JpaRepository<User, Long> {
+    Optional<User> findByEmail(String email);
+    
+    @Query("SELECT u FROM User u WHERE LOWER(TRIM(u.email)) = LOWER(TRIM(:email))")
+    Optional<User> searchByEmail(@org.springframework.data.repository.query.Param("email") String email);
+
+    @Query("SELECT u FROM User u WHERE LOWER(TRIM(u.username)) = LOWER(TRIM(:username))")
+    Optional<User> searchByUsername(@org.springframework.data.repository.query.Param("username") String username);
+
+    Optional<User> findByUsername(String username);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT u FROM User u WHERE u.id = :id")
+    Optional<User> findSecurityByIdForUpdate(@org.springframework.data.repository.query.Param("id") Long id);
+    boolean existsByEmail(String email);
+    boolean existsByUsername(String username);
+    java.util.List<User> findAllByIsActiveTrue();
+    java.util.List<User> findAllByIsActiveTrueAndNotebookReminderEnabledTrueAndNotebookReminderTimeIsNotNull();
+}
