@@ -319,9 +319,7 @@ export default function WithdrawSuccessScreen() {
         contentContainerStyle={[styles.scrollContent, { paddingBottom: 28 + insets.bottom }]}
         showsVerticalScrollIndicator={false}
       >
-        <View style={styles.receiptCard}>
-          <Image source={RECEIPT_BG} style={styles.receiptBg} resizeMode="cover" />
-
+        <ImageBackground source={RECEIPT_BG} style={styles.receiptCard} imageStyle={styles.receiptBg} resizeMode="cover">
           <View style={styles.receiptInner}>
             <View style={styles.successBadge}>
               <Ionicons name="checkmark" size={40} color="#FFFFFF" />
@@ -425,7 +423,7 @@ export default function WithdrawSuccessScreen() {
               />
             </View>
           </View>
-        </View>
+        </ImageBackground>
 
         {showCategoryReminder ? (
           <TouchableOpacity

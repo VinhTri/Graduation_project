@@ -18,6 +18,7 @@ import {
   NotificationResponse,
 } from "../../../shared/api/services/notification.service";
 import { fundService } from "../../../shared/api/services/fundService";
+import { invoiceService } from "@/shared/api/services/invoiceService";
 import { fundStore } from "../../funds/store/fundStore";
 import { ConfirmModal, SuccessModal } from "../../../shared/components";
 
@@ -57,6 +58,8 @@ export default function NotificationScreen() {
   const [acceptModalVisible, setAcceptModalVisible] = useState(false);
   const [rejectModalVisible, setRejectModalVisible] = useState(false);
   const [successModalVisible, setSuccessModalVisible] = useState(false);
+  const [errorModalVisible, setErrorModalVisible] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
   const [joinedFundId, setJoinedFundId] = useState<number | null>(null);
 
   const unreadCount = notifications.filter((item) => !item.isRead).length;
@@ -175,7 +178,7 @@ export default function NotificationScreen() {
     }
   };
 
-  const handleNotificationPress = (item: NotificationResponse) => {
+  const handleNotificationPress = async (item: NotificationResponse) => {
     console.log("Notification Pressed:", item);
     
     switch (item.type) {
@@ -185,8 +188,18 @@ export default function NotificationScreen() {
       case "INVOICE_REMINDER":
       case "INVOICE_DUE_TODAY":
       case "INVOICE_OVERDUE":
-        if (item.relatedId) router.push(`/invoice/${item.relatedId}`);
-        else router.push("/invoice");
+      case "INVOICE_PAYMENT_SUCCESS":
+        if (item.relatedId) {
+          try {
+            await invoiceService.getInvoiceById(item.relatedId);
+            router.push(`/invoice/${item.relatedId}${item.type === "INVOICE_PAYMENT_SUCCESS" ? "?viewOnly=true" : ""}`);
+          } catch (error) {
+            setErrorMessage("Không thể lấy thông tin hóa đơn vì hóa đơn này đã bị xóa.");
+            setErrorModalVisible(true);
+          }
+        } else {
+          router.push("/invoice");
+        }
         break;
       case "FRIEND_REQUEST":
       case "FRIEND_ACCEPTED":
@@ -224,10 +237,7 @@ export default function NotificationScreen() {
         if (item.relatedId && item.type !== "FUND_CLOSED") router.push(`/funds/${item.relatedId}`);
         else router.push("/funds");
         break;
-      case "INVOICE_PAYMENT_SUCCESS":
-        if (item.relatedId) router.push(`/invoice/${item.relatedId}`);
-        else router.push("/invoice");
-        break;
+
       case "GENERAL":
       default:
         // Dự phòng cho các thông báo từ backend chưa cập nhật type cụ thể
@@ -453,6 +463,23 @@ export default function NotificationScreen() {
             if (joinedFundId) {
               router.push(`/funds/${joinedFundId}`);
             }
+          }}
+        />
+
+        <ConfirmModal
+          visible={errorModalVisible}
+          title="Lỗi"
+          message={errorMessage}
+          iconName="alert-circle"
+          iconColor={PASTEL_PALETTE.danger}
+          confirmText="Đã hiểu"
+          isDestructive={false}
+          hideCancel={true}
+          onConfirm={() => {
+            setErrorModalVisible(false);
+          }}
+          onCancel={() => {
+            setErrorModalVisible(false);
           }}
         />
     </View>

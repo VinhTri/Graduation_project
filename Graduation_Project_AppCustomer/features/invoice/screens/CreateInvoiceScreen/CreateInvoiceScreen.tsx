@@ -138,7 +138,11 @@ export const CreateInvoiceScreen = () => {
       reminderDate.setDate(reminderDate.getDate() - 3);
     }
 
-    if (reminderDate <= now) nextErrors.reminder = 'Ngày và giờ nhắc phải sau thời điểm hiện tại.';
+    if (reminderDate <= now) {
+      setErrorMessage('Thời gian nhắc nhở không được nằm trong quá khứ.');
+      setErrorModalVisible(true);
+      return;
+    }
 
     if (Object.keys(nextErrors).length > 0) {
       setFormErrors(nextErrors);
@@ -168,7 +172,7 @@ export const CreateInvoiceScreen = () => {
       
       setShowSuccessModal(true);
     } catch (error: any) {
-      console.error(error);
+      console.log("Create Invoice Error:", error);
       setErrorMessage(error?.message || error?.response?.data?.message || "Có lỗi xảy ra khi lưu hóa đơn.");
       setErrorModalVisible(true);
     } finally {
@@ -363,7 +367,6 @@ export const CreateInvoiceScreen = () => {
                 </TouchableOpacity>
               ))}
           </View>
-          {formErrors.reminder ? <Text style={styles.errorText}>{formErrors.reminder}</Text> : null}
         </View>
         </TouchableWithoutFeedback>
       </Modal>

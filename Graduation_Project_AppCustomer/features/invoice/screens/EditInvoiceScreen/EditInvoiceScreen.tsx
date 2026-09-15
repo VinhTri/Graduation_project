@@ -70,8 +70,8 @@ export const EditInvoiceScreen = () => {
           }
         }
       } catch (error) {
-        console.error(error);
-        setErrorMessage("Không thể lấy thông tin hóa đơn");
+        console.log("Fetch Invoice Error:", error);
+        setErrorMessage("Không thể lấy thông tin hóa đơn vì hóa đơn này đã bị xóa.");
         setErrorModalVisible(true);
       } finally {
         setFetching(false);
@@ -164,7 +164,7 @@ export const EditInvoiceScreen = () => {
       
       setShowSuccessModal(true);
     } catch (error: any) {
-      console.error(error);
+      console.log("Update Invoice Error:", error);
       setErrorMessage(error?.response?.data?.message || "Có lỗi xảy ra khi cập nhật hóa đơn.");
       setErrorModalVisible(true);
     } finally {
@@ -172,10 +172,30 @@ export const EditInvoiceScreen = () => {
     }
   };
 
-  if (fetching) {
+  if (fetching || errorMessage === "Không thể lấy thông tin hóa đơn vì hóa đơn này đã bị xóa.") {
     return (
       <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
-        <ActivityIndicator size="large" color={Colors.primary} />
+        {fetching && <ActivityIndicator size="large" color={Colors.primary} />}
+        {errorMessage === "Không thể lấy thông tin hóa đơn vì hóa đơn này đã bị xóa." && (
+          <ConfirmModal
+            visible={errorModalVisible}
+            title="Lỗi"
+            message={errorMessage}
+            iconName="alert-circle"
+            iconColor={Colors.error}
+            confirmText="Đã hiểu"
+            isDestructive={false}
+            hideCancel={true}
+            onConfirm={() => {
+              setErrorModalVisible(false);
+              router.back();
+            }}
+            onCancel={() => {
+              setErrorModalVisible(false);
+              router.back();
+            }}
+          />
+        )}
       </View>
     );
   }
@@ -410,8 +430,12 @@ export const EditInvoiceScreen = () => {
         confirmText="Đã hiểu"
         isDestructive={false}
         hideCancel={true}
-        onConfirm={() => setErrorModalVisible(false)}
-        onCancel={() => setErrorModalVisible(false)}
+        onConfirm={() => {
+          setErrorModalVisible(false);
+        }}
+        onCancel={() => {
+          setErrorModalVisible(false);
+        }}
       />
     </KeyboardAvoidingView>
   );

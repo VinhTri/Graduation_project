@@ -83,7 +83,7 @@ export const RentInvoiceScreen = () => {
         }
       } catch (error) {
         console.log("L?i:", error);
-        setErrorMessage("Không thể lấy thông tin hóa đơn");
+        setErrorMessage("Không thể lấy thông tin hóa đơn vì hóa đơn này đã bị xóa.");
         setErrorModalVisible(true);
       } finally {
         setFetching(false);
@@ -206,10 +206,30 @@ export const RentInvoiceScreen = () => {
 
   const formatDateUI = (d: Date) => d.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });
 
-  if (fetching) {
+  if (fetching || errorMessage === "Không thể lấy thông tin hóa đơn vì hóa đơn này đã bị xóa.") {
     return (
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-        <ActivityIndicator size="large" color="#EC4899" />
+        {fetching && <ActivityIndicator size="large" color="#EC4899" />}
+        {errorMessage === "Không thể lấy thông tin hóa đơn vì hóa đơn này đã bị xóa." && (
+          <ConfirmModal
+            visible={errorModalVisible}
+            title="Lỗi"
+            message={errorMessage}
+            iconName="alert-circle"
+            iconColor={Colors.error}
+            confirmText="Đã hiểu"
+            isDestructive={false}
+            hideCancel={true}
+            onConfirm={() => {
+              setErrorModalVisible(false);
+              router.back();
+            }}
+            onCancel={() => {
+              setErrorModalVisible(false);
+              router.back();
+            }}
+          />
+        )}
       </View>
     );
   }
@@ -405,8 +425,12 @@ export const RentInvoiceScreen = () => {
         confirmText="Đã hiểu"
         isDestructive={false}
         hideCancel={true}
-        onConfirm={() => setErrorModalVisible(false)}
-        onCancel={() => setErrorModalVisible(false)}
+        onConfirm={() => {
+          setErrorModalVisible(false);
+        }}
+        onCancel={() => {
+          setErrorModalVisible(false);
+        }}
       />
     </KeyboardAvoidingView>
   );

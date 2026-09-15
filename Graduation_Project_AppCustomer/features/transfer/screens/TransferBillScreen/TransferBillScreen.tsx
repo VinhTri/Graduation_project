@@ -138,8 +138,7 @@ export default function TransferBillScreen() {
       </PastelHeaderShell>
 
       <ScrollView contentContainerStyle={[styles.scrollContent, { paddingBottom: 28 + insets.bottom }]} showsVerticalScrollIndicator={false}>
-        <View style={styles.receiptCard}>
-          <Image source={RECEIPT_BG} style={styles.receiptBg} resizeMode="cover" />
+        <ImageBackground source={RECEIPT_BG} style={styles.receiptCard} imageStyle={styles.receiptBg} resizeMode="cover">
           <View style={styles.receiptInner}>
             <View style={styles.successBadge}>
               <Ionicons name="checkmark" size={40} color="#FFFFFF" />
@@ -189,7 +188,7 @@ export default function TransferBillScreen() {
               <DetailRow label="Ghi chú" value={note || 'Chưa thiết lập'} muted={!note} last />
             </View>
           </View>
-        </View>
+        </ImageBackground>
         {!currentCategory ? (
           <TouchableOpacity activeOpacity={0.86} onPress={openCategoryPicker}
             accessibilityRole="button" accessibilityLabel="Chọn danh mục cho giao dịch">

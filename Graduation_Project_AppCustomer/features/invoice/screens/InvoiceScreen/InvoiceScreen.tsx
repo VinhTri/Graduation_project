@@ -6,7 +6,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { styles, PALETTE } from './InvoiceScreen.styles';
 import { Colors } from '@/shared/constants/Colors';
 import { invoiceService, InvoiceResponse } from '@/shared/api/services/invoiceService';
-import { Swipeable, RectButton } from 'react-native-gesture-handler';
+import { Swipeable, RectButton, TouchableOpacity as RNGHTouchableOpacity } from 'react-native-gesture-handler';
 import { ConfirmModal } from '@/shared/components';
 
 import { useLanguage, useTheme } from '@/shared/contexts/ThemeLanguageContext';
@@ -221,7 +221,7 @@ export const InvoiceScreen = () => {
         friction={2}
         rightThreshold={36}
       >
-        <TouchableOpacity 
+        <RNGHTouchableOpacity 
           style={styles.invoiceCard}
           activeOpacity={0.7}
           onPress={() => {
@@ -266,20 +266,19 @@ export const InvoiceScreen = () => {
               </View>
 
               {!item.isPaid && (
-                <TouchableOpacity 
+                <RNGHTouchableOpacity 
                   style={[styles.payNowButton, { backgroundColor: '#EC4899' }]}
                   activeOpacity={0.8}
-                  onPress={(e) => {
-                    e.stopPropagation();
+                  onPress={() => {
                     openCompleteModal(item.id, item.invoiceName);
                   }}
                 >
                   <Text style={styles.payNowText}>Đánh dấu đã thanh toán</Text>
-                </TouchableOpacity>
+                </RNGHTouchableOpacity>
               )}
             </View>
           </View>
-        </TouchableOpacity>
+        </RNGHTouchableOpacity>
       </Swipeable>
     );
   };
